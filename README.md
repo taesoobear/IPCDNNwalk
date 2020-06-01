@@ -50,9 +50,11 @@ How to build ogre 3D from the source code (Linux)
 
 How to build ogre 3D from the source code (Mac)
 =
+```
   brew install cmake sdl2 doxygen freeimage pkgconfig libzzip
   mkdir -p build;cd build; cmake -G Xcode .. 
   cd build; xed .
+```
 
 
  1. Build "build-all" in the xcode after manually selecting the release build target. 
@@ -62,9 +64,10 @@ How to build ogre 3D from the source code (Mac)
  4. copy build/sdk/include/OGRE to /usr/local/include/
  5. install ois manually (https://github.com/wgois/OIS)
 
+```
 	git clone https://github.com/wgois/OIS.gi://github.com/wgois/OIS.git
 	cd OIS;cmake -H. -B./build; cd ./build; make; make install
 	sudo cp build/Dependencies/lib/libzzip.so* /usr/local/lib/
-
+```
  6. cp libfreetype*.dylib to /usr/local/lib
 
