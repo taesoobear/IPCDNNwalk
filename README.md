@@ -56,6 +56,7 @@ How to run
 ```
   cd work; make walknn
 ```
+   Now, click the play button, and adjust the slider bars for speed/orientation. Also, you can change the motion type by clicking the button.
 
 How to build ogre 3D from the source code (Linux)
 =
