@@ -1,0 +1,53 @@
+// Ogre overlay scripts
+LogoOverlay
+{
+	zorder 500
+	container Panel(TLogoPanel)
+	{	
+		metrics_mode pixels
+		horz_align right
+		vert_align bottom
+//		top -75
+//		left -165
+//		width 150
+//		height 75
+		top -52
+		left -115
+		width 105
+		height 52
+		material Core/OgreText
+	}
+}
+
+CursorOverlay
+{
+	zorder 400
+	container Panel(TCursor)
+	{
+		metrics_mode pixels
+		horz_align left
+		vert_align top
+		top 0
+		left 0
+		width 32
+		height 32
+		material Cursor/default
+	}
+}
+
+
+
+// A silly example of how you would do a 3D cockpit
+//Examples/KnotCockpit
+//{
+//	zorder 100
+//	entity knot.mesh(hudKnot)
+//	{
+//		position 0 0 -50
+//		rotation 0 0 0 0
+//	}
+//
+//}
+
+
+

@@ -1,0 +1,13 @@
+material lambert111
+{
+	technique
+	{
+		pass
+		{
+			ambient 0.1 0.1 0.1 1.0	
+			diffuse 0.03440 0.9 0.03678 0.8
+			specular 0.8 0.8 0.8 1.0 0.0
+			emissive 0.0 0.0 0.0 1.0
+		}
+	}
+}

@@ -1,0 +1,90 @@
+material Material_#1038/Material_#1021
+{
+    technique
+    {
+        pass
+        {
+            ambient 0.7 0.7 0.7
+            diffuse 0.4 0.4 0.4
+            specular 0 0 0 0.0
+            emissive 0.0 0.0 0.0
+            texture_unit
+            {
+                texture body3.jpg 
+            }
+        }
+    }
+}
+
+material Material_#1038/rr_arms
+{
+    technique
+    {
+        pass
+        {
+            ambient 0.7 0.7 0.7
+            diffuse 0.4 0.4 0.4
+            specular 0 0 0 0.0
+            emissive 0.0 0.0 0.0
+            texture_unit
+            {
+                texture arms2.jpg 
+            }
+        }
+    }
+}
+
+material Material_#1038/22_-_Default
+{
+    technique
+    {
+        pass
+        {
+            ambient 0.7 0.7 0.7
+            diffuse 0.4 0.4 0.4
+            specular 0 0 0 0.0
+            emissive 0.0 0.0 0.0
+            texture_unit
+            {
+                texture leg2.jpg 
+            }
+        }
+    }
+}
+
+material Material_#1038/19_-_Default
+{
+    technique
+    {
+        pass
+        {
+            ambient 0.7 0.7 0.7
+            diffuse 0.4 0.4 0.4
+            specular 0 0 0 0.0
+            emissive 0.0 0.0 0.0
+            texture_unit
+            {
+                texture rr_02.jpg 
+            }
+        }
+    }
+}
+
+material Material_#1038/03_-_Default
+{
+    technique
+    {
+        pass
+        {
+            ambient 0.7 0.7 0.7
+            diffuse 0.4 0.4 0.4
+            specular 0 0 0 0.0
+            emissive 0.0 0.0 0.0
+            texture_unit
+            {
+                texture globe.jpg 
+            }
+        }
+    }
+}
+

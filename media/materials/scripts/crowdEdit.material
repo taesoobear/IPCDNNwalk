@@ -1,0 +1,221 @@
+material blueCircle
+{
+	technique
+	{
+		pass
+		{
+			lighting off
+
+			ambient 1 1 1 1
+			diffuse 1 1 1 1
+			specular 0 0 0 0
+			emissive 0 0 0
+
+			scene_blend alpha_blend
+			depth_write off
+
+			texture_unit
+			{
+				texture BlueCircle.png
+				tex_coord_set 0
+				colour_op modulate
+			}
+		}
+	}
+}
+
+material lightBlueCircle
+{
+	technique
+	{
+		pass
+		{
+			lighting off
+
+			ambient 1 1 1 1
+			diffuse 1 1 1 1
+			specular 0 0 0 0
+			emissive 0 0 0
+
+			scene_blend alpha_blend
+			depth_write off
+			cull_hardware none
+
+			texture_unit
+			{
+				texture LightBlueCircle.png
+				tex_coord_set 0
+				colour_op modulate
+			}
+		}
+	}
+}
+
+material greenCircle
+{
+	technique
+	{
+		pass
+		{
+			lighting off
+
+			ambient 1 1 1 1
+			diffuse 1 1 1 1
+			specular 0 0 0 0
+			emissive 0 0 0
+
+			scene_blend alpha_blend
+			depth_write off
+
+			texture_unit
+			{
+				texture GreenCircle.png
+				tex_coord_set 0
+				colour_op modulate
+			}
+		}
+	}
+}
+
+
+material redCircle
+{
+	technique
+	{
+		pass
+		{
+			lighting off
+
+			ambient 1 1 1 1
+			diffuse 1 1 1 1
+			specular 0 0 0 0
+			emissive 0 0 0
+
+			scene_blend alpha_blend
+			depth_write off
+
+			texture_unit
+			{
+				texture RedCircle.png
+				tex_coord_set 0
+				colour_op modulate
+			}
+		}
+	}
+}
+
+material icons/add
+{
+	technique
+	{
+		pass
+		{
+			lighting off
+
+			ambient 1 1 1 1
+			diffuse 1 1 1 1
+			specular 0 0 0 0
+			emissive 0 0 0
+
+			scene_blend alpha_blend
+			depth_write off
+
+			texture_unit
+			{
+				texture add.png
+				tex_coord_set 0
+				colour_op modulate
+			}
+		}
+	}
+}
+
+material icons/forbidden
+{
+	technique
+	{
+		pass
+		{
+			lighting off
+
+			ambient 1 1 1 1
+			diffuse 1 1 1 1
+			specular 0 0 0 0
+			emissive 0 0 0
+
+			scene_blend alpha_blend
+			depth_write off
+
+			texture_unit
+			{
+				texture Forbidden.png
+				tex_coord_set 0
+				colour_op modulate
+			}
+		}
+	}
+}
+material icons/refresh
+{
+	technique
+	{
+		pass
+		{
+			lighting off
+
+			ambient 1 1 1 1
+			diffuse 1 1 1 1
+			specular 0 0 0 0
+			emissive 0 0 0
+
+			scene_blend alpha_blend
+			depth_write off
+
+			texture_unit
+			{
+				texture refresh.png
+				tex_coord_set 0
+				colour_op modulate
+			}
+		}
+	}
+}
+
+material CrowdEdit/Terrain1
+{
+	technique
+	{
+		pass
+		{
+			#ambient 0.5 0.5 0.5
+			#diffuse 0.5 0.5 0.5 1
+			#specular 0.5 0.5 0.5 1.0 0.0
+			#emissive 0.0 0.0 0.0 1.0
+
+			texture_unit
+			{
+				texture crowdEdit1.png
+			}
+		}
+	}
+}
+material CrowdEdit/Terrain2
+{
+	technique
+	{
+		pass
+		{
+			#ambient 0.5 0.5 0.5
+			#diffuse 0.5 0.5 0.5 1
+			#specular 0.5 0.5 0.5 1.0 0.0
+			#emissive 0.0 0.0 0.0 1.0
+
+			texture_unit
+			{
+				#texture GreenSkin.jpg
+				#texture golf_green_grass_texture.jpg
+				texture dead_grass.jpg
+			}
+		}
+	}
+}

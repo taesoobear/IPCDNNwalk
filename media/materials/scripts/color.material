@@ -1,0 +1,664 @@
+material use_vertexcolor
+{
+    technique
+    {
+        pass
+        {
+		shading gouraud
+		ambient vertexcolour
+		diffuse vertexcolour
+		specular 0.50000 0.50000 0.50000 1.00000 0.00000
+		emissive 0.00000 0.00000 0.00000 1.00000
+        }
+    }
+} 
+
+material use_vertexcolor_transparent
+{
+	receive_shadows off
+	technique
+	{
+		pass
+		{
+			shading gouraud
+			ambient vertexcolour
+			diffuse vertexcolour
+			specular 0.50000 0.50000 0.50000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+			scene_blend alpha_blend
+			depth_write off
+		}
+	}
+}
+
+
+material lightgrey_transparent
+{
+	receive_shadows off
+	cast_shadow off
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.5 0.5 0.5 0.5
+			diffuse 0.5 0.5 0.5 0.5
+			specular 0.5 0.5 0.5 0.5 0.0
+			emissive 0.0 0.0 0.0 0.5
+			scene_blend alpha_blend
+			depth_write off
+		}
+	}
+}
+material lightgrey_noshadow
+{
+	receive_shadows off
+	cast_shadow off
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.5 0.5 0.5 1.0
+			diffuse 0.5 0.5 0.5 1.0
+			specular 0.5 0.5 0.5 1.0 0.0
+			emissive 0.0 0.0 0.0 1.0
+			scene_blend alpha_blend
+		}
+	}
+}
+material yellow_transparent
+{
+	receive_shadows off
+	cast_shadow off
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 1.0 1.0 0.5 0.5
+			diffuse 1.0 1.0 0.5 0.5
+			specular 0.5 0.5 0.5 0.5 0.0
+			emissive 0.0 0.0 0.0 0.5
+			scene_blend alpha_blend
+			depth_write off
+		}
+	}
+}
+material lightgrey_verytransparent
+{
+	receive_shadows off
+	cast_shadow off
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.5 0.5 0.5 0.2
+			diffuse 0.5 0.5 0.5 0.2
+			specular 0.5 0.5 0.5 0.2 0.0
+			emissive 0.0 0.0 0.0 0.2
+			scene_blend alpha_blend
+			depth_write off
+		}
+	}
+}
+material invisible
+{
+	receive_shadows off
+	cast_shadow off
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.5 0.5 0.5 0.0
+			diffuse 0.5 0.5 0.5 0.0
+			specular 0.5 0.5 0.5 0.0 0.0
+			emissive 0.0 0.0 0.0 0.0
+			scene_blend alpha_blend
+			depth_write off
+		}
+	}
+}
+material invisible_shadow_receiver
+{
+	receive_shadows on
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.5 0.5 0.5 0.0
+			diffuse 0.5 0.5 0.5 0.0
+			specular 0.5 0.5 0.5 0.0 0.0
+			emissive 0.0 0.0 0.0 0.0
+			scene_blend alpha_blend
+			//depth_write off
+		}
+	}
+}
+material invisible_gth
+{
+	receive_shadows off
+	cast_shadow off
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.5 0.5 0.5 0.0
+			diffuse 0.5 0.5 0.5 0.0
+			specular 0.5 0.5 0.5 0.0 0.0
+			emissive 0.0 0.0 0.0 0.0
+			scene_blend alpha_blend
+			depth_write on 
+			depth_check on 
+		}
+	}
+}
+
+material white_transparent
+{
+	receive_shadows off
+	cast_shadow off
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.5 0.5 0.5 0.2
+			diffuse 0.5 0.5 0.5 0.2
+			specular 0.5 0.5 0.5 0.2 0.0
+			emissive 0.0 0.0 0.0 0.2
+			scene_blend alpha_blend
+			depth_write off
+		}
+	}
+}
+material red_transparent
+{
+	receive_shadows off
+	cast_shadow off
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 1.0 0.0 0.0 0.5
+			diffuse 1.0 0.0 0.0 0.5
+			specular 1.0 0.0 0.0 0.5 0.0
+			emissive 0.0 0.0 0.0 0.5
+			scene_blend alpha_blend
+			depth_write off
+		}
+	}
+}
+material red_transparent_ccw
+{
+	receive_shadows off
+	cast_shadow off
+	technique
+	{
+		pass
+		{
+			shading gouraud
+			cull_hardware anticlockwise
+			ambient 1.0 0.0 0.0 0.5
+			diffuse 1.0 0.0 0.0 0.5
+			specular 1.0 0.0 0.0 0.5 0.0
+			emissive 0.0 0.0 0.0 0.5
+			scene_blend alpha_blend
+			depth_write off
+		}
+	}
+}
+material green_transparent
+{
+	receive_shadows off
+	cast_shadow off
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.0 1.0 0.0 0.5
+			diffuse 0.0 1.0 0.0 0.5
+			specular 0.0 1.0 0.0 0.5 0.0
+			emissive 0.0 0.0 0.0 0.5
+			scene_blend alpha_blend
+			depth_write off
+		}
+	}
+}
+material blue_transparent
+{
+	receive_shadows off
+	cast_shadow off
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.0 0.0 1.0 0.5
+			diffuse 0.0 0.0 1.0 0.5
+			specular 0.0 0.0 1.0 0.5 0.0
+			emissive 0.0 0.0 0.0 0.5
+			scene_blend alpha_blend
+			depth_write off
+		}
+	}
+}
+
+material use_vertexcolor_only
+{
+    technique
+    {
+        pass
+        {
+		lighting off
+		diffuse vertexcolour
+		// Texture unit 0
+		texture_unit
+		{
+			colour_op_ex source1  src_diffuse 
+		}        
+	}
+    }
+} 
+
+material black
+{
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.50000 0.50000 0.50000 1.00000
+			diffuse 0.00 0.00 0.00000 0.0000
+			specular 0.50000 0.50000 0.50000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+		}
+	}
+}
+
+material lightgrey
+{
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.5 0.5 0.5 1.0
+			diffuse 0.5 0.5 0.5 1
+			specular 0.5 0.5 0.5 1.0 0.0
+			emissive 0.0 0.0 0.0 1.0
+
+		}
+	}
+}
+
+material lightblue
+{
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.5 0.5 1.0 1.0
+			diffuse 0.6 0.6 0.75 1
+			specular 0.5 0.5 0.5 1.0 0.0
+			emissive 0.0 0.0 0.0 1.0
+
+		}
+	}
+}
+
+material white
+{
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.5 0.5 0.5 1.0
+			diffuse 0.8 0.8 0.8 0.8
+			specular 0.8 0.8 0.8 1.0 0.0
+			emissive 0.0 0.0 0.0 1.0
+
+
+		}
+	}
+}
+material blue 
+{
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.5 0.5 0.5 1.0
+			diffuse 0.03440 0.03678 0.8 0.8
+			specular 0.8 0.8 0.8 1.0 0.0
+			emissive 0.0 0.0 0.0 1.0
+
+		}
+	}
+}
+
+
+material lightgreen 
+{
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.5 1.0 0.5 1.0
+			diffuse 0.6 0.75 0.6 1.0
+			specular 0.8 0.8 0.8 1.0 0.0
+			emissive 0.0 0.0 0.0 1.0
+
+		}
+	}
+}
+material green 
+{
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.1 0.1 0.1 1.0
+			diffuse 0.03440 0.9 0.03678 0.8
+			specular 0.8 0.8 0.8 1.0 0.0
+			emissive 0.0 0.0 0.0 1.0
+		}
+	}
+}
+
+
+
+
+
+material red
+{
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.5 0.5 0.5 1.0
+			diffuse 0.8 0.03678 0.03440 0.8
+			specular 0.8 0.8 0.8 1.0 0.0
+			emissive 0.0 0.0 0.0 1.0
+
+		}
+	}
+}
+
+
+
+material solidblackNoZwrite
+{
+	receive_shadows off
+	technique
+	{
+		pass
+		{
+			lighting off	
+			depth_write off
+			// Texture unit 0
+		        texture_unit 
+            		{
+				colour_op_ex source1 src_manual src_current 0 0 0
+		        }
+		}
+	}
+}
+
+material solidblack
+{
+	receive_shadows off
+
+	technique
+	{
+		pass
+		{
+			lighting off		
+			// Texture unit 0
+		        texture_unit 
+            		{
+				colour_op_ex source1 src_manual src_current 0 0 0
+		        }
+		}
+	}
+}
+material solidwhitepoint
+{
+   technique
+   {
+      pass
+      {
+         point_sprites on
+         point_size 3
+			diffuse vertexcolour
+			ambient vertexcolour
+			 specular vertexcolour
+			 lighting off
+      }
+   }
+}
+material solidwhite
+{
+	receive_shadows off
+	technique
+	{
+		pass
+		{
+			lighting off		
+			// Texture unit 0
+		        texture_unit 
+            		{
+				colour_op_ex source1 src_manual src_current 1 1 1
+		        }
+		}
+	}
+}
+
+material solidblue 
+{
+	receive_shadows off
+	technique
+	{
+		pass
+		{
+			lighting off		
+			// Texture unit 0
+		        texture_unit 
+            		{
+				colour_op_ex source1 src_manual src_current 0 0 1
+		        }
+		}
+	}
+}
+
+material solidlightblue
+{
+	receive_shadows off
+	technique
+	{
+		pass
+		{
+			lighting off		
+			// Texture unit 0
+		        texture_unit 
+            		{
+				colour_op_ex source1 src_manual src_current 0.5 0.5 1
+		        }
+		}
+	}
+}
+
+
+material solidgreen 
+{
+	receive_shadows off
+	technique
+	{
+		pass
+		{
+			lighting off		
+			// Texture unit 0
+		        texture_unit 
+            		{
+				colour_op_ex source1 src_manual src_current 0 0.5 0
+		        }
+		}
+	}
+}
+material solidlightgreen 
+{
+	receive_shadows off
+	technique
+	{
+		pass
+		{
+			lighting off		
+			// Texture unit 0
+		        texture_unit 
+            		{
+				colour_op_ex source1 src_manual src_current 0 1 0
+		        }
+		}
+	}
+}
+
+material solidred
+{
+	cast_shadow off
+	technique
+	{
+		pass
+		{	
+			lighting off		
+			// Texture unit 0
+		        texture_unit 
+            		{
+				colour_op_ex source1 src_manual src_current 1 0 0
+		        }
+
+		}
+	}
+}
+
+
+
+
+material solidwhiteTrail
+{
+	receive_shadows off
+	technique
+	{
+		pass
+		{
+			lighting off	
+			scene_blend alpha_blend
+			depth_check off
+			
+			// Texture unit 0
+			texture_unit
+			{
+				texture trail.png
+				tex_coord_set 0
+				colour_op modulate
+				tex_address_mode clamp
+			}
+		}
+	}
+}
+
+material solidwhiteTrailZTest
+{
+	receive_shadows off
+	technique
+	{
+		pass
+		{
+			lighting off	
+			scene_blend alpha_blend
+			depth_write off
+			
+			// Texture unit 0
+			texture_unit
+			{
+				texture trail.png
+				tex_coord_set 0
+				colour_op modulate
+				tex_address_mode clamp
+			}
+		}
+	}
+}
+
+
+material lightblueTransparentPlane
+{
+	receive_shadows off
+	technique
+	{
+		pass
+		{
+			lighting off	
+			scene_blend alpha_blend
+			depth_write off
+			
+			// Texture unit 0
+			texture_unit
+			{
+				texture lightblueplane.png
+				tex_coord_set 0
+				colour_op modulate
+				tex_address_mode clamp
+			}
+		}
+	}
+}
+
+material redToOrange
+{
+    technique
+    {
+        pass
+        {
+	   
+	    lighting off
+            //scene_blend alpha_blend
+            texture_unit
+            {
+                texture redToOrange.png
+		tex_address_mode clamp
+            }
+        }
+    }
+}

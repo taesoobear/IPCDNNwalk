@@ -1,0 +1,29 @@
+
+DEF floor Humanoid {
+  humanoidBody [
+    DEF WAIST Joint {
+      jointType "fixed"
+      translation 0.0 0.0 -0.1
+      rotation 0 0 1 0
+      children [
+        DEF BODY Segment {
+	  #mass 0.5
+	  #momentsOfInertia [1 0 0 0 1 0 0 0 1]
+          children [
+            Shape {
+              geometry Box {
+                  size 380 380 0.2 
+              }
+              appearance Appearance {
+                  material Material {
+                      diffuseColor 0.0 0.0 1.0
+                  }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+

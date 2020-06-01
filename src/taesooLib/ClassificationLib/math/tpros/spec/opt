@@ -1,0 +1,44 @@
+---------------------------------------------------------------
+-------------   Optimization Specification File  --------------
+---------------------------------------------------------------
+
+Seed_for_random_numbers				880 
+---------------------------------------------------------------
+Optimisation   	
+
+initial_theta0					0.0
+initial_theta2					0.0
+initial_noise_variance				0.01
+
+OPT_No._of_mac_its				100
+OPT_Inversion_Method_(CG/LU)			LU
+OPT_No._of_mac_its_for_CG_inversion		20
+OPT_No._of_elements_used_for_trace		10
+OPT_macopt_tolerance				0.0001			
+OPT_macopt_termination_style                    0
+OPT_calculate_evidence_(yes/no)			no
+OPT_dump_hyperparameters_(yes/no)		yes
+
+maccheckgrad_(yes/no)				no
+maccheckgrad_step				0.001
+
+Optimize_length_scales_(yes/no)			yes
+Optimize_noise_model_(yes/no)			yes
+Optimize_theta0_(yes/no)			no
+Optimize_theta1_(yes/no)			yes
+Optimize_theta2_(yes/no)			yes
+Optimize_linear_term_(yes/no)			no
+
+length_scale_compression			4.0
+Verbose_(0/1/2)					1
+---------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+

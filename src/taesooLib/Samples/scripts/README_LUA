@@ -1,0 +1,69 @@
+lua programming 방법
+(1) UI를 만든다
+생성자에서
+this:create("Button", "button1", "button1");        --button만등
+this:create("Value_Slider", "sliderx", "sliderx");  --slider만등
+this:widget(0):sliderRange(0,0.5);                   --slider의 범위를 지정
+this:widget(0):sliderValue(0.1);                    --slider의 초기값  지정
+this:updateLayout();                                --UI를 최신화해준당
+
+
+onCallback 함수에서
+sVal = w:sliderValue();                             --slider 값을 얻어올수 있다.
+bID = w:id();                                       --현재 활성화된 ID를 얻을 수 있다.
+      --button1을 누르면 w:id()는 button1이 되고, slider를 조종하면 w:id()는 slider1이 된다
+
+
+(2) VRML loader를 이용하여 캐릭터 불러오기
+
+생성자에서
+mLoader=MainLib.VRMLloader ("../Resource/motion/gymnist/gymnist.wrl")
+      --캐릭터 파일 (wrl파일?)을 불러온다
+
+mSkin=RE.createVRMLskin(mLoader, false);
+      --visualize를 위해서는 스킨을 생성하는 것이 필요하다. 이 함수는 스킨을 생성해서 캐릭터를 화면에 보이도록 해준다
+mSkin:scale(100,100,100);
+      -- visualization에서는 cm단위를 사용하기 때문에 100씩 scale해주는 것이 필요하다
+
+--이전 작업까지 수행하면 0,0,0에 캐릭터가 생성된 것을 볼 수 있다.(상반신만 바닥 위에 나타남)
+
+
+(3) motion data를 불러오자
+
+생성자에서
+    mMotionDOFcontainer=MotionDOFcontainer(mLoader.dofInfo, '../Resource/motion/gymnist/gymnist.dof')
+       --모션 데이터를 불러와서 container에 넣는다
+    mMotionDOF=mMotionDOFcontainer.mot
+       --모션 데이터의 모터값을 mMotionDOF에 저장한다
+
+    for i=0, mMotionDOF:rows()-1 do           -- mMotionDOF:rows()는 DOF의 수를 알려주고, index가 0부터 시작하기 때문에 1을 빼준다.
+		mMotionDOF:matView():set(i, 1, mMotionDOF:matView()(i,1)+0.07)
+	end
+       --모터 값을 7cm씩 올려준다. (-> 캐릭터가 바닥에 박혀있는 것을 올려준다.)
+
+    mPose=vectorn()                         -- vector를 생성
+	mPose:assign(mMotionDOF:row(0));        -- mPose에다가 값의 초기 모터 위치값을 할당해 준다.(vector에 값을 넣을때, assign을 사용하는 것 같다.)
+         -- mMotionDOF:row(0) ; 모션 데이터 첫번째 열 (초기 모션 데이터의 위치가 저장되어 있당)
+	mSkin:setPoseDOF(mPose);                -- mPose에 저장 되어있는 초기 joint position의 값을 초기 DOF위치로 설정해 준다.
+
+(4) Inverse kinematics를 구하기 위한 effector 설정
+    mEffectors=MotionUtil.Effectors()       -- effector 생성
+	mEffectors:resize(2);                   -- mEffectors에 2개의 effector를 지정한다
+
+	mEffectors(0):init(mLoader:getBoneByName("lfoot"), vector3(0,-0.02,0.16))
+	mEffectors(1):init(mLoader:getBoneByName("rfoot"), vector3(0,-0.02,0.16))
+            -- 각 effector의 초기값을 설정해준다, lfoot는 Bone 이름이다.
+
+
+    lknee=mLoader:getBoneByName("ltibia");   -- mLoader에는 캐릭터모델이 있죠
+    rknee=mLoader:getBoneByName("rtibia");  
+	mIK=MotionUtil.createFullbodyIkDOF_limbIK(mLoader.dofInfo, mEffectors, lknee, rknee);
+            -- 
+
+
+(5) 화면에 표시 만들기
+    dbg.namedDraw("Sphere", vector3(0,0,0), "origin", "red")
+
+
+
+

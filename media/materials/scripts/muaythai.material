@@ -1,0 +1,161 @@
+material body____Standard__
+{
+	technique
+	{
+		pass
+		{
+//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture body2.jpg
+			}
+		}
+	}
+}
+material rr_01____Standard__
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture rr_01.jpg
+			}
+		}
+	}
+}
+material leg____Standard__
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture leg.jpg
+			}
+		}
+	}
+}
+material rr_arms____Standard__
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture arms.jpg
+			}
+		}
+	}
+}
+
+material body2
+{
+	technique
+	{
+		pass
+		{
+//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture body3.jpg
+			}
+		}
+	}
+}
+material rr_02
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture rr_02.jpg
+			}
+		}
+	}
+}
+material leg2
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture leg2.jpg
+			}
+		}
+	}
+}
+material rr_arms2
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture arms2.jpg
+			}
+		}
+	}
+}

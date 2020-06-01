@@ -1,0 +1,29 @@
+#!lua
+EXE='console'
+
+local isWin=string.find(string.lower(os.getenv('OS') or 'nil'),'windows')~=nil
+if isWin then
+	package.path =os.getenv('HOMEDRIVE')..os.getenv('HOMEPATH').."/bin/?.lua" .. ";"..package.path 
+else
+	package.path =os.getenv('HOME').."/bin/?.lua" .. ";"..package.path 
+end
+require("mylib")
+
+if arg[1]=="install" then
+	if os.isFileExist('Release/OgreFltk.exe') then
+		os.copyFile('Release/OgreFltk.exe',  '../../../work/'..EXE..'.exe')
+	end
+	if os.isFileExist('Debug/OgreFltk.exe') then
+		os.copyFile('Debug/OgreFltk.exe',  '../../../work/'..EXE..'_d.exe')
+	end
+elseif arg[1]=="run" then
+	os.execute2('cd ../../work', EXE)
+else
+	if not os.isFileExist('build_win/CMakeCache.txt') then
+		os.execute('md build_win')
+	end
+	os.execute2(
+	'cd build_win',
+	'cmake ..',
+	'start '..EXE..'.sln')
+end

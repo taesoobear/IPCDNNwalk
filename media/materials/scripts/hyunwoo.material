@@ -1,0 +1,255 @@
+material hyunwoo/body
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture body2.jpg
+			}
+		}
+	}
+}
+
+material hyunwoo/rr_01
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture rr_01.jpg
+			}
+		}
+	}
+}
+
+material hyunwoo/leg
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture leg.jpg
+			}
+		}
+	}
+}
+
+
+material hyunwoo/rr_arms
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture arms.jpg
+			}
+		}
+	}
+}
+
+
+material man1/body
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture body2.jpg
+			}
+		}
+	}
+}
+
+material man1/rr_01
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture rr_01.jpg
+			}
+		}
+	}
+}
+
+material man1/leg
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture leg.jpg
+			}
+		}
+	}
+}
+
+
+material man1/rr_arms
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture arms.jpg
+			}
+		}
+	}
+}
+
+material man2/body
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture body3.jpg
+			}
+		}
+	}
+}
+
+material man2/rr_01
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture rr_02.jpg
+			}
+		}
+	}
+}
+
+material man2/leg
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture leg2.jpg
+			}
+		}
+	}
+}
+
+
+material man2/rr_arms
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 0.80000
+			specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture arms2.jpg
+			}
+		}
+	}
+}

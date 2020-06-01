@@ -1,0 +1,37 @@
+font IronMaiden
+{
+	// Blame cearny for this one!
+	type 		truetype
+	source 		maiden.ttf
+	size 		48
+	resolution 	96
+}
+
+font StarWars
+{
+	// Now this one I agree with ;)
+	// A Star Wars font :)
+	type 		truetype
+	source 		solo5.ttf
+	size 		16
+	resolution 	96
+}
+
+font BlueHighway_mod
+{
+	type 		truetype
+	source 		bluehigh.ttf
+	size 		32
+	resolution 	200
+}
+font BlueHighway
+{
+	type 		truetype
+	source 		bluehigh.ttf
+	size 		32
+	resolution 	200
+}
+
+
+
+

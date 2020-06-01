@@ -1,0 +1,22 @@
+-- order doesn't matter
+g_etagsSrc={ "%.m$", "%.c$", "%.cpp$", "%.h$","%.hpp$", "%.inl$", "%.py$", "%.lua$"}
+g_vimSrc={"%.m$", "Makefile$", "%.con_config$", "%.bib$", "%.tex$", "%.wiki$","%.EE$", "%.wrl$", "%.lua$","%.py$", "%.c$", "%.h$", "%.hpp$", "%.txt$", "%.inl$", "%.cpp$"}
+g_grepSrc=array.concatMulti(g_etagsSrc, {"%.tex$", "%.txt$"})
+-- ignore files that match following patterns even if they are in the repository.
+g_ignorePattern={'/dependencies_windows_only/', '/dependencies/','dependencies_windows_only/','BaseLib/image/FreeImage/','^dependencies/', 'PhysicsLib/CollisionDetector/Ice',
+'PhysicsLib/AIST_implementation', 
+'MotionFlow/MATHCLASS',
+'QP_controller/Eigen',
+'math/clust',
+'PhysicsLib/sDIMS','GaussianProcess/','opennl/','Fl_Native_File_Chooser','PhysicsEngine/'
+}
+g_commitIgnorePattern={'^$','ogreconfig.txt', 'ogreconfig_linux.txt', 'debug_plot%.', 'OgreFltkConsole.exe', 'console.xml', 'OgreFltkConsoleJIT.exe','optimizelog'}
+g_diffTarget="../taesooLib"
+
+function hookAfterPush(arg)
+	if arg[2]=='-h' then
+		print('hookAfterPush')
+		os.execute('ssh -p 8022 students@calab.hanyang.ac.kr "cd taesooLib;git pull origin master;lua doc/helper.lua;sh hook.sh;cd ../taesooLib_source_only;git add *;git commit -a -ma;git push origin master"')
+		print('endHook')
+	end
+end

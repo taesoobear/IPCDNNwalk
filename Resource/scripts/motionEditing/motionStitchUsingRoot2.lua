@@ -1,0 +1,6 @@
+a=Motion(1,12549,12599)
+b=Motion(1,550,600)
+e=stitch(a,b, "stitchUsingRoot2")
+e:show()
+f=stitch(a,b, "concat")
+f:show("green")

@@ -1,0 +1,67 @@
+// Ogre overlay scripts
+KickOverlay
+{
+	zorder 500
+	container Panel(TKickPanel)
+	{	
+		metrics_mode pixels
+		horz_align right
+		vert_align bottom
+		top -62
+		left -115
+		width 105
+		height 52
+		material two/kick
+	}
+}
+
+
+// Ogre overlay scripts
+PunchOverlay
+{
+	zorder 500
+	container Panel(TPunchPanel)
+	{	
+		metrics_mode pixels
+		horz_align right
+		vert_align bottom
+		top -62
+		left -115
+		width 105
+		height 52
+		material two/punch
+	}
+}
+
+// Ogre overlay scripts
+FlyingKickOverlay
+{
+	zorder 500
+	container Panel(TFlyingKickPanel)
+	{	
+		metrics_mode pixels
+		horz_align right
+		vert_align bottom
+		top -52
+		left -115
+		width 105
+		height 52
+		material two/flyingkick
+	}
+}
+// Ogre overlay scripts
+CollisionOverlay
+{
+	zorder 500
+	container Panel(TCollisionPanel)
+	{	
+		metrics_mode pixels
+		horz_align left
+		vert_align bottom
+		top -52
+		left 10
+		width 105
+		height 52
+		material two/collision
+	}
+}

@@ -1,0 +1,14 @@
+--------------
+Input_Optimization
+-------------
+
+KOPT_objective_function_(1/2/3/4)		1
+KOPT_minimize_or_maximize_(min/max)		max
+KOPT_No._of_mac_its				100
+KOPT_beta					1.0
+KOPT_gamma					0.0
+KOPT_make_log_(yes/no)                          yes
+KOPT_logfile                                    opt_log
+KOPT_macopt_termination_style                   1
+KOPT_macopt_tolerance				0.001
+---------------------------------------------------------------

@@ -1,0 +1,16 @@
+DEF SampleRobot Humanoid { 
+ name "box"
+humanoidBody [
+DEF root Joint {
+jointType "free"
+  translation 0.000000 0.000000 0.000000
+  children [
+Segment { 
+     centerOfMass 0.000000 0.000000 0.000000
+	 mass 60 momentsOfInertia [9.683 0 0    0 2.056 0    0 0 10.209  ]
+ 	 material "lightgrey"
+     children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 0.140000 0.000000  children Shape {geometry Box { size  0.508000 1.335000 0.390000 }}}
+}]
+}
+]
+}

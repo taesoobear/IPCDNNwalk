@@ -1,0 +1,30 @@
+renderer_width 1248
+renderer_height 680
+right_panel_width 300
+UI_scale_factor 1.5
+useRTTcapture 0
+showConfigDlg 0
+#  SHADOWTYPE_NONE = 0x00,
+#  SHADOWTYPE_STENCIL_MODULATIVE = 0x12=18,
+#  SHADOWTYPE_STENCIL_ADDITIVE = 0x11=17,
+#  SHADOWTYPE_TEXTURE_MODULATIVE = 0x22=34,
+#  SHADOWTYPE_TEXTURE_ADDITIVE = 0x21=33,
+#shadowTechnique 33
+shadowTechnique 18
+#shadowTechnique 17
+#shadowTechnique 0
+shadowFarDistance 2000
+# must be power of 2
+#shadowResolution 4096 
+shadowResolution 256
+
+# depthShadow only works with shadowTechnique 33
+# if you change depthShadow to 1, you should also modify ogreConfig.lua file.
+depthShadow 0
+enagleLog 0
+
+# Warning! orthographic mode doesn't work perfectly.
+useOrthographicProjection 0
+
+farClipDistance 100000
+nearClipDistance 10

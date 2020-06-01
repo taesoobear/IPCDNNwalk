@@ -1,0 +1,37 @@
+---------------------------------------------------------------
+-----------------   Model Specification File  -----------------
+---------------------------------------------------------------
+
+Covariance_Function
+
+Number_of_gaussians_in_cov_fn			1
+Order_of_polynomial_for_length_scales		1
+Linear_term_in_covariance_function_(yes/no)	no
+Periodic_covariance_function_(yes/no)		no
+Wavelengths					7.0
+---------------------------------------------------------------
+Noise_Model
+
+No._of_hidden_neurons_used_for_noise_model	1
+---------------------------------------------------------------
+Priors 
+
+prior_on_length_scales_(yes/no)			yes
+prior_on_noise_(yes/no)				yes
+prior_on_theta0_(yes/no)			yes
+prior_on_theta1_(yes/no)			yes
+prior_on_theta2_(yes/no)			yes
+prior_on_linear_term_(yes/no)			no
+length_prior_mean				d
+length_prior_sd					d
+noise_prior_mean				d
+noise_prior_sd					d
+theta0_prior_mean				d
+theta0_prior_sd					d
+theta1_prior_mean				d
+theta1_prior_sd					d
+theta2_prior_mean				d
+theta2_prior_sd					d
+linear_prior_mean				d
+linear_prior_sd					d
+---------------------------------------------------------------

@@ -1,0 +1,675 @@
+DEF SampleRobot Humanoid { 
+ name "unknown robot"
+ humanoidBody [
+
+  DEF Bip01_Pelvis Joint 
+  {
+    jointType "free"
+    jointAxis "Z"
+    translation 0.000000 0.000000 0.000000
+    children [
+      Segment 
+      {
+        centerOfMass 0.000002 0.000126 0.073153
+        mass 1.145637
+        momentsOfInertia [0.002760 -0.000000 -0.000000 -0.000000 0.002760 -0.000002 -0.000000 -0.000002 0.001432]
+        material "lightgrey"
+        children   Transform { rotation 1.000000 0.000000 -0.000030 1.569068 translation 0.000002 0.000126 0.073153  children Shape {geometry Capsule { radius 0.050000 height 0.146306 }}}
+      
+      
+      }
+      DEF Bip01_Spine Joint 
+      {
+        jointType "rotate"
+        jointAxis "ZXY"
+        translation 0.000004 0.000253 0.146305
+        children [
+          Segment 
+          {
+            centerOfMass 0.006650 -0.230345 0.187420
+            mass 76.258281
+            momentsOfInertia [2.160255 0.002754 -0.025848 0.002754 2.172858 -0.123667 -0.025848 -0.123667 3.320201]
+            material "lightgrey"
+            children   Transform { rotation 0.996328 -0.067404 -0.052794 1.682009 translation 0.006650 -0.250345 0.107420  children Shape {geometry Capsule { radius 0.295700 height 0.128445 }}}
+          
+          
+          }
+          DEF Bip01_Spine1 Joint 
+          {
+            jointType "rotate"
+            jointAxis "ZXY"
+            translation -0.000078 -0.009718 0.317709
+            children [
+              Segment 
+              {
+                centerOfMass 0.004255 -0.295417 0.190009
+                mass 87.213141
+                momentsOfInertia [2.643871 0.001189 -0.022154 0.001189 2.646805 -0.062540 -0.022154 -0.062540 3.809116]
+                material "lightgrey"
+                children   Transform { rotation 0.995772 -0.071993 -0.057047 1.629872 translation 0.004255 -0.295417 0.190009  children Shape {geometry Capsule { radius 0.295700 height 0.318445 }}}
+              
+              
+              }
+              DEF Bip01_Spine2 Joint 
+              {
+                jointType "rotate"
+                jointAxis "ZXY"
+                translation -0.003859 -0.094680 0.300496
+                children [
+                  Segment 
+                  {
+                    centerOfMass -0.009344 -0.229794 0.199691
+                    mass 93.826485
+                    momentsOfInertia [3.021251 0.000496 -0.036045 0.000496 3.020688 -0.020996 -0.036045 -0.020996 4.546019]
+                    material "lightgrey"
+                    children   Transform { rotation 0.999721 0.000000 0.023620 1.584554 translation -0.009344 -0.229794 0.199691  children Shape {geometry Capsule { radius 0.311331 height 0.309055 }}}
+                  
+                  
+                  }
+                  DEF Bip01_Neck Joint 
+                  {
+                    jointType "rotate"
+                    jointAxis "ZXY"
+                    translation -0.008244 -0.004802 0.348925
+                    children [
+                      Segment 
+                      {
+                        centerOfMass -0.003286 -0.033421 0.071657
+                        #mass 31.905388
+                        mass 15.905388
+                        momentsOfInertia [0.410412 -0.006683 -0.000200 -0.006683 0.340801 0.008786 -0.000200 0.008786 0.397392]
+                        material "lightgrey"
+                        children   Transform { rotation 0.999573 0.025147 0.014867 1.284782 translation -0.004844 -0.029907 0.126558  children Shape {geometry Capsule { radius 0.171806 height 0.235714 }}}
+                      
+                      
+                      }
+                      DEF Bip01_Neck1 Joint 
+                      {
+                        jointType "rotate"
+                        jointAxis "ZXY"
+                        translation -0.005170 0.025551 0.182908
+                        children [
+                          Segment 
+                          {
+                            centerOfMass 0.175716 0.571026 1.220835
+                            #mass 12.652124
+                            mass 6.652124
+                            momentsOfInertia [0.178523 -0.001134 -0.001758 -0.001134 0.160888 0.024887 -0.001758 0.024887 0.179345]
+                            material "lightgrey"
+                            children   Transform { rotation 0.999092 0.006588 0.042081 0.912611 translation -0.005150 -0.032389 0.090893  children Shape {geometry Capsule { radius 0.186021 height 0.108997 }}}
+                          
+                          
+                          }
+                          DEF Bip01_Neck2 Joint 
+                          {
+                            jointType "rotate"
+                            jointAxis "ZXY"
+                            translation -0.005261 0.057334 0.164027
+                            children [
+                              Segment 
+                              {
+                                centerOfMass -0.090695 -0.215052 -0.051030
+                                #mass 14.798002
+                                mass 7.798002
+                                momentsOfInertia [0.136864 -0.000779 -0.001123 -0.000779 0.148696 0.017136 -0.001123 0.017136 0.161523]
+                                material "lightgrey"
+                                children   Transform { rotation 0.998968 0.000000 0.045410 0.964951 translation -0.026899 0.049861 0.054301  children Shape {geometry Capsule { radius 0.153112 height 0.201530 }}}
+                              
+                              
+                              }
+                              DEF Bip01_Head Joint 
+                              {
+                                jointType "rotate"
+                                jointAxis "ZXY"
+                                translation -0.005523 0.084763 0.145491
+                                children [
+                                  Segment 
+                                  {
+                                    centerOfMass -0.049385 0.088674 -0.224099
+                                    #mass 8.756690
+                                    mass 4.756690
+                                    momentsOfInertia [0.058176 -0.001462 -0.003035 -0.001462 0.062987 0.010836 -0.003035 0.010836 0.080261]
+                                    material "lightgrey"
+                                    children   Transform { rotation 0.991019 -0.000000 0.133722 1.125381 translation -0.037334 0.086280 0.091064  children Shape {geometry Capsule { radius 0.140061 height 0.142515 }}}
+                                  
+                                  
+                                  }
+                                  DEF Bip01_HeadNub Joint 
+                                  {
+                                    jointType "rotate"
+                                    jointAxis "ZXY"
+                                    translation -0.036160 0.104800 0.162093
+                                    children [
+                                      Segment 
+                                      {
+                                        centerOfMass 0.650377 2.368922 2.250680
+                                        #mass 12.840232
+                                        mass 6.840232
+                                        momentsOfInertia [0.119938 -0.002306 0.001016 -0.002306 0.107187 0.005798 0.001016 0.005798 0.117787]
+                                        material "lightgrey"
+                                        children   Transform { rotation 0.972837 -0.033015 0.229123 2.703600 translation 0.008211 -0.094372 0.045687  children Shape {geometry Capsule { radius 0.127415 height 0.252515 }}}
+                                      
+                                      
+                                      }
+                                    ]
+                                  } # Bip01_HeadNub
+                                  
+                                ]
+                              } # Bip01_Head
+                              
+                            ]
+                          } # Bip01_Neck2
+                          
+                        ]
+                      } # Bip01_Neck1
+                      
+                      DEF Bip01_L_Clavicle Joint 
+                      {
+                        jointType "rotate"
+                        jointAxis "ZXY"
+                        translation 0.054443 -0.005066 0.001247
+                        children [
+                          Segment 
+                          {
+                            centerOfMass 0.053743 -0.097821 0.100704
+                            mass 2.354263
+                            momentsOfInertia [0.017127 0.003783 -0.003895 0.003783 0.012320 0.007089 -0.003895 0.007089 0.011908]
+                            material "lightgrey"
+                            children   Transform { rotation 0.882231 -0.000000 -0.470817 2.279321 translation 0.053743 -0.097821 0.100704  children Shape {geometry Capsule { radius 0.050000 height 0.300656 }}}
+                          
+                          
+                          }
+                          DEF Bip01_L_UpperArm Joint 
+                          {
+                            jointType "rotate"
+                            jointAxis "ZXY"
+                            translation 0.107485 -0.195641 0.201409
+                            children [
+                              Segment 
+                              {
+                                centerOfMass 0.007846 -0.164774 -0.050328
+                                mass 2.700991
+                                momentsOfInertia [0.028417 0.001091 0.000333 0.001091 0.005565 -0.006996 0.000333 -0.006996 0.026332]
+                                material "lightgrey"
+                                children   Transform { rotation 0.988064 0.000000 0.154041 3.441403 translation -0.016424 -0.170144 -0.055016  children Shape {geometry Capsule { radius 0.124504 height 0.244936 }}}
+                              
+                              
+                              }
+                              DEF Bip01_L_Forearm Joint 
+                              {
+                                jointType "rotate"
+                                jointAxis "ZXY"
+                                translation 0.015693 -0.329549 -0.100657
+                                children [
+                                  Segment 
+                                  {
+                                    centerOfMass 0.000418 -0.181157 0.021926
+                                    mass 7.736980
+                                    momentsOfInertia [0.075629 0.000101 -0.000012 0.000101 0.031974 0.005284 -0.000012 0.005284 0.074990]
+                                    material "lightgrey"
+                                    children   Transform { rotation 0.999818 -0.000000 -0.019080 3.021126 translation 0.000418 -0.181157 0.021926  children Shape {geometry Capsule { radius 0.090000 height 0.304959 }}}
+                                  
+                                  
+                                  }
+                                  DEF Bip01_L_Hand Joint 
+                                  {
+                                    jointType "rotate"
+                                    jointAxis "X"
+                                    translation 0.000837 -0.362314 0.043851
+                                    children [
+                                      Segment 
+                                      {
+                                        centerOfMass -0.019810 -0.179435 -0.010719
+                                        mass 2.832165
+                                        momentsOfInertia [0.032296 -0.003163 -0.000189 -0.003163 0.003992 -0.001712 -0.000189 -0.001712 0.032543]
+                                        material "lightgrey"
+                                        children   Transform { rotation -0.475894 0.000000 0.879503 3.016716 translation -0.019810 -0.179435 -0.010719  children Shape {geometry Capsule { radius 0.050000 height 0.361687 }}}
+                                      
+                                      
+                                      }
+                                      DEF Bip01_L_Finger0 Joint 
+                                      {
+                                        jointType "rotate"
+                                        jointAxis "X"
+                                        translation -0.039621 -0.358871 -0.021438
+                                        children [
+                                          Segment 
+                                          {
+                                            centerOfMass 0.000957 -0.062803 0.018999
+                                            mass 1.253729
+                                            momentsOfInertia [0.003462 0.000025 -0.000008 0.000025 0.001756 0.000568 -0.000008 0.000568 0.003273]
+                                            material "lightgrey"
+                                            children   Transform { rotation 0.999041 0.000935 -0.043771 2.852183 translation 0.001146 -0.076726 0.022818  children Shape {geometry Capsule { radius 0.049998 height 0.134406 }}}
+                                          
+                                          
+                                          }
+                                          DEF Bip01_L_Finger01 Joint 
+                                          {
+                                            jointType "fixed"
+                                            jointAxis "(null)"
+                                            translation 0.001913 -0.125606 0.037998
+                                            children [
+                                              Segment 
+                                              {
+                                                centerOfMass 0.001057 -0.009212 0.021310
+                                                mass 0.363950
+                                                momentsOfInertia [0.000293 -0.000003 0.000007 -0.000003 0.000318 -0.000059 0.000007 -0.000059 0.000429]
+                                                material "lightgrey"
+                                                children   Transform { rotation 0.998772 -0.000000 -0.049535 1.978341 translation 0.001057 -0.009212 0.021310  children Shape {geometry Capsule { radius 0.050000 height 0.006479 }}}
+                                              
+                                              
+                                              }
+                                            ]
+                                          } # Bip01_L_Finger01
+                                          
+                                        ]
+                                      } # Bip01_L_Finger0
+                                      
+                                    ]
+                                  } # Bip01_L_Hand
+                                  
+                                ]
+                              } # Bip01_L_Forearm
+                              
+                            ]
+                          } # Bip01_L_UpperArm
+                          
+                        ]
+                      } # Bip01_L_Clavicle
+                      
+                      DEF Bip01_R_Clavicle Joint 
+                      {
+                        jointType "rotate"
+                        jointAxis "ZXY"
+                        translation -0.054476 0.004696 -0.001192
+                        children [
+                          Segment 
+                          {
+                            centerOfMass -0.074709 -0.089275 0.095116
+                            mass 2.354262
+                            momentsOfInertia [0.015189 -0.004800 0.005114 -0.004800 0.013470 0.006111 0.005114 0.006111 0.012695]
+                            material "lightgrey"
+                            children   Transform { rotation 0.786417 0.000000 0.617696 2.206653 translation -0.074709 -0.089275 0.095116  children Shape {geometry Capsule { radius 0.050000 height 0.300656 }}}
+                          
+                          
+                          }
+                          DEF Bip01_R_UpperArm Joint 
+                          {
+                            jointType "rotate"
+                            jointAxis "ZXY"
+                            translation -0.149419 -0.178550 0.190232
+                            children [
+                              Segment 
+                              {
+                                centerOfMass 0.008417 -0.160794 -0.061802
+                                mass 2.700992
+                                momentsOfInertia [0.028409 0.001142 0.000439 0.001142 0.006658 -0.008383 0.000439 -0.008383 0.025247]
+                                material "lightgrey"
+                                children   Transform { rotation 0.990853 0.000000 0.134944 3.511625 translation 0.036296 -0.157952 -0.057582  children Shape {geometry Capsule { radius 0.127016 height 0.244936 }}}
+                              
+                              
+                              }
+                              DEF Bip01_R_Forearm Joint 
+                              {
+                                jointType "rotate"
+                                jointAxis "ZXY"
+                                translation 0.016833 -0.321589 -0.123603
+                                children [
+                                  Segment 
+                                  {
+                                    centerOfMass 0.019680 -0.179455 0.026598
+                                    mass 7.736968
+                                    momentsOfInertia [0.075114 0.004698 -0.000696 0.004698 0.032791 0.006349 -0.000696 0.006349 0.074688]
+                                    material "lightgrey"
+                                    children   Transform { rotation 0.803871 0.000000 -0.594803 2.959265 translation 0.019680 -0.179455 0.026598  children Shape {geometry Capsule { radius 0.090000 height 0.304959 }}}
+                                  
+                                  
+                                  }
+                                  DEF Bip01_R_Hand Joint 
+                                  {
+                                    jointType "rotate"
+                                    jointAxis "X"
+                                    translation 0.039360 -0.358910 0.053195
+                                    children [
+                                      Segment 
+                                      {
+                                        centerOfMass 0.018956 -0.179753 -0.005818
+                                        mass 2.832153
+                                        momentsOfInertia [0.032325 0.003032 0.000098 0.003032 0.003890 -0.000931 0.000098 -0.000931 0.032615]
+                                        material "lightgrey"
+                                        children   Transform { rotation 0.293427 -0.000000 0.955981 3.251462 translation 0.018956 -0.179753 -0.005818  children Shape {geometry Capsule { radius 0.050000 height 0.361687 }}}
+                                      
+                                      
+                                      }
+                                      DEF Bip01_R_Finger0 Joint 
+                                      {
+                                        jointType "rotate"
+                                        jointAxis "X"
+                                        translation 0.037913 -0.359506 -0.011637
+                                        children [
+                                          Segment 
+                                          {
+                                            centerOfMass -0.013879 -0.067552 0.019759
+                                            mass 1.253727
+                                            momentsOfInertia [0.003421 -0.000266 0.000073 -0.000266 0.001739 0.000475 0.000073 0.000475 0.003331]
+                                            material "lightgrey"
+                                            children   Transform { rotation 0.862100 -0.013823 0.506550 2.800220 translation -0.015429 -0.075406 0.022016  children Shape {geometry Capsule { radius 0.049894 height 0.145002 }}}
+                                          
+                                          
+                                          }
+                                          DEF Bip01_R_Finger01 Joint 
+                                          {
+                                            jointType "fixed"
+                                            jointAxis "(null)"
+                                            translation -0.027758 -0.135103 0.039519
+                                            children [
+                                              Segment 
+                                              {
+                                                centerOfMass -0.004524 -0.011643 0.019597
+                                                mass 0.363950
+                                                momentsOfInertia [0.000299 0.000016 -0.000027 0.000016 0.000334 -0.000068 -0.000027 -0.000068 0.000408]
+                                                material "lightgrey"
+                                                children   Transform { rotation 0.974377 0.000000 0.224923 2.095579 translation -0.004524 -0.011643 0.019597  children Shape {geometry Capsule { radius 0.050000 height 0.006479 }}}
+                                              
+                                              
+                                              }
+                                            ]
+                                          } # Bip01_R_Finger01
+                                          
+                                        ]
+                                      } # Bip01_R_Finger0
+                                      
+                                    ]
+                                  } # Bip01_R_Hand
+                                  
+                                ]
+                              } # Bip01_R_Forearm
+                              
+                            ]
+                          } # Bip01_R_UpperArm
+                          
+                        ]
+                      } # Bip01_R_Clavicle
+                      
+                    ]
+                  } # Bip01_Neck
+                  
+                ]
+              } # Bip01_Spine2
+              
+            ]
+          } # Bip01_Spine1
+          
+          DEF Bip01_L_Thigh Joint 
+          {
+            jointType "rotate"
+            jointAxis "ZXY"
+            translation 0.127211 -0.000253 -0.146306
+            children [
+              Segment 
+              {
+                centerOfMass 0.001099 -0.261435 0.119632
+                mass 26.202041
+                momentsOfInertia [0.374857 -0.000032 -0.000001 -0.000032 0.373295 -0.000035 -0.000001 -0.000035 0.374857]
+                material "lightgrey"
+                children   Transform { rotation 0.992290 -0.004604 0.123854 2.934581 translation 0.005461 -0.313189 0.056093  children Shape {geometry Capsule { radius 0.168800 height 0.293593 }}}
+              
+              
+              }
+              DEF Bip01_L_Calf Joint 
+              {
+                jointType "rotate"
+                jointAxis "ZXY"
+                translation 0.076945 -0.451892 0.183049
+                children [
+                  Segment 
+                  {
+                    centerOfMass -0.004715 -0.101056 -0.098085
+                    mass 20.580342
+                    momentsOfInertia [0.267279 -0.005853 -0.001829 -0.005853 0.113905 -0.041959 -0.001829 -0.041959 0.248148]
+                    material "lightgrey"
+                    children   Transform { rotation 0.996311 0.000000 -0.085818 3.629686 translation -0.008219 -0.180375 -0.095415  children Shape {geometry Capsule { radius 0.095773 height 0.358445 }}}
+                  
+                  
+                  }
+                  DEF Bip01_L_HorseLink Joint 
+                  {
+                    jointType "rotate"
+                    jointAxis "X"
+                    translation -0.016437 -0.360750 -0.190831
+                    children [
+                      Segment 
+                      {
+                        centerOfMass 0.006816 -0.168692 -0.026473
+                        mass 3.853897
+                        momentsOfInertia [0.040931 0.001341 0.000210 0.001341 0.007808 -0.005206 0.000210 -0.005206 0.040168]
+                        material "lightgrey"
+                        children   Transform { rotation 0.968412 0.000000 0.249354 3.302245 translation 0.006816 -0.168692 -0.026473  children Shape {geometry Capsule { radius 0.060000 height 0.341785 }}}
+                      
+                      
+                      }
+                      DEF Bip01_L_Foot Joint 
+                      {
+                        jointType "rotate"
+                        jointAxis "X"
+                        translation 0.013633 -0.337384 -0.052946
+                        children [
+                          Segment 
+                          {
+                            centerOfMass 0.007578 -0.082303 -0.004145
+                            mass 1.687460
+                            momentsOfInertia [0.007555 0.000402 0.000030 0.000402 0.002170 -0.000407 0.000030 -0.000407 0.007555]
+                            material "lightgrey"
+                            children   Transform { rotation 0.717383 0.015552 0.696505 3.237919 translation 0.009616 -0.107199 -0.005105  children Shape {geometry Capsule { radius 0.049944 height 0.166143 }}}
+                          
+                          
+                          }
+                          DEF Bip01_L_Toe0 Joint 
+                          {
+                            jointType "fixed"
+                            jointAxis "(null)"
+                            translation 0.015156 -0.164606 -0.008291
+                            children [
+                              Segment 
+                              {
+                                centerOfMass 0.010972 -0.010904 0.024713
+                                mass 0.456600
+                                momentsOfInertia [0.000437 -0.000022 0.000050 -0.000022 0.000437 -0.000049 0.000050 -0.000049 0.000527]
+                                material "lightgrey"
+                                children   Transform { rotation 0.913971 0.000000 -0.405780 1.954122 translation 0.010972 -0.010904 0.024713  children Shape {geometry Capsule { radius 0.050000 height 0.008311 }}}
+                              
+                              
+                              }
+                            ]
+                          } # Bip01_L_Toe0
+                          
+                        ]
+                      } # Bip01_L_Foot
+                      
+                    ]
+                  } # Bip01_L_HorseLink
+                  
+                ]
+              } # Bip01_L_Calf
+              
+            ]
+          } # Bip01_L_Thigh
+          
+          DEF Bip01_R_Thigh Joint 
+          {
+            jointType "rotate"
+            jointAxis "ZXY"
+            translation -0.127220 -0.000253 -0.146305
+            children [
+              Segment 
+              {
+                centerOfMass 0.038464 -0.265875 0.104381
+                mass 26.202041
+                momentsOfInertia [0.374857 -0.000032 -0.000001 -0.000032 0.373295 -0.000035 -0.000001 -0.000035 0.374857]
+                material "lightgrey"
+                children   Transform { rotation 0.992237 -0.002915 0.124331 2.952316 translation 0.034504 -0.307709 0.055122  children Shape {geometry Capsule { radius 0.168800 height 0.293593 }}}
+              
+              
+              }
+              DEF Bip01_R_Calf Joint 
+              {
+                jointType "rotate"
+                jointAxis "ZXY"
+                translation -0.007209 -0.476627 0.128097
+                children [
+                  Segment 
+                  {
+                    centerOfMass -0.004715 -0.101056 -0.098085
+                    mass 20.580342
+                    momentsOfInertia [0.267279 -0.005853 -0.001829 -0.005853 0.113905 -0.041959 -0.001829 -0.041959 0.248148]
+                    material "lightgrey"
+                    children   Transform { rotation 0.996311 0.000000 -0.085818 3.629686 translation -0.008219 -0.180375 -0.095415  children Shape {geometry Capsule { radius 0.095773 height 0.358445 }}}
+                  
+                  
+                  }
+                  DEF Bip01_R_HorseLink Joint 
+                  {
+                    jointType "rotate"
+                    jointAxis "X"
+                    translation -0.007367 -0.366699 -0.179735
+                    children [
+                      Segment 
+                      {
+                        centerOfMass -0.002987 -0.169901 -0.018137
+                        mass 3.853903
+                        momentsOfInertia [0.040975 -0.000592 -0.000063 -0.000592 0.007331 -0.003593 -0.000063 -0.003593 0.040602]
+                        material "lightgrey"
+                        children   Transform { rotation 0.986707 0.000000 -0.162512 3.249363 translation -0.002987 -0.169901 -0.018137  children Shape {geometry Capsule { radius 0.060000 height 0.341785 }}}
+                      
+                      
+                      }
+                      DEF Bip01_R_Foot Joint 
+                      {
+                        jointType "rotate"
+                        jointAxis "X"
+                        translation -0.005974 -0.339802 -0.036275
+                        children [
+                          Segment 
+                          {
+                            centerOfMass -0.002669 -0.085671 0.004070
+                            mass 1.687459
+                            momentsOfInertia [0.007584 0.000083 -0.000001 0.000083 0.002111 0.000065 -0.000001 0.000065 0.007584]
+                            material "lightgrey"
+                            children   Transform { rotation -0.022563 0.034870 0.999137 3.111256 translation -0.003322 -0.107589 0.004885  children Shape {geometry Capsule { radius 0.050003 height 0.171618 }}}
+                          
+                          
+                          }
+                          DEF Bip01_R_Toe0 Joint 
+                          {
+                            jointType "fixed"
+                            jointAxis "(null)"
+                            translation -0.005338 -0.171341 0.008139
+                            children [
+                              Segment 
+                              {
+                                centerOfMass -0.002391 -0.010169 0.027220
+                                mass 0.456600
+                                momentsOfInertia [0.000416 0.000004 -0.000012 0.000004 0.000434 -0.000051 -0.000012 -0.000051 0.000551]
+                                material "lightgrey"
+                                children   Transform { rotation 0.996164 -0.000000 0.087507 1.927081 translation -0.002391 -0.010169 0.027220  children Shape {geometry Capsule { radius 0.050000 height 0.008311 }}}
+                              
+                              
+                              }
+                            ]
+                          } # Bip01_R_Toe0
+                          
+                        ]
+                      } # Bip01_R_Foot
+                      
+                    ]
+                  } # Bip01_R_HorseLink
+                  
+                ]
+              } # Bip01_R_Calf
+              
+            ]
+          } # Bip01_R_Thigh
+          
+          DEF Bip01_Tail Joint 
+          {
+            jointType "rotate"
+            jointAxis "ZXY"
+            translation -0.000002 -0.041883 -0.191783
+            children [
+              Segment 
+              {
+                centerOfMass -0.047431 0.445329 0.158760
+                mass 2.107566
+                momentsOfInertia [0.014038 -0.000116 -0.000104 -0.000116 0.007708 -0.005667 -0.000104 -0.005667 0.008969]
+                material "lightgrey"
+                children   Transform { rotation 0.999790 0.000000 -0.020509 3.871699 translation -0.008718 -0.057851 -0.056885  children Shape {geometry Capsule { radius 0.050000 height 0.169151 }}}
+              
+              
+              }
+              DEF Bip01_Tail1 Joint 
+              {
+                jointType "rotate"
+                jointAxis "ZXY"
+                translation -0.003681 -0.200545 -0.179472
+                children [
+                  Segment 
+                  {
+                    centerOfMass 0.073850 0.821218 -0.595722
+                    mass 3.433261
+                    momentsOfInertia [0.026960 -0.000284 -0.000077 -0.000284 0.007953 -0.005178 -0.000077 -0.005178 0.025554]
+                    material "lightgrey"
+                    children   Transform { rotation 0.998496 -0.000000 -0.054819 3.407912 translation -0.016770 -0.010973 0.021346  children Shape {geometry Capsule { radius 0.061716 height 0.147784 }}}
+                  
+                  
+                  }
+                  DEF Bip01_Tail2 Joint 
+                  {
+                    jointType "rotate"
+                    jointAxis "ZXY"
+                    translation -0.002152 -0.137639 -0.045626
+                    children [
+                      Segment 
+                      {
+                        centerOfMass 0.348995 -1.585476 -1.238782
+                        mass 3.303501
+                        momentsOfInertia [0.019050 -0.000084 -0.000015 -0.000084 0.007712 -0.001955 -0.000015 -0.001955 0.018714]
+                        material "lightgrey"
+                        children   Transform { rotation 0.999074 0.000000 -0.043031 3.312476 translation -0.005578 -0.048399 0.023279  children Shape {geometry Capsule { radius 0.046817 height 0.106241 }}}
+                      
+                      
+                      }
+                      DEF Bip01_TailNub Joint 
+                      {
+                        jointType "rotate"
+                        jointAxis "ZXY"
+                        translation -0.001729 -0.112800 -0.020136
+                        children [
+                          Segment 
+                          {
+                            centerOfMass -0.413502 3.523648 1.667249
+                            mass 1.849866
+                            momentsOfInertia [0.009759 -0.000054 -0.000009 -0.000054 0.002526 -0.001241 -0.000009 -0.001241 0.009547]
+                            material "lightgrey"
+                            children   Transform { rotation 0.999066 -0.000000 -0.043209 3.311680 translation 0.017801 -0.118452 0.005726  children Shape {geometry Capsule { radius 0.030000 height 0.176241 }}}
+                          
+                          
+                          }
+                        ]
+                      } # Bip01_TailNub
+                      
+                    ]
+                  } # Bip01_Tail2
+                  
+                ]
+              } # Bip01_Tail1
+              
+            ]
+          } # Bip01_Tail
+          
+        ]
+      } # Bip01_Spine
+      
+    ]
+  } # Bip01_Pelvis
+   ]
+}

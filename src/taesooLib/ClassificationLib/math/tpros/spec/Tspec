@@ -1,0 +1,38 @@
+---------------------------------------------------------------
+-----------------   Tpros Specification File  -----------------
+---------------------------------------------------------------
+grid_file					example/grid.dat
+target_file					example/data.dat
+hypout						example/hyp
+---------------------------------------------------------------
+Dimension_of_input_space			1
+No._of_training_data_points			37
+---------------------------------------------------------------
+Perform_Optimisation_(yes/no)			yes
+---------------------------------------------------------------
+Perform_Interpolation_(yes/no)			yes
+INT_grid_file					example/ogrid.dat
+INT_output_file					example/output
+INT_No._of_points_to_be_interpolated		89
+---------------------------------------------------------------
+Perform_k_x_Optimization_(yes/no)		no
+---------------------------------------------------------------
+#include spec/opt
+#include spec/model
+#include spec/interp
+#include spec/input_opt
+---------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+

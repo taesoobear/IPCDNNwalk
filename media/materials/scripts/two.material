@@ -1,0 +1,85 @@
+material two/collision
+{
+	technique
+	{
+		pass
+		{
+			lighting off
+			scene_blend alpha_blend
+			depth_check off
+
+			texture_unit
+			{
+				texture collision.bmp
+			}
+		}
+	}
+}
+material two/kick
+{
+	technique
+	{
+		pass
+		{
+			lighting off
+			scene_blend alpha_blend
+			depth_check off
+
+			texture_unit
+			{
+				texture kick.bmp
+			}
+		}
+	}
+}
+
+material two/punch
+{
+	technique
+	{
+		pass
+		{
+			lighting off
+			scene_blend alpha_blend
+			depth_check off
+
+			texture_unit
+			{
+				texture punch.bmp
+			}
+		}
+	}
+}
+
+material two/flyingkick
+{
+	technique
+	{
+		pass
+		{
+			lighting off
+			scene_blend alpha_blend
+			depth_check off
+
+			texture_unit
+			{
+				texture flyingkick.bmp
+			}
+		}
+	}
+}
+
+
+material two/Twocharacter
+{
+	technique
+	{
+		pass
+		{
+			texture_unit
+			{
+				texture twocharacter.tga
+			}
+		}
+	}
+}

@@ -1,0 +1,46 @@
+material x_axis/lambert1
+{
+	technique
+	{
+		pass
+		{
+			depth_check off
+			scene_blend alpha_blend
+			ambient 0 0 0 1
+			diffuse 1 0 0.0123334 1
+			specular 0 0 0 1
+			emissive 0 0 0
+		}
+	}
+}
+
+material y_axis/lambert1
+{
+	technique
+	{
+		pass
+		{
+			depth_check off
+			scene_blend alpha_blend
+			ambient 0 0 0 1
+			diffuse 0.021 1 0 1
+			specular 0 0 0 1
+			emissive 0 0 0
+		}
+	}
+}
+material z_axis/lambert1
+{
+	technique
+	{
+		pass
+		{
+			depth_check off
+			scene_blend alpha_blend
+			ambient 0 0 0 1
+			diffuse 0 0.3515 1 1
+			specular 0 0 0 1
+			emissive 0 0 0
+		}
+	}
+}

@@ -1,0 +1,324 @@
+material Crowd/OldSkyBox
+{
+	technique
+	{
+		pass
+		{
+			lighting off
+			depth_write off
+
+			texture_unit
+			{
+				cubic_texture evening.jpg separateUV
+				tex_address_mode clamp
+			}
+		}
+	}
+}
+
+material Crowd/SkyBox
+{
+	technique
+	{
+		pass
+		{
+			lighting off
+			depth_write off
+			texture_unit
+			{
+				cubic_texture cloudy_noon.jpg separateUV
+				tex_address_mode clamp
+			}
+		}
+	}
+}
+
+
+material Crowd/Ninja
+{
+	technique
+	{
+		pass
+		{
+		
+			texture_unit
+			{
+				texture nskingr.jpg
+			}
+		}
+	}
+}
+
+
+// Below two materials are about the ground texture of the simulation.
+// something like grass ground.
+material Crowd/Board
+{
+	technique
+	{
+		pass
+		{
+		
+			texture_unit
+			{
+				texture grass_1024_new.jpg
+			}
+		}
+	}
+}
+
+material Crowd/CheckBoard
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+			ambient 1.0000 1.0000 1.0000
+
+			texture_unit
+			{
+				texture checkboard.jpg
+			}
+		}
+	}
+}
+
+
+// Colors for Test Material
+// These Color material will be used by cone, tritower and sphere
+
+material Crowd/Black
+{
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.50000 0.50000 0.50000 1.00000
+			diffuse 0.00 0.00 0.00000 0.0000
+			specular 0.50000 0.50000 0.50000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+		}
+	}
+}
+
+material Crowd/Blue 
+{
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.50000 0.50000 0.50000 1.00000
+			diffuse 0.03440 0.03678 0.80000 0.80000
+			specular 0.80000 0.80000 0.80000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+		}
+	}
+}
+
+
+material Crowd/Green 
+{
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.50000 0.50000 0.50000 1.00000
+			diffuse 0.03440 0.80000 0.03678 0.80000
+			specular 0.80000 0.80000 0.80000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+		}
+	}
+}
+
+material Crowd/Red
+{
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.50000 0.50000 0.50000 1.00000
+			diffuse 0.80000 0.03678 0.03440 0.80000
+			specular 0.80000 0.80000 0.80000 1.00000 0.00000
+			emissive 0.00000 0.00000 0.00000 1.00000
+
+		}
+	}
+}
+
+
+material Crowd/YellowSkin
+{
+	technique
+	{
+		pass
+		{
+			ambient 0.75 0.75 0.75
+			cull_hardware none
+			cull_software none
+
+			texture_unit
+			{
+				texture arms.jpg
+			}
+		}
+	}
+}
+
+material Crowd/Dirt
+{
+	technique
+	{
+		pass
+		{
+			ambient 0.75 0.75 0.75
+			cull_hardware none
+			cull_software none
+
+			texture_unit
+			{
+				texture Dirt.jpg
+			}
+		}
+	}
+}
+
+material Crowd/Dirt01
+{
+	technique
+	{
+		pass
+		{
+			ambient 0.75 0.75 0.75
+			cull_hardware none
+			cull_software none
+
+			texture_unit
+			{
+				texture dirt01.jpg
+			}
+		}
+	}
+}
+
+
+material Crowd/EgyptRocky
+{
+	technique
+	{
+		pass
+		{
+			ambient 0.75 0.75 0.75
+			cull_hardware none
+			cull_software none
+
+			texture_unit
+			{
+				texture egyptrockyfull.jpg
+			}
+		}
+	}
+}
+
+material Crowd/MtlPlat2
+{
+	technique
+	{
+		pass
+		{
+			ambient 0.75 0.75 0.75
+			cull_hardware none
+			cull_software none
+
+			texture_unit
+			{
+				texture MtlPlat2.jpg
+			}
+		}
+	}
+}
+
+material Crowd/RustedMetal
+{
+	technique
+	{
+		pass
+		{
+			ambient 0.75 0.75 0.75
+			cull_hardware none
+			cull_software none
+
+			texture_unit
+			{
+				texture RustedMetal.jpg
+			}
+		}
+	}
+}
+
+material Crowd/TerrRock
+{
+	technique
+	{
+		pass
+		{
+			ambient 0.75 0.75 0.75
+			cull_hardware none
+			cull_software none
+
+			texture_unit
+			{
+				texture terr_rock6.jpg
+			}
+		}
+	}
+}
+
+material Crowd/Terrain
+{
+	technique
+	{
+		pass
+		{
+			ambient 0.5 0.5 0.5
+			diffuse 0.5 0.5 0.5 1
+			specular 0.5 0.5 0.5 1.0 0.0
+			emissive 0.0 0.0 0.0 1.0
+
+			texture_unit
+			{
+				texture terrain_texture.jpg
+			}
+		}
+	}
+}
+
+
+material Crowd/Terrain2
+{
+	technique
+	{
+		pass
+		{
+			ambient 0.75 0.75 0.75
+			cull_hardware none
+			cull_software none
+
+			texture_unit
+			{
+				texture terrain_texture.jpg
+			}
+		}
+	}
+}

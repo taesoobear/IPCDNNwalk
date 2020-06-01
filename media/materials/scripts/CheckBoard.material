@@ -1,0 +1,59 @@
+material checkboard
+{
+	technique
+	{
+		pass
+		{
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000 1
+			//diffuse 0.70000 0.70000 0.70000 0.80000
+			//specular 0.00000 0.00000 0.00000 1.00000 0.00000
+			//emissive 0.00000 0.00000 0.00000 1.00000
+
+			texture_unit
+			{
+				texture terr_dirt-grass.jpg
+				//texture ogrelogo.png
+				//texture house1.DDS
+			}
+		}
+	}
+}
+
+
+
+material checkboard/crowdEditing
+{
+	technique
+	{
+		pass
+		{
+			texture_unit
+			{
+				texture crowdEditing.tga
+			}
+		}
+	}
+}
+
+material DynamicTextureMaterial
+{
+	technique
+	{
+		pass
+		{
+			lighting off		
+			texture_unit
+			{
+				texture DynamicTexture
+			}
+		}
+	}
+}
+
+
+
+
+
+

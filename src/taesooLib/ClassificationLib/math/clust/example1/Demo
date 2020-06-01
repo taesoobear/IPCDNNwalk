@@ -1,0 +1,40 @@
+#!/bin/csh
+# This shell creates data for the clustering program (i.mgensig)
+# It requires matlab.
+
+# To generate your own data using Matlab, remove the comment
+# from the following command.
+#matlab <mk_data.m
+
+echo " "
+echo "Demo I:  Apply clust using default option which allows "
+echo "         full convariance matrices "
+echo "../clust  20 info_file params"
+echo " "
+../clust  20 info_file params
+
+echo " "
+echo " "
+echo " "
+echo "Demo II:  Apply clust using default option 'diag' which "
+echo "          uses diagonal convariance matrices "
+echo "../clust  20 info_file params_diag diag"
+echo " "
+../clust  20 info_file params_diag diag
+
+echo " "
+echo " "
+echo " "
+echo "Demo III: Apply 'full' clustering, but specify a 5 cluster model"
+echo "../clust  20 info_file params_full5 full 5"
+echo " "
+../clust  20 info_file params_full5 full 5 
+
+echo " "
+echo " "
+echo " "
+echo "Demo IV: Apply 'diag' clustering, but specify a 5 cluster model"
+echo "../clust  20 info_file params_diag5 diag 5"
+echo " "
+../clust  20 info_file params_diag5 diag 5
+

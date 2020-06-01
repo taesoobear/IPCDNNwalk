@@ -1,0 +1,28 @@
+---------------------------------------------------------------
+-------------   Interpolation Specification File  -------------
+---------------------------------------------------------------
+
+Interpolation 
+
+INT_Inversion_Method_(CG/LUd/LUi)		LUi
+INT_No._of_mac_its_for_CG_invert		10
+INT_Calculate_training_error_(yes/no)		yes
+INT_Calculate_error_bars_(yes/no)		yes
+INT_No._of_s.d._for_error_bars			1
+INT_Calculate_noise_level_(yes/no)		yes
+---------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

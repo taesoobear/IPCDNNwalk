@@ -1,0 +1,447 @@
+FILE:		gpaus_manual
+DESCRIPTION:    Manual on the application of Tpros to the Austenite data
+AUTHOR:		Coryn Bailer-Jones
+EMAIL:		calj@mpia-hd.mpg.de
+LAST MOD DATE:	25/08/98
+
+
+Tpros is the Gaussian Process program written by Mark Gibbs and David
+MacKay. This file describes the application of this program to a set
+of Austenite data.
+
+Directory references in this file are given relative to this files
+directory.
+
+
+
+
+######################################################################
+#                      Files in this directory                       #
+######################################################################
+
+gpaus.tar	Everything in this directory, including its 
+		subdirectories, as a TAR file
+gpaus.ps	The paper BJBM98 (final version, now accepted)
+gpaus_manual	this file
+TManual		the Tpros manual (distributed as part of the Tpros
+		 package)
+Tspec_aus.12d	Tpros specfile for the 12d dataset
+Tspec_aus.22d	Tpros specfile for the 22d dataset
+12d/		Directory for the 12d dataset
+22d/		Directory for the 22d dataset
+
+
+
+
+######################################################################
+#                    Other sources of information                    #
+######################################################################
+
+This file assumes familiarity with Gaussian Process modelling.
+
+The file gpaus.ps in this directory is the paper "Gaussian Process
+Modelling of Austenite Formation in Steel" by Bailer-Jones, Bhadeshia
+& MacKay, 1998 (hereafter BJBM98). This explains the austenite
+modelling problem, the dataset, the basics of Gaussian Process
+modelling, as well as the results of our work. I strongly recommend
+you read this paper before proceeding.
+
+More information on GPs can be obtained from:
+1. BJBM98 and references therein
+2. Mark Gibbs' GP web page:
+   http://wol.ra.phy.cam.ac.uk/mng10/GP/GP.html
+   (The Tpros software can be downloaded from here)
+3. David MacKay's GP web page:
+   http://wol.ra.phy.cam.ac.uk/mackay/GP/
+4. A somewhat terse summary on GPs by myself:
+   http://www.mpia-hd.mpg.de/stars/calj/gp_sum.ps.gz
+
+More details on Austenite can be found in the paper
+"A Bayesian Neural Network Model for Austenite Formation in Steels",
+L. Gavard, H.K.D.H. Bhadeshia, D.J.C. MacKay and S. Suzuki, Materials
+Science and Technology, June 1996, 12, pp. 453--463
+and references therein. 
+
+The conjugate gradient optimizer "macopt" used by Tpros has its own
+source of documentation, which can be obtained from
+http://wol.ra.phy.cam.ac.uk/mackay/c/macopt.html
+
+
+
+
+######################################################################
+#                    Introduction to the Problem                     #
+######################################################################
+
+The problem we are interested in is that of predicting the
+temperatures at which Austenite starts to form (Ac1) and that at which
+Austenite formation is complete (Ac3) during the continuous heating of
+a steel alloy. This prediction is made as a function of the heating
+rate and the the element compositions. The modelling procedure is the
+standard empirical one, i.e. the model is trained on a set of
+empirical data for which the "outputs" are known. As a GP
+can only have one "output" we use two separate GPs to model
+the Ac1 and Ac3 problems.
+
+
+
+
+######################################################################
+#                            A Warning                               #
+######################################################################
+
+This work was done while Tpros was still under development, and later
+Tpros versions were not always backwardly compatible with earlier
+versions. The data for the 12d problem used Tpros version 5.1 (or
+maybe slightly earlier).  The data for the 22d problem used Tpros
+version 6.1.  In particular the nature of the output files, and the
+way of expressing the prior, is different in these two versions.
+
+As explained in BJBM98, I suggest you use the 12d data and model to
+make predictions of the Ac1 and Ac3 temperatures. The 22d is only
+provided for completness. As you are likely to use a later version of
+Tpros than the one I used, you may have to make alterations to the
+specfile, and the output files may be slightly different.  See the
+TManual with your distribution of Tpros.
+
+
+
+
+######################################################################
+#                              The Data                              #
+######################################################################
+
+The results presented in BJBM98 are for a 12-dimensional input space.
+These are the heating rate (HR) and 11 alloying elements.  This is
+called the "12d" dataset and resides in the directory 12d/
+
+The order in which the 12 variables appear
+as columns in the data files is:
+1.  C
+2.  Si
+3.  Mn
+4.  Cu
+5.  Ni
+6.  Cr
+7.  Mo
+8.  Nb
+9.  V
+10. W
+11. Co
+12. HR (heating rate)
+
+The elements are in units of wt-% (i.e. mass fraction as a percentage)
+for the elements and K/s for HR.
+
+The data set consists of 788 lines (input-output pairs). Each input
+and output variable has been linearly scaled to lie in the range
+-0.5 to +0.5 (see BJBM98 for details). This has then been randomly split
+into two subsets of 394 lines each: the training (tr) and testing (ts)
+sets. The relevant files in the 12d/ directory will now be described.
+
+12d/aus.tr.in.dat     12 columns, 394 lines.
+		      The input training data.
+12d/aus.tr.in.dat     12 columns, 394 lines.
+		      The input test data.
+(The columns for these files are the 12 inputs listed above)
+
+12d/aus.tr.ac1.dat    1 column, 394 lines.
+		      The Ac1 training data target (output) values.
+12d/aus.ts.ac1.dat    1 column, 394 lines.
+		      The Ac1 test data output values.
+12d/aus.tr.ac3.dat    1 column, 394 lines.
+		      The Ac3 training data target (output) values.
+12d/aus.ts.ac3.dat    1 column, 394 lines.
+		      The Ac3 test data output values.
+
+These files are fed into the GP model and used to train and test it.
+The model produces a number of output files:
+
+aus.ac1.hyp4	     The GP hyperparameters from the Ac1 problem.
+aus.ac3.hyp4	     The GP hyperparameters from the Ac3 problem.
+
+These should be self-explanatory, but note that the
+log(noise variance) term is log base e. As Tpros trains, it will dump
+the hyperparameters to a file myhyp.dump, where myhyp is the "hypout"
+file you specify in the specfile. The two in the 12d/ directory are:
+
+aus.ac1.hyp4.dump
+aus.ac3.hyp4.dump
+
+These have 17 columns each, corresponding to the 17 hyperparameters:
+    1	   Line number
+2--13	   The 12 length scales (1 for each input)
+   14	   Theta_1 (scale of exponential term in covariance function)
+   15	   Theta_2 (constant offset in covariance function)
+   16	   log(noise variance)
+   17	   Theta_0 (mean of GP)
+
+The next four filles are produced by applying the trained GP model.
+
+aus.tr.ac1.NN.dat    3 columns, 394 lines
+		     The Ac1 outputs predicted by the GP for the
+		     training data.
+aus.ts.ac1.NN.dat    3 columns, 394 lines
+		     The Ac1 outputs predicted by the GP for the
+		     test data.
+aus.tr.ac3.NN.dat    3 columns, 394 lines
+		     The Ac3 outputs predicted by the GP for the
+		     training data.
+aus.ts.ac3.NN.dat    3 columns, 394 lines
+		     The Ac3 outputs predicted by the GP for the
+		     test data.
+
+The three columns in each of these files are:
+1. true output, t
+2. GP predicted output, y
+3. GP predicted error on output, Ne (see below)
+
+e is the 1 sigma error (standard deviation) in this prediction,
+so the result we report is y +/- e.
+N is the no. of standard devations we chose to report in the specfile
+(set by INT_No._of_s.d.)_error_bars). Thus if N=1 (which it usual)
+then y+e is the upper limit of the error bar and y-e is the lower limit.
+
+NB When we have no target values for the data files, i.e. the entry
+   INT_target_file
+   is absent from the specfile, the first column will be absent. This
+   is the case when we apply Tpros to new alloys (see below).
+
+Note that these files in the 12d/ directory were produced using an
+older version of Tpros (probably version 5.1, or maybe a slightly
+earlier one).
+In the newer version (6.1), there are six columns in these output files:
+1. predicted value, y
+2. error, Ne
+3. lower error value, y-Ne
+4. upper error value, y+Ne
+5. Noise level (this will be the same for all values if we are using
+   a simple constant noise model, i.e. if we have set
+   No._of_basis_functions_used_for_noise_model  to 1 in the specfile)
+6. true output, t (if INT_target_file was not specified in the
+   specfile this will be blank, i.e. we only have five columns)
+Version 6.1 was used to produce the 22d results (described later).
+
+The other files in the 12d/ directory are used to predict Ac1 and Ac3
+for a variety of alloys (i.e. specific input combinations), as
+described in BJBM98. For each alloy there are three files, which
+for carbon (car, C) are:
+
+input file					aus.Pcar.in.dat
+Ac1 predicted outputs (as produced by Tpros)	aus.Pcar.ac1.NN.dat
+Ac3 predicted outputs (as produced by Tpros)	aus.Pcar.ac3.NN.dat
+
+The columns in these files were explained above, but of course in the
+output (NN) files, there is no column for the target values because no
+target file was specified in the specfile.  The other elements use
+their proper chemical symbol.  "hr" stands for "heating rate".
+In each input file, all inputs except one (the one which the file
+is named after) are the same on every line. Thus in a given
+file we are varying the alloying fraction of just one element.
+The other elements are held constant at zero (except for Carbon: see 
+BJBM98 for details.)
+
+
+The directory 22d/ contains the files for the 22d problem in BJBM98.
+(This used to be called newgp/ i.e. the directory with the complete
+contents is ~/w/metal_data/austenite/newgp/ .) These file names follow
+the same convention as used in the 12d problem. These files for the
+22d problem were generated with version 6.1 of Tpros, so the columns
+for the output (NN) files are slightly different, as explained above.
+All of the files in 12d/ have their counterparts here, except that for
+the 22d problem the results of interpolating the training data are not
+here, i.e. the files aus.tr.ac1.NN.dat and aus.tr.ac3.NN.dat are
+missing in 22d/ Also, the application files for the additional 10
+elements of the 22d dataset are not here (aus.Pti.ac1.NN.dat etc.).
+
+Note also that the method for specifying the priors differs between
+versions 5.1 and 6.1. In the latter (used for the 22d data) I could
+specify the a and b parameters for the prior probability distributions
+directly (although the specfile parameter "noise_prior_cbjb" is the
+reciprocal of the b parameter in the equations below: see section
+"Notes for myself below".) Confused? Well, I don't suggest you use the
+22d model at all. I'm just giving you the data for completness.
+
+
+
+
+######################################################################
+#                   Running Tpros & the specfiles                    #
+######################################################################
+
+The Tpros program is not included with this distribution, as I do not
+maintain it. Therefore I cannot be responsible for any failures of
+backward compatibility of later versions of Tpros!  Tpros is
+maintained by David MacKay and can be downloaded from the following
+web site:
+
+http://wol.ra.phy.cam.ac.uk/mng10/GP/GP.html
+
+Tpros is an ANSI C program for UNIX/Linux machines. 
+It takes a single command line input, i.e.
+
+Tpros specfile
+
+where specfile is the name of the specfile containing all the
+file and model details.
+
+The file Tspec_aus.12d is the Tpros specfile for running on the 12d
+dataset, and was used to create the output files in the 12d/
+directory.  Full details of the specfile can be found in the file
+Tpros manual, TManual, which is included here.
+
+We use a single Gaussian in the covariace function, and assume
+constant noise inputs. I have not experimented systematically with
+varying the initial values of the hyperparameters.  The Gibbs
+"length_scale_compression" hyperparameter is shrouded in some mystery
+so I have left it set at its default value.
+
+I have attempted in the past to use the linear term in the covariance
+function, but have had nothing but bad experiences with
+it. Essentially it does not do what it was intended to do (introduce a
+linear trend into the predictions), possibly because the linear term
+hyperparameters are not independent of the exponential term ones. Or
+maybe it hasn't been coded correctly. But whatever the problem, it
+doesn't work, and sometimes the solution it gives is crazy.  I suggest
+you avoid the linear term.
+
+Tpros uses David MacKay's conjugate gradient optimizer "macopt".  I
+have generally found that 400 iterations are sufficient to achieve
+convergence on the austenite problem at a convergence tolerance of
+0.001. Setting this tolerance is not really possible a priori in my
+experience: it's best just to set it low with a large number of
+iterations, train the model and then see what the evidence and
+gradient do as a function of iteration number. A bit of
+experimentation can then be used to set the correct tolerance. The
+austenite problem (or rather this data set and model combination)
+seems to be a well-behaved one in terms of the evidence surface, so
+setting the tolerance in this way is reasonably reliable (albeit
+somewhat roundabout). Note that Tpros will dump the hyperparameters to
+a file as it trains, so you can check that training was not stopped
+prematurely by ensuring that the hyperparameters have levelled out by
+the time training ceases.
+
+I have used LU decomposition (specified under option
+"OPT_Inversion_Method_(CG/LU)") for the matrix inversion in the
+optimization stage. The speed of this is order N^3, where N is the
+number of lines in the training data set (because the matrix to be
+inverted is size N*N). For large N this will be slow, so the conjugate
+gradient (CG) method (an approximate inversion method) can be used.
+The speed of the CG method is supposedly of order N^2. However, I have
+found that in practice CG is no faster than LU. Gibbs shows tests in
+his thesis in which CG is faster than LU for large N, but I have not
+found this on the austenite problem. This could be because I have 12
+input dimensions, whereas I think the tests were done for 1 or 2 input
+dimensions. Furthermore the speeds of the two methods may have a
+different dependence on the number of input dimensions.  But whatever
+it is, Tpros becomes prohibitively slow on the austenite problem for
+N>1000 for either LU or CG. I think the training time on wol (a Sparc
+5) was more than 24 hours for the full austenite data set (N=12, 788
+lines).
+
+There is no need to use both the theta_0 and theta_2 hyperparameter
+terms, as in Tpros they do the equivalent job. Therefore it's probably
+best to initialise one at zero and not to optimize it. If you do use
+both initialised at zero, Tpros seems to leave one at zero.
+
+In the application (interpolation) stage, I have been using the direct
+LU method (LUi), on the recommendation of Gibbs.
+
+
+
+
+######################################################################
+#			The Hyperparameter Priors                    #
+######################################################################
+
+The present version of Tpros seems to crash if you do not specify priors
+on your hyperparameters.
+
+
+Noise Prior
+-----------
+
+The noise prior is specified using an inverse gamma function:
+
+P(x) = C*x^(a+1) exp(b/x)
+
+so that
+
+ln P(x) = lnC - (a+1)*ln(x) - b/x
+
+Tpros requires that you specify the parameters (a,b) of this
+distribution using the mean and degrees of freedom (dof). Their
+relationship to a and b is:
+
+a = dof/2
+b = dof*mean/2 = a*mean
+
+dof  = 2a
+mean = b/a
+
+
+Length Scale Prior
+------------------
+
+The priors on the length scales are expressed using the gamma function
+
+P(x) = C*b^a x^(a-1) exp(-bx)
+
+so that
+
+ln P(x) = lnC + a*ln(b) + (a-1)*ln(x) - b*x
+
+Again, a and b must be specified via the mean and degrees of freedom
+(dof):
+
+a = dof
+b = dof/mean
+
+mean = a/b
+dof  = a = (mean/sd)^2
+
+
+Theta_0 uses a Gaussian prior with a mean and variance representation.
+Theta_1 uses an inverse gamma prior with the mean and dof representation.
+Theta_2 uses an inverse gamma prior with the mean and dof representation.
+
+I left the Theta hyperparameter priors at their default settings
+(i.e. used "d" as the input) and tried not to worry about it too
+much. However, these default priors are ignorant of your data;
+specfically they are scale independent. Thus if your data are not
+scaled to lie in the approximate range -0.5 to +0.5, then the default
+priors are unlikely to be suitable.
+
+
+
+
+######################################################################
+#                           Notes to myself                          #
+######################################################################
+
+Your deduction of the form for the inverse gamma function used for the
+noise prior is from line 2369 of Tpros.c where I assume that w[tint+1]
+is the x value and C is a normalization constant.
+
+
+The constant b used in Tpros (e.g. gamn_b, gamr_b) is the reciprocal
+of the b you use in your notebook. I think this applies to both the
+gamma and inverse gamma functions.
+
+When we could have mean/sd priors we had:
+
+length_prior_mean				1.5
+length_prior_sd					1.22
+
+and
+
+noise_prior_cbja                                0.1
+noise_prior_cbjb                                200.0
+
+these translate to:
+
+and
+
+noise_prior_mean                                0.05
+noise_prior_dof                                 0.2
+

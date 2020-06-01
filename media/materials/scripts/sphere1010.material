@@ -1,0 +1,18 @@
+material myPhong1
+{
+	technique
+	{
+		pass
+		{
+			//shading phong
+			shading gouraud
+
+			ambient 0.05424 0.23595 0.45200 1.00000
+			diffuse 0.03725 0.16203 0.31040 0.80000
+			specular 0.50000 0.50000 0.50000 1.00000 20.00000
+			emissive 0.02220 0.09657 0.18500 1.00000
+
+		}
+	}
+}
+

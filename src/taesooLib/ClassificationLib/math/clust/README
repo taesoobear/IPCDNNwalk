@@ -1,0 +1,71 @@
+
+Version 3.5
+To whom it may concern:
+This directory contains software for doing unsupervised
+clustering. This is done by estimating the parameters
+of a Gaussian mixture model using the EM algorithm.
+
+Version 3.x - Modified to better handle singular clusters. 
+The cluster covariance matrices are regularized by the addition of a small
+constant to the diagonal entries.
+Version 3.2 - Simplifies the makefile structure and makes
+some corrections to the appendix in the manual that
+explains the theory of the algorithm.
+Version 3.3 - Clearification to manual appendix.
+Version 3.4 - Added classify program
+Version 3.5 - Cleaned up ANSI C and integrated with SMAP.1.6
+Version 3.5.1 - Minor bug fix
+Version 3.5.2 - Integrated diagonal option into code, and removed subcluster2.c
+Version 3.5.3 - Fixed code so that Rmin is the same for each class
+Version 3.5.4 - Fixed bug in unset value of Rmin in seed subroutine
+Version 3.5.5 - Reorganized examples
+Version 3.6.1 - Added SplitClasses program
+Version 3.6.2 - Cleaned up code; fixed memory leaks; made subcluster reentrant
+Version 3.6.3 - Added ability to weight each data vector
+Version 3.6.4 - Update manual
+Version 3.6.5 - Fixed error in example2
+
+
+The directory contains the following subdirectories:
+
+documentation/ - This subdirectory contains this manual and other documentation.
+
+src/ - This subdirectory contains the ANSI-C source code and header files 
+       required for the ``clust'' program and library. It also contains
+       code for the ``classify'' routine that can be used to classify
+       data vectors based on the mixture model extracted with ``cluster''.
+
+src/Makefile - This makefile constructs the compiled binaries. These makefiles 
+               have been tested for standard Sun and HP unix environments,
+               but should work with little or no modification on other 
+               platforms supporting ANSI-C code.
+
+example1/ - Example showing how to run "cluster" program.
+            This subdirectory contains a shell script that runs a simple 
+            example showing how the "clust" program can be used 
+            to estimate the parameters of a Gaussian mixture model 
+            from training data i.e. cluster data.
+
+example2/ - Example showing how to use the "cluster" and "classify"
+            programs together to classify vectors.
+            This subdirectory contains a shell script that first runs 
+            the ``cluster'' to estimate two Gaussian mixture models (GMM).
+            It then runs the ``classify'' program to perform maximum
+            likelihood classification of vectors from the 
+            two GMM distributions. 
+
+example3/ - Example showing how to use the "cluster", "classify", and "SplitClasses"
+            to perform unsupervised classification of data vectors.
+            First "cluster" forms a GMM. Next "SplitClasses" separates each component
+            of the GMM into a separate class. Finally, "classify" is used to classify
+            the original training vectors.
+
+
+For more information contact:
+  Charles A. Bouman
+  School of Electrical Engineering
+  Purdue University
+  West Lafayette IN 47906
+  bouman@ecn.purdue.edu
+  http://www.ece.purdue.edu/~bouman/
+

@@ -1,0 +1,211 @@
+DEF SampleRobot Humanoid { 
+ name "unknown robot"
+ humanoidBody [
+
+  DEF Bip01_Pelvis Joint 
+  {
+    jointType "free"
+    jointAxis "Z"
+    translation 0.000000 0.000000 0.000000
+    children [
+      Segment 
+      {
+        centerOfMass 0.000000 -0.377098 0.000000
+        mass 56.456119
+        momentsOfInertia [2.239547 0.000000 0.000000 0.000000 2.622694 0.000000 0.000000 0.000000 0.886947]
+        material "lightgrey"
+        children [
+        Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 -0.250000 0.000000  children Shape {geometry Box { size 0.400000 0.250000 0.800000 }}}
+        Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 -0.500000 0.000000  children Shape {geometry Box { size 0.400000 0.250000 0.400000 }}}
+        Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 -0.650000 0.000000  children Shape {geometry Box { size 0.200000 0.100000 0.600000 }}}
+        Transform { rotation 1.000000 0.000000 0.000000 1.570800 translation 0.200000 -0.500000 -0.300000  children Shape {geometry Cylinder { radius 0.080000 height 0.200000 }}}
+        Transform { rotation 1.000000 0.000000 0.000000 1.570800 translation -0.200000 -0.500000 -0.300000  children Shape {geometry Cylinder { radius 0.080000 height 0.200000 }}}
+        Transform { rotation 1.000000 0.000000 0.000000 1.570800 translation 0.200000 -0.500000 0.300000  children Shape {geometry Cylinder { radius 0.080000 height 0.200000 }}}
+        Transform { rotation 1.000000 0.000000 0.000000 1.570800 translation -0.200000 -0.500000 0.300000  children Shape {geometry Cylinder { radius 0.080000 height 0.200000 }}}
+        ]
+      
+      }
+      DEF Bip01_L_Calf Joint 
+      {
+        jointType "rotate"
+        jointAxis "ZX"
+        translation 0.200000 -0.500000 -0.400000
+        children [
+          Segment 
+          {
+            centerOfMass 0.061781 -0.125343 0.000000
+            mass 3.730464
+            momentsOfInertia [0.022802 0.000000 0.000000 0.000000 0.009863 0.000000 0.000000 0.000000 0.016618]
+            material "black"
+            children [
+            Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.070000 -0.150000 0.000000  children Shape {geometry Box { size 0.070000 0.300000 0.150000 }}}
+            Transform { rotation 0.000000 0.000000 1.000000 1.570800 translation 0.070000 0.000000 0.000000  children Shape {geometry Cylinder { radius 0.100000 height 0.080000 }}}
+            Transform { rotation 0.000000 0.000000 1.000000 1.570800 translation 0.020000 0.000000 0.000000  children Shape {geometry Cylinder { radius 0.080000 height 0.080000 }}}
+            Transform { rotation 0.000000 0.000000 1.000000 1.570800 translation 0.070000 -0.300000 0.000000  children Shape {geometry Cylinder { radius 0.100000 height 0.080000 }}}
+            ]
+          
+          }
+          DEF Bip01_L_HorseLink Joint 
+          {
+            jointType "rotate"
+            jointAxis "X"
+            translation 0.070000 -0.300000 0.000000
+            children [
+              Segment 
+              {
+                centerOfMass 0.070000 -0.131008 -0.056370
+                mass 1.405507
+                momentsOfInertia [0.014941 0.000000 0.000000 0.000000 0.001793 0.000000 0.000000 0.000000 0.014287]
+                material "black"
+                children [
+                Transform { rotation 0.000000 0.000000 1.000000 1.570800 translation 0.070000 0.000000 0.000000  children Shape {geometry Cylinder { radius 0.080000 height 0.080000 }}}
+                Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.070000 -0.200000 -0.100000  children Shape {geometry Cylinder { radius 0.035000 height 0.470000 }}}
+                Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.070000 -0.450000 -0.100000  children Shape {geometry Ellipsoid { size 0.070000 0.070000 0.070000 }}}
+                ]
+              
+              }
+            ]
+          } # Bip01_L_HorseLink
+          
+        ]
+      } # Bip01_L_Calf
+      
+      DEF Bip01_R_Calf Joint 
+      {
+        jointType "rotate"
+        jointAxis "ZX"
+        translation -0.200000 -0.500000 -0.400000
+        children [
+          Segment 
+          {
+            centerOfMass -0.061781 -0.125343 0.000000
+            mass 3.730464
+            momentsOfInertia [0.022802 0.000000 0.000000 0.000000 0.009863 0.000000 0.000000 0.000000 0.016618]
+            material "black"
+            children [
+            Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation -0.070000 -0.150000 0.000000  children Shape {geometry Box { size 0.070000 0.300000 0.150000 }}}
+            Transform { rotation 0.000000 0.000000 1.000000 1.570800 translation -0.070000 0.000000 0.000000  children Shape {geometry Cylinder { radius 0.100000 height 0.080000 }}}
+            Transform { rotation 0.000000 0.000000 1.000000 1.570800 translation -0.020000 0.000000 0.000000  children Shape {geometry Cylinder { radius 0.080000 height 0.080000 }}}
+            Transform { rotation 0.000000 0.000000 1.000000 1.570800 translation -0.070000 -0.300000 0.000000  children Shape {geometry Cylinder { radius 0.100000 height 0.080000 }}}
+            ]
+          
+          }
+          DEF Bip01_R_HorseLink Joint 
+          {
+            jointType "rotate"
+            jointAxis "X"
+            translation -0.070000 -0.300000 0.000000
+            children [
+              Segment 
+              {
+                centerOfMass -0.070000 -0.131008 -0.056370
+                mass 1.405507
+                momentsOfInertia [0.014941 0.000000 0.000000 0.000000 0.001793 0.000000 0.000000 0.000000 0.014287]
+                material "black"
+                children [
+                Transform { rotation 0.000000 0.000000 1.000000 1.570800 translation -0.070000 0.000000 0.000000  children Shape {geometry Cylinder { radius 0.080000 height 0.080000 }}}
+                Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation -0.070000 -0.200000 -0.100000  children Shape {geometry Cylinder { radius 0.035000 height 0.470000 }}}
+                Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation -0.070000 -0.450000 -0.100000  children Shape {geometry Ellipsoid { size 0.070000 0.070000 0.070000 }}}
+                ]
+              
+              }
+            ]
+          } # Bip01_R_HorseLink
+          
+        ]
+      } # Bip01_R_Calf
+      
+      DEF Bip01_L_Forearm Joint 
+      {
+        jointType "rotate"
+        jointAxis "ZX"
+        translation 0.200000 -0.500000 0.400000
+        children [
+          Segment 
+          {
+            centerOfMass 0.061781 -0.125343 0.000000
+            mass 3.730464
+            momentsOfInertia [0.022802 0.000000 0.000000 0.000000 0.009863 0.000000 0.000000 0.000000 0.016618]
+            material "black"
+            children [
+            Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.070000 -0.150000 0.000000  children Shape {geometry Box { size 0.070000 0.300000 0.150000 }}}
+            Transform { rotation 0.000000 0.000000 1.000000 1.570800 translation 0.070000 0.000000 0.000000  children Shape {geometry Cylinder { radius 0.100000 height 0.080000 }}}
+            Transform { rotation 0.000000 0.000000 1.000000 1.570800 translation 0.020000 0.000000 0.000000  children Shape {geometry Cylinder { radius 0.080000 height 0.080000 }}}
+            Transform { rotation 0.000000 0.000000 1.000000 1.570800 translation 0.070000 -0.300000 0.000000  children Shape {geometry Cylinder { radius 0.100000 height 0.080000 }}}
+            ]
+          
+          }
+          DEF Bip01_L_Hand Joint 
+          {
+            jointType "rotate"
+            jointAxis "X"
+            translation 0.070000 -0.300000 0.000000
+            children [
+              Segment 
+              {
+                centerOfMass 0.070000 -0.131008 0.056370
+                mass 1.405507
+                momentsOfInertia [0.014941 0.000000 0.000000 0.000000 0.001793 0.000000 0.000000 0.000000 0.014287]
+                material "black"
+                children [
+                Transform { rotation 0.000000 0.000000 1.000000 1.570800 translation 0.070000 0.000000 0.000000  children Shape {geometry Cylinder { radius 0.080000 height 0.080000 }}}
+                Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.070000 -0.200000 0.100000  children Shape {geometry Cylinder { radius 0.035000 height 0.470000 }}}
+                Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.070000 -0.450000 0.100000  children Shape {geometry Ellipsoid { size 0.070000 0.070000 0.070000 }}}
+                ]
+              
+              }
+            ]
+          } # Bip01_L_Hand
+          
+        ]
+      } # Bip01_L_Forearm
+      
+      DEF Bip01_R_Forearm Joint 
+      {
+        jointType "rotate"
+        jointAxis "ZX"
+        translation -0.200000 -0.500000 0.400000
+        children [
+          Segment 
+          {
+            centerOfMass -0.061781 -0.125343 0.000000
+            mass 3.730464
+            momentsOfInertia [0.022802 0.000000 0.000000 0.000000 0.009863 0.000000 0.000000 0.000000 0.016618]
+            material "black"
+            children [
+            Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation -0.070000 -0.150000 0.000000  children Shape {geometry Box { size 0.070000 0.300000 0.150000 }}}
+            Transform { rotation 0.000000 0.000000 1.000000 1.570800 translation -0.070000 0.000000 0.000000  children Shape {geometry Cylinder { radius 0.100000 height 0.080000 }}}
+            Transform { rotation 0.000000 0.000000 1.000000 1.570800 translation -0.020000 0.000000 0.000000  children Shape {geometry Cylinder { radius 0.080000 height 0.080000 }}}
+            Transform { rotation 0.000000 0.000000 1.000000 1.570800 translation -0.070000 -0.300000 0.000000  children Shape {geometry Cylinder { radius 0.100000 height 0.080000 }}}
+            ]
+          
+          }
+          DEF Bip01_R_Hand Joint 
+          {
+            jointType "rotate"
+            jointAxis "X"
+            translation -0.070000 -0.300000 0.000000
+            children [
+              Segment 
+              {
+                centerOfMass -0.070000 -0.131008 0.056370
+                mass 1.405507
+                momentsOfInertia [0.014941 0.000000 0.000000 0.000000 0.001793 0.000000 0.000000 0.000000 0.014287]
+                material "black"
+                children [
+                Transform { rotation 0.000000 0.000000 1.000000 1.570800 translation -0.070000 0.000000 0.000000  children Shape {geometry Cylinder { radius 0.080000 height 0.080000 }}}
+                Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation -0.070000 -0.200000 0.100000  children Shape {geometry Cylinder { radius 0.035000 height 0.470000 }}}
+                Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation -0.070000 -0.450000 0.100000  children Shape {geometry Ellipsoid { size 0.070000 0.070000 0.070000 }}}
+                ]
+              
+              }
+            ]
+          } # Bip01_R_Hand
+          
+        ]
+      } # Bip01_R_Forearm
+      
+    ]
+  } # Bip01_Pelvis
+   ]
+}

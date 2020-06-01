@@ -1,0 +1,13 @@
+#include "physicsLib.h"
+#include "../../BaseLib/motion/Liegroup.h"
+#include "Liegroup.h"
+
+#include "GMBS_implementation/gbody_rigid.h"
+#include "GMBS_implementation/gjoint_revolute.h"
+#include "GMBS_implementation/gjoint_free.h"
+#include "GMBS_implementation/gjoint_fixed.h"
+#include "GMBS_implementation/gjoint_prismatic.h"
+#include "GMBS_implementation/gjoint_revolute.h"
+#include "GMBS_implementation/gjoint_spherical.h"
+#include "GMBS_implementation/gsystem.h"
+#include "GMBS_implementation/rmatrix3j.h"

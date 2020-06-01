@@ -1,0 +1,83 @@
+DEF SampleRobot Humanoid { 
+ name "hyunwoo"
+ humanoidBody [
+
+  DEF Head Joint 
+  {
+    jointType "free"
+    jointAxis "Z"
+    translation 0.000000 0.000000 0.000000
+    children [
+      Segment 
+      {
+        centerOfMass 0.000000 0.000000 0.080000
+        mass 26.919000
+        momentsOfInertia [0.403785 0.000000 0.000000 0.000000 0.403785 0.000000 0.000000 0.000000 0.403785]
+        material "yellow_transparent"
+        children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 0.000000 0.080000  children Shape {geometry Box { size 0.300000 0.300000 0.300000 }}}
+      
+      
+      }
+      DEF Neck Joint 
+      {
+        jointType "rotate"
+        jointAxis "YZX"
+        translation 0.000000 0.000000 0.000000
+        children [
+          Segment 
+          {
+            centerOfMass 0.000000 -0.220000 0.000000
+            mass 2.807552
+            momentsOfInertia [0.046793 0.000000 0.000000 0.000000 0.002995 0.000000 0.000000 0.000000 0.046793]
+            material "lightgrey_transparent"
+            children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 -0.220000 0.000000  children Shape {geometry Box { size 0.080000 0.440000 0.080000 }}}
+          
+          
+          }
+          DEF Knee Joint 
+          {
+            jointType "rotate"
+            jointAxis "X"
+            translation 0.000000 -0.444242 0.000000
+            children [
+              Segment 
+              {
+                centerOfMass 0.000000 -0.220000 0.000000
+                mass 2.552320
+                momentsOfInertia [0.035392 0.000000 0.000000 0.000000 0.002722 0.000000 0.000000 0.000000 0.035392]
+                material "lightgrey_transparent"
+                children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 -0.220000 0.000000  children Shape {geometry Box { size 0.080000 0.400000 0.080000 }}}
+              
+              
+              }
+              DEF Ankle Joint 
+              {
+                jointType "rotate"
+                jointAxis "YX"
+                translation 0.000000 -0.431735 0.000000
+                children [
+                  Segment 
+                  {
+                    centerOfMass 0.000000 -0.080000 0.000000
+                    mass 11.525320
+                    momentsOfInertia [0.181428 0.000000 0.000000 0.000000 0.181428 0.000000 0.000000 0.000000 0.055514]
+                    material "lightgrey_transparent"
+                    children  [
+					Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 -0.080000 0.000000  children Shape {geometry Box { size 0.170000 0.170000 0.400000 }}}
+                    #Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 -0.170000 0.200000  children Shape {geometry Ellipsoid { size 0.070000 0.070000 0.070000 }}}
+                    #Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 -0.170000 -0.200000  children Shape {geometry Ellipsoid { size 0.070000 0.070000 0.070000 }}}
+					]
+                  }
+                ]
+              } # Ankle
+              
+            ]
+          } # Knee
+          
+        ]
+      } # Neck
+      
+    ]
+  } # Head
+   ]
+}

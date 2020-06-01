@@ -1,0 +1,1253 @@
+DEF SampleRobot Humanoid { 
+ name "fitting2.wrl"
+ humanoidBody [
+
+  DEF root Joint 
+  {
+    jointType "free"
+    jointAxis "Z"
+    translation 0.000000 0.000000 0.000000
+    children [
+      Segment 
+      {
+        centerOfMass -0.000001 -0.033575 0.000000
+        mass 5.937460
+        momentsOfInertia [5.232896 0.000000 0.000000 0.000000 5.232896 0.000000 0.000000 0.000000 5.232896]
+      
+      }
+      DEF Spine Joint 
+      {
+        jointType "rotate"
+        jointAxis "ZXY"
+        translation -0.000004 2.896580 0.000000
+        children [
+          Segment 
+          {
+            centerOfMass 0.000430 2.255975 -0.000374
+            mass 4.521950
+            momentsOfInertia [9.246499 0.000000 0.000000 0.000000 9.246499 0.000000 0.000000 0.000000 9.246499]
+          
+          }
+          DEF Spine1 Joint 
+          {
+            jointType "rotate"
+            jointAxis "ZXY"
+            translation 0.000861 4.511950 -0.000749
+            children [
+              Segment 
+              {
+                centerOfMass 0.000962 1.293165 -0.000427
+                mass 2.596331
+                momentsOfInertia [1.750169 0.000000 0.000000 0.000000 1.750169 0.000000 0.000000 0.000000 1.750169]
+                children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation -0.000857 -7.408530 0.000749 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/Spine1.obj"}}]
+              }
+              DEF Spine2 Joint 
+              {
+                jointType "fixed"
+                jointAxis "(null)"
+                translation 0.001925 2.586330 -0.000854
+                children [
+                  Segment 
+                  {
+                    centerOfMass -0.001342 1.805735 -0.000891
+                    mass 3.621471
+                    momentsOfInertia [4.749580 0.000000 0.000000 0.000000 4.749580 0.000000 0.000000 0.000000 4.749580]
+                    children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation -0.002782 -9.994860 0.001603 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/Spine2.obj"}}]
+                  }
+                  DEF Spine3 Joint 
+                  {
+                    jointType "fixed"
+                    jointAxis "(null)"
+                    translation -0.002685 3.611470 -0.001783
+                    children [
+                      Segment 
+                      {
+                        centerOfMass -0.223825 0.718457 -0.000380
+                        mass 25.892730
+                        momentsOfInertia [69.437411 0.000000 0.000000 0.000000 69.437411 0.000000 0.000000 0.000000 69.437411]
+                        children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation -0.000097 -13.606330 0.003386 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/Spine3.obj"}}]
+                      }
+                      DEF Neck Joint 
+                      {
+                        jointType "rotate"
+                        jointAxis "ZXY"
+                        translation -1.151945 6.415732 -0.003502
+                        children [
+                          Segment 
+                          {
+                            centerOfMass 0.389250 0.808441 -0.000530
+                            mass 1.804539
+                            momentsOfInertia [0.587623 0.000000 0.000000 0.000000 0.587623 0.000000 0.000000 0.000000 0.587623]
+                          
+                          }
+                          DEF Neck1 Joint 
+                          {
+                            jointType "fixed"
+                            jointAxis "(null)"
+                            translation 0.778500 1.616882 -0.001059
+                            children [
+                              Segment 
+                              {
+                                centerOfMass 0.392264 0.814698 -0.000533
+                                mass 1.818429
+                                momentsOfInertia [0.601297 0.000000 0.000000 0.000000 0.601297 0.000000 0.000000 0.000000 0.601297]
+                              
+                              }
+                              DEF Head Joint 
+                              {
+                                jointType "rotate"
+                                jointAxis "ZXY"
+                                translation 0.784529 1.629395 -0.001067
+                                children [
+                                  Segment 
+                                  {
+                                    centerOfMass 0.407306 0.845697 -0.000549
+                                    mass 1.887340
+                                    momentsOfInertia [0.672280 0.000000 0.000000 0.000000 0.672280 0.000000 0.000000 0.000000 0.672280]
+                                    children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation -0.411181 -23.268339 0.009014 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/Head.obj"}}]
+                                  }
+                                  DEF Head1 Joint 
+                                  {
+                                    jointType "rotate"
+                                    jointAxis "ZXY"
+                                    translation 0.814612 1.691393 -0.001099
+                                    children [
+                                      Segment 
+                                      {
+                                        centerOfMass 1.041256 1.589277 -0.001054
+                                        mass 13.745932
+                                        momentsOfInertia [28.858920 0.000000 0.000000 0.000000 28.858920 0.000000 0.000000 0.000000 28.858920]
+                                      
+                                      }
+                                      DEF LEyeJ Joint 
+                                      {
+                                        jointType "rotate"
+                                        jointAxis "ZXY"
+                                        translation 3.123820 1.615881 -1.202140
+                                        children [
+                                          Segment 
+                                          {
+                                            centerOfMass 0.362188 0.000771 0.002102
+                                            mass 0.734390
+                                            momentsOfInertia [0.039608 0.000000 0.000000 0.000000 0.039608 0.000000 0.000000 0.000000 0.039608]
+                                          
+                                          }
+                                        ]
+                                      } # LEyeJ
+                                      
+                                      DEF REyeJ Joint 
+                                      {
+                                        jointType "rotate"
+                                        jointAxis "ZXY"
+                                        translation 3.124073 1.617421 1.199434
+                                        children [
+                                          Segment 
+                                          {
+                                            centerOfMass 0.362186 0.000796 -0.002199
+                                            mass 0.734386
+                                            momentsOfInertia [0.039607 0.000000 0.000000 0.000000 0.039607 0.000000 0.000000 0.000000 0.039607]
+                                          
+                                          }
+                                        ]
+                                      } # REyeJ
+                                      
+                                    ]
+                                  } # Head1
+                                  
+                                ]
+                              } # Head
+                              
+                            ]
+                          } # Neck1
+                          
+                        ]
+                      } # Neck
+                      
+                      DEF LCollarBone Joint 
+                      {
+                        jointType "rotate"
+                        jointAxis "ZXY"
+                        translation -0.545545 3.990629 -1.435471
+                        children [
+                          Segment 
+                          {
+                            centerOfMass 0.009602 -0.291137 -2.909214
+                            mass 5.857522
+                            momentsOfInertia [20.097490 0.000000 0.000000 0.000000 20.097490 0.000000 0.000000 0.000000 20.097490]
+                            children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation 0.545448 -17.596959 1.438857 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/LCollarBone.obj"}}]
+                          }
+                          DEF LShoulder Joint 
+                          {
+                            jointType "rotate"
+                            jointAxis "ZXY"
+                            translation 0.019204 -0.582273 -5.818428
+                            children [
+                              Segment 
+                              {
+                                centerOfMass -0.081062 -3.056971 -0.175882
+                                mass 6.136199
+                                momentsOfInertia [23.104589 0.000000 0.000000 0.000000 23.104589 0.000000 0.000000 0.000000 23.104589]
+                                children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation 0.526244 -17.014686 7.257285 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/LShoulder.obj"}}]
+                              }
+                              DEF LShoulderTwist Joint 
+                              {
+                                jointType "fixed"
+                                jointAxis "(null)"
+                                translation -0.162124 -6.113942 -0.351764
+                                children [
+                                  Segment 
+                                  {
+                                    centerOfMass -0.064697 -2.448335 -0.145347
+                                    mass 4.916998
+                                    momentsOfInertia [11.887763 0.000000 0.000000 0.000000 11.887763 0.000000 0.000000 0.000000 11.887763]
+                                  
+                                  }
+                                  DEF LElbow Joint 
+                                  {
+                                    jointType "rotate"
+                                    jointAxis "Z"
+                                    translation -0.129394 -4.896671 -0.290694
+                                    children [
+                                      Segment 
+                                      {
+                                        centerOfMass -0.078521 -3.026634 -0.394960
+                                        mass 6.116611
+                                        momentsOfInertia [22.884038 0.000000 0.000000 0.000000 22.884038 0.000000 0.000000 0.000000 22.884038]
+                                        children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation 0.817762 -6.004073 7.899743 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/LElbow.obj"}}]
+                                      }
+                                      DEF LElbowTwist Joint 
+                                      {
+                                        jointType "fixed"
+                                        jointAxis "(null)"
+                                        translation -0.157042 -6.053269 -0.789921
+                                        children [
+                                          Segment 
+                                          {
+                                            centerOfMass -0.031408 -1.210657 -0.157984
+                                            mass 2.452651
+                                            momentsOfInertia [1.475391 0.000000 0.000000 0.000000 1.475391 0.000000 0.000000 0.000000 1.475391]
+                                          
+                                          }
+                                          DEF LElbowTwist1 Joint 
+                                          {
+                                            jointType "fixed"
+                                            jointAxis "(null)"
+                                            translation -0.062817 -2.421314 -0.315969
+                                            children [
+                                              Segment 
+                                              {
+                                                centerOfMass -0.031440 -1.210577 -0.158092
+                                                mass 2.452521
+                                                momentsOfInertia [1.475157 0.000000 0.000000 0.000000 1.475157 0.000000 0.000000 0.000000 1.475157]
+                                              
+                                              }
+                                              DEF LWrist Joint 
+                                              {
+                                                jointType "rotate"
+                                                jointAxis "ZXY"
+                                                translation -0.062880 -2.421153 -0.316184
+                                                children [
+                                                  Segment 
+                                                  {
+                                                    centerOfMass 0.023540 -1.080052 0.013893
+                                                    mass 13.991510
+                                                    momentsOfInertia [7.608364 0.000000 0.000000 0.000000 7.608364 0.000000 0.000000 0.000000 7.608364]
+                                                    children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation 1.100501 4.891663 9.321817 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/LWrist.obj"}}]
+                                                  }
+                                                  DEF LThWrist Joint 
+                                                  {
+                                                    jointType "rotate"
+                                                    jointAxis "ZXY"
+                                                    translation 0.928830 -0.752516 0.679203
+                                                    children [
+                                                      Segment 
+                                                      {
+                                                        centerOfMass 0.645958 -0.890025 0.368446
+                                                        mass 2.329621
+                                                        momentsOfInertia [1.264316 0.000000 0.000000 0.000000 1.264316 0.000000 0.000000 0.000000 1.264316]
+                                                      
+                                                      }
+                                                      DEF LThMetac Joint 
+                                                      {
+                                                        jointType "rotate"
+                                                        jointAxis "ZXY"
+                                                        translation 1.291917 -1.780051 0.736892
+                                                        children [
+                                                          Segment 
+                                                          {
+                                                            centerOfMass 0.386422 -0.532404 0.220399
+                                                            mass 1.397590
+                                                            momentsOfInertia [0.272985 0.000000 0.000000 0.000000 0.272985 0.000000 0.000000 0.000000 0.272985]
+                                                          
+                                                          }
+                                                          DEF LThIntra1 Joint 
+                                                          {
+                                                            jointType "rotate"
+                                                            jointAxis "ZXY"
+                                                            translation 0.772843 -1.064809 0.440797
+                                                            children [
+                                                              Segment 
+                                                              {
+                                                                centerOfMass 0.391554 -0.539475 0.223326
+                                                                mass 1.416019
+                                                                momentsOfInertia [0.283927 0.000000 0.000000 0.000000 0.283927 0.000000 0.000000 0.000000 0.283927]
+                                                              
+                                                              }
+                                                            ]
+                                                          } # LThIntra1
+                                                          
+                                                        ]
+                                                      } # LThMetac
+                                                      
+                                                    ]
+                                                  } # LThWrist
+                                                  
+                                                  DEF LF1Wrist Joint 
+                                                  {
+                                                    jointType "rotate"
+                                                    jointAxis "ZXY"
+                                                    translation 0.412975 -1.016012 0.164749
+                                                    children [
+                                                      Segment 
+                                                      {
+                                                        centerOfMass 0.221036 -1.524521 -0.297395
+                                                        mass 3.147811
+                                                        momentsOfInertia [3.119075 0.000000 0.000000 0.000000 3.119075 0.000000 0.000000 0.000000 3.119075]
+                                                      
+                                                      }
+                                                      DEF LF1Metac Joint 
+                                                      {
+                                                        jointType "rotate"
+                                                        jointAxis "ZXY"
+                                                        translation 0.442073 -3.049041 -0.594791
+                                                        children [
+                                                          Segment 
+                                                          {
+                                                            centerOfMass 0.134229 -0.955771 -0.119415
+                                                            mass 1.955020
+                                                            momentsOfInertia [0.747229 0.000000 0.000000 0.000000 0.747229 0.000000 0.000000 0.000000 0.747229]
+                                                          
+                                                          }
+                                                          DEF LF1Intra1 Joint 
+                                                          {
+                                                            jointType "rotate"
+                                                            jointAxis "ZXY"
+                                                            translation 0.268459 -1.911542 -0.238831
+                                                            children [
+                                                              Segment 
+                                                              {
+                                                                centerOfMass 0.076307 -0.543364 -0.067892
+                                                                mass 1.115760
+                                                                momentsOfInertia [0.138903 0.000000 0.000000 0.000000 0.138903 0.000000 0.000000 0.000000 0.138903]
+                                                              
+                                                              }
+                                                              DEF LF1Intra2 Joint 
+                                                              {
+                                                                jointType "rotate"
+                                                                jointAxis "ZXY"
+                                                                translation 0.152614 -1.086728 -0.135783
+                                                                children [
+                                                                  Segment 
+                                                                  {
+                                                                    centerOfMass 0.056218 -0.400314 -0.050019
+                                                                    mass 0.824650
+                                                                    momentsOfInertia [0.056080 0.000000 0.000000 0.000000 0.056080 0.000000 0.000000 0.000000 0.056080]
+                                                                  
+                                                                  }
+                                                                ]
+                                                              } # LF1Intra2
+                                                              
+                                                            ]
+                                                          } # LF1Intra1
+                                                          
+                                                        ]
+                                                      } # LF1Metac
+                                                      
+                                                    ]
+                                                  } # LF1Wrist
+                                                  
+                                                  DEF LF2Wrist Joint 
+                                                  {
+                                                    jointType "rotate"
+                                                    jointAxis "ZXY"
+                                                    translation -0.008647 -1.060771 0.157195
+                                                    children [
+                                                      Segment 
+                                                      {
+                                                        centerOfMass -0.031465 -1.538506 -0.243957
+                                                        mass 3.126090
+                                                        momentsOfInertia [3.054953 0.000000 0.000000 0.000000 3.054953 0.000000 0.000000 0.000000 3.054953]
+                                                      
+                                                      }
+                                                      DEF LF2Metac Joint 
+                                                      {
+                                                        jointType "rotate"
+                                                        jointAxis "ZXY"
+                                                        translation -0.062930 -3.077011 -0.487914
+                                                        children [
+                                                          Segment 
+                                                          {
+                                                            centerOfMass -0.019832 -1.012250 -0.154068
+                                                            mass 2.058200
+                                                            momentsOfInertia [0.871892 0.000000 0.000000 0.000000 0.871892 0.000000 0.000000 0.000000 0.871892]
+                                                          
+                                                          }
+                                                          DEF LF2Intra1 Joint 
+                                                          {
+                                                            jointType "rotate"
+                                                            jointAxis "ZXY"
+                                                            translation -0.039665 -2.024500 -0.308137
+                                                            children [
+                                                              Segment 
+                                                              {
+                                                                centerOfMass -0.010934 -0.558062 -0.084940
+                                                                mass 1.139190
+                                                                momentsOfInertia [0.147839 0.000000 0.000000 0.000000 0.147839 0.000000 0.000000 0.000000 0.147839]
+                                                              
+                                                              }
+                                                              DEF LF2Intra2 Joint 
+                                                              {
+                                                                jointType "rotate"
+                                                                jointAxis "ZXY"
+                                                                translation -0.021868 -1.116124 -0.169879
+                                                                children [
+                                                                  Segment 
+                                                                  {
+                                                                    centerOfMass -0.009386 -0.479349 -0.072422
+                                                                    mass 0.979761
+                                                                    momentsOfInertia [0.094050 0.000000 0.000000 0.000000 0.094050 0.000000 0.000000 0.000000 0.094050]
+                                                                  
+                                                                  }
+                                                                ]
+                                                              } # LF2Intra2
+                                                              
+                                                            ]
+                                                          } # LF2Intra1
+                                                          
+                                                        ]
+                                                      } # LF2Metac
+                                                      
+                                                    ]
+                                                  } # LF2Wrist
+                                                  
+                                                  DEF LF3Wrist Joint 
+                                                  {
+                                                    jointType "rotate"
+                                                    jointAxis "ZXY"
+                                                    translation -0.285837 -1.015129 0.106020
+                                                    children [
+                                                      Segment 
+                                                      {
+                                                        centerOfMass -0.315618 -1.446829 -0.202165
+                                                        mass 2.999180
+                                                        momentsOfInertia [2.697788 0.000000 0.000000 0.000000 2.697788 0.000000 0.000000 0.000000 2.697788]
+                                                      
+                                                      }
+                                                      DEF LF3Metac Joint 
+                                                      {
+                                                        jointType "rotate"
+                                                        jointAxis "ZXY"
+                                                        translation -0.631237 -2.893658 -0.404331
+                                                        children [
+                                                          Segment 
+                                                          {
+                                                            centerOfMass -0.194659 -0.829107 -0.082889
+                                                            mass 1.721351
+                                                            momentsOfInertia [0.510045 0.000000 0.000000 0.000000 0.510045 0.000000 0.000000 0.000000 0.510045]
+                                                          
+                                                          }
+                                                          DEF LF3Intra1 Joint 
+                                                          {
+                                                            jointType "rotate"
+                                                            jointAxis "ZXY"
+                                                            translation -0.389318 -1.658213 -0.165778
+                                                            children [
+                                                              Segment 
+                                                              {
+                                                                centerOfMass -0.135442 -0.576884 -0.057673
+                                                                mass 1.200741
+                                                                momentsOfInertia [0.173120 0.000000 0.000000 0.000000 0.173120 0.000000 0.000000 0.000000 0.173120]
+                                                              
+                                                              }
+                                                              DEF LF3Intra2 Joint 
+                                                              {
+                                                                jointType "rotate"
+                                                                jointAxis "ZXY"
+                                                                translation -0.270884 -1.153768 -0.115346
+                                                                children [
+                                                                  Segment 
+                                                                  {
+                                                                    centerOfMass -0.099460 -0.423627 -0.042351
+                                                                    mass 0.884405
+                                                                    momentsOfInertia [0.069176 0.000000 0.000000 0.000000 0.069176 0.000000 0.000000 0.000000 0.069176]
+                                                                  
+                                                                  }
+                                                                ]
+                                                              } # LF3Intra2
+                                                              
+                                                            ]
+                                                          } # LF3Intra1
+                                                          
+                                                        ]
+                                                      } # LF3Metac
+                                                      
+                                                    ]
+                                                  } # LF3Wrist
+                                                  
+                                                  DEF LF4Wrist Joint 
+                                                  {
+                                                    jointType "rotate"
+                                                    jointAxis "ZXY"
+                                                    translation -0.612939 -0.879092 0.013131
+                                                    children [
+                                                      Segment 
+                                                      {
+                                                        centerOfMass -0.517332 -1.331710 -0.097519
+                                                        mass 2.873980
+                                                        momentsOfInertia [2.373838 0.000000 0.000000 0.000000 2.373838 0.000000 0.000000 0.000000 2.373838]
+                                                      
+                                                      }
+                                                      DEF LF4Metac Joint 
+                                                      {
+                                                        jointType "rotate"
+                                                        jointAxis "ZXY"
+                                                        translation -1.034664 -2.663421 -0.195037
+                                                        children [
+                                                          Segment 
+                                                          {
+                                                            centerOfMass -0.259059 -0.524833 -0.042037
+                                                            mass 1.183590
+                                                            momentsOfInertia [0.165808 0.000000 0.000000 0.000000 0.165808 0.000000 0.000000 0.000000 0.165808]
+                                                          
+                                                          }
+                                                          DEF LF4Intra1 Joint 
+                                                          {
+                                                            jointType "rotate"
+                                                            jointAxis "ZXY"
+                                                            translation -0.518119 -1.049666 -0.084074
+                                                            children [
+                                                              Segment 
+                                                              {
+                                                                centerOfMass -0.195513 -0.396091 -0.031725
+                                                                mass 0.895709
+                                                                momentsOfInertia [0.071862 0.000000 0.000000 0.000000 0.071862 0.000000 0.000000 0.000000 0.071862]
+                                                              
+                                                              }
+                                                              DEF LF4Intra2 Joint 
+                                                              {
+                                                                jointType "rotate"
+                                                                jointAxis "ZXY"
+                                                                translation -0.391025 -0.792183 -0.063451
+                                                                children [
+                                                                  Segment 
+                                                                  {
+                                                                    centerOfMass -0.184658 -0.374103 -0.029967
+                                                                    mass 0.846539
+                                                                    momentsOfInertia [0.060665 0.000000 0.000000 0.000000 0.060665 0.000000 0.000000 0.000000 0.060665]
+                                                                  
+                                                                  }
+                                                                ]
+                                                              } # LF4Intra2
+                                                              
+                                                            ]
+                                                          } # LF4Intra1
+                                                          
+                                                        ]
+                                                      } # LF4Metac
+                                                      
+                                                    ]
+                                                  } # LF4Wrist
+                                                  
+                                                ]
+                                              } # LWrist
+                                              
+                                            ]
+                                          } # LElbowTwist1
+                                          
+                                        ]
+                                      } # LElbowTwist
+                                      
+                                    ]
+                                  } # LElbow
+                                  
+                                ]
+                              } # LShoulderTwist
+                              
+                            ]
+                          } # LShoulder
+                          
+                        ]
+                      } # LCollarBone
+                      
+                      DEF RCollarBone Joint 
+                      {
+                        jointType "rotate"
+                        jointAxis "ZXY"
+                        translation -0.545163 3.992095 1.431002
+                        children [
+                          Segment 
+                          {
+                            centerOfMass 0.010432 -0.287771 2.909534
+                            mass 5.857499
+                            momentsOfInertia [20.097255 0.000000 0.000000 0.000000 20.097255 0.000000 0.000000 0.000000 20.097255]
+                            children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation 0.545066 -17.598425 -1.427616 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/RCollarBone.obj"}}]
+                          }
+                          DEF RShoulder Joint 
+                          {
+                            jointType "rotate"
+                            jointAxis "ZXY"
+                            translation 0.020863 -0.575543 5.819069
+                            children [
+                              Segment 
+                              {
+                                centerOfMass -0.081129 -3.059889 0.181241
+                                mass 6.142650
+                                momentsOfInertia [23.177537 0.000000 0.000000 0.000000 23.177537 0.000000 0.000000 0.000000 23.177537]
+                                children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation 0.524203 -17.022882 -7.246685 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/RShoulder.obj"}}]
+                              }
+                              DEF RShoulderTwist Joint 
+                              {
+                                jointType "fixed"
+                                jointAxis "(null)"
+                                translation -0.162257 -6.119777 0.362483
+                                children [
+                                  Segment 
+                                  {
+                                    centerOfMass -0.064621 -2.445077 0.145568
+                                    mass 4.910518
+                                    momentsOfInertia [11.840824 0.000000 0.000000 0.000000 11.840824 0.000000 0.000000 0.000000 11.840824]
+                                  
+                                  }
+                                  DEF RElbow Joint 
+                                  {
+                                    jointType "rotate"
+                                    jointAxis "Z"
+                                    translation -0.129241 -4.890155 0.291135
+                                    children [
+                                      Segment 
+                                      {
+                                        centerOfMass -0.078437 -3.026095 0.398849
+                                        mass 6.116549
+                                        momentsOfInertia [22.883333 0.000000 0.000000 0.000000 22.883333 0.000000 0.000000 0.000000 22.883333]
+                                        children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation 0.815701 -6.012950 -7.900303 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/RElbow.obj"}}]
+                                      }
+                                      DEF RElbowTwist Joint 
+                                      {
+                                        jointType "fixed"
+                                        jointAxis "(null)"
+                                        translation -0.156875 -6.052190 0.797699
+                                        children [
+                                          Segment 
+                                          {
+                                            centerOfMass -0.031375 -1.210438 0.159540
+                                            mass 2.452619
+                                            momentsOfInertia [1.475334 0.000000 0.000000 0.000000 1.475334 0.000000 0.000000 0.000000 1.475334]
+                                          
+                                          }
+                                          DEF RElbowTwist1 Joint 
+                                          {
+                                            jointType "fixed"
+                                            jointAxis "(null)"
+                                            translation -0.062750 -2.420876 0.319079
+                                            children [
+                                              Segment 
+                                              {
+                                                centerOfMass -0.031427 -1.210422 0.159687
+                                                mass 2.452629
+                                                momentsOfInertia [1.475352 0.000000 0.000000 0.000000 1.475352 0.000000 0.000000 0.000000 1.475352]
+                                              
+                                              }
+                                              DEF RWrist Joint 
+                                              {
+                                                jointType "rotate"
+                                                jointAxis "ZXY"
+                                                translation -0.062855 -2.420844 0.319374
+                                                children [
+                                                  Segment 
+                                                  {
+                                                    centerOfMass 0.023549 -1.079030 -0.012663
+                                                    mass 13.978947
+                                                    momentsOfInertia [7.587887 0.000000 0.000000 0.000000 7.587887 0.000000 0.000000 0.000000 7.587887]
+                                                    children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation 1.098181 4.880960 -9.336455 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/RWrist.obj"}}]
+                                                  }
+                                                  DEF RThWrist Joint 
+                                                  {
+                                                    jointType "rotate"
+                                                    jointAxis "ZXY"
+                                                    translation 0.928616 -0.753235 -0.678434
+                                                    children [
+                                                      Segment 
+                                                      {
+                                                        centerOfMass 0.645877 -0.890432 -0.367606
+                                                        mass 2.329621
+                                                        momentsOfInertia [1.264317 0.000000 0.000000 0.000000 1.264317 0.000000 0.000000 0.000000 1.264317]
+                                                      
+                                                      }
+                                                      DEF RThMetac Joint 
+                                                      {
+                                                        jointType "rotate"
+                                                        jointAxis "ZXY"
+                                                        translation 1.291755 -1.780863 -0.735213
+                                                        children [
+                                                          Segment 
+                                                          {
+                                                            centerOfMass 0.386362 -0.532654 -0.219900
+                                                            mass 1.397589
+                                                            momentsOfInertia [0.272985 0.000000 0.000000 0.000000 0.272985 0.000000 0.000000 0.000000 0.272985]
+                                                          
+                                                          }
+                                                          DEF RThIntra1 Joint 
+                                                          {
+                                                            jointType "rotate"
+                                                            jointAxis "ZXY"
+                                                            translation 0.772724 -1.065307 -0.439799
+                                                            children [
+                                                              Segment 
+                                                              {
+                                                                centerOfMass 0.391493 -0.539728 -0.222821
+                                                                mass 1.416019
+                                                                momentsOfInertia [0.283927 0.000000 0.000000 0.000000 0.283927 0.000000 0.000000 0.000000 0.283927]
+                                                              
+                                                              }
+                                                            ]
+                                                          } # RThIntra1
+                                                          
+                                                        ]
+                                                      } # RThMetac
+                                                      
+                                                    ]
+                                                  } # RThWrist
+                                                  
+                                                  DEF RF1Wrist Joint 
+                                                  {
+                                                    jointType "rotate"
+                                                    jointAxis "ZXY"
+                                                    translation 0.412899 -1.016149 -0.163547
+                                                    children [
+                                                      Segment 
+                                                      {
+                                                        centerOfMass 0.221142 -1.524179 0.299064
+                                                        mass 3.147810
+                                                        momentsOfInertia [3.119074 0.000000 0.000000 0.000000 3.119074 0.000000 0.000000 0.000000 3.119074]
+                                                      
+                                                      }
+                                                      DEF RF1Metac Joint 
+                                                      {
+                                                        jointType "rotate"
+                                                        jointAxis "ZXY"
+                                                        translation 0.442284 -3.048357 0.598129
+                                                        children [
+                                                          Segment 
+                                                          {
+                                                            centerOfMass 0.134275 -0.955633 0.120463
+                                                            mass 1.955020
+                                                            momentsOfInertia [0.747229 0.000000 0.000000 0.000000 0.747229 0.000000 0.000000 0.000000 0.747229]
+                                                          
+                                                          }
+                                                          DEF RF1Intra1 Joint 
+                                                          {
+                                                            jointType "rotate"
+                                                            jointAxis "ZXY"
+                                                            translation 0.268551 -1.911266 0.240926
+                                                            children [
+                                                              Segment 
+                                                              {
+                                                                centerOfMass 0.076337 -0.543285 0.068487
+                                                                mass 1.115760
+                                                                momentsOfInertia [0.138903 0.000000 0.000000 0.000000 0.138903 0.000000 0.000000 0.000000 0.138903]
+                                                              
+                                                              }
+                                                              DEF RF1Intra2 Joint 
+                                                              {
+                                                                jointType "rotate"
+                                                                jointAxis "ZXY"
+                                                                translation 0.152673 -1.086570 0.136974
+                                                                children [
+                                                                  Segment 
+                                                                  {
+                                                                    centerOfMass 0.056240 -0.400256 0.050458
+                                                                    mass 0.824650
+                                                                    momentsOfInertia [0.056080 0.000000 0.000000 0.000000 0.056080 0.000000 0.000000 0.000000 0.056080]
+                                                                  
+                                                                  }
+                                                                ]
+                                                              } # RF1Intra2
+                                                              
+                                                            ]
+                                                          } # RF1Intra1
+                                                          
+                                                        ]
+                                                      } # RF1Metac
+                                                      
+                                                    ]
+                                                  } # RF1Wrist
+                                                  
+                                                  DEF RF2Wrist Joint 
+                                                  {
+                                                    jointType "rotate"
+                                                    jointAxis "ZXY"
+                                                    translation -0.008718 -1.060911 -0.155833
+                                                    children [
+                                                      Segment 
+                                                      {
+                                                        centerOfMass -0.031374 -1.538229 0.245708
+                                                        mass 3.126090
+                                                        momentsOfInertia [3.054952 0.000000 0.000000 0.000000 3.054952 0.000000 0.000000 0.000000 3.054952]
+                                                      
+                                                      }
+                                                      DEF RF2Metac Joint 
+                                                      {
+                                                        jointType "rotate"
+                                                        jointAxis "ZXY"
+                                                        translation -0.062747 -3.076457 0.491417
+                                                        children [
+                                                          Segment 
+                                                          {
+                                                            centerOfMass -0.019781 -1.012075 0.155222
+                                                            mass 2.058200
+                                                            momentsOfInertia [0.871892 0.000000 0.000000 0.000000 0.871892 0.000000 0.000000 0.000000 0.871892]
+                                                          
+                                                          }
+                                                          DEF RF2Intra1 Joint 
+                                                          {
+                                                            jointType "rotate"
+                                                            jointAxis "ZXY"
+                                                            translation -0.039562 -2.024150 0.310444
+                                                            children [
+                                                              Segment 
+                                                              {
+                                                                centerOfMass -0.010905 -0.557966 0.085575
+                                                                mass 1.139190
+                                                                momentsOfInertia [0.147839 0.000000 0.000000 0.000000 0.147839 0.000000 0.000000 0.000000 0.147839]
+                                                              
+                                                              }
+                                                              DEF RF2Intra2 Joint 
+                                                              {
+                                                                jointType "rotate"
+                                                                jointAxis "ZXY"
+                                                                translation -0.021811 -1.115931 0.171150
+                                                                children [
+                                                                  Segment 
+                                                                  {
+                                                                    centerOfMass -0.009248 -0.473152 0.072563
+                                                                    mass 0.967547
+                                                                    momentsOfInertia [0.090577 0.000000 0.000000 0.000000 0.090577 0.000000 0.000000 0.000000 0.090577]
+                                                                  
+                                                                  }
+                                                                ]
+                                                              } # RF2Intra2
+                                                              
+                                                            ]
+                                                          } # RF2Intra1
+                                                          
+                                                        ]
+                                                      } # RF2Metac
+                                                      
+                                                    ]
+                                                  } # RF2Wrist
+                                                  
+                                                  DEF RF3Wrist Joint 
+                                                  {
+                                                    jointType "rotate"
+                                                    jointAxis "ZXY"
+                                                    translation -0.285897 -1.015225 -0.104636
+                                                    children [
+                                                      Segment 
+                                                      {
+                                                        centerOfMass -0.315540 -1.446604 0.203889
+                                                        mass 2.999181
+                                                        momentsOfInertia [2.697789 0.000000 0.000000 0.000000 2.697789 0.000000 0.000000 0.000000 2.697789]
+                                                      
+                                                      }
+                                                      DEF RF3Metac Joint 
+                                                      {
+                                                        jointType "rotate"
+                                                        jointAxis "ZXY"
+                                                        translation -0.631079 -2.893209 0.407778
+                                                        children [
+                                                          Segment 
+                                                          {
+                                                            centerOfMass -0.194619 -0.829015 0.083880
+                                                            mass 1.721349
+                                                            momentsOfInertia [0.510043 0.000000 0.000000 0.000000 0.510043 0.000000 0.000000 0.000000 0.510043]
+                                                          
+                                                          }
+                                                          DEF RF3Intra1 Joint 
+                                                          {
+                                                            jointType "rotate"
+                                                            jointAxis "ZXY"
+                                                            translation -0.389238 -1.658031 0.167759
+                                                            children [
+                                                              Segment 
+                                                              {
+                                                                centerOfMass -0.135414 -0.576820 0.058362
+                                                                mass 1.200739
+                                                                momentsOfInertia [0.173120 0.000000 0.000000 0.000000 0.173120 0.000000 0.000000 0.000000 0.173120]
+                                                              
+                                                              }
+                                                              DEF RF3Intra2 Joint 
+                                                              {
+                                                                jointType "rotate"
+                                                                jointAxis "ZXY"
+                                                                translation -0.270828 -1.153641 0.116725
+                                                                children [
+                                                                  Segment 
+                                                                  {
+                                                                    centerOfMass -0.099440 -0.423582 0.042856
+                                                                    mass 0.884405
+                                                                    momentsOfInertia [0.069176 0.000000 0.000000 0.000000 0.069176 0.000000 0.000000 0.000000 0.069176]
+                                                                  
+                                                                  }
+                                                                ]
+                                                              } # RF3Intra2
+                                                              
+                                                            ]
+                                                          } # RF3Intra1
+                                                          
+                                                        ]
+                                                      } # RF3Metac
+                                                      
+                                                    ]
+                                                  } # RF3Wrist
+                                                  
+                                                  DEF RF4Wrist Joint 
+                                                  {
+                                                    jointType "rotate"
+                                                    jointAxis "ZXY"
+                                                    translation -0.612976 -0.879085 -0.011816
+                                                    children [
+                                                      Segment 
+                                                      {
+                                                        centerOfMass -0.517283 -1.331609 0.099164
+                                                        mass 2.873982
+                                                        momentsOfInertia [2.373844 0.000000 0.000000 0.000000 2.373844 0.000000 0.000000 0.000000 2.373844]
+                                                      
+                                                      }
+                                                      DEF RF4Metac Joint 
+                                                      {
+                                                        jointType "rotate"
+                                                        jointAxis "ZXY"
+                                                        translation -1.034567 -2.663218 0.198327
+                                                        children [
+                                                          Segment 
+                                                          {
+                                                            centerOfMass -0.259039 -0.524790 0.042700
+                                                            mass 1.183590
+                                                            momentsOfInertia [0.165807 0.000000 0.000000 0.000000 0.165807 0.000000 0.000000 0.000000 0.165807]
+                                                          
+                                                          }
+                                                          DEF RF4Intra1 Joint 
+                                                          {
+                                                            jointType "rotate"
+                                                            jointAxis "ZXY"
+                                                            translation -0.518078 -1.049579 0.085400
+                                                            children [
+                                                              Segment 
+                                                              {
+                                                                centerOfMass -0.195497 -0.396059 0.032226
+                                                                mass 0.895709
+                                                                momentsOfInertia [0.071862 0.000000 0.000000 0.000000 0.071862 0.000000 0.000000 0.000000 0.071862]
+                                                              
+                                                              }
+                                                              DEF RF4Intra2 Joint 
+                                                              {
+                                                                jointType "rotate"
+                                                                jointAxis "ZXY"
+                                                                translation -0.390994 -0.792118 0.064451
+                                                                children [
+                                                                  Segment 
+                                                                  {
+                                                                    centerOfMass -0.184644 -0.374072 0.030440
+                                                                    mass 0.846539
+                                                                    momentsOfInertia [0.060665 0.000000 0.000000 0.000000 0.060665 0.000000 0.000000 0.000000 0.060665]
+                                                                  
+                                                                  }
+                                                                ]
+                                                              } # RF4Intra2
+                                                              
+                                                            ]
+                                                          } # RF4Intra1
+                                                          
+                                                        ]
+                                                      } # RF4Metac
+                                                      
+                                                    ]
+                                                  } # RF4Wrist
+                                                  
+                                                ]
+                                              } # RWrist
+                                              
+                                            ]
+                                          } # RElbowTwist1
+                                          
+                                        ]
+                                      } # RElbowTwist
+                                      
+                                    ]
+                                  } # RElbow
+                                  
+                                ]
+                              } # RShoulderTwist
+                              
+                            ]
+                          } # RShoulder
+                          
+                        ]
+                      } # RCollarBone
+                      
+                    ]
+                  } # Spine3
+                  
+                ]
+              } # Spine2
+              
+            ]
+          } # Spine1
+          
+        ]
+      } # Spine
+      
+      DEF Pelvis Joint 
+      {
+        jointType "fixed"
+        jointAxis "(null)"
+        translation 0.000000 -3.030880 0.000000
+        children [
+          Segment 
+          {
+            centerOfMass -0.000002 0.230926 0.000001
+            mass 14.002642
+            momentsOfInertia [30.506154 0.000000 0.000000 0.000000 30.506154 0.000000 0.000000 0.000000 30.506154]
+            children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation -0.000000 3.030880 0.000000 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/Pelvis.obj"}}]
+          }
+          DEF RPelvis Joint 
+          {
+            jointType "fixed"
+            jointAxis "(null)"
+            translation -0.000022 3.028602 3.542490
+            children [
+              Segment 
+              {
+                centerOfMass 0.000013 -1.514131 0.073924
+                mass 3.041869
+                momentsOfInertia [2.814631 0.000000 0.000000 0.000000 2.814631 0.000000 0.000000 0.000000 2.814631]
+              
+              }
+              DEF RHip Joint 
+              {
+                jointType "rotate"
+                jointAxis "ZXY"
+                translation 0.000026 -3.028262 0.147849
+                children [
+                  Segment 
+                  {
+                    centerOfMass -0.149559 -2.340873 -0.036915
+                    mass 4.701872
+                    momentsOfInertia [10.394708 0.000000 0.000000 0.000000 10.394708 0.000000 0.000000 0.000000 10.394708]
+                    children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation -0.000004 3.030540 -3.690339 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/RHip.obj"}}]
+                  }
+                  DEF RHipTwist Joint 
+                  {
+                    jointType "fixed"
+                    jointAxis "(null)"
+                    translation -0.299118 -4.681745 -0.073830
+                    children [
+                      Segment 
+                      {
+                        centerOfMass -0.155482 -6.878792 -0.108277
+                        mass 13.772801
+                        momentsOfInertia [261.256348 0.000000 0.000000 0.000000 261.256348 0.000000 0.000000 0.000000 261.256348]
+                      
+                      }
+                      DEF RKnee Joint 
+                      {
+                        jointType "rotate"
+                        jointAxis "Z"
+                        translation -0.310964 -13.757584 -0.216554
+                        children [
+                          Segment 
+                          {
+                            centerOfMass -1.278880 -9.202844 -0.137787
+                            mass 18.594601
+                            momentsOfInertia [642.925450 0.000000 0.000000 0.000000 642.925450 0.000000 0.000000 0.000000 642.925450]
+                            children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation 0.610078 21.469869 -3.399955 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/RKnee.obj"}}]
+                          }
+                          DEF RAnkle Joint 
+                          {
+                            jointType "rotate"
+                            jointAxis "ZXY"
+                            translation -2.557761 -18.405687 -0.275574
+                            children [
+                              Segment 
+                              {
+                                centerOfMass 0.089639 -1.328135 -0.122611
+                                mass 7.285380
+                                momentsOfInertia [9.667109 0.000000 0.000000 0.000000 9.667109 0.000000 0.000000 0.000000 9.667109]
+                                children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation 3.167839 39.875556 -3.124381 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/RAnkle.obj"}}]
+                              }
+                              DEF RAnkle1 Joint 
+                              {
+                                jointType "fixed"
+                                jointAxis "(null)"
+                                translation 2.561977 -1.964582 0.064528
+                                children [
+                                  Segment 
+                                  {
+                                    centerOfMass 1.473564 -0.402906 0.086415
+                                    mass 3.070191
+                                    momentsOfInertia [2.893983 0.000000 0.000000 0.000000 2.893983 0.000000 0.000000 0.000000 2.893983]
+                                  
+                                  }
+                                  DEF RToe Joint 
+                                  {
+                                    jointType "rotate"
+                                    jointAxis "ZXY"
+                                    translation 2.947128 -0.805812 0.172829
+                                    children [
+                                      Segment 
+                                      {
+                                        centerOfMass 1.516359 -0.012432 0.134567
+                                        mass 3.054739
+                                        momentsOfInertia [2.850509 0.000000 0.000000 0.000000 2.850509 0.000000 0.000000 0.000000 2.850509]
+                                        children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation -2.341266 42.645950 -3.361738 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/RToe.obj"}}]
+                                      }
+                                    ]
+                                  } # RToe
+                                  
+                                ]
+                              } # RAnkle1
+                              
+                            ]
+                          } # RAnkle
+                          
+                        ]
+                      } # RKnee
+                      
+                    ]
+                  } # RHipTwist
+                  
+                ]
+              } # RHip
+              
+            ]
+          } # RPelvis
+          
+          DEF LPelvis Joint 
+          {
+            jointType "fixed"
+            jointAxis "(null)"
+            translation -0.000022 3.028425 -3.542471
+            children [
+              Segment 
+              {
+                centerOfMass 0.000013 -1.514086 -0.073933
+                mass 3.041780
+                momentsOfInertia [2.814385 0.000000 0.000000 0.000000 2.814385 0.000000 0.000000 0.000000 2.814385]
+              
+              }
+              DEF LHip Joint 
+              {
+                jointType "rotate"
+                jointAxis "ZXY"
+                translation 0.000026 -3.028172 -0.147867
+                children [
+                  Segment 
+                  {
+                    centerOfMass -0.109378 -2.345807 0.035931
+                    mass 4.707261
+                    momentsOfInertia [10.430494 0.000000 0.000000 0.000000 10.430494 0.000000 0.000000 0.000000 10.430494]
+                    children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation -0.000004 3.030627 3.690338 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/LHip.obj"}}]
+                  }
+                  DEF LHipTwist Joint 
+                  {
+                    jointType "fixed"
+                    jointAxis "(null)"
+                    translation -0.218756 -4.691614 0.071862
+                    children [
+                      Segment 
+                      {
+                        centerOfMass -0.037377 -6.877742 0.105149
+                        mass 13.767294
+                        momentsOfInertia [260.943076 0.000000 0.000000 0.000000 260.943076 0.000000 0.000000 0.000000 260.943076]
+                      
+                      }
+                      DEF LKnee Joint 
+                      {
+                        jointType "rotate"
+                        jointAxis "Z"
+                        translation -0.074753 -13.755484 0.210298
+                        children [
+                          Segment 
+                          {
+                            centerOfMass -1.471278 -9.174093 0.134763
+                            mass 18.594597
+                            momentsOfInertia [642.924946 0.000000 0.000000 0.000000 642.924946 0.000000 0.000000 0.000000 642.924946]
+                            children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation 0.293505 21.477725 3.408178 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/LKnee.obj"}}]
+                          }
+                          DEF LAnkle Joint 
+                          {
+                            jointType "rotate"
+                            jointAxis "ZXY"
+                            translation -2.942556 -18.348186 0.269527
+                            children [
+                              Segment 
+                              {
+                                centerOfMass 0.089765 -1.328130 0.122710
+                                mass 7.285449
+                                momentsOfInertia [9.667383 0.000000 0.000000 0.000000 9.667383 0.000000 0.000000 0.000000 9.667383]
+                                children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation 3.236061 39.825911 3.138651 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/LAnkle.obj"}}]
+                              }
+                              DEF LAnkle1 Joint 
+                              {
+                                jointType "fixed"
+                                jointAxis "(null)"
+                                translation 2.562192 -1.964576 -0.064634
+                                children [
+                                  Segment 
+                                  {
+                                    centerOfMass 1.473502 -0.402875 -0.086543
+                                    mass 3.070069
+                                    momentsOfInertia [2.893641 0.000000 0.000000 0.000000 2.893641 0.000000 0.000000 0.000000 2.893641]
+                                  
+                                  }
+                                  DEF LToe Joint 
+                                  {
+                                    jointType "rotate"
+                                    jointAxis "ZXY"
+                                    translation 2.947004 -0.805750 -0.173086
+                                    children [
+                                      Segment 
+                                      {
+                                        centerOfMass 1.516346 -0.012407 -0.134728
+                                        mass 3.054740
+                                        momentsOfInertia [2.850512 0.000000 0.000000 0.000000 2.850512 0.000000 0.000000 0.000000 2.850512]
+                                        children [ Transform { rotation -1.000000 -0.000000 -0.000000 1.570796 translation -2.273135 42.596237 3.376371 children Shape {geometry OBJ "../Resource/motion/skeletonEditor/fitting2_1dof_fixed_sd/LToe.obj"}}]
+                                      }
+                                    ]
+                                  } # LToe
+                                  
+                                ]
+                              } # LAnkle1
+                              
+                            ]
+                          } # LAnkle
+                          
+                        ]
+                      } # LKnee
+                      
+                    ]
+                  } # LHipTwist
+                  
+                ]
+              } # LHip
+              
+            ]
+          } # LPelvis
+          
+        ]
+      } # Pelvis
+      
+    ]
+  } # root
+   ]
+}

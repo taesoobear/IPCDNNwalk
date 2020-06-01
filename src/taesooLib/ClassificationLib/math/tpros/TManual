@@ -1,0 +1,624 @@
+Manual for Tpros - Gaussian Processes Regression Program
+========================================================
+                                           version 2.0 21/11/97
+Master copy of this software is            subeditor: DJCM
+always at: 
+http://wol.ra.phy.cam.ac.uk/mng10/GP/
+
+Please note that this is not a complete manual and will 
+not tell you how to understand GPs. Please see Gibbs (1997) 
+"Bayesian Gaussian processes for Regression and 
+Classification" for detailed description of methods. MacKay (1997)
+also has a review paper on Gaussian processes available from 
+http://wol.ra.phy.cam.ac.uk/mackay/README.html. If you
+encounter any bugs or general usage problems then please
+feel free to get in contact with the authors at
+
+mng10@mrao.cam.ac.uk  or  mackay@mrao.cam.ac.uk
+
+Requests for help will be dealt with more rapidly if accompanied
+by donations (eg 2000 pounds) to our research group. 
+Cheques payable to University of Cambridge, please.
+
+Recommendations for simplification also welcome. 
+
+Also, please read the README file before reading the rest
+of this file.
+
+Latest information (version 6.2) July 1998
+------------------------------------------
+Users are encouraged to use the Tspec format indicated in
+spec/Tspec, spec/input_opt, spec/model, spec/interp, spec/opt.
+This may seem like a lot of files but it will probably make
+life simpler in the long run because most of your problems can share
+a single opt file, etc.
+
+Users may find helpful the document:
+http://wol.ra.phy.cam.ac.uk/is/data/austenite/GPmanual/
+http://wol.ra.phy.cam.ac.uk/is/data/austenite/GPmanual/gpaus_manual
+which describes how Tpros was used on an example modelling problem.
+
+Installation
+============
+
+    The program has been tested on SunOs 4 and on Solaris 
+but this is only within the local cluster so there may be 
+some oddities that cause problems on other systems. 
+    In order to install Tpros, get the Tpros.tar file and
+create a new directory (/gpros say) and stick the tar file
+in that directory. Then type :-
+
+tar -xvf Tpros.tar
+
+For your convenience, three executables are included in the directories
+binsun4, binsun5 and bini386.
+
+If you wish to compile the executable Tpros yourself, please type:
+
+make Tpros
+
+That's all.
+
+The compilation might throw up a few warnings but don't worry about
+it.  Generally these will not cause any problems. All the programs
+should compile without fatal error.
+
+You may cross your fingers and skip the following details.
+
+Details: 
+
+  1) Please note that Tpros expects the file randfile to be visible in
+	the directory where Tpros is edited. So randfile should be a
+	symbolic link to the master copy of randfile which is in
+	ansi/randfile. To get around this feature you may if you wish
+	edit the random number generator rand2.c file line 46 so that
+	it gives the absolute path of this file, for example
+
+ 	 #define RAND_FILE "/home/mng10/gpros/ansi/randfile"
+
+  2) Note - If you are using a 64 bit machine or a machine that
+       specifies different lengths for certain variable types (such as
+       a Silicon Graphics machine) then you may encounter errors with
+       the rand2 routines. This can be solved by changing line 78 in
+       the rand2.c file. Here we specify the length of number to be
+       read from the randfile. If sizeof(long) is not 8 on your
+       machine then you may need to alter this.
+
+  3) Our Makefile and ansi/Makefile assume you have gcc on your machine. 
+       
+Using Tpros
+===========
+
+    Tpros is presently set up as one huge program with loads
+of different options as to what to do. It will make predictions 
+with a given Gaussian process; it will optimize the hyperparameters
+first if you want; and it can optimize the inputs so as to maximize
+the expected value of some function of the output. There is a specfile
+(spec/Tspec) in which you can set the various parameters and you can
+also set the parameters using command line arguments. Hence we 
+can use the program by simply typing
+
+Tpros spec/Tspec
+
+where Tspec is set up correctly. Or we can type
+
+Tpros spec/Tspec -tf newdata.dat -gf newgrid.dat -ntdat 300
+
+which will use all the parameters in the spec file apart from
+a few which are controlled by the above command line arguments.
+
+Spec File
+=========
+
+    The spec file is somewhat fragile. If you want the program
+to read in the information then you must have the correct stem
+immediately before the information e.g.
+
+target_file 	data2.dat
+
+is fine but 
+
+Target_file     data2.dat
+
+will not work. Below is a list of most of the possible stems that 
+are allowed in the spec file (see the source code to be certain).
+With each stem is a list of all 
+the valid expressions that are allowed to follow them. An example 
+specfile (spec/Tspec) is provided in the .tar file. 
+
+In general information may be given in any order, but some parameters
+have to come early for logical reasons, for example the number of
+inputs must be specified before the initial values or priors for
+hyperparameters.
+
+Allowed stems in spec file
+==========================
+
+NOTE1 : those stems marked with a (*) are essential and must be
+        included in any specfile unless on the command line. 
+
+NOTE2 : The default settings on all the 'yes/no' flags is 'no'
+
+target_file					any filename  (*)	
+grid_file					any filename  (*)
+hypout						any filename  (*)
+hypin						any filename
+rbf_file					any filename
+
+Load_known_training_noise_levels_(yes/no)	yes no
+
+Seed_for_random_numbers				any +ve integer (*)
+Dimension_of_input_space			any +ve integer (*)
+No._of_training_data_points			any +ve integer (*)
+
+Number_of_gaussians_in_cov_fn			any +ve integer (default = 1)
+Order_of_polynomial_for_length_scales		any +ve integer (default = 1)
+Linear_term_in_covariance_function_(yes/no)	yes no		
+Periodic_covariance_function_(yes/no)		yes no		
+Wavelengths					any +ve real number
+
+No._of_basis_functions_used_for_noise_model	any +ve integer (*)
+
+Perform_Optimisation_(yes/no)		yes no		(*)
+initial_theta0				any +ve real number 
+initial_theta2				any +ve real number 
+initial_noise_variance			any +ve real number 
+length_scale_compression		any +ve real
+OPT_No._of_mac_its			any +ve integer
+OPT_Inversion_Method_(CG/LU)		CG LU
+OPT_CG_Method_(TCG/DCG)			TCG DCG
+OPT_No._of_mac_its_for_CG_inversion	any +ve integer
+OPT_accuracy_of_CG_inversion		any +ve real
+OPT_No._of_elements_used_for_trace	any +ve integer
+OPT_calculate_evidence_(yes/no)		yes no
+OPT_dump_hyperparameters_(yes/no)	yes no
+OPT_Cinv[][]t[]_output_file		any filename
+maccheckgrad_(yes/no)			yes no 
+maccheckgrad_step			any +ve real number 
+OPT_macopt_tolerance			any +ve real number
+Optimize_sig_k_(yes/no)			yes no
+Optimize_theta0_(yes/no)		yes no
+Optimize_theta1_(yes/no)		yes no
+Optimize_theta2_(yes/no)		yes no
+Optimize_noise_model_(yes/no)		yes no
+Optimize_linear_term_(yes/no)		yes no
+
+Perform_Interpolation_(yes/no)		yes no		(*)
+INT_target_file				any filename
+INT_grid_file				any filename
+INT_output_file				any filename
+INT_No._of_points_to_be_interpolated	any +ve integer
+INT_Inversion_Method_(CG/LUd/LUi)	CG LUd LUi
+INT_CG_Method_(TCG/DCG)			TCG DCG
+INT_No._of_mac_its_for_CG_invert	any +ve integer
+INT_Calculate_error_bars_(yes/no)	yes no
+INT_No._of_s.d._for_error_bars		any +ve integer
+INT_Calculate_noise_level_(yes/no)	yes no
+INT_Calculate_training_error_(yes/no)	yes no
+INT_include_inputs_(yes/no)             yes no
+
+Verbose_(0/1/2)				0 1 2 (*)
+
+prior_on_length_scales_(yes/no)		yes no (*)
+prior_on_noise_(yes/no)			yes no (*)
+prior_on_theta0_(yes/no)		yes no (*)
+prior_on_theta1_(yes/no)		yes no (*)
+prior_on_theta2_(yes/no)		yes no (*)
+prior_on_linear_term_(yes/no)		yes no (*)
+length_prior_mean			any set of +ve real values (or d)
+length_prior_dof			any set of +ve real values (or d)
+noise_prior_mean			any +ve real value (or d)
+noise_prior_dof				any +ve real value (or d)
+theta0_prior_mean			any +ve real value (or d)
+theta0_prior_sd				any +ve real value (or d)
+theta1_prior_mean			any +ve real value (or d)
+theta1_prior_dof			any +ve real value (or d)
+theta2_prior_mean			any +ve real value (or d)
+theta2_prior_dof			any +ve real value (or d)
+linear_prior_mean			any +ve real value (or d)
+linear_prior_sd				any +ve real value (or d)
+linear_prior_dof			any +ve real value (or d)
+
+specific_length_prior_mean		integer, any +ve real values 
+specific_length_prior_sd		integer, any +ve real values 
+specific_length_prior_dof		integer, any +ve real values 
+specific_length_prior_sd2		integer, any +ve real values 
+
+Perform_k_x_Optimization_(yes/no)		yes no (*)
+KOPT_objective_function_(1/2/3/4)		1 2 3 4 
+KOPT_minimize_or_maximize_(min/max)		min max
+KOPT_No._of_mac_its				any +ve integer
+KOPT_beta					any real value
+KOPT_gamma					any real value
+KOPT_starting_point				a set of I real values (I inputs)
+KOPT_include					a set of I 0/1's 
+
+Those stems that are choices between inversion methods (CG/LU) or 
+(CG/LUd/LUi) refer to Conjugate Gradient Inversion (CG), LU 
+Decomposition Inversion (LU), Direct LU Decompostion method (LUd) 
+and indirect LU Decompostion method (LUi). LUi is generally faster 
+and more accurate numerically than LUd (although LUd is faster if 
+you are not calculating error bars). The CG inversion routine has
+two possible implementations, DCG (double-CG) or TCG (tridiagonal
+CG). TCG is faster but can, in extreme circumstances have convergence
+problems. DCG is at least three times slower than TCG but is
+very stable. 
+
+The verbose option has three possible arguments 
+
+0 	Almost no output from the program unless an error occurs.
+1	Moderate output from the program. 
+2	Absolutely everything - sacks of usless information.
+
+The option that refers to loading in known training noise levels does
+exactly that. This option is provided for the case where the noise
+level associated with each data point is already known. The levels
+(which have the same units as the targets i.e.  they are standard
+deviations not variances) are loaded in from the training target
+file. A level should be given after every target. Don't try to
+optimize the noise model as well as this will cause an error. It is
+recommended that any predictions made for known training noise are
+also made with zero interpolation noise.
+
+The `dump hyperparameters' option makes the program spit out the
+hyperparameters at every iteration of the training process. These are
+then put in columns in hypout.dump i.e. the hypout filename appended
+with .dump
+
+Samples
+=======
+
+There is a hidden command line option "-samp" which generates two
+random samples from the Gaussian process prior given either the read
+in hyperparameters or the program-initialized hyperparameters and
+dumps these samples in the INT_output_file. The program then exits,
+irrespective of any other commands given to it.
+
+Priors
+======
+
+	Note: versions since 6.0 no longer allow gamma priors to be
+	expressed in terms of the mean and standard deviation. Now only
+	the centre and strength (degrees of freedom) can be used in
+	these cases.
+
+Firstly, make sure that you say you are going to use a prior in
+the specfile (or in the commmand line) before you set its parameter
+values. Failure to do this will cause a crash. 
+
+The d option for the priors tell the program to go to the default
+prior. The means are calculated from the data and the variance is
+choosen to give a broad range of possible behaviour. If the default is
+selected for the m (or sd) parameter then the default will also be
+used for the sd (or m) parameter even if another value is specified.
+
+example :-
+
+length_prior_sd				1.0 d 3.1
+
+for a problem with three gaussian elements in the covariance function
+where the default is selected for the second gaussian.
+
+The specific_length_prior options allow you to set a prior on a specific
+input. The integer given first is the number of the integer and the
+subsequent numbers are the appropriate mean or sd required for each 
+gaussian in the covariance function. 
+You should NOT attempt to use this argument in the specfile before you
+have specified the priors on the other inputs using the length_prior 
+options as this will cause an error to occur.
+
+When you use the polynomial functions i.e. for the noise model or for
+the length scales, the definition of the prior on these objects
+changes. Instead of any form of Gamma priors, you get a Gaussian prior
+with zero mean and standard deviation set using the appropriate _sd
+command. This is to give a simple regularization prior which is often
+a good move when dealing with the polynomials. In the case of the
+spatial varying length scales you must also specific a prior on an
+offset value. This is done using mean2 and sd2 options which defines a
+Gaussian prior. Due to a quirk in the program you need to set the
+number of polynomials for the noise model to more than 1 in the
+specfile if you are going to set them using the command line. Weird, I
+know, but you'll get over it.
+
+k_x Optimization  (k_x is the name in the source code for the input variables)
+================
+
+Having obtained some optimized hyperparameters, you might wish to find
+the maximum/minimum point in k_x space on your most probable interpolant 
+according to some utility function (which takes the error bars into 
+account in some way). This is what the k_x optimization function does. 
+Below are listed the four possible objective functions that can be optimized.
+
+	minimize	    		maximize
+
+(1)  	y + beta * sig			y - beta * sig	       	
+(2)	y + 0.5 * beta * sig^2		y - 0.5 * beta * sig^2
+(3)	(y-gam)^2 + beta * sig^2	(y-gam)^2 - beta * sig^2
+(4)	log(y) + 0.5*(sig^2/y^2)	log(y) - 0.5*(sig^2/y^2) 
+
+Here y refers to the mean prediction at the present k_x, sig refers to
+the 1-sigma error bar at that point. beta and gam are parameters that 
+can be set using the specfile or command line options.
+
+Optimization Termination Styles
+===============================
+When things are being optimized, we have to have a criterion for when
+to stop; this is either (a) the gradient is small 'option 0';
+(b) the latest step taken was small 'option 1'.
+Also a crude option you can use is to stop optimization after
+a certain number of iterations, but this is not a recommended style.
+With both (a) and (b) you have to specify a number which defines
+'small'. This is called the tolerance. In (a) you define the value
+of sum_i g_i^2 which is to be viewed as small.
+In (b) you define a small value of (1/I) sum_i |d_i|
+where d_i is the step in direction i, that is the mean absolute change.
+
+Naming Files in the Specfile and Command Line
+=============================================
+
+Whenever you refer to a file in the specfile or on the command line
+you should give its path relative to the Tpros executable. The program
+will usually say if it can't find a file and will stop. Do not give
+the paths relative to the specfile (a common error) as this will not
+work.
+
+Including Files in the SpecFile
+===============================
+
+To allow a easy to use interface to be set up for the program, there
+exists an '#include' option within the specfile. This will include any
+file specified immediately afterwards 
+
+#include NewSpec
+
+You can only specify one file with each '#include' statement but 
+multiple statements can be used. There is no provision to catch any
+recursive loops that the user puts in so be careful.
+
+WARNING : When constructing a new file for inclusion in the main specfile
+	  you should make sure that the first line is not a readable
+	  stem because the program eats the first character of the file
+	  before it starts looking for stems. Inserting a row of '-' or
+	  a comment line will avoid this problem.
+
+Examples of how you might use the #include command are contained in the
+spec directory.
+
+My reason for recommending that you use the five spec files instead of
+one is that this simplifies the making of changes to spec files.
+
+The idea is that you put into the included files all the things that
+you expect to change only very rarely, the things which all your Tpros
+simulations will share in common; and put the things that change from
+task to task in the top level Tspec file.
+
+Loading and Saving the hyperparameters 
+======================================
+
+    The program will always save the hyperparameters in the file
+'hypout' given in the spec file or on the command line. The program
+will also load in hyperparameters from the file specified by 'hypin'
+given in the spec file or on the command line. The format of the 
+hyperparameters file will be given in the hyperparameter file.
+
+Different Options
+=================
+
+    There are a few different options that you can choose within 
+the program. I will describe these briefly.
+
+Order_of_polynomial_for_length_scales		
+
+	We can define spatial varying length scales. This is done
+	using radial basis functions whose centres should be defined
+	in the rbf_file (the co-ords of each centre on a new line).
+	If we set the order of the polynomial to 1 then the program
+	will assume spatial invariant length scales. The width of
+	the basis functions is set in the program and cannot be altered
+	externally. If you want to go in and change it yourself then
+	you should look at the PL_calc routine in Tpros.c.
+
+Number_of_gaussians_in_cov_fn
+
+	This allows the user to specify how many gaussian terms 
+	there should be in the covariance function. This is useful
+	if the data to be modelled has a broad length scale with 
+	some fine detail on top. This option is not supported within
+	the maximization procedure. If you do choose this option and
+	you wish to place different priors on the length scales of
+	each gaussian then you should use the following syntax for
+	the prior lines in the spec file
+
+	length_prior_a			1.0 2.1 3.1 
+	length_prior_b			2.0 1.2 1.0
+
+	where each number on one line refers to a different gaussian.
+
+Linear_term_in_covariance_function
+
+	This adds an additional theta * x_{i}^{T} x_{j} term into
+	the covariance function. This is to allow planes to be 
+	modelled easily. At present the associated hyperparameters
+	are not cleverly linked to the length scales.
+
+Periodic_covariance_function 	
+
+	This changes the covariance function from being one that
+	is as described in Gibbs and Mackay (1996) to a periodic
+	one. Care should be taken when switching this option on.
+	If you use it, you must specify wavelengths for ALL the
+	input dimensions. e.g.
+
+	Wavelengths		1.00  2.43  3.42
+
+	for a 3D input space. When using this it is advisable to
+	check the error bars carefully as they can be immense.
+
+Perform_Optimisation
+
+	This optimises the hyperparameters when turned on. If you
+	turn it off and specify a 'hypin' file then you can do
+	interpolation from pre-trained GPs. 
+
+Perform_Interpolation
+
+	Turning this on allows you to output predictions and error
+	bars from a set of points provided in INT_grid_file. If you
+	have some test set and you want to calculate the log predictive
+	error then specify the INT_target_file which should contain
+	the true values of the test targets and these will be compared
+	with the predicted values. 
+
+Command Line Arguments
+======================
+
+    As well as being able to change the parameters in the spec file
+you can also use command line arguments. The command line arguments
+take precedence over the specfile in all cases. In order to obtain
+a list of the command line arguments, just type Tpros at the prompt.
+
+    BEWARE putting important arguments such as the number of 
+inputs in the command line, however. It's best to put this in the spec
+file.
+
+    There are two main types of argument. One is simply a flag to
+turn something on or off. An example 
+
+Tpros Tspec -opt 
+
+which turns the optimisation of hyperparameters on. For most of these 
+type of argument, you can also use a negative form by adding NO after 
+the '-' sign. Hence -NOopt will turn the optimisation off. 
+    The second type of argument is one where a number (or several
+numbers) need to be specified afterwards e.g.
+
+Tpros Tspec -ntdat 300
+
+sets the number of data points to 300. 
+
+Toy Example
+===========
+
+    There is one example provided in the .tar file. The spec file is
+set up to run it by typing
+
+Tpros Tspec
+
+and it will dump some output in a file called output in the example
+directory. The format of the information in the 'output' file is 
+
+(input#1) (output) (error) (lower error bar) (upper error bar) (noise level)
+
+(error) is the N sigma error, i.e. 
+ 
+(upper error bar) = (output) + (error)
+
+Information always comes out of the interpolation section in this
+format. All the inputs are given in columns before the output.  If the
+INT_target_file option is used then the program will also output the
+true target after the noise level. Thus the output and target are
+found in columns I+1 and I+6, if there are I inputs. 
+
+========================================================================
+
+Comments on the hyperparameters (notes by DJCM)
+
+(1.1) It is highly desirable that the user should understand the 
+	meaning of the hyperparameters and should understand how
+	to put sensible priors on the hyperparameters.
+
+	However, we *have* attempted to set things up so that reasonable
+	default values for these quantities will be selected by the 
+	software if a novice user uses the software without setting 
+	the priors by hand. The aim is that the software should perform
+	reasonably well as a hands-off package. But we emphasize that 
+	the software's predictions do depend on assumptions, and
+	that the predictions that come out depend on those assumptions
+	and on the data. 
+
+(1.2) The hyperparameters are as follows: 
+
+r1...rI: length scales
+
+theta1: multiplies the radial basis function-like term in the 
+	covariance function. You can have several of these Gaussians
+	if you want.
+
+theta2: is an additive constant in the covariance function. This,
+	if non-zero, defines an expected offset of the whole
+	wiggly function away from zero. Because large values of theta2
+	can lead to severe ill-conditioning, it is recommended that
+	theta2 should be allowed to be adaptive only with caution.
+
+theta0: the mean of the gaussian process. An _adaptive_ theta0 (with a
+	zero mean gaussian prior) plays the same role as a _fixed_ value
+	of theta2. And it is probably better behvaed numerically.
+	My inclination is to if possible make the data roughly zero-mean,
+	set theta2 to zero, and allow theta0 to adapt.
+
+Noise level: a single number which comes after theta2 in the hyp vector.
+
+Linear term hyperparameters: If these are included they are located between
+	the noise level and theta0 in the hyp vector. There are as many
+	of these as there are inputs. They could plausibly be related to
+	the length scale hyperparameters but they are not. If optimized
+	they will roughly end up having the values of the linear regression
+	coefficients squared. MNG recommends first optimizing the linear
+	hyperparamters alone while the theta1 and r's are fixed to 
+	medium (?) values and the noise is fixed to a large value.
+	Then doing a second optimization of all hyperparameters.
+
+	We have experience some difficulties getting satisfactory
+	behaviour when these linear terms are included. If a user wishes
+	to include these terms it would be good to carry out comparisons
+	with Radford Neal's software. 
+
+Known Bugs and things needing fixing
+====================================
+A list of bugs will be included at this point in the manual
+or else at the source web site
+http://wol.ra.phy.cam.ac.uk/mng10/GP/
+
+(1) Many parameters are not set to default values by the software, so they
+	*must* be set in the spec file or on the command line.
+
+(2) Priors on hyperparameters cannot be omitted.
+	Tpros crashes during training if I don't use priors.
+	Although I normally would want to use a prior, it shouldn't be
+	crashing if I don't: it doesn't with my older version of Tpros. 
+
+(3) Tpros can crash gracelessly. If the covariance matrix becomes
+	ill-conditioned, Tpros is liably to crash with a segmentation fault.
+
+(9a)	Also option to read inputs and targets from same file.
+
+(10) make clear that 
+	 train_err or test_err values: Note that they grow in
+  proportion to the number of data points and are squared errors.
+  I have not modified this (just wanted to point it out!)
+
+(11) initial condition handling : are random numbers being used, if so why?
+
+(12) need option to read in initial conditions for search from file
+
+(13) need to restore *optional* randomization of initial conditions
+
+Things recently fixed
+=====================
+(4) The procedure for setting the prior to default values currently
+	consults the initial value of the hyperparameters in order to
+	define a mean. This is obviously a bad idea, since we might
+	want to try various initial conditions, and this should not affect
+	the prior.
+
+(5) `Noise-free' prediction is not available in the current version.
+
+(6) The input optimization routine computes the LU decomposition an
+	unecessarily large number of times.
+
+(7) gamma priors: a and b usage. look at flag[19] == 3. b may need inverting.
+
+(8) once (7) is fixed, standardize noise_prior_cbja & noise_prior_cbjb
+	and put them in command line
+
+(9) would like option to omit inputs from output file.
