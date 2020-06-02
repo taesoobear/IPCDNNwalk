@@ -53,6 +53,7 @@ How to build (Mac)
 How to run
 = 
 ```
+	pip3 install torch python3-tk gym
   cd work; python3 test_walk2.py gym_walkCDM/testWalkV2_FA.lua
 ```
 	Choose the opengl renderer if asked to choose one.
