@@ -1,4 +1,4 @@
-# IPCDNNwalk
+# Fast and Flexible Multilegged Locomotion Using Learned Centroidal Dynamics
 
 
 Target platform
