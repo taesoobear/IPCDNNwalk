@@ -35,7 +35,8 @@ How to build (Mac)
 =
   1. First, install necessary dependencies:
 ```
-	brew install boost fltk eigen gsl cmake
+	brew install boost fltk eigen gsl cmake lua@5.1
+	cd /usr/local/bin; ln -s lua5.1 lua
 ```
 
   2. Then, build Ogre 1.12 from sources (see below).
