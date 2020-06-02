@@ -35,8 +35,8 @@ How to build (Mac)
 =
   1. First, install necessary dependencies:
 ```
-	brew install boost fltk eigen gsl cmake lua@5.1
-	cd /usr/local/bin; ln -s lua5.1 lua
+  brew install boost fltk eigen gsl cmake lua@5.1
+  cd /usr/local/bin; ln -s lua5.1 lua
 ```
 
   2. Then, build Ogre 1.12 from sources (see below).
@@ -50,14 +50,15 @@ How to build (Mac)
 ```
   cd src; make mac
 ```
+  FYI, most linker and compiler settings are in src/taesoolib/Samples/Common_baselib.cmake and Common_mainlib.cmake files.
 
 How to run
 = 
 ```
-	pip3 install torch python3-tk gym
+  pip3 install torch python3-tk gym
   cd work; python3 test_walk2.py gym_walkCDM/testWalkV2_FA.lua
 ```
-	Choose the opengl renderer if asked to choose one.
+   Choose the opengl renderer if asked to choose one.
    Now, click the play button, and adjust the slider bars for speed/orientation. Also, you can change the motion type by clicking the button.
 
 How to build ogre 3D from source codes (Linux)
