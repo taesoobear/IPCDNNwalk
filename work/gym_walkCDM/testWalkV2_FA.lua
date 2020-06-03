@@ -760,25 +760,27 @@ function PendPlanner:drawFrame(t)
 		}
 
 		local effWeights=CT.vec(1,1,1,1)
+		local effY=2
 		if g_currState==2 then
 			IKconfig.wMM=0.5
-			IKconfig.effWeightsY=IKconfig.effWeightsY*5e-5
-			effWeights=effWeights*5e-5
+			IKconfig.effWeightsY=IKconfig.effWeightsY*0.5
+			effWeights=effWeights*0.1
+			effY=4
 		end
 
 
-	g_timer2=util.PerfTimer2()
-	g_timer2:start()
+		g_timer2=util.PerfTimer2()
+		g_timer2:start()
 
 		fc.solveIK(mSolverInfo, g_prevPose, dpose, pose, comdof, footDOF, effWeights ,IKconfig)
-	print(g_timer2:stop()/1000.0, "ik.")
+		print(g_timer2:stop()/1000.0, "ik.")
 		renderPose=g_prevPose:copy()
-		fc.solveIK_postprocess(mSolverInfo, renderPose, comdof, footDOF,nil,
+		fc.solveIK_postprocess(mSolverInfo, renderPose, comdof, footDOF,effWeights,
 		{
 			wCOMy=0.3,
 			wMM=0.1,
 			wHead_y=0.0001,
-			effWeightsY=2,
+			effWeightsY=effY,
 			--v2_max=5,
 		}
 		)
