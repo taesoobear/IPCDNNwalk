@@ -761,12 +761,12 @@ function PendPlanner:drawFrame(t)
 
 		local effWeights=CT.vec(1,1,1,1)
 		local effY=2
-		if g_currState==2 then
-			IKconfig.wMM=0.5
-			IKconfig.effWeightsY=IKconfig.effWeightsY*0.5
-			effWeights=effWeights*0.1
-			effY=4
-		end
+		--if g_currState==2 then
+		--	IKconfig.wMM=0.5
+		--	IKconfig.effWeightsY=IKconfig.effWeightsY*0.5
+		--	effWeights=effWeights*0.1
+		--	effY=4
+		--end
 
 
 		g_timer2=util.PerfTimer2()
