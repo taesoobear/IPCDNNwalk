@@ -501,7 +501,7 @@ end
 
 function IPC3d:calcCOMvel()
 	local q, w =self:calcPoleAngVel()
-	local v=w:cross(self.pole:localCOM())
+	local v=w:cross(q*self.pole:localCOM())
 
 	local m=self.pole:mass()
 
