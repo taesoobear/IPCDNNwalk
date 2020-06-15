@@ -494,7 +494,7 @@ function IPC3d:calcPoleAngVel()
 	local q=self.theta:toQuater(2)
 	local w=self.dtheta:toVector3(3)
 
-	w:rotate(q)
+	--w:rotate(q)
 
 	return q, w
 end

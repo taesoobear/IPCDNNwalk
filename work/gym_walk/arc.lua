@@ -333,7 +333,7 @@ function M.getPendTraj(m_pendulum, pendRotY, startPos, zmp, v0, zmp_vel,  v, w0,
 		local w=m_pendulum.dtheta:toVector3(3)
 		w.y=desiredW
 
-		goal2:row(c):setVec3(3, q*qrotY*w)
+		goal2:row(c):setVec3(3, w)
 		goal2:row(c):setQuater(6, q*qrotY)
 		goal2:row(c):setVec3(10, m_pendulum:calcCartVel())
 		m_pendulum:oneStep()
@@ -456,7 +456,7 @@ function M.getPendTraj_direction(m_pendulum, pendRotY, startPos, zmp, v0, zmp_ve
 		local w=m_pendulum.dtheta:toVector3(3)
 		w.y=ww(c,0)
 
-		goal2:row(c):setVec3(3, q*qrotY*w)
+		goal2:row(c):setVec3(3, w)
 		goal2:row(c):setQuater(6, q*qrotY)
 		goal2:row(c):setVec3(10, m_pendulum:calcCartVel())
 		m_pendulum:oneStep()
