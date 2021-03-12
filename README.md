@@ -28,6 +28,7 @@ How to build (Linux)
   cd src; make
 ```
 
+  This should work on ubuntu 18 and 20.
   If this does not work, please remove the system-provided libogre-1.9-dev, and install ogre3D-1.12 from source (see below), and retry the above steps (2-).
 	(There are a few linux distros that provide libogre-1.9-dev which is broken.)
 
