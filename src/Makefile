@@ -9,7 +9,7 @@ BIN_FOLDER=../build_$(EXE)
 BIN_TO_SRC=../../src
 SRC_TO_WORK=../work
 SRC_TO_EXE=../work/$(EXE)
-NUM_CORES=$(shell cat /proc/cpuinfo | grep processor | wc -l)
+NUM_CORES=$(shell if [-f /proc/cpuinfo]; then cat /proc/cpuinfo | grep processor | wc -l;	else echo 4;fi)
 
 # all depends on init_finished.txt
 all: init_finished.txt
@@ -18,7 +18,7 @@ all: init_finished.txt
 
 mac: init_finished.txt
 	if ! test -d $(BIN_FOLDER) ; then rm init_finished.txt; exit 1;fi
-	cd $(BIN_FOLDER)/build_linux;make --no-print-directory 
+	cd $(BIN_FOLDER)/build_linux;make --no-print-directory -j 4
 
 # debug depends on init_finished.txt
 debug: init_finished.txt
