@@ -56,6 +56,7 @@ namespace OpenHRP {
 		void get_contact_pos(int ichar, vector3N& cpos, CollisionSequence& collisionSequence);
 		void drawLastContactForces(::vector3 const& draw_offset=::vector3(0,0,0));
 		::vector3 getContactForce(int ichar, int ibone) const;
+		Liegroup::dse3 getCOMbasedContactForce(int ichar, int ibone) const; // returns (r x f, f)
 		void registerCollisionCheckPair ( const char *charName1, const char *linkName1, const char *charName2, const char *linkName2, vectorn const& param);
 		void addRelativeConstraint(Bone& bone1,::vector3 boneVector1,Bone& bone2,::vector3 boneVector2);
 		void removeRelativeConstraint(Bone& bone1, Bone& bone2);

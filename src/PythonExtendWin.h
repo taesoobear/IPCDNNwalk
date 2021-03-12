@@ -4,15 +4,23 @@
 #include <PhysicsLib/ScriptBaseWin.h>
 class MotionPanel;
 class FrameSensor;
+#ifndef USE_PYBIND11
+#define USE_BOOST_PYTHON
+#endif
+
+#ifdef USE_BOOST_PYTHON
 #include <boost/python.hpp>
+namespace WRAP_PY=boost::python;
+#else
+#include <pybind11/pybind11.h>
+namespace WRAP_PY=pybind11;
+#endif
 #include <Python.h>
 // python extend win
 class PythonExtendWin : public ScriptBaseWin
 //public FlLayout, public FltkRenderer::Handler, public PLDPrimSkin::DrawCallback, public FrameMoveObject, public FrameSensor::Trigger 
 {
 public:
-	boost::python::object m_main_module;
-	boost::python::object m_main_namespace;
 	PythonExtendWin (int x, int y, int w, int h, MotionPanel& mp,FltkRenderer& renderer);
 	~PythonExtendWin (void);
 

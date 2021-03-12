@@ -36,13 +36,8 @@ void makeCharacterInfo(VRMLloader const& input, OpenHRP::CharacterInfo& output)
 			OpenHRP::LinkInfo& le=output.links[ll->mJoint->jointEndId-1];
 
 			ASSERT(ll->mJoint);
-			ls.translation=ll->mJoint->translation;
-			ls.rotation.setFromQuaternion(
-										  quater(ll->mJoint->rotation.w(),
-												 vector3(ll->mJoint->rotation.x(),
-														 ll->mJoint->rotation.y(),
-														 ll->mJoint->rotation.z())));
-
+			ls.translation=ll->getOffsetTransform().translation;
+			ls.rotation.setFromQuaternion(ll->getOffsetTransform().rotation);
 
 			if(ll->mSegment)
 				{
@@ -88,7 +83,7 @@ void makeCharacterInfo(VRMLloader const& input, OpenHRP::CharacterInfo& output)
 
 			for(Bone* s=ll->sibling(); s ; s=s->sibling())
 				{
-					HRP_JOINT* j=((VRMLTransform* )s)->mJoint;
+					_HRP_JOINT* j=((VRMLTransform* )s)->mJoint;
 					if(j)
 						{
 							ls.sister=j->jointStartId;
@@ -98,7 +93,7 @@ void makeCharacterInfo(VRMLloader const& input, OpenHRP::CharacterInfo& output)
 
 			for(Bone* c=ll->child(); c; c=c->sibling())
 				{
-					HRP_JOINT* j=((VRMLTransform* )c)->mJoint;
+					_HRP_JOINT* j=((VRMLTransform* )c)->mJoint;
 					if(j)
 						{
 							le.daughter=j->jointStartId;
@@ -406,6 +401,10 @@ vector3 DynamicsSimulator::calculateZMP(int ichara)
 }
 
 BoneForwardKinematics& DynamicsSimulator::getWorldState(int ichara)
+{
+	return *_characters[ichara]->chain;
+}
+const BoneForwardKinematics& DynamicsSimulator::getWorldState(int ichara) const
 {
 	return *_characters[ichara]->chain;
 }

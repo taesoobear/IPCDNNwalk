@@ -36,6 +36,8 @@ public:
   class SceneManager
   {
   public:
+	  void setShadowTextureSize(unsigned short size){}
+	  void setShadowTextureCount(size_t count){}
   };
 class Node
 {

@@ -11,10 +11,9 @@
 //#define TEST_MEMORYLEAK
 using namespace std;
 
-HRP_JOINT::HRP_JOINT()
-		:VRML_TRANSFORM()
+_HRP_JOINT::_HRP_JOINT()
 	{
-		jointType=FREE;
+		jointType=HRP_JOINT::FREE;
 		jointAxis="Z";
 		jointStartId=-1;
 		jointEndId=-1;
@@ -123,13 +122,13 @@ void VRMLTransform::translateMesh( vector3 const& trans)
 void VRMLTransform::setJointPosition(vector3 const& trans)
 {
 	VRMLTransform* bone=this;
-	bone->mJoint->translation=trans;
+	bone->_getOffsetTransform().translation=trans;
 	bone->initBones();
 }
 void VRMLTransform::translateBone(vector3 const& trans)
 {
 	VRMLTransform* bone=this;
-	bone->mJoint->translation+=trans;
+	bone->_getOffsetTransform().translation+=trans;
 	bone->initBones();
 }
 
@@ -267,7 +266,7 @@ void VRMLTransform::pack(BinaryFile& bf)
 	if(version>=1)
 		bf.packInt(111);// seperating token for future addition of fields.
 
-	bf.pack(mJoint->translation);
+	bf.pack(getOffsetTransform().translation);
 
 	if(mSegment)
     {
@@ -351,7 +350,8 @@ void VRMLTransform::pack(FILE* file, int level)
 	  fprintf(file,"%s",sp.ptr());
   }
 
-  fprintf(file,"  translation %f %f %f%s", mJoint->translation.x, mJoint->translation.y, mJoint->translation.z,sp.ptr());
+  vector3 const & translation=getOffsetTransform().translation;
+  fprintf(file,"  translation %f %f %f%s", translation.x, translation.y, translation.z,sp.ptr());
 
   fprintf(file,"  children [");
 
@@ -555,8 +555,8 @@ void VRMLloader::insertChildJoint(Bone& parent, const char* trans_channels, cons
 	VRMLTransform* newChild=new VRMLTransform();
 
 	newChild->mVRMLtype="Joint";
-	newChild->mJoint=new HRP_JOINT();
-	newChild->mJoint->translation=offset;
+	newChild->mJoint=new _HRP_JOINT();
+	newChild->_getOffsetTransform().translation=offset;
 
 	TString tch(trans_channels);
 	TString rch(rot_channels);
@@ -568,6 +568,11 @@ void VRMLloader::insertChildJoint(Bone& parent, const char* trans_channels, cons
 	{
 		newChild->mJoint->jointType=HRP_JOINT::ROTATE;
 		newChild->mJoint->jointAxis=rot_channels;
+	}
+	else if(rch.length()==0)
+	{
+		newChild->mJoint->jointType=HRP_JOINT::SLIDE;
+		newChild->mJoint->jointAxis=trans_channels;
 	}
 	else
 	  Msg::error("not yet supported");
@@ -592,6 +597,17 @@ void VRMLloader::insertChildJoint(Bone& parent, const char* trans_channels, cons
 	  }
 
 
+	_initDOFinfo();
+}
+void VRMLloader::setChannels(Bone& bone, const char* translation_axis, const char* rotation_axis)
+{
+	VRMLTransform* b=(VRMLTransform*)&bone;
+	Msg::verify(b->mJoint, "Error! this VRMLTransform has no joint");
+
+	b->mJoint->jointType=HRP_JOINT::GENERAL;
+	b->mJoint->jointAxis=TString(translation_axis)+"_"+TString(rotation_axis);
+
+	b->setChannels(translation_axis, rotation_axis);
 	_initDOFinfo();
 }
 static HRP_JOINT::jointType_T _stringToJointType(TString const& type)
@@ -623,7 +639,7 @@ void VRMLTransform::unpack(VRMLloader& l, BinaryFile & bf)
 	
 	SetNameId(bf.unpackStr());
 	mVRMLtype="Joint";
-	mJoint=new HRP_JOINT();
+	mJoint=new _HRP_JOINT();
 	mJoint->jointType=(HRP_JOINT::jointType_T)bf.unpackInt();
 	bf.unpack(mJoint->jointAxis);
 	if (bf.unpackInt())
@@ -641,7 +657,10 @@ void VRMLTransform::unpack(VRMLloader& l, BinaryFile & bf)
 	if(version>=1)
 		Msg::verify(bf.unpackInt()==111,"incorrect seperating token for future addition of fields.");
 
-	bf.unpack(mJoint->translation);
+	vector3 joint_translation;
+	bf.unpack(joint_translation);
+	_getOffsetTransform().translation=joint_translation ;
+
 	if(bf.unpackInt())
 	{
 		mSegment=new HRP_SEGMENT();
@@ -713,7 +732,7 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
     {
       token=file.GetToken();
       ASSERT(token=="{");
-      mJoint=new HRP_JOINT();
+      mJoint=new _HRP_JOINT();
 
       while(1)
 	{
@@ -722,7 +741,11 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
   printf("Joint token: %s", token.ptr());
 #endif
 	  if(token=="translation")
-	    getVec3(file,mJoint->translation);
+	  {
+		  vector3 joint_translation;
+	    getVec3(file,joint_translation);
+		_getOffsetTransform().translation=joint_translation;
+	  }
 	  else if(token=="jointType")
 	    mJoint->jointType=_stringToJointType(file.GetQuotedText());
 	  else if(token=="jointAxis")
@@ -758,9 +781,15 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
 	  else if(token=="children")
 	    UnpackChildren(l, file);
 	  else if(token=="rotation")
-	    getVec4(file,mJoint->rotation);
+	  {
+		  vector4 jr;
+		  getVec4(file,jr);
+		  _getOffsetTransform().rotation.setRotation(vector3(jr.x(), jr.y(), jr.z()), jr.w());
+	  }
 	  else if(token=="translation")
-	    getVec3(file,mJoint->translation);
+	  {
+	    getVec3(file,_getOffsetTransform().translation);
+	  }
 	  else if(token=="}")
 	    return;
 	  else unexpectedToken(file, token, "children, rotation, translation, } .. are expected");
@@ -902,7 +931,7 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
 		  else
 			  mShape->mesh.initCapsule( radius, height);
 		}
-	      else if(geometryType=="OBJ")
+	      else if(geometryType=="OBJ" || geometryType=="OBJ_no_classify_tri")
 		{
 		  token=file.GetQuotedText();
 
@@ -932,26 +961,8 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
 			  }
 		  }
 		  mShape->mesh.calculateVertexNormal();
-		  mShape->mesh.classifyTriangles();
-		}
-	      else if(geometryType=="OBJ_no_classify_tri")
-		{
-		  token=file.GetQuotedText();
-
-		  try{
-			  mShape->mesh.loadObj(token);
-		  }
-		  catch(std::runtime_error& e)
-		  {
-			  // try with relative path.
-			  TString wrlPath=sz1::parentDirectory(l.url);
-#ifdef _DEBUG
-			  printf("%s %s\n", wrlPath.ptr(), token.ptr());
-#endif
-			  if(!mShape->mesh.loadObj(wrlPath+token))
-				  Msg::error("%s not found", token.ptr());
-		  }
-		  mShape->mesh.calculateVertexNormal();
+		  if (geometryType!="OBJ_no_classify_tri")
+			  mShape->mesh.classifyTriangles();
 		}
 	      else skipNode(file);
 	    }
@@ -1030,6 +1041,7 @@ VRML_TRANSFORM::VRML_TRANSFORM()
 {
 	VRML_TRANSFORM_identity(this);
 }
+// only for parsing
 void VRML_TRANSFORM_setTransform(VRML_TRANSFORM* t, matrix4& mat)
 {
   mat.setScaling(t->scale.x, t->scale.y, t->scale.z);
@@ -1040,7 +1052,8 @@ void VRML_TRANSFORM_setTransform(VRML_TRANSFORM* t, matrix4& mat)
   mat.leftMultTranslation(t->translation);
 }
 
-static void setTransform(VRML_TRANSFORM* transform, Bone* bone)
+// only for parsing
+static void VRML_JOINT_setTransform(VRML_TRANSFORM* transform, Bone* bone)
 {
 
   ASSERT(isSimilar(transform->scale.x,1.0));
@@ -1087,7 +1100,6 @@ void VRMLTransform::initBones()
   if(mVRMLtype=="Joint")
     {
       ASSERT(mJoint);
-      setTransform(mJoint,this);
       if(mJoint->jointType==HRP_JOINT::FREE)
 	{
 	  setChannels("XYZ", "ZXY");
@@ -1127,7 +1139,7 @@ void VRMLTransform::initBones()
   else if(mVRMLtype=="Transform")
     {
       ASSERT(mTransform);
-      setTransform(mTransform, this);
+      VRML_JOINT_setTransform(mTransform, this);
       setChannels("","");
     }
 
@@ -1474,6 +1486,11 @@ void VRMLTransform::bodyToJoint(vector3& lposInout) const
 }
 
 
+int VRMLloader::numHRPjoints()   	
+{ 
+	return VRMLbone(numBone()-1).mJoint->jointEndId;
+}
+
 VRMLloader::VRMLloader(VRMLloader const& other)
 	:MotionLoader()
 {
@@ -1567,6 +1584,12 @@ VRMLloader::VRMLloader(const char* filename)
     Msg::msgBox("error opening %s", filename);
   _importVRML(file);
 }
+VRMLloader::VRMLloader(CTextFile& vrmlFile)
+{
+	_frameRate=30;
+	url="CTextFile";
+	_importVRML(vrmlFile);
+}
 
 
 void VRMLloader::_initDOFinfo()
@@ -1629,7 +1652,7 @@ void VRMLTransform::copyFrom(VRMLTransform const& bone)
 
 	if(other->mJoint)
 	{
-		out->mJoint=new HRP_JOINT();
+		out->mJoint=new _HRP_JOINT();
 		*out->mJoint=*other->mJoint;
 	}
 
@@ -1687,7 +1710,6 @@ void VRMLloader::scale(float fScale, Motion& mot)
     {
       VRMLTransform* bone=&VRMLbone(i);
       Msg::verify(bone->mJoint, "scaling unsupported for this mesh");
-      bone->mJoint->translation*=fScale;
       if(bone->mShape)
 	bone->mShape->mesh.scale(fScale);
       totalMass+=(bone->mSegment)?bone->mSegment->mass:0;
@@ -1906,14 +1928,6 @@ void VRMLloader::removeBone(Bone& target)
 	//cout << "+"<<parent->child()->getOffsetTransform().translation<<endl;
 	//cout << parent->child()->NameId<<endl;
 
-	for (Bone* child=parent->child(); child; child=child->sibling())
-	{
-		VRMLTransform* c=(VRMLTransform*)child;
-		if (c->mJoint)
-		{
-			c->mJoint->translation=c->getOffsetTransform().translation;
-		}
-	}	
 
 }
 
@@ -2027,7 +2041,7 @@ void VRMLloader::_importVRML(CTextFile& file)
   mergeShapes((VRMLTransform*)m_pTreeRoot);
 
   VRMLTransform* n=((VRMLTransform*)(m_pTreeRoot->m_pChildHead));
-  n->mJoint->translation.zero();
+  n->_getOffsetTransform().translation.zero();
   _initDOFinfo(); 
 }
 

@@ -492,8 +492,8 @@ Liegroup::dse3 DynamicsSimulator_TRL_penalty::calcMomentumCOMfromPose(int ichara
 	{
 		VRMLTransform& bone=skel->VRMLbone(ibone);
 		ASSERT(bone.mSegment);
-		double mass=bone.mSegment->mass;
-		com+=chain1.global(bone).toGlobalPos(bone.mSegment->centerOfMass)*mass;
+		double mass=bone.mass();
+		com+=chain1.global(bone).toGlobalPos(bone.localCOM())*mass;
 		totalMass+=mass;
 		//Liegroup::se3 V=transf_twist(chain1.global(bone), chain2.global(bone),delta_t);
 		Liegroup::se3 V=transf_twist_nonlinear(chain1.global(bone), chain2.global(bone),delta_t);
@@ -529,8 +529,8 @@ void  DynamicsSimulator_TRL_penalty::calcInertia(int ichara,vectorn const& pose,
 	{
 		VRMLTransform& bone=skel->VRMLbone(ibone);
 		ASSERT(bone.mSegment);
-		double mass=bone.mSegment->mass;
-		com+=chain.global(bone).toGlobalPos(bone.mSegment->centerOfMass)*mass;
+		double mass=bone.mass();
+		com+=chain.global(bone).toGlobalPos(bone.localCOM())*mass;
 		totalMass+=mass;
 
 

@@ -1,5 +1,5 @@
 # -*- mode: cmake; -*-
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 
 project (QP_controller)
 
@@ -11,7 +11,7 @@ set(TAESOOLIB_DIR "${CMAKE_SOURCE_DIR}/taesooLib")
 
 if (APPLE)
 	include(FindPkgConfig)
-	pkg_search_module(PYTHON3 REQUIRED python-3.8)
+	pkg_search_module(PYTHON3 REQUIRED python3)
 #	pkg_search_module(IPOPT REQUIRED ipopt)
 	message(${PYTHON3_LIBDIR})
 	message(${PYTHON3_INCLUDE_DIRS})
@@ -53,6 +53,7 @@ include_directories (
 	${PYTHON3_INCLUDE_DIRS}
 	"/usr/include/python3.6"
 	"/usr/include/python3.7m"
+	"/usr/include/python3.8"
 	"/usr/local/lib/python3.6/dist-packages/numpy/core/include" #numpy headers
 	"/usr/local/lib/python3.8/site-packages/numpy/core/include"
 	.
@@ -109,23 +110,18 @@ endif()
 
 
 	set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CAR_SAMPLE_DIR}/work )
-	if(APPLE)
-		add_library(mainlib MODULE
-			${src}
-			${src11}
-			${src_python}
-			"${CMAKE_SOURCE_DIR}/luna_QP.cpp" # important. without this, luna_gen doesn't run.
-			)
-	else()
-		add_library(mainlib SHARED
-			${src}
-			${src11}
-			${src_python}
-			"${CMAKE_SOURCE_DIR}/luna_QP.cpp" # important. without this, luna_gen doesn't run.
-			)
-	endif()
 
-	target_link_libraries(mainlib 
+	set(usePybind11 TRUE)
+	add_definitions(-DUSE_PYBIND11)
+	add_subdirectory(pybind11)
+	pybind11_add_module(libmainlib 
+		${src}
+		${src11}
+		${src_python}
+		"${CMAKE_SOURCE_DIR}/luna_QP.cpp" # important. without this, luna_gen doesn't run.
+		)
+
+	target_link_libraries(libmainlib PUBLIC
 		${TAESOO_LIBS}
 		${FLTK_LIBS}
 		${IMAGE_LIBS}
@@ -133,20 +129,12 @@ endif()
 		${QPOASES_LIB}
 		dl
 		#boost_numpy
+		pthread
 		)
 
 	if(APPLE)
-		target_link_directories(mainlib  PUBLIC
-			${PYTHON3_LIBDIR}
-			)
-		target_link_libraries(mainlib 
-			python3.8
-			boost_python38
-			)
 	else()
-		target_link_libraries(mainlib 
-			boost_python3
-			)
+		target_link_libraries(libmainlib PUBLIC dl)
 	endif()
 
 if(WIN32)

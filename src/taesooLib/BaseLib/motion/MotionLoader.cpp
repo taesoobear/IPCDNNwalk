@@ -142,19 +142,10 @@ int Bone::getLocalTrans(vector3& trans, const double* dof)
 	int nc=getTranslationalChannels().length(); 
 	for(int c=0; c<nc; c++)
 	{
-		switch(getTranslationalChannels()[c])
-		{
-			case 'X':
-				trans.x=dof[c];
-				break;
-			case 'Y':
-				trans.y=dof[c];
-				break;
-			case 'Z':
-				trans.z=dof[c];
-				break;
-		}
+		int xyz=getTranslationalChannels()[c]-'X';
+		trans[xyz]=dof[c];
 	}
+	trans+=getOffsetTransform().translation;
 	return nc;
 }
 int Bone::getLocalOri(quater& qRot, const double* dof)
@@ -1132,6 +1123,9 @@ void MotionLoader::_initDOFinfo()
 	if(!dofInfo._sharedinfo)
 		dofInfo._sharedinfo=new MotionDOFinfo::SharedInfo;
 	dofInfo._sharedinfo->init(*this);
+
+	// do not use root offset!!!
+	if(dofInfo.hasTranslation(1)) bone(1)._getOffsetTransform().translation.zero();
 }
 /// child의 transform은 identity가 되고, parent로 옮겨진다.
 void MotionLoader::insertChildBone(Bone& parent, const char* nameId, bool bMoveChildren)
@@ -2271,6 +2265,193 @@ void PoseTransfer::setTargetSkeleton(const Posture & posture)
 	}
 #endif
 }
+
+PoseTransfer2::PoseTransfer2(MotionLoader* loaderA, MotionLoader* loaderB, TStrings const& convInfoA, TStrings const& convInfoB, double _posScaleFactor)
+{
+	_ctor(loaderA, loaderB, convInfoA, convInfoB, _posScaleFactor);
+}
+PoseTransfer2::PoseTransfer2(MotionLoader* loaderA, MotionLoader* loaderB)
+{
+	TStrings convInfoA, convInfoB;
+	convInfoA.resize(loaderA->numBone()-1);
+	convInfoB.resize(loaderA->numBone()-1);
+	for (int i=1;i< loaderA->numBone();i++)
+	{
+		convInfoA[i-1]= loaderA->bone(i).name();
+		convInfoB[i-1]=loaderA->bone(i).name();
+	}
+	_ctor(loaderA, loaderB, convInfoA, convInfoB, 1.0);
+}
+void PoseTransfer2::_ctor(MotionLoader* _loaderA, MotionLoader* _loaderB, TStrings const& convInfoA, TStrings const& convInfoB, double _posScaleFactor)
+{
+	auto& self=*this;
+	self.loaderA=_loaderA;
+	self.loaderB=_loaderB;
+	self.targetIndexAtoB.resize(self.loaderA->numBone());
+	self.targetIndexAtoB.setAllValue(-1);
+	BtoA.resize(self.loaderB->numBone());
+	BtoA.setAllValue(-1);
+
+
+	for (int i=0;i< convInfoA.size();i++){
+		int iboneA=self.loaderA->getTreeIndexByName(convInfoA[i]);
+		int iboneB=self.loaderB->getTreeIndexByName(convInfoB[i]);
+		assert(iboneA!=-1);
+		assert(iboneB!=-1);
+		if (self.targetIndexAtoB(iboneA)==-1 ){
+			self.targetIndexAtoB.set(iboneA, iboneB);
+			BtoA.set(iboneB, iboneA);
+		}
+		else
+		{
+			// one to many mapping
+			self.rAtoB_additionalAindices.pushBack(iboneA);
+			self.rAtoB_additionalBindices.pushBack(iboneB);
+			self.rAtoB_additional.pushBack(quater(1,0,0,0));
+		}
+	}
+	self.parentIdx.resize(self.loaderB->numBone());
+	self.parentIdx.setAllValue(-1);
+	for (int i=2;i< self.parentIdx.size();i++)
+	{
+		if (BtoA(i)==-1 )
+		{
+			int j=self.loaderB->bone(i).parent()->treeIndex();
+			//print('parentIdx.', self.loaderB->bone(i).name(), i)
+			intvectorn list;
+			list.pushBack(i);
+			while (1)
+			{
+				if (BtoA(j)!=-1 )
+				{
+					for (int ii=0; ii<list.size(); ii++){
+						int vv=list(ii);
+						self.parentIdx.set(vv,j);
+						assert(BtoA(vv)==-1);
+					}
+					//print('done.', self.loaderA->bone(BtoA(j)).name())
+					break;
+				}
+				if (j==0 ) break ;
+				list.pushBack(j);
+				//print(j)
+				j=self.loaderB->bone(j).parent()->treeIndex();
+			}
+		}
+	}
+	//local pIdx=self.parentIdx
+	//for i=1, loaderB->numBone()-1 do
+	//	print(i, loaderB->bone(i).name(), loaderB->bone(i).parent().treeIndex(), BtoA(i), pIdx(i))
+	//end
+
+	auto& AtoB=self.targetIndexAtoB;
+	self.loaderA->getPose(self.bindPoseA);
+	self.loaderB->getPose(self.bindPoseB);
+	self.rAtoB.resize(self.loaderA->numBone());
+	self.rAtoB_missing.resize(self.loaderB->numBone()); // B-bones missing in A
+
+
+
+	//
+	///////////////////////////////////////////////////////////////////////////////////////////
+	//// Bind pose는 임의의 포즈가 될수 있다. 
+
+	//// 현재 오우거 노드가 부모로부터 3번째 노드라고 하면.
+	////  노드의 global orientation CN2=LN0*LN1*LN2 (B의 현재 자세)
+	////  rB가 모델의 binding pose에서의 global orientation이라 하자.
+	//
+	// 목표.
+	// binding pose를 SetPose함수에 입력한 경우, CN2가 rB가 되도록 해야한다.
+	// rA 가 A의 동작 데이타 바인딩 포즈의 combined mat이라 하자.
+	// CN2 = C2A * rA.inv * rB 가 되면 된다.
+	// (즉 rA와 C2A(SetPose함수의 입력자세)가 동일한 경우, CN2==rB)
+	for (int i=1;i< self.loaderA->numBone()-1 ;i++){
+		if (AtoB(i)!=-1 )
+		{
+			const quater& rA=self.loaderA->bone(i).getFrame().rotation;
+			const quater& rB=self.loaderB->bone(AtoB(i)).getFrame().rotation;
+			//           rB*rA.inverse() 
+			self.rAtoB(i)=(rA.inverse()*rB);
+		}
+	}
+	auto& pIdx=self.parentIdx;
+	for (int i=1;i< loaderB->numBone();i++){
+		if (pIdx(i)!=-1 )
+		{
+			assert(BtoA(pIdx(i))!=-1);
+			int iA= BtoA(pIdx(i));
+			auto& rA=self.loaderA->bone(iA).getFrame().rotation;
+			auto& rB=self.loaderB->bone(i).getFrame().rotation;
+			self.rAtoB_missing(i)=(rA.inverse()*rB);
+		}
+	}
+
+	for (int i=0;i< self.rAtoB_additionalAindices.size();i++){
+		int iA=self.rAtoB_additionalAindices(i);
+		int iB=self.rAtoB_additionalBindices(i);
+		auto& rA=self.loaderA->bone(iA).getFrame().rotation;
+		auto& rB=self.loaderB->bone(iB).getFrame().rotation;
+		self.rAtoB_additional(i)=(rA.inverse()*rB);
+	}
+
+	self.posScaleFactor=_posScaleFactor ;
+	transf Aroot=self.loaderA->bone(1).getFrame();
+	Aroot.translation*=(1/self.posScaleFactor);
+	self.rootAtoB=Aroot.inverse()*self.loaderB->bone(1).getFrame();
+}
+
+void PoseTransfer2::_setTargetSkeleton()
+{
+	auto& self=*this;
+	const intvectorn& AtoB=self.targetIndexAtoB;
+	const quaterN& rAtoB=self.rAtoB;
+	for (int i=1;i< loaderA->numBone();i++){
+		if (AtoB(i)!=-1 )
+			loaderB->bone(AtoB(i))._getFrame().rotation=loaderA->bone(i).getFrame().rotation*rAtoB(i);
+	}
+	//print('before1.')
+	//print(self.loaderB->bone(24).getFrame().rotation)
+	//print(self.loaderB->bone(54).getFrame().rotation)
+	auto& rootB=AtoB(1);
+	assert(rootB!=-1);
+	//print('before.')
+	//print(self.loaderB->bone(24).getFrame().rotation)
+	//print(self.loaderB->bone(54).getFrame().rotation)
+	auto& pIdx=self.parentIdx;
+	for (int i=rootB+1;i< loaderB->numBone();i++){
+		// fill-in missing leaf joints
+		if (pIdx(i)!=-1 ){
+			assert(BtoA(pIdx(i))!=-1);
+			//self.loaderB->bone(i).getFrame().rotation.assign(self.loaderB->bone(pIdx(i)).getFrame().rotation)
+			int iA= BtoA(pIdx(i));
+			loaderB->bone(i)._getFrame().rotation=(loaderA->bone(iA).getFrame().rotation*self.rAtoB_missing(i));
+		}
+	}
+
+
+	for (int i=0;i< self.rAtoB_additionalAindices.size();i++){
+		int iA=self.rAtoB_additionalAindices(i);
+		int iB=self.rAtoB_additionalBindices(i);
+		loaderB->bone(iB)._getFrame().rotation=(loaderA->bone(iA).getFrame().rotation*self.rAtoB_additional(i));
+	}
+
+	// set root
+	loaderB->bone(1)._getFrame()=(loaderA->bone(1).getFrame()*self.rootAtoB);
+
+	// an inverse kinematics followed by a forward kinematics. (to recalculate all joint positions)
+	Posture pose;
+	loaderB->fkSolver().getPoseFromGlobal(pose);
+	pose.m_aTranslations(0)*=(1/self.posScaleFactor);
+	for (int i=0;i< pose.m_aRotations.size();i++){
+		pose.m_aRotations(i).normalize();
+	}
+	loaderB->setPose(pose);
+	//print('after.')
+	//print(self.loaderB->bone(24).getFrame().rotation)
+	//print(self.loaderB->bone(54).getFrame().rotation)
+}
+
+
 #include <iostream>
 using namespace std;
 void MotionLoader::updateBoneLengthFromGlobal()
@@ -2307,7 +2488,7 @@ void MotionLoader::updateBoneLengthFromGlobal()
 				//	_global(treeindex)= global(*((Bone*)stack.GetTop()))* local(treeindex);
 				fk._local(treeindex)=fk._global(*((Bone*)stack.GetTop())).inverse()*fk._global(treeindex);
 		//cout<<treeindex<<" :" <<"->"<< bone(treeindex)._getOffsetTransform().translation<< fk._local(treeindex).translation <<			endl;
-				bone(treeindex)._getOffsetTransform().translation=fk.local(treeindex).translation;
+				//bone(treeindex)._getOffsetTransform().translation=fk.local(treeindex).translation;
 			}
 			else
 			{

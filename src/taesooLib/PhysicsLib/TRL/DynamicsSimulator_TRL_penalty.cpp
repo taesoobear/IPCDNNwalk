@@ -25,6 +25,7 @@
 #include "../MainLib/OgreFltk/VRMLloader.h"
 #include "ForwardDynamicsABM.h"
 #include "TRL_common.h"
+#include "../BaseLib/motion/VRMLloader_internal.h"
 
 using namespace OpenHRP;
 using namespace std;
@@ -88,9 +89,9 @@ Liegroup::dse3 DynamicsSimulator_TRL_penalty::calcMomentumCOM(int ichara)
 	{
 		VRMLTransform& bone=skel->VRMLbone(ibone);
 		ASSERT(bone.mSegment);
-		double mass=bone.mSegment->mass;
+		double mass=bone.mass();
 		transf & G=getWorldState(ichara)._global(bone);
-		com+=(G*bone.mSegment->centerOfMass)*mass;
+		com+=(G*bone.localCOM())*mass;
 		totalMass+=mass;
 		quater invR=getWorldState(ichara)._global(bone).rotation.inverse();
 
@@ -151,8 +152,11 @@ void DynamicsSimulator_TRL_penalty::_registerCharacter
 			j->dqIndex=sDOF+jj;
 		}
 	}
-	for(int i=0; i<chara.loader->numHRPjoints() ; i++)
-		cout << i << *getTRLlink(cinfo, i)<<endl;
+	if (debugMode)
+	{
+		for(int i=0; i<chara.loader->numHRPjoints() ; i++)
+			cout << i << " "<<*getTRLlink(cinfo, i)<<endl;
+	}
 }
 
 void DynamicsSimulator_TRL_penalty::setTimestep(double ts)
@@ -732,134 +736,168 @@ void DynamicsSimulator_TRL_penalty::setLinkData(int ichara, LinkDataType t, vect
 	double imag;
 	vector3 v;
 
-	for(int i=1; i<l.numBone(); i++)
+	switch(t)
 	{
-		VRMLTransform& b=(VRMLTransform&)l.bone(i);
-		if(b.mJoint->jointType==HRP_JOINT::FIXED) continue;
-
-		if(b.mJoint->jointType==HRP_JOINT::FREE)
-		{
-			TRL::Link* j=getTRLlink(cinfo,b.mJoint->jointStartId);
-
-			ASSERT(l.dofInfo.hasTranslation(i));
-			ASSERT(l.dofInfo.hasQuaternion(i));
-			int sTDOF=l.dofInfo.startT(i);
-			int sRDOF=l.dofInfo.startR(i);
-			ASSERT(sRDOF-sTDOF==3);
-			p=in.toVector3(sTDOF);
-			imag=in[sRDOF];
-			v=in.toVector3(sRDOF+1);
-
-			switch(t)
+		case OpenHRP::DynamicsSimulator::JOINT_VALUE:
+			for(int i=1; i<l.numBone(); i++)
 			{
-			case OpenHRP::DynamicsSimulator::JOINT_VALUE:
+				VRMLTransform& b=(VRMLTransform&)l.bone(i);
+				if(b.mJoint->jointType==HRP_JOINT::FIXED) continue;
+
+				if(b.mJoint->jointType==HRP_JOINT::FREE)
 				{
+					TRL::Link* j=getTRLlink(cinfo,b.mJoint->jointStartId);
+
+					ASSERT(l.dofInfo.hasTranslation(i));
+					ASSERT(l.dofInfo.hasQuaternion(i));
+					int sTDOF=l.dofInfo.startT(i);
+					int sRDOF=l.dofInfo.startR(i);
+					ASSERT(sRDOF-sTDOF==3);
+					p=in.toVector3(sTDOF);  
+					imag=in[sRDOF];
+					v=in.toVector3(sRDOF+1); 
+
 					j->p=p;
 					quater q(imag,v.x, v.y, v.z);
 					q.normalize();
 					j->setAttitude(toOpenHRP(q));
 				}
-				break;
-			case OpenHRP::DynamicsSimulator::JOINT_VELOCITY:
+				else if(b.mJoint->jointType==HRP_JOINT::BALL)
 				{
+					ASSERT(FALSE);
+				}
+				else
+				{
+					int sj=b.mJoint->jointStartId;
+					int sDOF=l.dofInfo.startT(i);
+					int nDOF=l.dofInfo.endR(i)-sDOF;
+					for(int jj=0; jj<nDOF; jj++)
+						getTRLlink(cinfo,sj+jj)->q=in[sDOF+jj];
+				}
+			}
+			break;
+
+		case OpenHRP::DynamicsSimulator::JOINT_VELOCITY:
+			for(int i=1; i<l.numBone(); i++)
+			{
+				VRMLTransform& b=(VRMLTransform&)l.bone(i);
+				if(b.mJoint->jointType==HRP_JOINT::FIXED) continue;
+
+				if(b.mJoint->jointType==HRP_JOINT::FREE)
+				{
+					TRL::Link* j=getTRLlink(cinfo,b.mJoint->jointStartId);
+
+					ASSERT(l.dofInfo.hasTranslation(i));
+					ASSERT(l.dofInfo.hasQuaternion(i));
+					int sTDOF=l.dofInfo.startT(i);
+					int sRDOF=l.dofInfo.startR(i);
+					ASSERT(sRDOF-sTDOF==3);
+					p=in.toVector3(sTDOF);  // velocity
+					v=in.toVector3(sRDOF+1); // omega
+
 					::vector3 bv,bw;
 					quater q=toBase(j->attitude());
-					p.rotate(q);
-					v.rotate(q);
+					p.rotate(q);//body to world
+					v.rotate(q);//body to world
+
 					j->w=v;
 
 					// this line is important because j->v is calculated from j->vo.
 					j->vo= p - cross(j->w,j->p);
 					j->v= p;
-
-					imag=0.0;
 				}
-				break;
-			case OpenHRP::DynamicsSimulator::JOINT_ACCELERATION:
-				
-				j->dw=v;
-
-				// this line is important as j->dv is calculated form j->dvo.
-				j->dvo = p - cross(j->dw, j->p) - cross(j->w, j->v);
-				j->dv=p;
-				
-				imag=0.0;
-				break;
-			case OpenHRP::DynamicsSimulator::JOINT_TORQUE:
-				j->fext=p;
-				j->tauext=v;
-				imag=0.0;
-				break;
-			default:
-				ASSERT(0);
-			}
-		}
-		else if(b.mJoint->jointType==HRP_JOINT::BALL)
-		{
-			TRL::Link* j=getTRLlink(cinfo,b.mJoint->jointStartId);
-
-			int sRDOF=l.dofInfo.startR(i);
-			imag=in[sRDOF];
-			v=in.toVector3(sRDOF+1);
-
-			switch(t)
-			{
-			case OpenHRP::DynamicsSimulator::JOINT_VALUE:
+				else if(b.mJoint->jointType==HRP_JOINT::BALL)
 				{
-					quater q(imag,v.x, v.y, v.z);
-					q.normalize();
-					j->setAttitude(toOpenHRP(q));
+					ASSERT(FALSE);
 				}
-				break;
-			case OpenHRP::DynamicsSimulator::JOINT_VELOCITY:
-				j->w=v;
-				break;
-			case OpenHRP::DynamicsSimulator::JOINT_ACCELERATION:
-				j->dw=v;
-				break;
-			case OpenHRP::DynamicsSimulator::JOINT_TORQUE:
-				//				j->tauext=v;
-				break;
-			default:
-				ASSERT(0);
-			}
-		}
-		else
-		{
-			int sj=b.mJoint->jointStartId;
-			int sDOF=l.dofInfo.startT(i);
-			int nDOF=l.dofInfo.endR(i)-sDOF;
-			for(int jj=0; jj<nDOF; jj++)
-			{
-
-				switch(t)
+				else
 				{
-				case OpenHRP::DynamicsSimulator::JOINT_VALUE:
-					getTRLlink(cinfo,sj+jj)->q=in[sDOF+jj];
-					break;
-				case OpenHRP::DynamicsSimulator::JOINT_VELOCITY:
-					getTRLlink(cinfo,jj+sj)->dq=in[sDOF+jj];
-					break;
-				case OpenHRP::DynamicsSimulator::JOINT_ACCELERATION:
-					getTRLlink(cinfo,jj+sj)->ddq=in[sDOF+jj];
-					break;
-				case OpenHRP::DynamicsSimulator::JOINT_TORQUE:
-					getTRLlink(cinfo,jj+sj)->u=in[sDOF+jj];
-					break;
-				default:
-					ASSERT(0);
+					int sj=b.mJoint->jointStartId;
+					int sDOF=l.dofInfo.startT(i);
+					int nDOF=l.dofInfo.endR(i)-sDOF;
+					for(int jj=0; jj<nDOF; jj++)
+						getTRLlink(cinfo,jj+sj)->dq=in[sDOF+jj];
 				}
 			}
-		}
-	}
+			break;
+		case OpenHRP::DynamicsSimulator::JOINT_ACCELERATION:
+			for(int i=1; i<l.numBone(); i++)
+			{
+				VRMLTransform& b=(VRMLTransform&)l.bone(i);
+				if(b.mJoint->jointType==HRP_JOINT::FIXED) continue;
 
-	if(t==OpenHRP::DynamicsSimulator::JOINT_ACCELERATION)
-	{
-		// calc link->vo, w, R, p, sw, sv, v, cv, cw, wc, ...
-		TRL::ForwardDynamicsABM* fd=world.forwardDynamics(ichara);
-		fd->calcABMPhase1(); // position, velocity fk + gravity
-		fd->calcAccelFK();	
-		_updateCharacterPose();
+				if(b.mJoint->jointType==HRP_JOINT::FREE)
+				{
+					TRL::Link* j=getTRLlink(cinfo,b.mJoint->jointStartId);
+
+					ASSERT(l.dofInfo.hasTranslation(i));
+					ASSERT(l.dofInfo.hasQuaternion(i));
+					int sTDOF=l.dofInfo.startT(i);
+					int sRDOF=l.dofInfo.startR(i);
+					ASSERT(sRDOF-sTDOF==3);
+					p=in.toVector3(sTDOF);  // velocity
+					v=in.toVector3(sRDOF+1); // omega
+
+					j->dw=v;
+
+					// this line is important as j->dv is calculated form j->dvo.
+					j->dvo = p - cross(j->dw, j->p) - cross(j->w, j->v);
+					j->dv=p;
+
+				}
+				else if(b.mJoint->jointType==HRP_JOINT::BALL)
+				{
+					ASSERT(FALSE);
+				}
+				else
+				{
+					int sj=b.mJoint->jointStartId;
+					int sDOF=l.dofInfo.startT(i);
+					int nDOF=l.dofInfo.endR(i)-sDOF;
+					for(int jj=0; jj<nDOF; jj++)
+						getTRLlink(cinfo,jj+sj)->ddq=in[sDOF+jj];
+				}
+			}
+			break;
+		case OpenHRP::DynamicsSimulator::JOINT_TORQUE:
+			{
+				for(int i=1; i<l.numBone(); i++)
+				{
+					VRMLTransform& b=(VRMLTransform&)l.bone(i);
+					if(b.mJoint->jointType==HRP_JOINT::FIXED) continue;
+
+					if(b.mJoint->jointType==HRP_JOINT::FREE)
+					{
+						TRL::Link* j=getTRLlink(cinfo,b.mJoint->jointStartId);
+
+						int sTDOF=l.dofInfo.startT(i);
+						int sRDOF=l.dofInfo.startR(i);
+						ASSERT(sRDOF-sTDOF==3);
+						p=in.toVector3(sTDOF);  // velocity
+						v=in.toVector3(sRDOF+1); // omega
+						j->fext=p;
+						j->tauext=v;
+					}
+					else if(b.mJoint->jointType==HRP_JOINT::BALL)
+					{
+						ASSERT(FALSE);
+					}
+					else
+					{
+						int sj=b.mJoint->jointStartId;
+						int sDOF=l.dofInfo.startT(i);
+						int nDOF=l.dofInfo.endR(i)-sDOF;
+						for(int jj=0; jj<nDOF; jj++)
+							getTRLlink(cinfo,jj+sj)->u=in[sDOF+jj];
+					}
+				}
+				// calc link->vo, w, R, p, sw, sv, v, cv, cw, wc, ...
+				TRL::ForwardDynamicsABM* fd=world.forwardDynamics(ichara);
+				fd->calcABMPhase1(); // position, velocity fk + gravity
+				fd->calcAccelFK();	
+				_updateCharacterPose();
+			}
+			break;
 	}
 }
 
@@ -946,25 +984,14 @@ void DynamicsSimulator_TRL_penalty::setU(int ichara, const vectorn& in)
 }
 
 
+#include "../../BaseLib/motion/IK_sdls/NodeWrap.h"
 void DynamicsSimulator_TRL_penalty::poseToQ(vectorn const& v, vectorn& out) 
 { 
-	int rdof=v.size(); out.setSize(rdof); 
-	out.setVec3(0, v.toVector3(0)); 
-	out[rdof-1]=v(3); 
-	out.setVec3(3, v.toVector3(4)); 
-	out.range(6, rdof-1)=v.range(7, rdof);
+	IK_sdls::LoaderToTree::poseToQ(v, out);
 }
 void DynamicsSimulator_TRL_penalty::dposeToDQ(quater const& rootOri, vectorn const& v, vectorn& out) 
 { 
-	int rdof=v.size(); out.setSize(rdof-1); 
-#ifdef SWAP_FORCE_AND_TORQUE
-	out.setVec3(3, rootOri*v.toVector3(0)); // linvel
-	out.setVec3(0, rootOri*v.toVector3(4)); // angvel
-#else
-	out.setVec3(0, rootOri*v.toVector3(0)); 
-	out.setVec3(3, rootOri*v.toVector3(4)); 
-#endif
-	out.range(6, rdof-1)=v.range(7, rdof);
+	IK_sdls::LoaderToTree::dposeToDQ(rootOri, v, out);
 }
 void DynamicsSimulator_TRL_penalty::torqueToU(const vectorn& v, vectorn& U)  
 { 
@@ -1034,7 +1061,7 @@ void DynamicsSimulator_TRL_penalty::_updateCharacterPose()
 	vectorn v;
 	for(int i=n-1; i>=0; i--)
 	{
-		vectorn& _tempPose=_characters[i]->_tempPose;
+		vectorn& _tempPose=_getLastSimulatedPose(i);
 		int ndof=dof(i);
 		if (ndof==0) continue;
 		if(rdof(i)==ndof)
@@ -1113,6 +1140,7 @@ void DynamicsSimulator_TRL_penalty::setDQ(int ichara, const double in[])
 			j->v.y=in[4];
 			j->v.z=in[5];
 #else
+			ASSERT(false);
 			j->v.x=in[0];
 			j->v.y=in[1];
 			j->v.z=in[2];

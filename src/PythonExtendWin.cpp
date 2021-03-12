@@ -1,11 +1,14 @@
 #define NULL 0
+#include <BaseLib/baselib.h>
 #ifdef NO_GUI
 #include <MainLib/console/dummies.h>
 #endif
 #include "stdafx.h"
 #include <MainLib/OgreFltk/FlLayout.h>
 #include "PythonExtendWin.h"
+#ifdef USE_BOOST_PYTHON
 #include  <boost/python.hpp>
+#endif
 #include <Python.h>
 #include "MainlibPython.h"
 #include <MainLib/OgreFltk/MotionPanel.h>
@@ -19,15 +22,33 @@
 #include "BaseLib/motion/MotionRetarget.h"
 #include "BaseLib/math/hyperMatrixN.h"
 
+#ifdef USE_BOOST_PYTHON
+using namespace boost::python;
+#endif
 
 	
+//singleton
+class SPythonEnv
+{
+	public:
+	WRAP_PY::object m_main_module;
+	WRAP_PY::object m_main_namespace;
+		SPythonEnv(){
+#ifdef USE_BOOST_PYTHON
+			m_main_module=import("__main__");
+			m_main_namespace=m_main_module.attr("__dict__");
+#else
+			m_main_module=WRAP_PY::module_::import("__main__");
+			m_main_namespace=m_main_module.attr("__dict__");
+#endif
+		}
 
+};
+
+static SPythonEnv* g_pythonEnv=NULL;
 //////////////////////////////////////////////////////////////////////////////
 // extend
 
-#include <boost/python.hpp>
-#include <Python.h>
-using namespace boost::python;
 void PythonExtendWin::__loadScript(const char* script) {
 	releaseScript();
 	loadScript(script, NULL);
@@ -36,9 +57,9 @@ PythonExtendWin::PythonExtendWin(int x, int y, int w, int h, MotionPanel& mp,Flt
 //:FlLayout(x,y,w,h),m_motionPanel(mp),mRenderer(renderer)
 :ScriptBaseWin(x,y,w,h,mp, renderer,  "WRLviewer.lua",  "../Samples/scripts/RigidBodyWin/")
 {
-	m_main_module=import("__main__");
-	m_main_namespace=m_main_module.attr("__dict__");
 
+	if(!g_pythonEnv)
+		g_pythonEnv=new SPythonEnv();
 	//removeWidgets(-2);
 	//setUniformGuidelines(10);
 	//create("Button", "X", "X", 9);
@@ -97,12 +118,12 @@ void PythonExtendWin::onCallback(FlLayout::Widget const& w, Fl_Widget * pWidget,
 	if(w.mId=="scriptfn"|| w.mId=="load"|| w.mId=="X")
 		ScriptBaseWin::onCallback(w, pWidget, userData);
 	else
-		m_main_namespace["onCallback"](w, userData); 
+		g_pythonEnv->m_main_namespace["onCallback"](w, userData); 
 }
 
 void PythonExtendWin::OnFrameChanged(FltkMotionWindow* p, int currFrame)
 {
-	m_main_namespace["onFrameChanged"](currFrame); 
+	g_pythonEnv->m_main_namespace["onFrameChanged"](currFrame); 
 }
 
 // PLDPrimSkin::DrawCallback
@@ -113,7 +134,7 @@ void PythonExtendWin::draw(const Motion& mot, int iframe)
 // FrameMoveObject
 int PythonExtendWin::FrameMove(float fElapsedTime)
 {
-	m_main_namespace["frameMove"](fElapsedTime); 
+	g_pythonEnv->m_main_namespace["frameMove"](fElapsedTime); 
 	return 1;
 }
 
@@ -142,9 +163,14 @@ int PythonExtendWin::handleRendererKeyboardEvent(int ev, int key)
 			keys.format("%c", key);
 		else
 			keys.format("%d", key);
-		PyObject* callback = object(m_main_namespace["handleRendererEvent"]).ptr();
+#ifdef USE_BOOST_PYTHON
+		PyObject* callback = object(g_pythonEnv->m_main_namespace["handleRendererEvent"]).ptr();
 		double out= call<double> (callback,evs.ptr(), keys.ptr(),0,0);
 		return int(out);
+#else
+		double out=g_pythonEnv->m_main_namespace["handleRendererEvent"](evs.ptr(), keys.ptr(), 0,0).cast<double>();
+		return 0;
+#endif
 	}
 }
 int PythonExtendWin::handleRendererMouseEvent(int ev, int x, int y, int button)
@@ -167,10 +193,15 @@ int PythonExtendWin::handleRendererMouseEvent(int ev, int x, int y, int button)
 		break;
 	}
 
-	PyObject* callback = object(m_main_namespace["handleRendererEvent"]).ptr();
+#ifdef USE_BOOST_PYTHON
+	PyObject* callback = object(g_pythonEnv->m_main_namespace["handleRendererEvent"]).ptr();
 	double out=call<double>(callback,evs.ptr(), button, x, y);
 
 	return int(out);
+#else
+	double out=g_pythonEnv->m_main_namespace["handleRendererEvent"](evs.ptr(), button, x, y).cast<double>();
+	return int(out);
+#endif
 }
 
 // FltkRenderer::Handler
@@ -240,7 +271,7 @@ int PythonExtendWin::work(TString const& workname, lunaStack& L)
 	if (workname=="pycall")
 	{
 		int numArg=L.gettop()-2;
-		boost::python::list arg;
+		WRAP_PY::list arg;
 		while(L.currArg<=L.numArg())  
 		{
 			//printf("%d %d\n", L.currArg, L.numArg());
@@ -266,37 +297,65 @@ int PythonExtendWin::work(TString const& workname, lunaStack& L)
 			else if(tn=="vectorn")
 			{
 				vectorn* v=L.check<vectorn>();
+#ifdef USE_BOOST_PYTHON
 				arg.append(boost::ref(v)); // call by reference
+#else
+				arg.append(v); // call by reference
+#endif
 			}
 			else if(tn=="vectornView")
 			{
 				vectorn* v=L.check<vectornView>();
+#ifdef USE_BOOST_PYTHON
 				arg.append(boost::ref(v)); // call by reference
+#else
+				arg.append(v); // call by reference
+#endif
 			}
 			else if(tn=="vector3")
 			{
 				vector3* v=L.check<vector3>();
+#ifdef USE_BOOST_PYTHON
 				arg.append(boost::ref(v));// call by reference
+#else
+				arg.append(v); // call by reference
+#endif
 			}
 			else if(tn=="quater")
 			{
 				quater* v=L.check<quater>();
+#ifdef USE_BOOST_PYTHON
 				arg.append(boost::ref(v));// call by reference
+#else
+				arg.append(v); // call by reference
+#endif
 			}
 			else if(tn=="matrixn")
 			{
 				matrixn* v=L.check<matrixn>();
+#ifdef USE_BOOST_PYTHON
 				arg.append(boost::ref(v));// call by reference
+#else
+				arg.append(v); // call by reference
+#endif
 			}
 			else if(tn=="matrixnView")
 			{
 				matrixnView* v=L.check<matrixnView>();
+#ifdef USE_BOOST_PYTHON
 				arg.append(boost::ref(v));// call by reference
+#else
+				arg.append(v); // call by reference
+#endif
 			}
 			else if(tn=="hypermatrixn")
 			{
 				hypermatrixn* v=L.check<hypermatrixn>();
+#ifdef USE_BOOST_PYTHON
 				arg.append(boost::ref(v));// call by reference
+#else
+				arg.append(v); // call by reference
+#endif
 			}
 			else
 			{
@@ -307,7 +366,11 @@ int PythonExtendWin::work(TString const& workname, lunaStack& L)
 		//printf("%d\n", L.gettop());
 		 //L.printStack();
 		// assumes "import luamodule as lua " was already done in python. 
+#ifdef USE_BOOST_PYTHON
 		import("luamodule").attr("pycallFromLua")(arg);
+#else
+		WRAP_PY::module_::import("luamodule").attr("pycallFromLua")(arg);
+#endif
 		return 0;
 	}
 	else if (workname=="run")

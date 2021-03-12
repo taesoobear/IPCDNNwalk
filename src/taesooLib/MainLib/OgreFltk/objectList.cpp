@@ -6,7 +6,8 @@
 #include "../MainLib/OgreFltk/MovableText.h"
 #include "../MainLib/OgreFltk/renderer.h"
 
-#include <boost/smart_ptr.hpp>
+//#include <boost/smart_ptr.hpp>
+#include <memory>
 #include "../../BaseLib/utility/namedmapsupport.h"
 #ifndef NO_OGRE
 #include <OgreSceneNode.h>
@@ -199,7 +200,7 @@ Ogre::MovableObject	* createObject(const char* node_name, const char* typeName, 
 }
 
 #endif
-typedef boost::shared_ptr<Ogre::SceneNode> SceneNodePtr;
+typedef std::shared_ptr<Ogre::SceneNode> SceneNodePtr;
 typedef std::list<SceneNodePtr>::iterator objectIterator;
 typedef std::map<TString, objectIterator, cmpTString>::iterator nameIterator;
 struct ScheduledSceneNodePtr

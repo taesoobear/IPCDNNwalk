@@ -7,7 +7,6 @@
 #include <MainLib/OgreFltk/FltkAddon.h>
 #include <MainLib/OgreFltk/FlLayout.h>
 #include "PythonExtendWin.h"
-#include  <boost/python.hpp>
 #include <Python.h>
 #include "MainlibPython.h"
 #include <MainLib/OgreFltk/MotionPanel.h>

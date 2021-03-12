@@ -9,6 +9,9 @@ Ogre::ColourValue Ogre::ColourValue::White;
 
 
 
+void _setMaterial(Ogre::SimpleRenderable* ptr, const char* name)
+{
+}
 int Fl_Button::value(int v) 
 {
   v = v ? 1 : 0;

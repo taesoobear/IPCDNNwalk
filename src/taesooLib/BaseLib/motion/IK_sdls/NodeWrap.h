@@ -184,10 +184,15 @@ class LoaderToTree
 		void getTheta(double* x);
 		void setTheta(const double* x);
 
+		//
+		// DTheta: root joint contains body-local linear and angular velocities. incompatible with TRL simulators' pose and dpose.
+		// q : compatible with TRL simulators (getQ, setQ. but not with sim.getLinkData(JOINT_VALUE, pose) --> use sim.poseToDQ)
+		// dq : compatible with TRL simulators (getDQ, setDQ. but not with sim.getLinkData(JOINT_VELOCITY, dpose) --> use sim.dposeToDQ)
+		// R0*DTheta[0:3] == dq[3:6] (global linear velocity)
+		// R0*DTheta[3:6] == dq[0:3] (global angular velocity)
 		// note that angular velocity appears first here.
 		void setDQ(const double* dq); // (wx,wy,wz, vx,vy,vz, dtheat1, dtheta2, ..., dthetaN), w,v in global.
 		void getDQ(double* dq);
-	
 		inline void getDTheta( vectorn& dq) { getDTheta(&dq[0]); }
 		inline void getTheta( vectorn& q) { getTheta(&q[0]); }
 		inline void setTheta( vectorn const& q) { setTheta(&q[0]); }
@@ -195,11 +200,18 @@ class LoaderToTree
 		inline void getQ( vectorn& q) { getQ(&q[0]); }
 		inline void setQ( vectorn const& q) { setQ(&q[0]); }
 		inline void setDQ( vectorn const& q) { setDQ(&q[0]); }
-		// DTheta: root joint contains body-local linear and angular velocities.
-		// dq : compatible with TRL simulators
-		// R0*DTheta[0:3] == dq[3:6] (global linear velocity)
-		// R0*DTheta[3:6] == dq[0:3] (global angular velocity)
 		void getDTheta(double* dq);
+
+		static void poseToQ(vectorn const& pose, vectorn& q);
+		static void dposeToDQ(quater const& rootOri, vectorn const& dpose, vectorn& dq) ;
+
+		inline void setLinkData(vectorn const& pose, vectorn const& dpose)
+		{
+			vectorn q, dq;
+			poseToQ(pose, q);
+			dposeToDQ(pose.toQuater(3), dpose, dq);
+			setQuaterQ(&q[0]); setDQ(dq);
+		}
 
 		// error : dS%dS + verticalCoef*dS.y*dS.y
 		double computeConstraintError(double verticalCoef=0.0);

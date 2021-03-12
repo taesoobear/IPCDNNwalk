@@ -8,18 +8,9 @@
 #include "Geometry.h"
 #include "../math/tvector.h"
 #include "../math/matrix3.h"
-#include "VRMLloader_internal.h"
 class CTextFile;
 
-struct VRML_TRANSFORM
-{
-	// used only for parsing, and set as identity matrix after initialization.
-	VRML_TRANSFORM(); // initialized as identity
-	vector3 translation, scale;  
-	vector4 rotation;// (axis,angle)
-};
-
-struct HRP_JOINT:VRML_TRANSFORM
+namespace HRP_JOINT
 {
 	enum jointType_T {  // trans, rot channel string:
 		FREE,			// "XYZ", "ZXY" (jointAxis will be ignored, ball joint will be used for the rotational channels)
@@ -29,22 +20,10 @@ struct HRP_JOINT:VRML_TRANSFORM
 		GENERAL,		// "Z", "XYZ" when jointAxis== "Z_XYZ"
 		SLIDE			// jointAxis, ""
 	};
+}
 
-	HRP_JOINT();
-	jointType_T jointType;
-	int jointStartId;
-	int jointEndId;
-	
-private:
-	friend class VRMLloader;
-	friend class VRMLTransform;
-	friend struct VRMLTransformView;
-	TString jointAxis;	// use Bone::getRotationalChannels() and getTranslationalChannels()
-	vector3* jointAxis2;//두개 중 하나를 사용 jointAxis jointAxis2 
-	m_real* jointAxis2Angle;
-	int AxisNum;
-};
-
+struct VRML_TRANSFORM;
+struct _HRP_JOINT;
 struct HRP_SHAPE;
 struct HRP_SEGMENT;
 class VRMLloader;
@@ -52,7 +31,7 @@ class VRMLloader;
 class VRMLTransform: public Bone
 {
 public:
-	HRP_JOINT* mJoint;
+	_HRP_JOINT* mJoint;
 	HRP_SEGMENT* mSegment;
 	HRP_SHAPE* mShape;
 	VRML_TRANSFORM* mTransform;
@@ -65,7 +44,6 @@ public:
 	void pack(FILE* file, int level=0);
 	void pack(BinaryFile& bf);
 	void unpack(VRMLloader& l, BinaryFile& bf);
-	void initBones();
 	void copyFrom(VRMLTransform const& bone);	
 	void setJointAxes(const char* axes);
 
@@ -104,6 +82,10 @@ public:
 	// convert a position in body local frame to joint local frame.
 	void bodyToJoint(vector3& lposInOut) const;
 
+private:
+	void initBones();
+	friend class VRMLloader;
+	friend class VRMLloader_subtree;
 	
 };
 
@@ -122,6 +104,7 @@ public:
 	virtual TString getName() { return name;}
 	VRMLloader(OBJloader::Geometry const& mesh, bool useFixedJoint=false);
 	VRMLloader(const char* vrmlFile);
+	VRMLloader(CTextFile& vrmlFile);
 	VRMLloader(VRMLloader const& other); // copy constructor
 	VRMLloader(MotionLoader const& skel, double cylinder_radius);
 	VRMLloader(); // a sphere-shaped free body.
@@ -133,12 +116,14 @@ public:
 	void exportVRML(const char* filename);
 	void exportBinary(const char* filename);
 	VRMLTransform& VRMLbone(int treeIndex) const;
-	inline int numHRPjoints() { return VRMLbone(numBone()-1).mJoint->jointEndId;}
+	int numHRPjoints();
 	
 	virtual void scale(float fScale, Motion& mot);
 
 	vector3 calcCOM() const;
 	void calcZMP(const MotionDOF& motion, matrixn & aZMP, double kernelSize);
+	// do not use for the root bone.
+	void setChannels(Bone& bone, const char* translation_axis, const char* rotation_axis);
 	void insertChildJoint(Bone& parent, const char* tchannels, const char* rchannels, const char* nameId, bool bMoveChildren);
 	void insertChildJoint(Bone& parent, const char* tchannels, const char* rchannels, const char* nameId, bool bMoveChildren, vector3 const& offset);
 	//void setTotalMass( m_real totalMass);

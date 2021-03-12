@@ -146,7 +146,7 @@ void IK_sdls::LoaderToTree::calcMomentumJacobianTranspose(const VRMLloader& l, m
 		Liegroup::dAd(dAd_T, T); 
 
 		VRMLTransform& bone=*b;
-		double mass=bone.mSegment->mass;
+		double mass=bone.mass();
 		Liegroup::Inertia bodyI(mass, bone.momentsOfInertia(), mass*bone.localCOM());
 		//Liegroup::Inertia bodyI(mass, bone.momentsOfInertia(), vector3(0,0,0));
 
@@ -169,9 +169,9 @@ double IK_sdls::LoaderToTree::calcInertia(const VRMLloader& loader, vectorn& ine
 	{
 		VRMLTransform& bone=loader.VRMLbone(ibone);
 		ASSERT(bone.mSegment);
-		double mass=bone.mSegment->mass;
+		double mass=bone.mass();
 		const Node* link = getLastNode(ibone);
-		com+=link->globalFrame().toGlobalPos(bone.mSegment->centerOfMass)*mass;
+		com+=link->globalFrame().toGlobalPos(bone.localCOM())*mass;
 		totalMass+=mass;
 
 		Liegroup::Inertia Ii(mass, bone.momentsOfInertia(), mass*bone.localCOM());
@@ -245,8 +245,8 @@ Liegroup::dse3 IK_sdls::LoaderToTree::calcMomentumCOMfromPose(const VRMLloader& 
 	{
 		VRMLTransform& bone=loader.VRMLbone(ibone);
 		ASSERT(bone.mSegment);
-		double mass=bone.mSegment->mass;
-		com+=chain1.global(bone).toGlobalPos(bone.mSegment->centerOfMass)*mass;
+		double mass=bone.mass();
+		com+=chain1.global(bone).toGlobalPos(bone.localCOM())*mass;
 		totalMass+=mass;
 		Node* n = getLastNode(ibone);
 		//Liegroup::se3 V=transf_twist(chain1.global(bone), chain2.global(bone),delta_t);
@@ -276,9 +276,9 @@ Liegroup::dse3 IK_sdls::LoaderToTree::calcMomentumCOMtoPose(const VRMLloader& lo
 	{
 		VRMLTransform& bone=loader.VRMLbone(ibone);
 		ASSERT(bone.mSegment);
-		double mass=bone.mSegment->mass;
+		double mass=bone.mass();
 		Node* n = getLastNode(ibone);
-		com+=n->globalFrame().toGlobalPos(bone.mSegment->centerOfMass)*mass;
+		com+=n->globalFrame().toGlobalPos(bone.localCOM())*mass;
 		totalMass+=mass;
 		Liegroup::se3 V=transf_twist_nonlinear(n->globalFrame(), chain2.global(bone),delta_t);
 		//printf("%d : %s, %f %f %f\n", ibone, V.W().output().ptr(), body->V[0], body->V[1], body->V[2]);
@@ -310,7 +310,7 @@ Liegroup::dse3 IK_sdls::LoaderToTree::calcMomentumCOM(const VRMLloader& loader)
 	{
 		VRMLTransform& bone=loader.VRMLbone(ibone);
 		ASSERT(bone.mSegment);
-		double mass=bone.mSegment->mass;
+		double mass=bone.mass();
 		Node* n = getLastNode(ibone);
 #ifdef TEST_LINM
 		{
@@ -319,7 +319,7 @@ Liegroup::dse3 IK_sdls::LoaderToTree::calcMomentumCOM(const VRMLloader& loader)
 			linm+=mass*(v+w.cross(n->_global.rotation*bone.localCOM()));
 		}
 #endif
-		com+=n->globalFrame().toGlobalPos(bone.mSegment->centerOfMass)*mass;
+		com+=n->globalFrame().toGlobalPos(bone.localCOM())*mass;
 		totalMass+=mass;
 		Liegroup::se3 V(n->bodyAngVel(), n->bodyLinVel());
 		//printf("%d : %s, %f %f %f\n", ibone, V.W().output().ptr(), body->V[0], body->V[1], body->V[2]);
@@ -375,6 +375,21 @@ void IK_sdls::LoaderToTree::calcCOMjacobianTranspose(const VRMLloader& loader, m
 		totalmass+=i->mass();
 	}
 	JT*=1.0/totalmass;
+}
+void IK_sdls::LoaderToTree::poseToQ(vectorn const& v, vectorn& out) 
+{
+	int rdof=v.size(); out.setSize(rdof); 
+	out.setVec3(0, v.toVector3(0)); 
+	out[rdof-1]=v(3); 
+	out.setVec3(3, v.toVector3(4)); 
+	out.range(6, rdof-1)=v.range(7, rdof);
+}
+void IK_sdls::LoaderToTree::dposeToDQ(quater const& rootOri, vectorn const& v, vectorn& out) 
+{
+	int rdof=v.size(); out.setSize(rdof-1); 
+	out.setVec3(3, rootOri*v.toVector3(0)); // linvel
+	out.setVec3(0, rootOri*v.toVector3(4)); // angvel
+	out.range(6, rdof-1)=v.range(7, rdof);
 }
 
 void IK_sdls::LoaderToTree::setQuaterQ(const double* q)

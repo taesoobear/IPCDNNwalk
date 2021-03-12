@@ -192,8 +192,8 @@ VRMLloaderView::VRMLloaderView(VRMLloader const& source, Bone& newRootBone, vect
 	VRMLTransformView* tgt=(VRMLTransformView* )m_pTreeRoot->m_pChildHead;
 	ASSERT(tgt->name()==newRootBone.name());
 	tgt->mJoint->jointType=HRP_JOINT::FREE;
-	tgt->mJoint->translation=newRootBone.getFrame().translation;
-	tgt->mJoint->rotation=vector4(0,0,1,0);
+	tgt->_getOffsetTransform().translation=newRootBone.getFrame().translation;
+	tgt->_getOffsetTransform().rotation.identity();
 	tgt->SetNameId(tgt->name()+"_ROOT");
 
 	if (newRootBone.treeIndex()!=1)
@@ -210,7 +210,7 @@ VRMLloaderView::VRMLloaderView(VRMLloader const& source, Bone& newRootBone, vect
 
 		newBone3->clearShape();
 		newBone3->bodyName="";
-		newBone3->mJoint->translation.setValue(0,0,0);
+		newBone3->_getOffsetTransform().translation.setValue(0,0,0);
 		
 		tgt=newBone3;
 		VRMLTransform* src=(VRMLTransform*)&newRootBone;
@@ -221,11 +221,11 @@ VRMLloaderView::VRMLloaderView(VRMLloader const& source, Bone& newRootBone, vect
 			ASSERT(((VRMLTransform*)src->parent())->mVRMLtype=="Joint");
 			VRMLTransformView* tgt_child=copyTreeExcept((VRMLTransform*)src->parent(), src);
 			tgt->bodyName=tgt_child->name();
-			ASSERT(tgt->mJoint->rotation.w()==0); // I assumed this here for simplification.
-			vector3 offset=src->mJoint->translation;
+			//ASSERT(tgt->mJoint->rotation.w()==0); // I assumed this here for simplification.
+			vector3 offset=src->getOffsetTransform().translation;
 
 			tgt->getShapeFrom(tgt_child, offset*-1);
-			tgt_child->mJoint->translation=offset*-1;
+			tgt_child->_getOffsetTransform().translation=offset*-1;
 
 			if(tgt_child->child()) // ex: node 1, node 0 
 			{
@@ -235,7 +235,7 @@ VRMLloaderView::VRMLloaderView(VRMLloader const& source, Bone& newRootBone, vect
 				for(std::list<Node*>::iterator i=children.begin(); i!=children.end(); ++i)
 				{
 					ASSERT(((VRMLTransformView*)(*i))->mJoint->jointType!=HRP_JOINT::SLIDE); // otherwise, you have to insert dummy nodes.. but for now.. let's ignore that.
-					((VRMLTransformView*)(*i))->mJoint->translation-=offset;
+					((VRMLTransformView*)(*i))->_getOffsetTransform().translation-=offset;
 				}
 				tgt->addChildren(children);			
 			}
@@ -258,14 +258,14 @@ VRMLloaderView::VRMLloaderView(VRMLloader const& source, Bone& newRootBone, vect
 				new_tgt_child->copyFrom(*tgt);
 				new_tgt_child->clearShape();
 
-				new_tgt_child->mJoint->translation=vector3(0,0,0);
+				new_tgt_child->_getOffsetTransform().translation=vector3(0,0,0);
 				new_tgt_child->AddChild(tgt_child);
 				new_tgt_child->reverted=true;
 				tgt_child->reverted=true;
 				tgt->mJoint->jointType=HRP_JOINT::FIXED;
 				tgt->SetNameId(tgt->name()+"_dummy");
 
-				tgt_child->mJoint->translation=vector3(0,0,0);
+				tgt_child->_getOffsetTransform().translation=vector3(0,0,0);
 				nextNode=tgt_child;	
 				tgt_child=new_tgt_child;			
 			}
@@ -298,7 +298,7 @@ VRMLloaderView::VRMLloaderView(VRMLloader const& source, Bone& newRootBone, vect
 
 	// I need to compact unnecessary fixed joints
 	#ifdef _DEBUG	
-		printHierarchy((VRMLTransformView*)m_pTreeRoot,0);
+		::printHierarchy((VRMLTransformView*)m_pTreeRoot,0);
 	#endif	
 
 	_initDOFinfo();

@@ -78,7 +78,6 @@ else()
 endif()
 if(APPLE)
 set(OGRE_LIBS
-	boost_system-mt
 	OIS
 	/Applications/OgreSDK/lib/macosx/Release/Ogre.framework
 	/Applications/OgreSDK/lib/macosx/Release/OgreOverlay.framework
@@ -90,11 +89,13 @@ set(OGRE_LIBS
 	/System/Library/Frameworks/Cocoa.framework
 	)
 else()
-if((EXISTS "/usr/local/lib/libOgreBites.so"))
+if((EXISTS "/usr/local/lib/libOgreBites.so")
+	OR ( EXISTS "/usr/lib/x86_64-linux-gnu/libOgreBites.so") 
+	)
 	# Ogre 1.12 (manually installed)
 	set(OGRE_LIBS
 		OgreMain
-		boost_system
+		#boost_system
 		OgreOverlay
 		OgreBites
 		OgreRTShaderSystem
@@ -106,7 +107,7 @@ elseif((EXISTS "/usr/lib/OGRE/libOgreOverlay.so")
 	# Ogre 1.9 
 	set(OGRE_LIBS
 		OgreMain
-		boost_system
+		#boost_system
 		OgreOverlay
 		OIS
 	)

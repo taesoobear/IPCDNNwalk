@@ -1,6 +1,5 @@
 #pragma once
 
-#include <boost/scoped_ptr.hpp>
 typedef double m_real;
 #include "../BaseLib/math/matrix3.h"
 #include "../MainLib/OgreFltk/Mesh.h"

@@ -4,63 +4,7 @@
 // MotionLoader.h: interface for the MotionLoader class.
 //      written by Taesoo Kwon.
 
-#include "node.h"
-#include "ModelLoader.h"
-#include "ModelLoader.h"
-#include "Motion.h"
-#include "MotionDOF.h"
-#include "../utility/NameTable.h"
-
-
-struct PoseWrap;
-class MotionLoader;
-class Bone;
-class BoneForwardKinematics
-{
-	MotionLoader* m_skeleton;
-	std::vector<transf> m_local;
-	std::vector<transf> m_global;
-
-public:
-	BoneForwardKinematics(MotionLoader* );
-
-	// reset to initial pose of motion data. (The initial pose is the identity pose, most of the case.)
-	void init();
-	// calc global from local.
-	void forwardKinematics();
-	// calc local from global. Bone lengths are fixed.
-	void inverseKinematics();
-
-	void updateBoneLength(MotionLoader const& loader); 
-
-	void operator=(BoneForwardKinematics const& other);
-	void setPose(const Posture& pose);
-	void setPoseDOF(const vectorn& poseDOF);
-
-	void setChain(const Posture& pose, const Bone& bone);
-	void setChain(const Bone& bone);
-	void getPoseFromGlobal(Posture& pose) const;
-	void getPoseDOFfromGlobal(vectorn& poseDOF) const;
-
-	void getPoseFromLocal(Posture& pose) const;
-	void getPoseDOFfromLocal(vectorn& poseDOF) const;
-
-	MotionLoader const& getSkeleton() const		{return *m_skeleton;}
-
-	// read operations
-	inline transf const& local(int i) const			{ return m_local[i];}
-	transf const& local(const Bone& bone) const;
-
-	inline transf const& global(int i) const		{ return m_global[i];}
-	transf const& global(const Bone& bone) const;
-
-	// write operations
-	inline transf& _local(int i)					{ return m_local[i];}
-	transf& _local(const Bone& bone);
-
-	inline transf& _global(int i)					{ return m_global[i];}
-	transf& _global(const Bone& bone);
-};
+#include "BoneKinematics.h"
 
 class Bone : public Node
 {
@@ -177,6 +121,7 @@ public:
 	MotionLoader(const char* filename, const char* option=NULL);
 	virtual ~MotionLoader();
 
+	inline void printHierarchy() { GetNode(0)->printHierarchy();}
 	// exportSkeleton("~.skl");
 	void exportSkeleton(const char* filename) const;
 
@@ -379,6 +324,48 @@ private:
 	intvectorn m_aTargetIndex;	// from src rot joint to target tree index
 	intvectorn m_aTargetIndexByTransJoint; // from src trans joint to target tree index
 };
+//
+//param
+// loaderA : source pose
+// loaderB : target pose
+// convInfoA (optional) : bone names of A (can be a subset)
+// convInfoB (optional) : the corresponding bone names of B
+// posScaleFactor : skinScaleB/skinScaleA
+//
+// usage:
+//        1. setPose loaderA and loaderB so that both loaders are at the same pose. 
+//        (The same pose can be expressed using different quaternions though)
+//
+// 	      PT=PoseTransfer2(loaderA, loaderB)
+//        PT:setTargetSkeleton(poseA)
+//        local poseB=Pose()
+//        loaderB:getPose(poseB) -- now poseB (quaternions and positions) obtained
+//
+//        or 
+//
+//        local posedofB=vectorn()
+//        loaderB:getPoseDOF(posedofB) -- now poseB (DOFs) obtained
+//
+class PoseTransfer2
+{
+	public:
+	void _ctor(MotionLoader* loaderA, MotionLoader* loaderB, TStrings const& convInfoA, TStrings const& convInfoB, double posScaleFactor);
+	public:
+	PoseTransfer2(MotionLoader* loaderA, MotionLoader* loaderB, TStrings const& convInfoA, TStrings const& convInfoB, double posScaleFactor);
+	PoseTransfer2(MotionLoader* loaderA, MotionLoader* loaderB);
+
+	void _setTargetSkeleton();
+	inline void setTargetSkeleton(Posture const& poseA) { loaderA->setPose(poseA); _setTargetSkeleton(); }
+	inline void setTargetSkeleton(vectorn const& poseA) { loaderA->setPoseDOF(poseA); _setTargetSkeleton(); }
+
+	MotionLoader *loaderA, *loaderB;
+	intvectorn rAtoB_additionalAindices, rAtoB_additionalBindices, targetIndexAtoB, BtoA, parentIdx;
+	quaterN rAtoB, rAtoB_missing, rAtoB_additional;
+	Posture bindPoseA, bindPoseB;
+	double posScaleFactor;
+	transf rootAtoB;
+};
+
 
 // deprecated.
 int dep_GetParentJoint(MotionLoader const&, int rotjointIndex) ;

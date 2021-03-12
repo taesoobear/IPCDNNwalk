@@ -60,15 +60,12 @@ showcapture:
 	
 # this would probably install more libraries than necessary, but I guess it doens't matter for most.
 install_dependencies:
-	sudo apt-get install libboost-python-dev python3-pip libpython3-dev libcupti-dev
+	sudo apt-get install python3-pip libpython3-dev libcupti-dev
 	pip3 install numpy
 	sudo apt install python3-numpy
 
 install_dependencies_mac:
-	echo "python has to be 3.8 because brew's boost-python is linked with 3.8"
 	brew install python@3.8
-	brew link --force python@3.8
-	brew install boost-python3
-	pip3 install numpy
+	python3 -m pip install numpy
 	echo "Important!!!! Now open a finder and manually copy all frameworks in /Applications/OgreSDK/lib/macosx/Release/ to ~/Library/Frameworks/!!!"
 

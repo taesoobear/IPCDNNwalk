@@ -26,7 +26,6 @@ namespace OpenHRP
 		CollisionDetector* collisionDetector;
 
 		CollisionSequence* collisions;
-		
 
 	public:
 		inline CollisionDetector* getCollisionDetector() { return collisionDetector;}
@@ -66,10 +65,12 @@ namespace OpenHRP
 			BoneForwardKinematics* chain;
 			void setChain(const vectorn& poseDOF);
 			void getChain(vectorn& poseDOF);
+			private:
 			vectorn _tempPose; // last simulated pose
+			friend class DynamicsSimulator;
 		};
 		std::vector<Character*> _characters;
-		inline vectorn const& getLastSimulatedPose(int ichara=0) { return _characters[ichara]->_tempPose;}
+		virtual const vectorn & getLastSimulatedPose(int ichara=0) const { return _characters[ichara]->_tempPose;}
 
 		DynamicsSimulator(bool useSimpleColdet=true);
 		DynamicsSimulator(const char* collisionDetectorType);
@@ -124,6 +125,7 @@ namespace OpenHRP
 		::vector3 getWorldAngAcc(int ichara, VRMLTransform* b) const;
 
 
+		// both the force and its position are local.
 		virtual void addForceToBone(int ichara, VRMLTransform* b, ::vector3 const& localpos, ::vector3 const& force);
 
 		virtual void _registerCharacter(
@@ -183,12 +185,17 @@ namespace OpenHRP
 		// after chainging JOINT_VALUE, you usually need to call initSimulation().
 		virtual void setLinkData(int i, LinkDataType t, vectorn const& in)=0;
 
+		inline void setPoseDOF(int ichara, vectorn const& v) { setLinkData(ichara, OpenHRP::DynamicsSimulator::JOINT_VALUE, v);}
+		inline void getPoseDOF(int ichara, vectorn & v) { getLinkData(ichara, OpenHRP::DynamicsSimulator::JOINT_VALUE, v);}
+		inline vectorn getPoseDOF(int ichara) { vectorn v; getLinkData(ichara, OpenHRP::DynamicsSimulator::JOINT_VALUE, v);return v;}
+
 		///////////////////////////////////////////////
 		// utilities
 		///////////////////////////////////////////////
 
 		// you can modify WorldState. 
 		BoneForwardKinematics& getWorldState(int ichara) ;	
+		const BoneForwardKinematics& getWorldState(int ichara) const ;	
 		// after modifying WorldState, call this.
 		void setWorldState(int ichara);		
 
@@ -210,6 +217,8 @@ namespace OpenHRP
 		// for QPservo
 		void getContactLinkBoneIndex(int ipair, intvectorn & ibone);
 		int getNumAllLinkPairs() const;
+	protected:
+		vectorn& _getLastSimulatedPose(int ichara=0) { return _characters[ichara]->_tempPose;}
 	};
 }
 #endif

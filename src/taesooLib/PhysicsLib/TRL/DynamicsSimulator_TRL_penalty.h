@@ -141,16 +141,20 @@ namespace OpenHRP {
 		// SDFAST style packing (x,y,z,qx,qy,qz,theta1,theta2,...,thetaN,qw), which is different from the MotionDOF/PoseDOF format  (x,y,z,qw,qx,qy,qz, theta1, ..., thetaN)
 		inline void setQ(int ichara, vectorn const& v) { assert(v.size()==rdof(ichara)); setQ(ichara, &v(0)); }
 		inline void getQ(int ichara, vectorn & v) const { v.setSize(rdof(ichara)); getQ(ichara, &v(0));}
+		inline vectorn getQ(int ichara) const { vectorn v; v.setSize(rdof(ichara)); getQ(ichara, &v(0));return v;}
+
 		//   (wx, wy, wz, vx, vy, vz, dtheta1, dtheta2, ...,dthetaN). w, v is in the global coordinate unlike dpose.
 		inline void setDQ(int ichara, vectorn const& v){ assert(v.size()==dof(ichara)); setDQ(ichara, &v(0)); }
 		inline void getDQ(int ichara, vectorn& v) const{ v.setSize(dof(ichara)); getDQ(ichara, &v(0));}
+		inline vectorn getDQ(int ichara) const{ vectorn v; v.setSize(dof(ichara)); getDQ(ichara, &v(0));return v;}
 
 		// state = [q, dq]
 		inline void setState(int ichara, vectorn const& v) { assert(v.size()==rdof(ichara )+dof(ichara)); setState(ichara, &v(0)); }
 		inline void getState(int ichara, vectorn & v) const { v.setSize(rdof(ichara)+dof(ichara)); getState(ichara, &v(0));}
 		inline void getState(int ichara, double v[]) const { getQ(ichara, &v[0]); getDQ(ichara, &v[rdof()]);}
 		inline void setState(int ichara, double v[]) { setQ(ichara, &v[0]);  setDQ(ichara, &v[rdof()]); }
-		void getU(int ichara, vectorn& v) { v.setSize(dof(ichara)); getU(ichara, &v[0]);}
+		inline void getU(int ichara, vectorn& v) const { v.setSize(dof(ichara)); getU(ichara, &v[0]);}
+		inline vectorn getU(int ichara) const  {vectorn v; v.setSize(dof(ichara)); getU(ichara, &v[0]);return v;}
 		void setU(int ichara, const vectorn& in);
 
 		// pointer access

@@ -22,8 +22,13 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 #include <numpy/ndarrayobject.h> // ensure you include this header
+#ifdef USE_BOOST_PYTHON
 #include <boost/python/numpy.hpp>
 #include <boost/python/numpy/ndarray.hpp>
+#else
+using namespace pybind11;
+#include <pybind11/operators.h>
+#endif
 
 #if PY_MAJOR_VERSION >= 3
 #define IS_PY3K
@@ -129,102 +134,102 @@ void screenToWorldLine(vectorn const& cursorPos, vector3& lineStart, vector3& li
 
 #include "BaseLib/motion/ASFLoader.h"
 #include "BaseLib/motion/BVHLoader.h"
-MotionLoader* createMotionLoader(TString const& filename)
+
+std::string tail(std::string const& source, size_t const length) {
+  if (length >= source.size()) { return source; }
+  return source.substr(source.size() - length);
+} 
+#include <algorithm>
+#include <string>
+
+std::string toUpper(std::string const& in){
+	std::string str=in;
+	std::transform(str.begin(), str.end(),str.begin(), ::toupper);
+	return str;
+}
+
+MotionLoader* createMotionLoader(std::string const& filename)
 {
-	if(filename.right(3).toUpper()=="BVH")
-		return new BVHLoader(filename);
-	else if(filename.right(3).toUpper()=="ASF")
-		return new ASFLoader(filename);
-	else if(filename.right(3).toUpper()=="MOT")
-		return new MotionLoader(filename);		
+	std::string ext=toUpper(tail(filename,3));
+	if(ext=="BVH")
+		return new BVHLoader(filename.c_str());
+	else if(ext=="ASF")
+		return new ASFLoader(filename.c_str());
+	else if(ext=="MOT")
+		return new MotionLoader(filename.c_str());		
 	else ASSERT(0);
 
 	return NULL;
 }
 
 
+#ifdef USE_BOOST_PYTHON
 #include <boost/python.hpp>
 using namespace boost::python;
 
 
-struct TString_to_python_str
-{
-	static PyObject* convert(TString const& s)
-	{
-	  return boost::python::incref(boost::python::object(s.ptr()).ptr());
-	}
-};
-
-struct TString_from_python_str
-{
-	TString_from_python_str()
-    {
-		boost::python::converter::registry::push_back(&convertible, &construct, boost::python::type_id<TString>());
-    }
-
-	static void* convertible(PyObject* obj_ptr)
-	{
-	  if (!PyString_Check(obj_ptr)) return 0;
-	  return obj_ptr;
-	}
-
-	static void construct(
-	  PyObject* obj_ptr,
-	  boost::python::converter::rvalue_from_python_stage1_data* data)
-	{
-	  const char* value = PyString_AsString(obj_ptr);
-	  if (value == 0) boost::python::throw_error_already_set();
-	  void* storage = (
-		(boost::python::converter::rvalue_from_python_storage<TString>*)
-		  data)->storage.bytes;
-	  new (storage) TString(value);
-	  data->convertible = storage;
-	}
-};
 
 // to handle default arguments
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(concat_member_overloads, Concat, 1, 4)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(range_member_overloads, range, 2, 3)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(range_member_overloads2, range, 2, 4)
-
+#define RETURN_REFERENCE return_value_policy<reference_existing_object>()
+#define TAKE_OWNERSHIP return_value_policy<manage_new_object>()
+#else
+#define RETURN_REFERENCE return_value_policy::reference
+#define TAKE_OWNERSHIP return_value_policy::take_ownership
+#endif
 // wrapper functions..
 void FrameSensor_triggerSet(FrameSensor& fs, float fTriggerTime)
 {
 	fs.triggerSet(g_trigger,fTriggerTime);
 }
 
-void vector3_assign(vector3& l, boost::python::list ll) 
+void vector3_assign(vector3& l, WRAP_PY::list ll) 
 {
 	if(len(ll)!=3) throw std::range_error("vector3_assign");
+#ifdef USE_BOOST_PYTHON
 	l.x=extract<double>(ll[0]);
 	l.y=extract<double>(ll[1]);
 	l.z=extract<double>(ll[2]);
+#else
+	l.x=ll[0].cast<double>();
+	l.y=ll[1].cast<double>();
+	l.z=ll[2].cast<double>();
+#endif
 }
 
-void quater_assign(quater& l, boost::python::list ll) 
+void quater_assign(quater& l, WRAP_PY::list ll) 
 {
 	if(len(ll)!=4) throw std::range_error("quater_assign");
+#ifdef USE_BOOST_PYTHON
 	l.x=extract<double>(ll[0]);
 	l.y=extract<double>(ll[1]);
 	l.z=extract<double>(ll[2]);
 	l.w=extract<double>(ll[3]);
+#else
+	l.x=ll[0].cast<double>();
+	l.y=ll[1].cast<double>();
+	l.z=ll[2].cast<double>();
+	l.w=ll[3].cast<double>();
+#endif
 }
 
-TString quater_output(quater& q)
+std::string quater_output(quater& q)
 {
-	return q.output();
+	return std::string(q.output().ptr());
 }
 
 
 
-TString get_Widget_mId(FlLayout::Widget const& w)
+std::string get_Widget_mId(FlLayout::Widget const& w)
 {
-	return w.mId;
+	return w.mId.ptr();
 }
 
-TString get_Widget_mType(FlLayout::Widget const& w)
+std::string get_Widget_mType(FlLayout::Widget const& w)
 {
-	return w.mType;
+	return w.mType.ptr();
 }
 #if PY_VERSION_HEX >= 0x03000000
 void *
@@ -236,32 +241,42 @@ initialize()
   import_array();
 }
 
+#ifdef USE_BOOST_PYTHON
+#define MDEF def
+#define MCOMMA
+#define BASES(x) bases<x>
+#define NONCOPYABLE ,boost::noncopyable
 BOOST_PYTHON_MODULE(libmainlib)
+#else
+#define MDEF m.def
+#define MCOMMA m,
+#define BASES(x) x
+#define NONCOPYABLE
+#define add_property def_property
+PYBIND11_MODULE(libmainlib, m)
+#endif
 {
 	void (*createMainWin1)(int, int,int, int, float)=&createMainWin;
 	void (*createMainWin2)(int, int,int, int, float, const char*, const char*, const char*)=&createMainWin;
 	initialize(); // import_array
 	//boost::python::numpy::array::set_module_and_type("numpy", "ndarray");
-	def("motionPanel", motionPanel, return_value_policy<reference_existing_object>());
-	def("layout", layout, return_value_policy<reference_existing_object>());
-	def("setReturnValue", setIntegerReturnValue);
-	def("viewLock", viewLock);
-	def("viewUnlock", viewUnlock);
-	def("getOgreVersionMinor", getOgreVersionMinor);
-	def("screenToWorldLine", screenToWorldLine);
-	def("createMotionLoader", createMotionLoader, return_value_policy<reference_existing_object>());
-	def("createMainWin", createMainWin1);
-	def("createMainWin", createMainWin2);
-	def("showMainWin", showMainWin);
-	def("startMainLoop", startMainLoop);
-	def("getPythonWin", getPythonWin, return_value_policy<reference_existing_object>());
+	MDEF("motionPanel", motionPanel, RETURN_REFERENCE);
+	MDEF("layout", layout, RETURN_REFERENCE);
+	MDEF("setReturnValue", setIntegerReturnValue);
+	MDEF("viewLock", viewLock);
+	MDEF("viewUnlock", viewUnlock);
+	MDEF("getOgreVersionMinor", getOgreVersionMinor);
+	MDEF("screenToWorldLine", screenToWorldLine);
+	MDEF("createMotionLoader", createMotionLoader, RETURN_REFERENCE);
+	MDEF("createMainWin", createMainWin1);
+	MDEF("createMainWin", createMainWin2);
+	MDEF("showMainWin", showMainWin);
+	MDEF("startMainLoop", startMainLoop);
+	MDEF("getPythonWin", getPythonWin, RETURN_REFERENCE);
 	/////////////////////////////////////////////////////////////////
 	// Baselib
 	/////////////////////////////////////////////////////////////////
 
-	// TString
-	to_python_converter<TString, TString_to_python_str>();
-	TString_from_python_str();
     
 	// vector3
 
@@ -273,7 +288,8 @@ BOOST_PYTHON_MODULE(libmainlib)
 	void (vector3::*sub2)(const vector3&) =&vector3::sub;
 
 
-	class_<vector3>("vector3")
+	class_<vector3>(MCOMMA"vector3")
+		.def(init<>())
 		.def(init<m_real, m_real, m_real>())
 		.def_readwrite("x", &vector3::x)
 		.def_readwrite("y", &vector3::y)
@@ -307,7 +323,7 @@ BOOST_PYTHON_MODULE(libmainlib)
 	m_real (quater::*rotationAngle1)(void) const=&quater::rotationAngle;
 	void (quater::*normalize1)()=&quater::normalize;
 
-	class_<quater>("quater")
+	class_<quater>(MCOMMA"quater")
 		.def(init<m_real, m_real, m_real, m_real>())
 		.def(init<m_real, const vector3&>())
 		.def_readwrite("x", &quater::x)
@@ -337,7 +353,7 @@ BOOST_PYTHON_MODULE(libmainlib)
 	
 	{
 		// transf
-		class_<transf>("transf")
+		class_<transf>(MCOMMA"transf")
 			.def(init<quater const&, vector3 const&>())
 			.def_readwrite("rotations", &transf::rotation)
 			.def_readwrite("translations", &transf::translation)
@@ -347,9 +363,10 @@ BOOST_PYTHON_MODULE(libmainlib)
 	{
 		struct wrap_matrix4
 		{
-			static void matrix4_assign(matrix4& l, boost::python::list ll) 
+			static void matrix4_assign(matrix4& l, WRAP_PY::list ll) 
 			{
 				if(len(ll)!=4) throw std::range_error("matrix4_assign");
+#ifdef USE_BOOST_PYTHON
 				l._11=extract<double>(ll[0]);
 				l._12=extract<double>(ll[1]);
 				l._13=extract<double>(ll[2]);
@@ -366,13 +383,31 @@ BOOST_PYTHON_MODULE(libmainlib)
 				l._42=extract<double>(ll[13]);
 				l._43=extract<double>(ll[14]);
 				l._44=extract<double>(ll[15]);
+#else
+				l._11=ll[0].cast<double>();
+				l._12=ll[1].cast<double>();
+				l._13=ll[2].cast<double>();
+				l._14=ll[3].cast<double>();
+				l._21=ll[4].cast<double>();
+				l._22=ll[5].cast<double>();
+				l._23=ll[6].cast<double>();
+				l._24=ll[7].cast<double>();
+				l._31=ll[8].cast<double>();
+				l._32=ll[9].cast<double>();
+				l._33=ll[10].cast<double>();
+				l._34=ll[11].cast<double>();
+				l._41=ll[12].cast<double>();
+				l._42=ll[13].cast<double>();
+				l._43=ll[14].cast<double>();
+				l._44=ll[15].cast<double>();
+#endif
 			}
 
 			//a.assign([0 1 2 3 4 4 5 5 6 6 7 ])
 
 		};
 		
-		class_<matrix4>("matrix4")
+		class_<matrix4>(MCOMMA"matrix4")
 			.def_readwrite("_11", &matrix4::_11)
 			.def_readwrite("_12", &matrix4::_12)
 			.def_readwrite("_13", &matrix4::_13)
@@ -416,10 +451,14 @@ BOOST_PYTHON_MODULE(libmainlib)
 		};
 		void	(matrixn::*setAllValue)(m_real d)=&matrixn::setAllValue;
 		matrixnView (matrixn::*range)(int startr, int endr, int startc, int endc)=&matrixn::range;
-		class_<matrixn>("matrixn")
+		class_<matrixn>(MCOMMA"matrixn")
 			.def(init<>())
 			.def(init<int,int>())
+#ifdef USE_BOOST_PYTHON
 			.def("ref", &matrixn_::ref)
+#else
+			.def("ref",  [](matrixn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrixn_::ref(v)); })
+#endif
 			.def("row", &matrixn::row)
 			.def("column", &matrixn::column)
 			.def("rows", &matrixn::rows)
@@ -428,9 +467,17 @@ BOOST_PYTHON_MODULE(libmainlib)
 			.def("setSize", &matrixn::setSize)
 			.def("setAllValue", setAllValue)
 			.def("get", &matrixn::getValue)
+#ifdef USE_BOOST_PYTHON
 			.def("range", range, range_member_overloads2())
+#else
+			.def("range", static_cast<matrixnView (matrixn::*)(int, int, int, int)>(&matrixn::range), "startRow"_a, "endRow"_a,"startColumn"_a=0,"endColumn"_a=INT_MAX)
+#endif
 		;
-		class_<matrixnView, bases<matrixn> >("matrixnView", init<double*, int,int,int>())
+#ifdef USE_BOOST_PYTHON
+		class_<matrixnView, BASES(matrixn) >(MCOMMA"matrixnView", init<double*, int,int,int>())
+#else
+		class_<matrixnView, BASES(matrixn) >(MCOMMA"matrixnView")
+#endif
 			.def(init<const matrixn &>())
 			.def(init<const matrixnView &>())
 			;
@@ -462,7 +509,7 @@ BOOST_PYTHON_MODULE(libmainlib)
 			}
 		};
 		int (hypermatrixn::*page1)() const=&hypermatrixn::page;
-		class_<hypermatrixn>("hypermatrixn")
+		class_<hypermatrixn>(MCOMMA"hypermatrixn")
 			.def(init<>())
 			.def(init<int, int, int>())
 			.def("pages", page1)
@@ -471,58 +518,72 @@ BOOST_PYTHON_MODULE(libmainlib)
 			.def("setSize",&hypermatrixn::setSize)
 			.def("setSameSize",&hypermatrixn::setSameSize)
 			.def("page",&wrap_hyper::page)
+#ifdef USE_BOOST_PYTHON
 			.def("ref", &wrap_hyper::ref)
+#else
+			.def("ref",  [](hypermatrixn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(wrap_hyper::ref(v)); })
+#endif
 		;
 	}
 	// quaterN
 	{
 		void (quaterN::*assign1)(const quaterN& other)=&quaterN::assign;
-		class_<quaterN>("quaterN")
-			.def("value", &quaterN::value, return_value_policy<reference_existing_object>())
-			.def("row", &quaterN::row, return_value_policy<reference_existing_object>())
+		class_<quaterN>(MCOMMA"quaterN")
+			.def("value", &quaterN::value, RETURN_REFERENCE)
+			.def("row", &quaterN::row, RETURN_REFERENCE)
 			.def("row", &quaterN::rows)
 			.def("size", &quaterN::size)
+#ifdef USE_BOOST_PYTHON
 			.def("range", &quaterN::range, range_member_overloads())
+#else
+			.def("range", static_cast<quaterNView (quaterN::*)(int, int, int)>(&quaterN::range), "start"_a, "end"_a,"step"_a=1)
+#endif
 			.def("assign", assign1)
 		;
 
-		class_<quaterNView, bases<quaterN> >("quaterNView");
+		class_<quaterNView, BASES(quaterN) >(MCOMMA"quaterNView");
 	}
 
 	// vector3N
 	{
 		void (vector3N::*assign1)(const vector3N& other)=&vector3N::assign;
-		class_<vector3N>("vector3N")
-			.def("value", &vector3N::value, return_value_policy<reference_existing_object>())
-			.def("row", &vector3N::row, return_value_policy<reference_existing_object>())
+		class_<vector3N>(MCOMMA"vector3N")
+			.def("value", &vector3N::value, RETURN_REFERENCE)
+			.def("row", &vector3N::row, RETURN_REFERENCE)
 			.def("row", &vector3N::rows)
 			.def("size", &vector3N::size)
+#ifdef USE_BOOST_PYTHON
 			.def("range", &vector3N::range, range_member_overloads())
+#else
+			.def("range", static_cast<vector3NView (vector3N::*)(int, int, int)>(&vector3N::range), "start"_a, "end"_a,"step"_a=1)
+#endif
 			.def("assign", assign1)
 		;
 
-		class_<vector3NView, bases<vector3N> >("vector3NView");
+		class_<vector3NView, BASES(vector3N) >(MCOMMA"vector3NView");
 	}
 
 	// intvectorn 
 	{
 		struct intvectorn_
 		{
-			static void assign(intvectorn & l, boost::python::list ll) 
+			static void assign(intvectorn & l, WRAP_PY::list ll) 
 			{
+#ifdef USE_BOOST_PYTHON
 				l.setSize(len(ll));
 
 				for(int i=0; i<len(ll); i++)
 					l[i]=extract<int>(ll[i]);
+#endif
 			}
 			static int & value(intvectorn& v, int i)
 			{
 				return v[i];
 			}
 
-			static TString output(intvectorn & q)
+			static std::string output(intvectorn & q)
 			{
-				return q.output();
+				return q.output().ptr();
 			}
 		};
 		int	(BinaryFile::*unpackInt1)()=&BinaryFile::unpackInt;
@@ -534,7 +595,7 @@ BOOST_PYTHON_MODULE(libmainlib)
 		void	(BinaryFile::*unpack1)(vectorn& )=&BinaryFile::unpack;
 		void	(BinaryFile::*unpack3)(matrixn&)=&BinaryFile::unpack;
 		void	(BinaryFile::*unpack4)(hypermatrixn&)=&BinaryFile::unpack;
-		class_<BinaryFile>("BinaryFile")
+		class_<BinaryFile>(MCOMMA"BinaryFile")
 			.def(init<bool, const char*>())
 			.def(init<>())
 		   .def("openRead", &BinaryFile::openRead)
@@ -555,7 +616,8 @@ BOOST_PYTHON_MODULE(libmainlib)
 		void (intvectorn::*setValue1)( int i, int d )=&intvectorn::setValue;
 		int (intvectorn::*getValue1)( int i ) const=&intvectorn::getValue;
 		intvectornView (intvectorn::*range)(int start, int end, int step)=&intvectorn::range;
-		class_<intvectorn>("intvectorn")
+		class_<intvectorn>(MCOMMA"intvectorn")
+			.def(init<>())
 			.def("assign", &intvectorn_::assign)
 			.def("value", getValue1)
 			.def("get", getValue1)
@@ -563,9 +625,13 @@ BOOST_PYTHON_MODULE(libmainlib)
 			.def("size", &intvectorn::size)
 			.def("setSize", &intvectorn::setSize)
 			.def("resize", &intvectorn::resize)
+#ifdef USE_BOOST_PYTHON
 			.def("range", range, range_member_overloads())
+#else
+			.def("range", static_cast<intvectornView (intvectorn::*)(int, int, int)>(&intvectorn::range), "start"_a, "end"_a,"step"_a=1)
+#endif
 			.def("output", &intvectorn_::output)
-			.def("colon", &intvectorn::colon, return_value_policy<reference_existing_object>())
+			.def("colon", &intvectorn::colon, RETURN_REFERENCE)
 		;
 	}
 
@@ -573,21 +639,28 @@ BOOST_PYTHON_MODULE(libmainlib)
 	{
 		struct vectorn_
 		{
-			static void vectorn_assign(vectorn & l, boost::python::list ll) 
+			static void vectorn_assign(vectorn & l, WRAP_PY::list ll) 
 			{
+#ifdef USE_BOOST_PYTHON
 				l.setSize(len(ll));
 
 				for(int i=0,ni=len(ll); i<ni; i++)
 					l[i]=extract<double>(ll[i]);
+#else
+				l.setSize(len(ll));
+
+				for(int i=0,ni=len(ll); i<ni; i++)
+					l[i]=ll[i].cast<double>();
+#endif
 			}
 			static m_real & vectorn_value(vectorn& v, int i)
 			{
 				return v[i];
 			}
 
-			static TString vectorn_output(vectorn const& q)
+			static std::string vectorn_output(vectorn const& q)
 			{
-				return q.output();
+				return q.output().ptr();
 			}
 			// this function does not copy memory
 			static PyObject* ref(vectorn const& v)
@@ -612,13 +685,17 @@ BOOST_PYTHON_MODULE(libmainlib)
 		void	(vectorn::*setAllValue)(m_real d)=&vectorn::setAllValue;
 		m_real (vectorn::*getValue1)( int i ) const=&vectorn::getValue;
 		vectornView (vectorn::*range)(int start, int end, int step)=&vectorn::range;
-		class_<vectorn>("vectorn")
+		class_<vectorn>(MCOMMA"vectorn")
 			.def(init<>())
 			.def(init<int>())
 			.def("assign", &vectorn_::vectorn_assign)
-			.def("assign", assignv, return_value_policy<reference_existing_object>())
-			.def("assign", assignq, return_value_policy<reference_existing_object>())
+			.def("assign", assignv, RETURN_REFERENCE)
+			.def("assign", assignq, RETURN_REFERENCE)
+#ifdef USE_BOOST_PYTHON
 			.def("ref", &vectorn_::ref) 
+#else
+			.def("ref",  [](vectorn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(vectorn_::ref(v)); })
+#endif
 			//.def("tolist", &vectorn_::tolist) 
 			.def("minimum", minimum1)
 			.def("maximum", maximum1)
@@ -630,7 +707,11 @@ BOOST_PYTHON_MODULE(libmainlib)
 			.def("size", &vectorn::size)
 			.def("setSize", &vectorn::setSize)
 			.def("resize", &vectorn::resize)
+#ifdef USE_BOOST_PYTHON
 			.def("range", range, range_member_overloads())
+#else
+			.def("range", static_cast<vectornView (vectorn::*)(int, int, int)>(&vectorn::range), "start"_a, "end"_a,"step"_a=1)
+#endif
 			.def("length", &vectorn::length)
 			.def("sum", &vectorn::sum)
 			.def("squareSum", &vectorn::squareSum)
@@ -639,16 +720,21 @@ BOOST_PYTHON_MODULE(libmainlib)
 			.def("argMax", &vectorn::argMax)
 			.def("output", &vectorn_::vectorn_output)
 			.def("argNearest", &vectorn::argNearest)
-			.def("colon", &vectorn::colon, return_value_policy<reference_existing_object>())
-			.def("uniform", &vectorn::uniform, return_value_policy<reference_existing_object>())
-			.def("linspace", &vectorn::linspace, return_value_policy<reference_existing_object>())
-			//.def("normalize", &vectorn::normalize, return_value_policy<reference_existing_object>())
-			.def("negate", &vectorn::negate, return_value_policy<reference_existing_object>())
+			.def("colon", &vectorn::colon, RETURN_REFERENCE)
+			.def("uniform", &vectorn::uniform, RETURN_REFERENCE)
+			.def("linspace", &vectorn::linspace, RETURN_REFERENCE)
+			//.def("normalize", &vectorn::normalize, RETURN_REFERENCE)
+			.def("negate", &vectorn::negate, RETURN_REFERENCE)
 			.def(-self) // neg (unary minus)
 			.def(self + self) // add (homogeneous)
 			.def(self * self) // mul
 		;
-		class_<vectornView, bases<vectorn> >("vectornView", init<double*, int,int>())
+#ifdef USE_BOOST_PYTHON
+		class_<vectornView, BASES(vectorn) >(MCOMMA"vectornView", init<double*, int,int>())
+#else
+		class_<vectornView, BASES(vectorn) >(MCOMMA"vectornView")
+			.def(init<double*, int, int>())
+#endif
 			.def(init<const vectorn &>())
 			.def(init<const vectornView &>())
 			;
@@ -658,7 +744,7 @@ BOOST_PYTHON_MODULE(libmainlib)
 	// Mainlib
 	/////////////////////////////////////////////////////////////////
 
-	def("motionPanel", motionPanel, return_value_policy<reference_existing_object>());
+	MDEF("motionPanel", motionPanel, RETURN_REFERENCE);
 
 	// functions in namespace RE
 	{
@@ -687,39 +773,49 @@ BOOST_PYTHON_MODULE(libmainlib)
 		;
 
 		PLDPrimSkin* (*createSkin1)(const Motion& mot)=&RE::createSkin; 		
-		def("createSkin", createSkin1, return_value_policy<reference_existing_object>());
-		def("createFrameSensor", RE::createFrameSensor, return_value_policy<reference_existing_object>());
+		def("createSkin", createSkin1, RETURN_REFERENCE);
+		def("createFrameSensor", RE::createFrameSensor, RETURN_REFERENCE);
 		def("createEntity", SceneNode_Wrapper::createEntity);
 		def("removeEntity", SceneNode_Wrapper::removeEntity);		
 		def("generateUniqueName", RE::generateUniqueName);
 		*/
 	}
 
-	def("transitionCost", MotionUtil::transitionCost);
+	MDEF("transitionCost", MotionUtil::transitionCost);
 	
 
 #ifndef NO_GUI
-	class_<FltkMotionWindow,boost::noncopyable>("FltkMotionWindow", init<int, int, int>())
+#ifdef USE_BOOST_PYTHON
+	class_<FltkMotionWindow NONCOPYABLE>("FltkMotionWindow", init<int, int, int>())
+#else
+	class_<FltkMotionWindow NONCOPYABLE>(MCOMMA"FltkMotionWindow")
+		.def(init<int, int, int>())
+#endif
 		.def("addSkin",&FltkMotionWindow::addSkin)
 		.def("releaseAllSkin",&FltkMotionWindow::releaseAllSkin)
 		.def("getCurrFrame", &FltkMotionWindow::getCurrFrame)
 		.def("getNumFrame", &FltkMotionWindow::getNumFrame)
 		.def("getNumSkin", &FltkMotionWindow::getNumSkin)
-		.def("getSkin", &FltkMotionWindow::getSkin, return_value_policy<reference_existing_object>())
+		.def("getSkin", &FltkMotionWindow::getSkin, RETURN_REFERENCE)
 		.def("changeCurrFrame",&FltkMotionWindow::changeCurrFrame)
 		.def("playUntil",&FltkMotionWindow::playUntil)
 		.def("playFrom",&FltkMotionWindow::playFrom)
 	;
 #endif
 
-	class_<MotionPanel, boost::noncopyable>("MotionPanel", init<int,int,int,int>())
+#ifdef USE_BOOST_PYTHON
+	class_<MotionPanel NONCOPYABLE>(MCOMMA"MotionPanel", init<int,int,int,int>())
+#else
+	class_<MotionPanel NONCOPYABLE>(MCOMMA"MotionPanel")
+		.def( init<int,int,int,int>())
+#endif
 #ifndef NO_GUI
-		.def("motionWin", &MotionPanel::motionWin, return_value_policy<reference_existing_object>())
-		.def("currMotion", &MotionPanel::currMotion, return_value_policy<reference_existing_object>())
+		.def("motionWin", &MotionPanel::motionWin, RETURN_REFERENCE)
+		.def("currMotion", &MotionPanel::currMotion, RETURN_REFERENCE)
 		.def("hasPairMotion", &MotionPanel::hasPairMotion)
-		.def("currPairMotion", &MotionPanel::currPairMotion, return_value_policy<reference_existing_object>())
+		.def("currPairMotion", &MotionPanel::currPairMotion, RETURN_REFERENCE)
 		.def("numMotion", &MotionPanel::numMotion)
-		.def("motion", &MotionPanel::motion, return_value_policy<reference_existing_object>())
+		.def("motion", &MotionPanel::motion, RETURN_REFERENCE)
 #endif
 	;
 
@@ -728,7 +824,7 @@ BOOST_PYTHON_MODULE(libmainlib)
 	int (Motion::*numFrames1) () const=&Motion::numFrames;
 	void (Motion::*setDiscontinuity1)(int, bool) =&Motion::setDiscontinuity;
 	
-	class_<Motion>("Motion")
+	class_<Motion>(MCOMMA"Motion")
 		.def(init<MotionLoader*>())
 		.def(init<const Motion&, int, int>())
 		.def(init<Motion const&>())
@@ -736,7 +832,7 @@ BOOST_PYTHON_MODULE(libmainlib)
 		.def("changeLength", &Motion::changeLength)
 		.def("numFrames", numFrames1)  
 		.def("resize", &Motion::Resize)
-		.def("skeleton", &Motion::skeleton, return_value_policy<reference_existing_object>()) // MotionLoader????
+		.def("skeleton", &Motion::skeleton, RETURN_REFERENCE) // MotionLoader????
 		.def("setSkeleton", &Motion::setSkeleton) // mot.setSkeleton(12) mot.skeleton().
 		.def("setPose", &Motion::setPose)
 		.def("empty", &Motion::empty)
@@ -745,25 +841,29 @@ BOOST_PYTHON_MODULE(libmainlib)
 		.add_property("identifier", &Motion::GetIdentifier, &Motion::SetIdentifier)
 		.def("exportMot", &Motion::exportMOT)
 		.def("samplePose",&Motion::samplePose)
+#ifdef USE_BOOST_PYTHON
 		.def("concat", &Motion::Concat, concat_member_overloads())	// to handle default arguments
+#else
+		.def("concat", &Motion::Concat, "pAdd"_a, "startFrame"_a=0, "endFrame"_a=INT_MAX, "bTypeCheck"_a=true)
+#endif
 		.def("numRotJoint", &Motion::numRotJoints)
 		.def("numTransJoint", &Motion::numTransJoints)
 		.def("totalTime", &Motion::totalTime)
 		.def("frameRate", &Motion::frameRate)
 		.def("isDiscontinuous", &Motion::isDiscontinuous)
 		.def("setDiscontinuity", setDiscontinuity1)
-		.def("pose", &Motion::pose, return_value_policy<reference_existing_object>())
+		.def("pose", &Motion::pose, RETURN_REFERENCE)
 		.def("calcInterFrameDifference",&Motion::CalcInterFrameDifference)
 		.def("reconstructFromInterFrameDifference", &Motion::ReconstructDataByDifference)
 	;
 
 	void (Posture::*blend1)(const Posture&, const Posture&,m_real)=&Posture::Blend;
 
-	class_<Posture>("Pose")
+	class_<Posture>(MCOMMA"Pose")
 		.def("init", &Posture::Init)
 		.def("numRotJoint", &Posture::numRotJoint)
 		.def("numTransJont",&Posture::numTransJoint)
-		.def("clone", &Posture::clone, return_value_policy<reference_existing_object>())
+		.def("clone", &Posture::clone, RETURN_REFERENCE)
 		.def("blend", blend1)
 		.def("align", &Posture::Align)
 		.def("front",&Posture::front)
@@ -812,7 +912,7 @@ BOOST_PYTHON_MODULE(libmainlib)
 		};
 		void (MotionLoader::*setPose1)(const Posture& pose) const=&MotionLoader::setPose;
 		void (MotionLoader::*setChain2)(const Posture& pose, Bone& bone) const=&MotionLoader::setChain;
-		class_<MotionLoader, boost::noncopyable>("MotionLoader")
+		class_<MotionLoader NONCOPYABLE>(MCOMMA"MotionLoader")
 			.def_readwrite("mMotion", &MotionLoader::m_cPostureIP)
 			.def("readJointIndex", &MotionLoader::readJointIndex)
 			.def("numRotJoint", &MotionLoader::numRotJoint)
@@ -821,13 +921,13 @@ BOOST_PYTHON_MODULE(libmainlib)
 			.def("setPose", setPose1)
 			.def("setChain", setChain2)
 			.def("getTreeIndexByName", &MotionLoader::getTreeIndexByName)
-			.def("getBoneByTreeIndex", &MotionLoader::getBoneByTreeIndex, return_value_policy<reference_existing_object>())
+			.def("getBoneByTreeIndex", &MotionLoader::getBoneByTreeIndex, RETURN_REFERENCE)
 			.def("getTreeIndexFromRotJointIndex", &MotionLoader::getTreeIndexByRotJointIndex)
 			.def("getTreeIndexFromTransJointIndex", &MotionLoader::getTreeIndexByTransJointIndex)
 			.def("scale", &MotionLoader::Scale)
 			.def("getLinks", &MotionLoaderWrapper::getLinks)
 		;	
-		class_<VRMLloader, bases<MotionLoader> >("VRMLloader")
+		class_<VRMLloader, BASES(MotionLoader) >(MCOMMA"VRMLloader")
 			;
 	}
 
@@ -846,15 +946,15 @@ BOOST_PYTHON_MODULE(libmainlib)
 
 		vector3 const& (Bone::*getTranslation1)() const=&Bone::getTranslation;
 		quater const& (Bone::*getRotation1)() const=&Bone::getRotation;
-		class_<Bone, boost::noncopyable> ("Bone")
-			.def("getFrame", &Bone::_getFrame, return_value_policy<reference_existing_object>())
+		class_<Bone NONCOPYABLE> (MCOMMA"Bone")
+			.def("getFrame", &Bone::_getFrame, RETURN_REFERENCE)
 			.def("length", &Bone::length)
-			.def("getOffset", &Bone::getOffset, return_value_policy<reference_existing_object>())
-			.def("getTranslation", getTranslation1, return_value_policy<reference_existing_object>())
-			.def("getRotation", getRotation1, return_value_policy<reference_existing_object>())
-			.def("childHead", &Bone_wrapper::childHead, return_value_policy<reference_existing_object>())
-			.def("childTail", &Bone_wrapper::childTail, return_value_policy<reference_existing_object>())
-			.def("sibling", &Bone_wrapper::sibling, return_value_policy<reference_existing_object>())
+			.def("getOffset", &Bone::getOffset, RETURN_REFERENCE)
+			.def("getTranslation", getTranslation1, RETURN_REFERENCE)
+			.def("getRotation", getRotation1, RETURN_REFERENCE)
+			.def("childHead", &Bone_wrapper::childHead, RETURN_REFERENCE)
+			.def("childTail", &Bone_wrapper::childTail, RETURN_REFERENCE)
+			.def("sibling", &Bone_wrapper::sibling, RETURN_REFERENCE)
 			.def("isChildHeadValid", &Bone_wrapper::isChildHeadValid)
 			.def("isChildTailValid", &Bone_wrapper::isChildTailValid)
 			.def("isSiblingValid", &Bone_wrapper::isSiblingValid)			
@@ -863,7 +963,7 @@ BOOST_PYTHON_MODULE(libmainlib)
 
 	// PLDPrimSkin
 	{		
-		class_<PLDPrimSkin, boost::noncopyable>("PLDPrimSkin")
+		class_<PLDPrimSkin NONCOPYABLE>(MCOMMA"PLDPrimSkin")
 			.add_property("visible", &PLDPrimSkin::GetVisible, &PLDPrimSkin::SetVisible)
 			.def("setTranslation",&PLDPrimSkin::SetTranslation)
 			.def("setPose", &PLDPrimSkin::SetPose)
@@ -876,7 +976,7 @@ BOOST_PYTHON_MODULE(libmainlib)
 		void (FrameSensor::*connect1) (Motion* pMotion, PLDPrimSkin* pSkin, bool)=&FrameSensor::connect;
 
 		// create FrameSensor using createFrameSensor() instead of FrameSensor()
-		class_<FrameSensor, boost::noncopyable>("FrameSensor")
+		class_<FrameSensor NONCOPYABLE>(MCOMMA"FrameSensor")
 			.def("connect", connect1)
 			//.def("initAnim", &FrameSensor::InitAnim)
 			.def("triggerSet", &FrameSensor_triggerSet)
@@ -887,9 +987,9 @@ BOOST_PYTHON_MODULE(libmainlib)
 	{
 		Fl_Widget* (FlLayout::*create1)(const char* type, const char* id, const char* title)=&FlLayout::create;
 		Fl_Widget* (FlLayout::*create2)(const char* type, const char* id, const char* title, int startSlot, int endSlot, int height)=&FlLayout::create;
-		class_<FlLayout, boost::noncopyable>("FlLayout")
-			.def("create", create1,return_value_policy<reference_existing_object>())
-			.def("create", create2,return_value_policy<reference_existing_object>())
+		class_<FlLayout NONCOPYABLE>(MCOMMA"FlLayout")
+			.def("create", create1,RETURN_REFERENCE)
+			.def("create", create2,RETURN_REFERENCE)
 			.def("newLine", &FlLayout::newLine)
 			.def("setLineSpace", &FlLayout::setWidgetHeight)
 			.def("setWidgetPos", &FlLayout::setWidgetPos)
@@ -897,9 +997,9 @@ BOOST_PYTHON_MODULE(libmainlib)
 			.def("updateLayout", &FlLayout::updateLayout)
 			.def("redraw", &FlLayout::redraw)
 			.def("minimumHeight", &FlLayout::minimumHeight)
-			.def("widget", &FlLayout::widgetRaw,return_value_policy<reference_existing_object>())
+			.def("widget", &FlLayout::widgetRaw,RETURN_REFERENCE)
 			.def("widgetIndex", &FlLayout::widgetIndex)
-			.def("findWidget", &FlLayout::findWidget,return_value_policy<reference_existing_object>())	
+			.def("findWidget", &FlLayout::findWidget,RETURN_REFERENCE)	
 		;
 	
 		class ButtonWrapper
@@ -943,9 +1043,11 @@ BOOST_PYTHON_MODULE(libmainlib)
 			static MenuWrapper menu(FlLayout::Widget& w)			{ return MenuWrapper(w.menu());}
 		};
 
-		class_<FlLayout::Widget>("Widget")
+		class_<FlLayout::Widget>(MCOMMA"Widget")
+#ifdef USE_BOOST_PYTHON
 			.add_property("mId", &get_Widget_mId)
 			.add_property("mType", &get_Widget_mType)
+#endif
 			//.def("button", &ButtonWrapper::button)
 			//.def("checkButton", &ButtonWrapper::checkButton)
 			//.def("lightButton", &ButtonWrapper::checkButton)
@@ -955,12 +1057,12 @@ BOOST_PYTHON_MODULE(libmainlib)
 		;
 
 		/*
-		class_<ButtonWrapper>("Fl_Button")
+		class_<ButtonWrapper>(MCOMMA"Fl_Button")
 			.def("value", &ButtonWrapper::getButtonValue)
 			.def("value", &ButtonWrapper::setButtonValue)
 		;
 
-		class_<ValuatorWrapper>("Fl_Valuator")
+		class_<ValuatorWrapper>(MCOMMA"Fl_Valuator")
 			.def("value", &ValuatorWrapper::getvalue)
 			.def("value", &ValuatorWrapper::setvalue)
 			.def("range", &ValuatorWrapper::range)
@@ -975,7 +1077,7 @@ BOOST_PYTHON_MODULE(libmainlib)
 	// LineSegment
 	{
 		void (LineSegment::*addCtrlPoint2)(const vector3& v)=&LineSegment::addCtrlPoint;
-		class_<LineSegment, boost::noncopyable>("LineSegment")
+		class_<LineSegment NONCOPYABLE>(MCOMMA"LineSegment")
 			.def("begin", &LineSegment::begin)
 			.def("row", &LineSegment::row)
 			.def("end", &LineSegment::end)
@@ -988,7 +1090,7 @@ BOOST_PYTHON_MODULE(libmainlib)
 		;
 	}
 #endif
-	enum_<handle_message>("handle")
+	enum_<handle_message>(MCOMMA"handle")
 		.value("FRAME_MOVE", M_FRAME_MOVE)
 		.value("TRIGGERED", M_TRIGGERED)
 		.value("ON_DRAW",M_ON_DRAW)
@@ -996,7 +1098,7 @@ BOOST_PYTHON_MODULE(libmainlib)
 		.value("HANDLE", M_HANDLE)
 	;
 
-	enum_<Fl_Event>("event")
+	enum_<Fl_Event>(MCOMMA"event")
 		.value("FL_NO_EVENT",FL_NO_EVENT)
 		.value("FL_PUSH",FL_PUSH)
   		.value("FL_RELEASE",FL_RELEASE		)
@@ -1023,7 +1125,7 @@ BOOST_PYTHON_MODULE(libmainlib)
   		.value("FL_DND_RELEASE",FL_DND_RELEASE	)
 	;
 	{
-		class_<lunaStack, boost::noncopyable>("lunaStack")
+		class_<lunaStack NONCOPYABLE>(MCOMMA"lunaStack")
 		;
 	}
 
@@ -1034,6 +1136,7 @@ BOOST_PYTHON_MODULE(libmainlib)
 				Msg::verify(l.L, "PythonExtendWin::L is NULL");
 				lua_pushstring(l.L, key);
 				lua_gettable(l.L,LUA_GLOBALSINDEX); // stack top becomes _G[key] 
+				if (lua_isnil(l.L, -1)) luaL_error(l.L, "missing global: %s", key);
 			}
 			static void replaceTop(PythonExtendWin& l, const char* key){
 				lua_State *L=l.L;
@@ -1055,9 +1158,10 @@ BOOST_PYTHON_MODULE(libmainlib)
 				Msg::verify(l.L, "PythonExtendWin::L is NULL");
 				getglobal(l, key1);
 				replaceTop(l, key2);
+				if (lua_isnil(l.L, -1)) luaL_error(l.L, "missing global: %s.%s", key1, key2);
 			}
-			// done: reference로 받음. see return_value_policy<reference_existing_object>
-		  static matrixn* popmatrixn(PythonExtendWin& l)
+			// done: reference로 받음. see RETURN_REFERENCE		  
+		 static matrixn* popmatrixn(PythonExtendWin& l)
 		  {
 		    matrixn* result= (matrixn*)Luna<typename LunaTraits<matrixn>::base_t>::check(l.L,-1);
 		    lua_pop(l.L,1);
@@ -1135,7 +1239,12 @@ BOOST_PYTHON_MODULE(libmainlib)
 			static void push_matrixn(PythonExtendWin& l,matrixn & w) { luna_push<matrixn>(l.L, &w); }
 			static void push_hypermatrixn(PythonExtendWin& l,hypermatrixn & w) { luna_push<hypermatrixn>(l.L, &w); }
 		};
-		class_<PythonExtendWin, boost::noncopyable>("PythonExtendWin", init<int, int, int, int, MotionPanel&, FltkRenderer&>())
+#ifdef USE_BOOST_PYTHON
+		class_<PythonExtendWin NONCOPYABLE>("PythonExtendWin",  init<int, int, int, int, MotionPanel&, FltkRenderer&>())
+#else
+		class_<PythonExtendWin NONCOPYABLE>(MCOMMA"PythonExtendWin")
+			.def( init<int, int, int, int, MotionPanel&, FltkRenderer&>())
+#endif
 			.def("loadScript", &PythonExtendWin::__loadScript)
 			.def("loadEmptyScript", &PythonExtendWin::__loadEmptyScript)
 			.def("releaseScript", &ScriptWin::releaseScript)
@@ -1161,15 +1270,15 @@ BOOST_PYTHON_MODULE(libmainlib)
 			.def("push", &PythonExtendWin_wrapper::push4)
 			.def("push", &PythonExtendWin_wrapper::push_hypermatrixn)
 			.def("pushBoolean", &PythonExtendWin_wrapper::push3)
-			.def("call", &PythonExtendWin_wrapper::call, return_value_policy<manage_new_object>())
+			.def("call", &PythonExtendWin_wrapper::call, TAKE_OWNERSHIP)
 			.def("getglobal", &PythonExtendWin_wrapper::getglobal)
 			.def("getglobal", &PythonExtendWin_wrapper::getglobal2)
 			.def("replaceTop", &PythonExtendWin_wrapper::replaceTop)
 			.def("replaceTop", &PythonExtendWin_wrapper::replaceTop2)
 			.def("printStack", &PythonExtendWin_wrapper::printStack)
-  			.def("popmatrixn", &PythonExtendWin_wrapper::popmatrixn, return_value_policy<reference_existing_object>())
-  			.def("pophypermatrixn", &PythonExtendWin_wrapper::pophypermatrixn, return_value_policy<reference_existing_object>())
-  			.def("popvectorn", &PythonExtendWin_wrapper::popvectorn, return_value_policy<reference_existing_object>())
+  			.def("popmatrixn", &PythonExtendWin_wrapper::popmatrixn, RETURN_REFERENCE)
+  			.def("pophypermatrixn", &PythonExtendWin_wrapper::pophypermatrixn, RETURN_REFERENCE)
+  			.def("popvectorn", &PythonExtendWin_wrapper::popvectorn, RETURN_REFERENCE)
 		    .def("popnumber", &PythonExtendWin_wrapper::popnumber)
 		    .def("popint", &PythonExtendWin_wrapper::popint)
 			.def("set", &PythonExtendWin_wrapper::set)

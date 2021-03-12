@@ -75,6 +75,8 @@ public:
 
 	vector3 const& bodyLinVel() { return loc_lin_vel;}
 	vector3 const& bodyAngVel() { return loc_ang_vel;}
+	vector3 const& relLinVel() { return rel_lin_vel;}
+	vector3 const& relAngVel() { return rel_ang_vel;}
 
 	Node* left;				// left child
 	Node* right;			// right sibling

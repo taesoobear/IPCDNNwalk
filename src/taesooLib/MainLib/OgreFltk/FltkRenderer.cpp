@@ -107,6 +107,7 @@ void mouseXY(int& win_x, int& win_y)
 	{
 		//res=XQueryPointer(fl_display, XRootWindow(fl_display, i), &window_returned, &window_returned, &root_x, &root_y, &win_x, &win_y,&mask_return);
 		res=XQueryPointer(fl_display, hWnd, &window_returned, &window_returned, &root_x, &root_y, &win_x, &win_y,&mask_return);
+		win_y+=55; // hardcoded topBar height.. 
 		//printf("%d %d %d %d %d %d\n", i, mMouse->getMouseState().X.abs, mMouse->getMouseState().Y.abs, win_x, win_y, res);
 		if (res) break;
 	}
@@ -1386,6 +1387,8 @@ static int OIS_MouseButtonID_to_int(OIS::MouseButtonID id)
 			lastButton=3;
 			break;
 	}
+	if(OIS_event_alt())
+		return 3;
 	return lastButton;
 }
 
@@ -1462,13 +1465,14 @@ int FltkRenderer::handle_mouse(int ev, int x, int y, int button)
 						msg=(ev==FL_PUSH)?Viewpoint::MBUTTONDOWN:Viewpoint::MBUTTONUP;
 					}
 				}
-				else if(OIS_event_shift() && ev!=FL_DRAG)
-				{
-					msg=(ev==FL_PUSH)?Viewpoint::MBUTTONDOWN:Viewpoint::MBUTTONUP;
-				}
+				//else if(OIS_event_shift() && ev!=FL_DRAG)
+				//{
+				//	msg=(ev==FL_PUSH)?Viewpoint::MBUTTONDOWN:Viewpoint::MBUTTONUP;
+				//}
 				//printf("%d %d %d\n",msg, x, y);
 				//mOgreRenderer->viewport().m_pViewpoint->HandleMouseMessages(  msg, wParam, lParam);
-				mOgreRenderer->viewport().m_pViewpoint->HandleMouseMessages2(  msg, x, y);
+				if(!OIS_event_shift()) // shift는 UI에 써야함.
+					mOgreRenderer->viewport().m_pViewpoint->HandleMouseMessages2(  msg, x, y);
 			}
 
 			return 1;

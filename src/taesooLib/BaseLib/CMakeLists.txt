@@ -81,12 +81,17 @@ set(utility
 LIST(APPEND utility "./utility/checkPoints.cpp")
 
 set(motion
+
+  "./motion/intersectionTest.cpp"
+  "./motion/intersectionTest.h"
 	"./motion/Liegroup.cpp"
 	"./motion/Liegroup.h"
 	"./motion/GMBS/liegroup.cpp"
 	"./motion/GMBS/liegroup.h"
 	"./motion/GMBS/liegroup.inl"
 	"./motion/GMBS/liegroup2.inl"
+"./motion/BoneKinematics.cpp"
+"./motion/BoneKinematics.h"
 "./motion/ASFLoader.cpp"
 "./motion/ASFLoader.h"
 "./motion/VRMLloader.cpp"
@@ -173,8 +178,6 @@ set(motion
 
 
 set(math
-"./motion/intersectionTest.cpp"
-"./motion/intersectionTest.h"
 "./math/matrix3.cpp"
 "./math/matrix3.h"
 "./math/matrix4.cpp"
@@ -286,7 +289,8 @@ target_link_libraries(BaseLib
 			OR ( EXISTS "/usr/lib/x86_64-linux-gnu/libOgreOverlay.so") )
 			target_link_libraries(BaseLib 
 				${IMAGE_LIBS}
-				boost_system)
+				#boost_system
+				)
 		else()
 			target_link_libraries(BaseLib 
 				${IMAGE_LIBS}

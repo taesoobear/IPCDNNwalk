@@ -174,6 +174,86 @@ vector3 DynamicsSimulator_TRL_LCP::getContactForce(int ichar, int ibone) const
 	}
 	return contactForce;
 }
+Liegroup::dse3 DynamicsSimulator_TRL_LCP::getCOMbasedContactForce(int ichar, int ibone) const
+{
+	Liegroup::dse3 out(0);
+
+	vectorn const& f=_f;
+
+    int n = _contactForceSolver->constrainedLinkPairs.size();
+	if(n==0) return out;
+
+	intvectorn convLPindex(collisionDetector->getCollisionPairs().size());
+	convLPindex.setAllValue(-1);
+	int nn=0;
+	assert(collisions->seq.size()==convLPindex.size() );
+	for(int i=0; i<convLPindex.size(); i++)
+	{
+		CollisionPointSequence& points = (*collisions)[i].points;
+		int n_point = points.size();
+		if(n_point>0)
+			convLPindex(nn++)=i;
+	}
+
+	assert(n==nn);
+	vectorn& solution=_contactForceSolver->solution;
+	int globalNumConstraintVectors=_contactForceSolver->globalNumConstraintVectors;
+
+	vector3 contactForce(0,0,0);
+	vector3 contactTorque(0,0,0);
+
+	VRMLloader* skel=_characters[ichar]->skeleton;
+	VRMLTransform& bone=skel->VRMLbone(ibone);
+	vector3 com=getWorldState(ichar).global(ibone)*bone.localCOM();
+
+    for(int i=0; i < n; ++i){
+		TRL::ContactForceSolver::LinkPair* linkPair = _contactForceSolver->constrainedLinkPairs[i];
+		const OpenHRP::LinkPair& linkPair2 = collisionDetector->getCollisionPairs()[convLPindex[i]];
+		CollisionPointSequence& points = (*collisions)[convLPindex[i]].points;
+
+		for(int j=0; j < 2; ++j){
+			if(linkPair->link[j]->jointType != Link::FIXED_JOINT){
+				int ipair=j;
+				TRL::ContactForceSolver::ConstraintPointArray& constraintPoints = linkPair->constraintPoints;
+				int numConstraintPoints = constraintPoints.size();
+
+				int n_point = points.size();
+				Msg::verify(n_point==numConstraintPoints, "???");
+
+				for(int i=0; i < numConstraintPoints; ++i){
+					TRL::ContactForceSolver::ConstraintPoint& constraint = constraintPoints[i];
+					int globalIndex = constraint.globalIndex;
+
+					assert(linkPair->bodyIndex[0]==linkPair2.charIndex[0]);
+					assert(linkPair->bodyIndex[1]==linkPair2.charIndex[1]);
+
+					vector3 ff(solution(globalIndex) * constraint.normalTowardInside(ipair));
+
+					for(int j=0; j < 2; ++j){
+						ff += solution(globalNumConstraintVectors + constraint.globalFrictionIndex + j) * constraint.frictionVector(j,ipair);
+					}
+
+					const vector3& pos=points[i].position;  // global
+					if(linkPair->bodyIndex[0]==ichar && linkPair2.link[0]->treeIndex()==ibone)
+					{
+						contactForce+=ff;
+						vector3 r=pos-com;
+						contactTorque+=r.cross(ff);
+					}
+					if(linkPair->bodyIndex[1]==ichar && linkPair2.link[1]->treeIndex()==ibone)
+					{
+						contactForce+=ff;
+						vector3 r=pos-com;
+						contactTorque+=r.cross(ff);
+					}
+				}
+			}
+		}
+	}
+	out.M()=contactTorque;
+	out.F()=contactForce;
+	return out;
+}
 
 void DynamicsSimulator_TRL_LCP::drawLastContactForces(vector3 const& draw_offset)
 {
@@ -357,8 +437,8 @@ void DynamicsSimulator_TRL_LCP::registerCollisionCheckPair
 						linkPair.param=param;
 						//link2->name.c_str();
 
+						printf("%s:%s-%s:%s added\n", linkPair.charName1.c_str(), linkPair.linkName1.c_str(), linkPair.charName2.c_str(), linkPair.linkName2.c_str());
 						collisionDetector->addCollisionPair(linkPair, false, false);
-						printf("added\n");
 
 					}
 				}

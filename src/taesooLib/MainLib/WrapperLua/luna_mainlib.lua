@@ -4925,7 +4925,6 @@ memberFunctions={[[
 				void transformMeshLocal(matrix4 const& m);
 				void scaleMesh( vector3 const& scale);
 				void scaleMass( m_real scalef); 
-				void initBones();
 				void copyFrom(VRMLTransform const& bone);	
 				bool hasShape() const 
 				OBJloader::Geometry& getMesh() const 

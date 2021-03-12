@@ -38,6 +38,14 @@ static void handleLUAerror(lua_State* L)
 class GlobalUI;
 GlobalUI* getGlobalUI();
 
+using namespace std;
+inline void getglobal(lunaStack& l, const char* func)
+{
+	l.getglobal(func);
+	if(lua_isnil(l.L,-1)){
+		cout << func <<" is nil!!!\n";
+	}
+}
 static void fastPrint(const char* out)
 {
 	static TString prevOut(" ");
@@ -181,12 +189,16 @@ void ScriptWin::checkErrorFunc(lunaStack&l)
 }
 void ScriptWin::luna_call(lunaStack& l,int numIn, int numOut)
 {
+#ifdef USE_LUNA_PCALL
 	checkErrorFunc(l);
 	if(lua_pcall(l.L,numIn,numOut,errorFunc))
 	{
 		printf("ScriptWin::luna_call\n");
 		handleLUAerror(l.L);
 	}
+#else
+	lua_call(l.L,numIn,numOut);
+#endif
 	l.setCheckFromTop();
 }
 
@@ -205,7 +217,7 @@ void ScriptWin::releaseScript()
 
 
 		lunaStack l(L);
-		l.getglobal("dtor");
+		getglobal(l,"dtor");
 		luna_call(l,0,0);
 
 		lua_close(L);
@@ -274,7 +286,7 @@ void ScriptWin::onCallback(FlLayout::Widget const& w, Fl_Widget * pWidget, int u
 	else
 	{
 		lunaStack l(L);
-		l.getglobal("onCallback");
+		getglobal(l,"onCallback");
 		l.push<FlLayout::Widget>(&w);
 		l<<(double)userData;
 		luna_call(l,2,0);
@@ -288,7 +300,7 @@ void ScriptWin::OnFrameChanged(FltkMotionWindow*, int currFrame)
 	{
 		lunaStack l(L);
 
-		l.getglobal("onFrameChanged");
+		getglobal(l,"onFrameChanged");
 		l<<(double)currFrame;
 		luna_call(l,1,0);
 	}
@@ -306,7 +318,7 @@ int ScriptWin::FrameMove(float fElapsedTime)
 #endif
 	if (L){
 		lunaStack l(L);
-		l.getglobal("frameMove");
+		getglobal(l,"frameMove");
 		l<<(double)fElapsedTime;
 		luna_call(l,1,0);
 	}
@@ -363,20 +375,21 @@ static void _loadScript(lua_State* L, FlLayout* win, const char* script)
 void ScriptWin::initLuaEnvironment()
 {
 	L=_initLuaEnvironment(this);
+	_loadScript(L, this, "config.lua");
+#ifdef USE_LUNA_PCALL
+	lunaStack l(this->L);
+	checkErrorFunc(l);
+#endif
 }
 void ScriptWin::loadScript(const char* script, const char* scriptstring)
 {
 	initLuaEnvironment();
 	_loadScript(L, this, script);
 	lunaStack l(L);
-#ifdef USE_LUNA_PCALL
-	if(!script) _loadScript(L, this, "config.lua");
-	checkErrorFunc(l);
-#endif
 	if(scriptstring)
 		luaL_dostring(L, scriptstring);
 	if(script){
-		l.getglobal("ctor");
+		getglobal(l,"ctor");
 		luna_call(l,0,0);
 	}
 }
@@ -502,7 +515,7 @@ int ScriptWin::handleRendererMouseEvent(int ev, int x, int y, int button)
 	}
 
 	lunaStack l(L);
-	l.getglobal("handleRendererEvent");
+	getglobal(l,"handleRendererEvent");
 	if(lua_isnil(l.L, -1))
 	{
 		return 0;
@@ -550,7 +563,7 @@ int	ScriptWin::handleRendererEvent(int ev)
 			int key;
 			lunaStack l(L);
 			key=Fl::event_key();
-			l.getglobal("handleRendererEvent");
+			getglobal(l,"handleRendererEvent");
 			if(lua_isnil(l.L, -1))
 			{
 				return 0;

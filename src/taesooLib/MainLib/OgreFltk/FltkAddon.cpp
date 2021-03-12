@@ -90,10 +90,20 @@ static TString _FlChooseFile_python(const char* message, const char* path, const
 			cmd.format("python filechooser_mac.py '%s' '%s' '%s' OPEN", message, Mask, path);
 	}
 #else
-	if(bCreate)
-		cmd.format("python filechooser.py '%s' '%s' '%s' SAVE", message, Mask, path);
-	else
-		cmd.format("python filechooser.py '%s' '%s' '%s' OPEN", message, Mask, path);
+	if(IsFileExist("/usr/bin/python"))
+	{
+		if(bCreate)
+			cmd.format("python filechooser.py '%s' '%s' '%s' SAVE", message, Mask, path);
+		else
+			cmd.format("python filechooser.py '%s' '%s' '%s' OPEN", message, Mask, path);
+	}
+	else 
+	{
+		if(bCreate)
+			cmd.format("python3 filechooser_wx.py '%s' '%s' '%s' SAVE", message, Mask, path);
+		else
+			cmd.format("python3 filechooser_wx.py '%s' '%s' '%s' OPEN", message, Mask, path);
+	}
 #endif
 	printf("%s\n", cmd.ptr());
 	FILE *lsofFile_p = popen(cmd.ptr(), "r");
