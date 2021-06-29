@@ -34,6 +34,7 @@ require("gym_walk/collisionAvoid")
 
 function ctor(no_replan)
 
+	--dbg.startTrace2() -- uncomment this to see where the program crashes. (see work/trace.txt)
 	local osm=RE.ogreSceneManager()
 	if osm:hasSceneNode("LightNode") then
 		local lightnode=osm:getSceneNode("LightNode")
@@ -772,7 +773,11 @@ function PendPlanner:drawFrame(t)
 		g_timer2=util.PerfTimer2()
 		g_timer2:start()
 
-		fc.solveIK(mSolverInfo, g_prevPose, dpose, pose, comdof, footDOF, effWeights ,IKconfig)
+		if true then
+			fc.solveIK(mSolverInfo, g_prevPose, dpose, pose, comdof, footDOF, effWeights ,IKconfig)
+		else
+			g_prevpose:assign(pose)
+		end
 		print(g_timer2:stop()/1000.0, "ik.")
 		renderPose=g_prevPose:copy()
 		fc.solveIK_postprocess(mSolverInfo, renderPose, comdof, footDOF,effWeights,

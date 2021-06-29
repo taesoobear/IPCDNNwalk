@@ -415,6 +415,7 @@ public:
 		PoseConstraintInfo* pInfo=new PoseConstraintInfo((VRMLloader const&)mSkeleton,this, x.range(startC, endC), startC );
 		mConstraints[i].pInfo=pInfo;
 		mConstraints[i].weight=weight; // by default.
+		return true;
 	}
 	virtual bool _setEffectorWeight(int i, double w=1.0) { 
 		mEffectorWeights(i)=w;
