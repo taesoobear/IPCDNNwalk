@@ -376,6 +376,39 @@ void IK_sdls::LoaderToTree::calcCOMjacobianTranspose(const VRMLloader& loader, m
 	}
 	JT*=1.0/totalmass;
 }
+void IK_sdls::LoaderToTree::updateCOM_grad_S_JT(vectorn & grad, const VRMLloader& loader, vector3 const& deltaS, double wx, double wy, double wz)
+{
+	int nJoint = mTree.GetNumJoint();
+	double totalmass=0.0;
+	for(int ibone=1; ibone<loader.numBone(); ibone++)
+	{
+		VRMLTransform* i=&loader.VRMLbone(ibone);
+		totalmass+=i->mass();
+	}
+
+	Msg::verify(grad.size()==nJoint,"grad size error");
+
+	/*
+	matrixn temp;
+	double* g=&grad[0];
+	for(int ibone=1; ibone<loader.numBone(); ibone++)
+	{
+		VRMLTransform* b=&loader.VRMLbone(ibone);
+		calcJacobianTransposeAt(temp, ibone, b->localCOM());
+		temp*=(b->mass()/totalmass);
+		for(int i=0; i<nJoint; i++)
+			g[i]+= (b->mass()/totalmass)*(deltaS%(temp.row(i).toVector3(0)));
+	}
+	*/
+	matrixn temp;
+	calcCOMjacobianTranspose(loader, temp);
+	for(int i=0; i<nJoint; i++)
+	{
+		auto J=temp.row(i).toVector3(0);
+		grad(i)+=wx* deltaS.x*J.x + wy*deltaS.y*J.y+wz*deltaS.z*J.z;
+	}
+
+}
 void IK_sdls::LoaderToTree::poseToQ(vectorn const& v, vectorn& out) 
 {
 	int rdof=v.size(); out.setSize(rdof); 
@@ -935,6 +968,38 @@ void IK_sdls::LoaderToTree::calcJacobianTransposeAt(matrixn& J, int ibone, vecto
 	n->calcJacobian(Jend, 0, target);
 
 }
+void IK_sdls::LoaderToTree::updateGrad_S_JT(double* g,vector3 const& deltaS, int ibone, vector3 const& localpos)
+{
+	int nJoint = mTree.GetNumJoint();
+	// compute jacobian
+	IK_sdls::Node* m;
+
+	m = getLastNode(ibone);
+	vector3 target=m->globalFrame()*localpos;
+	while ( m ) {
+		int j = m->GetJointNum();
+		if ( !m->IsFrozen() ) {
+			m->_updateGrad_S_JT(g, deltaS, target);
+		}
+		m = m->realparent;
+	}
+}
+void IK_sdls::LoaderToTree::updateGrad_S_JT_residual(double* g,vector3 const& deltaS_lpos, int ibone)
+{
+	int nJoint = mTree.GetNumJoint();
+	// compute jacobian
+	IK_sdls::Node* m;
+
+	m = getLastNode(ibone);
+	while ( m ) {
+		int j = m->GetJointNum();
+		if ( !m->IsFrozen() ) {
+			m->_updateGrad_S_JT_residual(g, deltaS_lpos);
+		}
+		m = m->realparent;
+	}
+}
+
 void IK_sdls::LoaderToTree::getJacobianSparsity(boolN& hasValue, int ibone)
 {
 	int nJoint = mTree.GetNumJoint();

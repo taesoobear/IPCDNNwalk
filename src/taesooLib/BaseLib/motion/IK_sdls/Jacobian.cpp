@@ -98,6 +98,8 @@ void Jacobian::ComputeJacobian()
 	vector3 temp;
 	Effector* n;
 	bool useJend=(Jactive==&Jend);
+	if (tree->target==NULL)
+		assert(tree->effectors.size()==0);
 	for(int ii=0; ii<tree->effectors.size(); ii++)
 	{
 		n = tree->effectors[ii];

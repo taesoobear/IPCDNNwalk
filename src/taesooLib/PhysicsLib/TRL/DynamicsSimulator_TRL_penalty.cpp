@@ -203,15 +203,9 @@ void DynamicsSimulator_TRL_penalty::initSimulation()
 		cout << "DynamicsSimulator_TRL_penalty::initSimulation()" << endl;
 	}
 
-	int n = _characters.size();
-	for(int i=0; i<n; i++){
-		TRL::ForwardDynamicsABM* fd=world.forwardDynamics(i);
-		if(!fd) Msg::error("DynamicsSimulator_TRL_penalty::init not called yet!");
-		fd->calcABMPhase1();
-		fd->calcABMPhase2Part1();
-	}
-	_updateCharacterPose();
+	world.initialize();
 
+	_updateCharacterPose();
 	collisionDetector->queryContactDeterminationForDefinedPairs(_characters, *collisions);
 	_contactForces.clear();
 	_calcContactForce(*collisions);
@@ -236,7 +230,7 @@ void DynamicsSimulator_TRL_penalty::getWorldAngVel(int ichara, VRMLTransform* b,
 { 
   	TRL::BodyPtr cinfo=((DynamicsSimulator_TRL_penalty*)this)->world.body(ichara);
 	TRL::Link* link=getTRLlink(cinfo,b->HRPjointIndex(b->numHRPjoints()-1));
-  angvel=link->w;
+	angvel=link->w;
 }
 
 void DynamicsSimulator_TRL_penalty::getWorldAcceleration(int ichara,VRMLTransform* b
@@ -262,6 +256,12 @@ void DynamicsSimulator_TRL_penalty::addForceToBone
 
 	link->fext+=gf;
 	link->tauext+=gp.cross(gf);
+}
+void DynamicsSimulator_TRL_penalty::addWorldTorqueToBone(int ichara, VRMLTransform* b, ::vector3 const& world_torque)
+{
+	TRL::BodyPtr cinfo=world.body(ichara);
+	TRL::Link* link=getTRLlink(cinfo,b->HRPjointIndex(b->numHRPjoints()-1));
+	link->tauext+=world_torque;
 }
 
 static void _addForceToLink(TRL::WorldBase& world, int ichara, VRMLTransform* b, ::vector3 const& f, ::vector3 const& p)
@@ -795,7 +795,6 @@ void DynamicsSimulator_TRL_penalty::setLinkData(int ichara, LinkDataType t, vect
 					p=in.toVector3(sTDOF);  // velocity
 					v=in.toVector3(sRDOF+1); // omega
 
-					::vector3 bv,bw;
 					quater q=toBase(j->attitude());
 					p.rotate(q);//body to world
 					v.rotate(q);//body to world
@@ -891,11 +890,13 @@ void DynamicsSimulator_TRL_penalty::setLinkData(int ichara, LinkDataType t, vect
 							getTRLlink(cinfo,jj+sj)->u=in[sDOF+jj];
 					}
 				}
+				/*
 				// calc link->vo, w, R, p, sw, sv, v, cv, cw, wc, ...
 				TRL::ForwardDynamicsABM* fd=world.forwardDynamics(ichara);
 				fd->calcABMPhase1(); // position, velocity fk + gravity
 				fd->calcAccelFK();	
 				_updateCharacterPose();
+				*/
 			}
 			break;
 	}

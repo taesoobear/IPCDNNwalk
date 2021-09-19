@@ -130,6 +130,7 @@ namespace TRL
 			double mu;
 			::vector3 relVelocityOn0;
 			int globalFrictionIndex;
+			int numFrictionVectors;
 #ifdef TWO_VECTORS
 			::vector3 _frictionVector0[2];
 #else

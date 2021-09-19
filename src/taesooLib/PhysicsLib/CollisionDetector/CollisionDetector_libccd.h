@@ -40,12 +40,23 @@ namespace OpenHRP {
 			std::vector<OBJ_T> co;
 			std::vector<Info> co_info;
 
+			inline bool isLargeBox(int isubMesh)
+			{
+				// large enough to contain corner spheres (see CollisionDetector_libccd_LBS.cpp).
+				auto& info=co_info[isubMesh];
+				auto& esize=info.elementSize;
+				return info.elementType==OBJloader::Element::BOX && esize.x>0.03 && esize.y>0.03 && esize.z>0.03;
+			}
+			// for broadphase
 			intersectionTest::AABB lb;	// local bounds
 			intersectionTest::AABB gb;	// global bounds
+			vector3 center;
+			double radius;
 		};
 
 		// num_character by num_bone matrix
 		std::vector<std::vector<ColObject*> > m_col_objects;
+
 
 		CollisionDetector_libccd();
 

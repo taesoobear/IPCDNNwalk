@@ -85,6 +85,10 @@ public:
 	transf _local; // relative potision and orientation
 	transf _global; // global position and orientation
 	Purpose purpose;		// joint / effector / both
+
+	// calc self-contribution only. (inherited functions, not this one, will be used.)
+	virtual void _updateGrad_S_JT(double* g, vector3 const& deltaS, vector3 const& target) {}
+	virtual void _updateGrad_S_JT_residual(double* g, vector3 const& deltaS_lpos){}
 protected:
 	// GetJointVel, SetJointVel (this is J*dq)
 	vector3 rel_lin_vel;
@@ -99,6 +103,7 @@ protected:
 	friend class Effector;
 	// calc self-contribution only. (inherited functions, not this one, will be used.)
 	virtual void _calcJacobian(MatrixRmn& J, int i_row, vector3 const& endPos) {J.SetTriple(i_row,GetJointNum(), vector3(0,0,0)); }
+
 	// calc self-contribution only. (inherited functions, not this one, will be used.)
 	virtual void _getJacobianSparsity(boolN& J);
 	// calc self-contribution only. (inherited functions, not this one, will be used.)
@@ -128,6 +133,8 @@ public:
 	virtual void updateLocal();
 	virtual void ComputeW();
 	virtual void _calcJacobian(MatrixRmn& J, int i_row, vector3 const& endPos);
+	virtual void _updateGrad_S_JT(double* g, vector3 const& deltaS, vector3 const& target);
+	virtual void _updateGrad_S_JT_residual(double* g, vector3 const& deltaS_lpos);
 	virtual void _calcRotJacobian(MatrixRmn& J, int i_row);
 	const vector3& GetW() const { return w; }
 	const vector3& GetV() const { return v; }
@@ -151,6 +158,8 @@ public:
 	virtual void SetDTheta(double qd);
 	virtual double GetDTheta();
 	virtual void _calcJacobian(MatrixRmn& J, int i_row, vector3 const& target);
+	virtual void _updateGrad_S_JT(double* g, vector3 const& deltaS, vector3 const& target);
+	virtual void _updateGrad_S_JT_residual(double* g, vector3 const& deltaS_lpos){}
 	virtual void _calcRotJacobian(MatrixRmn& J, int i_row);
 };
 
@@ -183,6 +192,8 @@ class FreeJoint :public Node
 public:
 	FreeJoint();
 	virtual void _calcJacobian(MatrixRmn& J, int i_row, vector3 const& endPos);
+	virtual void _updateGrad_S_JT(double* g, vector3 const& deltaS, vector3 const& target);
+	virtual void _updateGrad_S_JT_residual(double* g, vector3 const& deltaS_lpos);
 	virtual void _getJacobianSparsity(boolN& J);
 	virtual void _calcRotJacobian(MatrixRmn& J, int i_row);
 	void  setTheta(transf const& q)

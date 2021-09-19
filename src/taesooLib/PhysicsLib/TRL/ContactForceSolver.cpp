@@ -52,11 +52,15 @@ static const double VEL_THRESH_OF_DYNAMIC_FRICTION = 1.0e-4;
 
 //static const bool ENABLE_STATIC_FRICTION = true;
 //static const bool ONLY_STATIC_FRICTION_FORMULATION = (true );
+static const bool STATIC_FRICTION_BY_TWO_CONSTRAINTS = true;
 static const bool IGNORE_CURRENT_VELOCITY_IN_STATIC_FRICTION = false;
+
+static const bool ENABLE_TRUE_FRICTION_CONE =
+	(true && STATIC_FRICTION_BY_TWO_CONSTRAINTS);
 static const bool SKIP_REDUNDANT_ACCEL_CALC = true;
 static const bool USE_PREVIOUS_LCP_SOLUTION = false;
 
-static const bool ALLOW_SUBTLE_PENETRATION_FOR_STABILITY = false;
+static const bool ALLOW_SUBTLE_PENETRATION_FOR_STABILITY = true;
 static const double ALLOWED_PENETRATION_DEPTH = 0.0001;
 static const double NEGATIVE_VELOCITY_RATIO_FOR_ALLOWING_PENETRATION = 10.0; 
 
@@ -171,6 +175,7 @@ void ContactForceSolver::initialize(void)
 
 			for(int k=0; k < connection.numConstraintAxes; ++k){
 				ConstraintPoint& constraint = linkPair.constraintPoints[k];
+				constraint.numFrictionVectors = 0;
 				constraint.globalFrictionIndex = numeric_limits<int>::max();
 			}
 
@@ -400,8 +405,9 @@ void ContactForceSolver::setContactConstraintPoints(LinkPair& linkPair, Collisio
 			static const double vsqrthresh = VEL_THRESH_OF_DYNAMIC_FRICTION * VEL_THRESH_OF_DYNAMIC_FRICTION;
 			bool isSlipping = (vt_square > vsqrthresh);
 			contact.mu = isSlipping ? linkPair.muDynamic : linkPair.muStatic;
+			contact.numFrictionVectors = (STATIC_FRICTION_BY_TWO_CONSTRAINTS ? 2 : 4);
 			setFrictionVectors(contact);
-			globalNumFrictionVectors += 2;
+			globalNumFrictionVectors += contact.numFrictionVectors;
 		}
 	}
 }
@@ -481,20 +487,6 @@ bool ContactForceSolver::setConnectionConstraintPoints(LinkPair& linkPair)
 
 
 
-void MCPsolver::initWorkspace()
-{
-	//mod
-	if(globalNumContactNormalVectors!=0){
-		_mem_contactIndexToMu.setSize(globalNumContactNormalVectors);
-		_mem_mcpHi.setSize(globalNumContactNormalVectors);
-		_CI2Mu=&_mem_contactIndexToMu[0];
-		_mcpHi=&_mem_mcpHi[0];
-	}
-	//_mem_contactIndexToMu.setSize(globalNumContactNormalVectors);
-	//_mem_mcpHi.setSize(globalNumContactNormalVectors);
-	//_CI2Mu=&_mem_contactIndexToMu[0];
-	//_mcpHi=&_mem_mcpHi[0];
-}
 void ContactForceSolver::initMatrices()
 {
 	const int n = globalNumConstraintVectors;
@@ -602,14 +594,11 @@ void ContactForceSolver::setDefaultAccelerationVector()
 			
 			//mod
 			if(at0.size()>0&&constraint.globalFrictionIndex!=numeric_limits<int>::max()){
-					for(int k=0; k<2; k++){
+					for(int k=0; k<constraint.numFrictionVectors; k++){
 						at0[constraint.globalFrictionIndex+k]=dot(constraint.frictionVector(k,1), relDefaultAccel);
 					}
 			}
 
-			//for(int k=0; k < 2; ++k){
-			//	at0[constraint.globalFrictionIndex + k] = dot(constraint.frictionVector(k,1), relDefaultAccel);
-			//}
 		}
 	}
 }
@@ -659,33 +648,13 @@ void ContactForceSolver::setAccelerationMatrix()
 			}
 			extractRelAccelsOfConstraintPoints(Knn, Knt, constraintIndex, constraintIndex);
 
-			// apply test friction force
-			/*
-			for(int l=0; l < 2; ++l){
-				for(int k=0; k < 2; ++k){
-					BodyData& bodyData = *linkPair.bodyData[k];
-					if(!bodyData.isStatic){
-						const vector3& f = constraint.frictionVector(l,k);
-
-						{
-							vector3 tau(cross(constraint.point, f));
-							calcABMForceElementsWithTestForce(bodyData, linkPair.link[k], f, tau);
-							if(!linkPair.isSameBodyPair || (k > 0)){
-								calcAccelsABM(bodyData, constraintIndex);
-							}
-						}
-					}
-				}
-				extractRelAccelsOfConstraintPoints(Ktn, Ktt, constraint.globalFrictionIndex + l, constraintIndex);
-			}
-			*/
 
 			// apply test friction force(modify)
 			if(m>0)
 			{
 				matrixnView Ktn=Mlcp.range(0,n,n,n+m);
 				matrixnView Ktt=Mlcp.range(n,n+m,n,n+m);
-				for(int l=0; l < 2; ++l){
+				for(int l=0; l < constraint.numFrictionVectors; ++l){
 					for(int k=0; k < 2; ++k){
 						BodyData& bodyData = *linkPair.bodyData[k];
 						if(!bodyData.isStatic){
@@ -893,7 +862,7 @@ void ContactForceSolver::extractRelAccelsFromLinkPairCase1
 		Kxn(constraintIndex, testForceIndex) =
 			dot(constraint.normalTowardInside(1), relAccel) - an0(constraintIndex);
 
-		for(int j=0; j < 2; ++j){	
+		for(int j=0; j < constraint.numFrictionVectors; ++j){
 			const int index = constraint.globalFrictionIndex + j;
 
 			//mod
@@ -931,7 +900,7 @@ void ContactForceSolver::extractRelAccelsFromLinkPairCase2
 		Kxn(constraintIndex, testForceIndex) =
 			dot(constraint.normalTowardInside(iDefault), relAccel) - an0(constraintIndex);
 
-		for(int j=0; j < 2; ++j){
+		for(int j=0; j < constraint.numFrictionVectors; ++j){
 			const int index = constraint.globalFrictionIndex + j;
 
 			//mod	
@@ -960,7 +929,7 @@ void ContactForceSolver::extractRelAccelsFromLinkPairCase3
 
 		Kxn(constraintIndex, testForceIndex) = 0.0;
 
-		for(int j=0; j < 2; ++j){
+		for(int j=0; j < constraint.numFrictionVectors; ++j){
 			Kxt(constraint.globalFrictionIndex + j, testForceIndex) = 0.0;
 		}
 	}
@@ -1042,7 +1011,7 @@ void ContactForceSolver::setConstantVectorAndMuBlock()
 				contactIndexToMu(globalIndex) = constraint.mu;
 
 				int globalFrictionIndex = constraint.globalFrictionIndex;
-				for(int k=0; k < 2; ++k){
+				for(int k=0; k < constraint.numFrictionVectors; ++k){
 
 					// constraints for tangent acceleration
 					double tangentProjectionOfRelVelocity = dot(constraint.frictionVector(k,1), constraint.relVelocityOn0);
@@ -1092,7 +1061,7 @@ void ContactForceSolver::addConstraintForceToLink(LinkPair* linkPair, int ipair)
 
 		vector3 f(solution(globalIndex) * constraint.normalTowardInside(ipair));
 
-		for(int j=0; j < 2; ++j){
+		for(int j=0; j < constraint.numFrictionVectors; ++j){
 			//mod
 			if(constraint.globalFrictionIndex!=numeric_limits<int>::max()){
 				f += solution(globalNumConstraintVectors + constraint.globalFrictionIndex + j) * constraint.frictionVector(j,ipair);

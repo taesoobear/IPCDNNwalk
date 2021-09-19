@@ -778,11 +778,9 @@ void quater::difference(quater const& q1, quater const& q22)
 	quater q2(q22);
 	q2.align(q1);
 
-	// w q1 = q2 -->
-	//!< angular velocity w=q2inv(q1);
-	
-	// Note that this is different from kim myung soo's convention (inv(q1)q2) 
-	// I am sure that kim myung soo's convention is wrong, since angular velocity is already defined in physics as q2 inv(q1)
+	// delta* q1 = q2 -->
+	//-> delta =q2* inv(q1);
+	// in other words, delta is as parent-local (as opposed to self-local)
 
 	mult(q2, q1.inverse());    
 	normalize();

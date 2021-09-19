@@ -11,6 +11,8 @@
 //#define DEBUG_DRAW
 #ifdef DEBUG_DRAW
 #include "../MainLib/OgreFltk/objectList.h"
+static ObjectList* g_objectList=NULL;
+
 #endif
 
 //#define USE_BROADPHASE // does not work perfectly. turned off for now.
@@ -45,7 +47,7 @@ void copy(quater const& vv, ccd_quat_t & v)
 
 void ccdSupportConvex(const void *_obj, const ccd_vec3_t *_dir, ccd_vec3_t *v);
 
-inline int checkCollision(ccd_real_t& depth, 
+int checkCollision(ccd_real_t& depth, 
 				ccd_vec3_t &dir, 
 				ccd_vec3_t &pos,
 			CollisionDetector_libccd::ColObject* co1, int subMesh1,	
@@ -313,6 +315,13 @@ void CollisionDetector_libccd::setWorldTransformations(int charIndex, BoneForwar
 		if(col_objects[b])
 		{
 			ColObject& co=*col_objects[b];
+
+#ifdef DEBUG_DRAW
+		if(!g_objectList) g_objectList=new ObjectList();
+		TString name;
+		name.format("axes %d %d", i, b);
+		g_objectList->drawAxes(fk.global(b),name.ptr(), 1, 100);
+#endif
 #ifdef USE_BROADPHASE
 			gtransf.setRotation(fk.global(b).rotation);
 			gtransf.setTranslation(fk.global(b).translation);
@@ -405,6 +414,7 @@ bool CollisionDetector_libccd::testIntersectionsForDefinedPairs( CollisionSequen
 		if(colobject[0]==NULL) continue;
 		if(colobject[1]==NULL) continue;
 
+
 #ifdef COL_DEBUG
 		TString output;
 		output.format("broad phase %s %s %s %s\n", colobject[0]->gb.getMaximum().output().ptr(),
@@ -439,18 +449,21 @@ bool CollisionDetector_libccd::testIntersectionsForDefinedPairs( CollisionSequen
 				ccd_vec3_t dir, pos;
 				int intersect=-1;
 				double radialMargin = lp.margin+collisionMargin;
-				CollisionPoint point;
 
 				intersect=checkCollision(depth, dir, pos, colobject[0], subMesh1, colobject[1], subMesh2);
 				//printf("co %d %d\n", subMesh1, subMesh2);
 				// narrow phase.
-				point.position=ToBase(pos); // center pos.
-				point.normal=ToBase(dir);
-				point.idepth=depth;
 				if (intersect ==0)
 				{
+					CollisionPoint point;
+					point.position=ToBase(pos); // center pos.
+					point.normal=ToBase(dir);
+					point.idepth=depth;
 					// to make the results identical to bullet detector:
 					point.position=point.position-point.normal*point.idepth*0.5;
+					point.inode[0]=-1; // meaning a rigidbody point 
+					point.inode[1]=-1; // meaning a rigidbody point 
+
 
 					//Msg::output("intersect", "1");
 					flag=true;
@@ -459,10 +472,8 @@ bool CollisionDetector_libccd::testIntersectionsForDefinedPairs( CollisionSequen
 					collisions[ipair].points.back()=point;
 				}
 				//Msg::output("intersect", "0");
-#ifdef DEBUG_DRAW_OLD
-
-					static ObjectList* g_objectList=NULL;
-					if(!g_objectList) g_objectList=new ObjectList();
+#ifdef DEBUG_DRAW
+				if(!g_objectList) g_objectList=new ObjectList();
 
 					TString nameid;
 					nameid.format("%d %d %d %d", lp.charIndex[0], lp.link[0]->treeIndex(),
@@ -549,23 +560,24 @@ bool CollisionDetector_libccd::CollisionCheckMesh(CollisionSequence& collisions,
 				double radialMargin = lp.margin+collisionMargin;
 				intersect=checkCollision(depth, dir, pos, colobject[0], subMesh1, colobject[1], subMesh2);
 
-				CollisionPoint point;
-
-				point.position=ToBase(pos); // center pos.
-				point.normal=ToBase(dir);
-				point.idepth=depth;
 				if (intersect ==0)
 				{
+					CollisionPoint point;
+
+					point.position=ToBase(pos); // center pos.
+					point.normal=ToBase(dir);
+					point.idepth=depth;
 					point.position=point.position-point.normal*point.idepth*0.5;
+					point.inode[0]=-1; // meaning a rigidbody point 
+					point.inode[1]=-1; // meaning a rigidbody point 
 					flag=true;
 
 					collisions[ipair].points.resize(collisions[ipair].points.size()+1);
 					collisions[ipair].points.back()=point;
 				}
 
-#ifdef DEBUG_DRAW_OLD
-					static ObjectList* g_objectList=NULL;
-					if(!g_objectList) g_objectList=new ObjectList();
+#ifdef DEBUG_DRAW
+				if(!g_objectList) g_objectList=new ObjectList();
 
 					TString nameid;
 					nameid.format("%d %d %d %d", lp.charIndex[0], lp.link[0]->treeIndex(),

@@ -399,12 +399,16 @@ bindTargetPhysics={
 					static void setPose(PLDPrimVRML& prim, OpenHRP::DynamicsSimulator& s, int ichara) 
 					]]},
 					memberFunctions={[[	
+					void setPoseDOF(int ichara, vectorn const& v)
+					void getPoseDOF(int ichara, vectorn & v) 
+					vectorn getPoseDOF(int ichara) const 
 					OpenHRP::CollisionDetector* getCollisionDetector();
 					OpenHRP::CollisionSequence* getCollisionSequence();
 					void drawDebugInformation() 
 					void registerCharacter(VRMLloader*l);
 					void createObstacle(OBJloader::Geometry const& mesh);
 					void createFreeBody(OBJloader::Geometry const& mesh);
+					void registerCollisionCheckPair( int ichara1, const char* name1, int ichara2, const char* name2, vectorn const& param); 
 					void registerCollisionCheckPair( const char* char1, const char* name1, const char* char2, const char* name2, vectorn const& param); 
 					void init( double timeStep, OpenHRP::DynamicsSimulator::IntegrateMethod integrateOpt)
 					void setTimestep(double timeStep)
@@ -421,6 +425,8 @@ bindTargetPhysics={
 					vector3 getWorldAngAcc(int ichara, VRMLTransform* b) const;
 					BoneForwardKinematics& getWorldState(int ichara) ;	
 					VRMLloader & skeleton(int ichara)
+					std::string name(int ichara)
+					int findCharacter(const char* _name) const 
 					int numSkeleton() const ;
 					void setWorldState(int ichara);		
 					void calcJacobianAt(int ichar, int ibone, matrixn& jacobian, vector3 const& localpos);
@@ -444,6 +450,8 @@ bindTargetPhysics={
 					// for QPservo
 					int getNumAllLinkPairs();
 					void getContactLinkBoneIndex(int ipair, intvectorn & ibone);
+					void addRelativeConstraint(int ichara, Bone& bone1,vector3 boneVector1,Bone& bone2, vector3 boneVector2);
+					void removeRelativeConstraint(int ichara, Bone& bone1, Bone& bone2)	
 					]]},
 					enums={
 						{"EULER","(int)OpenHRP::DynamicsSimulator::EULER"},
@@ -491,26 +499,28 @@ bindTargetPhysics={
 				inheritsFrom='OpenHRP::DynamicsSimulator_penaltyMethod',
 				ctors={'()','(const char*)'},
 				memberFunctions=[[
+				void addWorldTorqueToBone(int ichara, VRMLTransform* b, vector3 const& world_torque);
 				void calcBodyJacobianAt(int ichar, int ibone, matrixn& jacobian, vector3 const& localpos);
 				void calcDotBodyJacobianAt(int ichar, int ibone, matrixn& jacobian, matrixn& dotjacobian, vector3 const& localpos);
 				void calcMomentumDotJacobian(int ichar, matrixn& jacobian, matrixn& dotjacobian)
 				void calcInertia(int ichara,vectorn const& pose, vectorn& inertia) const
 				Liegroup::dse3 calcMomentumCOMfromPose(int ichara, double t, vectorn const& poseFrom, vectorn const& poseTo)
 				Liegroup::dse3 calcMomentumCOM(int ichara);
-				void setPoseDOF(int ichara, vectorn const& v)
-				void getPoseDOF(int ichara, vectorn & v) 
 				void poseToQ(vectorn const& v, vectorn& out)
 				void dposeToDQ(quater const& rootOri, vectorn const& v, vectorn& out)
 				void torqueToU(const vectorn& cf, vectorn& U)
 				void QToPose(vectorn const& v, vectorn& out)
 				void setQ(int ichara, vectorn const& v) 
 				void getQ(int ichara, vectorn & v) const 
+				vectorn getQ(int ichara) const 
 				void getDQ(int ichara, vectorn& v);
+				vectorn getDQ(int ichara) const 
 				void setDQ(int ichara, vectorn const& v);
 				void setState(int ichara, vectorn const& v)  
 				void getState(int ichara, vectorn & v) const 
 				void setDDQ(int ichara, vectorn const& v);
 				void getU(int ichara, vectorn& out);
+				vectorn getU(int ichara);
 				void setU(int ichara, const vectorn& out);
 				int calcS(int ichara, int ibone, matrixn& S);
 				void stateToEulerZYX(vectorn const& q, vectorn const& dq, vectorn& eulerState);
@@ -531,8 +541,7 @@ bindTargetPhysics={
 				void drawLastContactForces();
 				void drawLastContactForces(vector3 const& draw_offset);
 				vector3 getContactForce(int ichar, int ibone) const;
-				void addRelativeConstraint(Bone& bone1,vector3 boneVector1,Bone& bone2, vector3 boneVector2);
-				void removeRelativeConstraint(Bone& bone1, Bone& bone2)	
+				Liegroup::dse3 getCOMbasedContactForce(int ichar, int ibone) const
 				]]
 			},
 			{

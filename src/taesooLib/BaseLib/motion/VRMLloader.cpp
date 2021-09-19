@@ -875,97 +875,135 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
 	      else unexpectedToken(file, token, "??");
 	    }
 	  else if(token=="geometry")
-	    {
-	      TString geometryType=file.GetToken();
+	  {
+		  TString geometryType=file.GetToken();
 
+		  float r=1.f,g=1.f,b=1.f, a=0.f;
+		  bool hasColor=false;
 
 		  if(geometryType=="Box" || geometryType=="Ellipsoid" || geometryType=="Plane")
-		{
-		  token=file.GetToken();
-		  ASSERT(token=="{");
-		  token=file.GetToken();
-		  ASSERT(token=="size");
-		  vector3 size;
-		  size.x=atof(file.GetToken());
-		  size.y=atof(file.GetToken());
-		  size.z=atof(file.GetToken());
-
-		  //printf("Box size %s\n", size.output().ptr());
-		  token=file.GetToken();
-		  ASSERT(token=="}");
-
-		  if(geometryType=="Box")
-			  mShape->mesh.initBox(vector3(size.x, size.y, size.z));
-		  else if(geometryType=="Plane")
-			  mShape->mesh.initPlane(size.x, size.z);
-		  else
-			  mShape->mesh.initEllipsoid(vector3(size.x, size.y, size.z));
-		}
-	      else if(geometryType=="Cylinder" || geometryType=="Capsule")
-		{
-		  token=file.GetToken();
-		  ASSERT(token=="{");
-		  token=file.GetToken();
-		  double radius;
-		  double height;
-		  if (token=="radius")
 		  {
-			  radius=atof(file.GetToken());
 			  token=file.GetToken();
-			  if(token!="height") unexpectedToken(file, token, "height expected");
-			  height=atof(file.GetToken());
-		  }
-		  else  unexpectedToken(file, token, "radius expected");
-		  token=file.GetToken();
-		  int numDivision=10;
-		  if (token!="}")
-		  {
-			  if(token!="numDivision") unexpectedToken(file, token, "numDivision expected");
-			  numDivision=atoi(file.GetToken());
+			  ASSERT(token=="{");
 			  token=file.GetToken();
+			  ASSERT(token=="size");
+			  vector3 size;
+			  size.x=atof(file.GetToken());
+			  size.y=atof(file.GetToken());
+			  size.z=atof(file.GetToken());
+
+			  //printf("Box size %s\n", size.output().ptr());
+			  token=file.GetToken();
+
+			  if (token=="color")
+			  {
+				  hasColor=true;
+				  r=atof(file.GetToken());
+				  g=atof(file.GetToken());
+				  b=atof(file.GetToken());
+				  a=atof(file.GetToken());
+
+				  token=file.GetToken();
+			  }
 			  ASSERT(token=="}");
-		  }
 
-		  if (geometryType=="Cylinder")
-			  mShape->mesh.initCylinder( radius, height, numDivision);
-		  else
-			  mShape->mesh.initCapsule( radius, height);
-		}
-	      else if(geometryType=="OBJ" || geometryType=="OBJ_no_classify_tri")
-		{
-		  token=file.GetQuotedText();
-
-		  try{
-			  mShape->mesh.loadObj(token);
+			  if(geometryType=="Box")
+				  mShape->mesh.initBox(vector3(size.x, size.y, size.z));
+			  else if(geometryType=="Plane")
+				  mShape->mesh.initPlane(size.x, size.z);
+			  else
+				  mShape->mesh.initEllipsoid(vector3(size.x, size.y, size.z));
 		  }
-		  catch(std::runtime_error& e)
+		  else if(geometryType=="Cylinder" || geometryType=="Capsule")
 		  {
-			  // try with relative path.
-			  TString wrlPath=sz1::parentDirectory(l.url);
-#ifdef _DEBUG
-			  printf("%s %s\n", wrlPath.ptr(), token.ptr());
-#endif
+			  token=file.GetToken();
+			  ASSERT(token=="{");
+			  token=file.GetToken();
+			  double radius;
+			  double height;
+			  if (token=="radius")
+			  {
+				  radius=atof(file.GetToken());
+				  token=file.GetToken();
+				  if(token!="height") unexpectedToken(file, token, "height expected");
+				  height=atof(file.GetToken());
+			  }
+			  else  unexpectedToken(file, token, "radius expected");
+			  token=file.GetToken();
+			  int numDivision=10;
+			  while (token!="}")
+			  {
+				  if(token=="numDivision") 
+				  {
+					  numDivision=atoi(file.GetToken());
+				  }
+				  else if (token=="color")
+				  {
+					  hasColor=true;
+					  r=atof(file.GetToken());
+					  g=atof(file.GetToken());
+					  b=atof(file.GetToken());
+					  a=atof(file.GetToken());
+				  }
+				  else
+					  unexpectedToken(file, token, "numDivision expected");
+
+				  token=file.GetToken();
+			  }
+
+			  if (geometryType=="Cylinder")
+				  mShape->mesh.initCylinder( radius, height, numDivision);
+			  else
+				  mShape->mesh.initCapsule( radius, height);
+		  }
+		  else if(geometryType=="OBJ" || geometryType=="OBJ_no_classify_tri")
+		  {
+			  token=file.GetQuotedText();
+
 			  try{
-				  mShape->mesh.loadObj(wrlPath+token);
+				  mShape->mesh.loadObj(token);
 			  }
 			  catch(std::runtime_error& e)
 			  {
-				  TString dir;
-				  TString fn=sz1::filename(token, dir);
-				  TString tryfn=l.url.left(-4)+"_sd/"+fn;
+				  // try with relative path.
+				  TString wrlPath=sz1::parentDirectory(l.url);
 #ifdef _DEBUG
-				  printf("%s\n", tryfn.ptr());
+				  printf("%s %s\n", wrlPath.ptr(), token.ptr());
 #endif
-				  if(!mShape->mesh.loadObj(tryfn))
-					  Msg::error("%s not found", token.ptr());
+				  try{
+					  mShape->mesh.loadObj(wrlPath+token);
+				  }
+				  catch(std::runtime_error& e)
+				  {
+					  TString dir;
+					  TString fn=sz1::filename(token, dir);
+					  TString tryfn=l.url.left(-4)+"_sd/"+fn;
+#ifdef _DEBUG
+					  printf("%s\n", tryfn.ptr());
+#endif
+					  if(!mShape->mesh.loadObj(tryfn))
+						  Msg::error("%s not found", token.ptr());
+				  }
 			  }
+			  mShape->mesh.calculateVertexNormal();
+			  if (geometryType!="OBJ_no_classify_tri")
+				  mShape->mesh.classifyTriangles();
 		  }
-		  mShape->mesh.calculateVertexNormal();
-		  if (geometryType!="OBJ_no_classify_tri")
-			  mShape->mesh.classifyTriangles();
-		}
-	      else skipNode(file);
-	    }
+		  else skipNode(file);
+
+		  // also set colors
+		  auto& mesh=mShape->mesh;
+		  int numColor=1;
+		  mesh.resize(mesh.numVertex(), mesh.numNormal(), mesh.numTexCoord(), numColor, mesh.numFace());
+		  mesh.getColor(0).x()=r;
+		  mesh.getColor(0).y()=g;
+		  mesh.getColor(0).z()=b;
+		  mesh.getColor(0).w()=a;
+		  for(int f=0; f<mesh.numFace(); f++){
+			  auto& ff=mesh.getFace(f);
+			  ff.setIndex(0,0,0, OBJloader::Buffer::COLOR);
+		  }
+	  }
 	  else if(token=="}")
 	    return;
 	  else unexpectedToken(file, token, "geometry, }, ... expected");
@@ -1385,7 +1423,9 @@ void VRMLTransform::UnpackChildren(VRMLloader& l, CTextFile& file)
 	      ASSERT(child->numChildren()==0);
 	      ASSERT(mShape==0);
 	      mShape=child->mShape;
+		  child->mShape=NULL;
 	      mShape->name=child->NameId;
+		  delete child;
 	    }
 	  else if(child->mVRMLtype=="Humanoid")
 	    {
@@ -2065,6 +2105,29 @@ static void make_extra(VRMLTransform* node,VRMLTransform* out)
 }
 
 
+void VRMLloader::addRelativeConstraint(int ibone1, vector3 const& lpos1, int ibone2, vector3 const& lpos2)
+{
+	constraints.resize(constraints.size()+1);
+	auto& con=constraints[constraints.size()-1];
+	con.ibone1=ibone1;
+	con.ibone2=ibone2;
+	con.localpos1=lpos1;
+	con.localpos2=lpos2;
+}
+void VRMLloader::_getAllRelativeConstraints(intvectorn& ibone, vector3N& localpos) const
+{
+	ibone.setSize(constraints.size()*2);
+	localpos.setSize(constraints.size()*2);
+	for (int icon=0; icon<constraints.size(); icon++)
+	{
+		int iconx2=icon*2;
+		auto& c=constraints[icon];
+		ibone[iconx2]=c.ibone1;
+		ibone[iconx2+1]=c.ibone2;
+		localpos[iconx2]=c.localpos1;
+		localpos[iconx2+1]=c.localpos2;
+	}
+}
 VRMLloader_subtree* VRMLloader::makesubtree(int treeIndex) const
 {
   //VRMLTransform* found=findTransform((VRMLTransform*)m_pTreeRoot, startname);

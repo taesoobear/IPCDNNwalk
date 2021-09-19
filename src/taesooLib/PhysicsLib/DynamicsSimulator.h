@@ -65,6 +65,7 @@ namespace OpenHRP
 			BoneForwardKinematics* chain;
 			void setChain(const vectorn& poseDOF);
 			void getChain(vectorn& poseDOF);
+			std::string name;
 			private:
 			vectorn _tempPose; // last simulated pose
 			friend class DynamicsSimulator;
@@ -124,6 +125,8 @@ namespace OpenHRP
 		::vector3 getWorldAngVel(int ichara, VRMLTransform* b) const;
 		::vector3 getWorldAngAcc(int ichara, VRMLTransform* b) const;
 
+		virtual void addRelativeConstraint(int ichara, Bone& bone1,::vector3 boneVector1,Bone& bone2,::vector3 boneVector2) { Msg::msgBox("Error! addRelativeConstraint not implemented.");}
+		virtual void removeRelativeConstraint(int ichara, Bone& bone1, Bone& bone2) { Msg::msgBox("Error! removeRelativeConstraint not implemented.");}
 
 		// both the force and its position are local.
 		virtual void addForceToBone(int ichara, VRMLTransform* b, ::vector3 const& localpos, ::vector3 const& force);
@@ -142,6 +145,8 @@ namespace OpenHRP
 				const char* char2,
 				const char* name2,
 				vectorn const& param)=0;
+		virtual void registerCollisionCheckPair( int ichara1, const char* bone1, int ichara2, const char* bone2, vectorn const& param)
+		{ registerCollisionCheckPair( name(ichara1).c_str(), bone1, name(ichara2).c_str(), bone2, param); }
 
 		// initialize everything. This function should be called at least once.
 		virtual void init(
@@ -199,7 +204,9 @@ namespace OpenHRP
 		// after modifying WorldState, call this.
 		void setWorldState(int ichara);		
 
+		int findCharacter(const char* _name) ;
 		VRMLloader & skeleton(int ichara) { RANGE_ASSERT(ichara<_characters.size()); return *_characters[ichara]->skeleton;}
+		std::string name(int ichara) const { RANGE_ASSERT(ichara<_characters.size()); return _characters[ichara]->name;}
 		const VRMLloader & skeleton(int ichara) const { RANGE_ASSERT(ichara<_characters.size()); return *_characters[ichara]->skeleton;}
 		int numSkeleton() const { return _characters.size();}
 	

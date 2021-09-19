@@ -328,7 +328,21 @@ void DynamicsSimulator::registerCharacter(VRMLloader*l)
 {
 	OpenHRP::CharacterInfo cinfo;
 	makeCharacterInfo(*l, cinfo);
+
+	int ichara=_characters.size();
+	// make a unique name
+	for (int i=0; i<ichara; i++)
+	{
+		if (cinfo.name==_characters[i]->name .c_str())
+		{
+			TString temp;
+			temp.format("_%d", ichara);
+			cinfo.name=cinfo.name+temp.ptr();
+		}
+	}
 	_registerCharacter(cinfo.name, cinfo);
+	if(_characters.size()==ichara+1) // if successfully added:
+		_characters[ichara]->name=cinfo.name;
 }
 
 void DynamicsSimulator::createObstacle(OBJloader::Geometry const& mesh)
@@ -651,5 +665,14 @@ void DynamicsSimulator::getContactLinkBoneIndex(int ipair, intvectorn & ibone)
 int DynamicsSimulator::getNumAllLinkPairs() const
 {
 	return collisionDetector->getCollisionPairs().size();
+}
+int DynamicsSimulator::findCharacter(const char* _name) 
+{
+	for (int i=0, ni=numSkeleton(); i<ni; i++)
+	{
+		if (name(i)==_name)
+			return i;
+	}
+	return -1;
 }
 }

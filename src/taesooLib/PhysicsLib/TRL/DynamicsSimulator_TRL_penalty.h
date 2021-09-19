@@ -59,7 +59,10 @@ namespace OpenHRP {
 
 		virtual void getWorldAngVel(int ichara, VRMLTransform* b, ::vector3& angvel) const;
 
+		// body force
 		void addForceToBone(int ichara, VRMLTransform* b, ::vector3 const& localpos, ::vector3 const& force);
+		// torque around the world origin
+		void addWorldTorqueToBone(int ichara, VRMLTransform* b, ::vector3 const& world_torque);
 
 		virtual void _registerCharacter(const char *name, CharacterInfo const& cinfo);
 
@@ -114,10 +117,6 @@ namespace OpenHRP {
 		virtual void setLinkData(int ichara, LinkDataType t, vectorn const& in);
 
 
-		// v is compatible to MotionDOF class.
-		inline void setPoseDOF(int ichara, vectorn const& v) { setLinkData(ichara, OpenHRP::DynamicsSimulator::JOINT_VALUE, v);}
-		inline void getPoseDOF(int ichara, vectorn & v) { getLinkData(ichara, OpenHRP::DynamicsSimulator::JOINT_VALUE, v);}
-
 
 		// conversion
 		// input:
@@ -144,9 +143,9 @@ namespace OpenHRP {
 		inline vectorn getQ(int ichara) const { vectorn v; v.setSize(rdof(ichara)); getQ(ichara, &v(0));return v;}
 
 		//   (wx, wy, wz, vx, vy, vz, dtheta1, dtheta2, ...,dthetaN). w, v is in the global coordinate unlike dpose.
-		inline void setDQ(int ichara, vectorn const& v){ assert(v.size()==dof(ichara)); setDQ(ichara, &v(0)); }
-		inline void getDQ(int ichara, vectorn& v) const{ v.setSize(dof(ichara)); getDQ(ichara, &v(0));}
-		inline vectorn getDQ(int ichara) const{ vectorn v; v.setSize(dof(ichara)); getDQ(ichara, &v(0));return v;}
+		inline void setDQ(int ichara, vectorn const& v){ assert(v.size()==dof(ichara)); if(v.size()>0) setDQ(ichara, &v(0)); }
+		inline void getDQ(int ichara, vectorn& v) const{ v.setSize(dof(ichara)); if(v.size()>0) getDQ(ichara, &v(0));}
+		inline vectorn getDQ(int ichara) const{ vectorn v; v.setSize(dof(ichara)); if(v.size()>0) getDQ(ichara, &v(0));return v;}
 
 		// state = [q, dq]
 		inline void setState(int ichara, vectorn const& v) { assert(v.size()==rdof(ichara )+dof(ichara)); setState(ichara, &v(0)); }

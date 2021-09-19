@@ -258,6 +258,9 @@ class LoaderToTree
 		void calcEffectorJacobianTranspose(matrixn& Jt);
 		// computes jacobian. this assumes that the ibone is in the subtree.
 		void calcJacobianTransposeAt(matrixn& Jt, int ibone, vector3 const& localpos);
+		void updateGrad_S_JT(double* g,vector3 const& deltaS, int ibone, vector3 const& localpos);
+		inline void updateGrad_S_JT(vectorn& g,vector3 const& deltaS, int ibone, vector3 const& localpos) { updateGrad_S_JT(&g[0], deltaS, ibone, localpos); }
+		void updateGrad_S_JT_residual(double* g,vector3 const& deltaS, int ibone);
 		void getJacobianSparsity(boolN& hasValue, int ibone);
 		void findAxes(boolN& hasValue, vector3 const& axis); // are the current joint axes similar to the user-given axis?
 
@@ -269,6 +272,8 @@ class LoaderToTree
 		// loader is used only for obtaining the mass and inertia
 		// to modify the COM of the skeleton.
 		void calcCOMjacobianTranspose(const VRMLloader& loader, matrixn& JT);
+		void updateCOM_grad_S_JT(vectorn & grad, const VRMLloader& loader, vector3 const& deltaS, double wx, double wy, double wz);
+
 		// to modify the COM of a chain. chainRootBone may not be the root. This currently assumes that the chainRootBone and chainTailBone are in a different chain to the root bone.
 		void calcCOMjacobianTranspose(const VRMLloader& loader, matrixn& JT, int chainRootBone, int chainTailBone);
 		void calcMomentumJacobianTranspose(const VRMLloader& loader, matrixn& JT);

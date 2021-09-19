@@ -68,77 +68,20 @@ vector3::squaredLength() const
     return  x*x + y*y + z*z ;
 }
 
-void vector3::operator+=( vector3 const& b)
-{
-	x+=b.x;
-	y+=b.y;
-	z+=b.z;
-}
-
-void vector3::operator-=( vector3 const& b)
-{
-	x-=b.x;
-	y-=b.y;
-	z-=b.z;
-}
-
-
 bool vector3::operator==(vector3 const& a)const
 {
 	return x==a.x && y==a.y && z==a.z;
 }
+
 vector3    vector3::operator*( vector3 const& a) const
 {
 	return vector3(x*a.x, y*a.y, z*a.z);
-
-}
-void vector3::operator*=(vector3 const& a)
-{
-	x*=a.x;
-	y*=a.y;
-	z*=a.z;
-}
-
-void vector3::operator*=( m_real a)
-{
-	x*=a;
-	y*=a;
-	z*=a;
 }
 
 void vector3::leftMult( const matrix4& mat)
 {
 	vector3 temp(*this);
 	this->mult(mat,temp);
-}
-
-vector3    vector3::operator+( vector3 const& b) const
-{
-	const vector3& a=*this;
-	vector3 c;
-	c.add(a,b);
-	return c;
-}
-
-vector3    vector3::operator-( vector3 const& b) const
-{
-	const vector3& a=*this;
-	vector3 c;
-	c.sub(a,b);
-	return c;
-}
-
-void vector3::operator/=( m_real a)
-{
-	this->operator*=(1.0/a);
-}
-
-vector3& vector3::operator=(vector3 const& a)
-{
-	x=a.x;
-	y=a.y;
-	z=a.z;
-	return *this;
 }
 
 /*
@@ -214,34 +157,6 @@ void vector3::cross(const vector3& a, const vector3& b)
     return c;
 }*/
 
-vector3 vector3::operator*( m_real b) const
-{
-	vector3 const& a=*this;
-	vector3 c;
-	c.mult(a,b);
-	return c;
-}
-
-vector3 vector3::operator/( m_real b) const
-{
-	vector3 const& a=*this;
-	vector3 c;
-	c.mult(a,1/b);
-	return c;
-}
-
-vector3    operator*(m_real b, vector3 const& a )
-{
-	vector3 c;
-	c.mult(a,b);
-	return c;
-}
-
-m_real vector3::operator%(vector3 const& b) const
-{
-	vector3 const& a=*this;
-	return a.x*b.x+a.y*b.y+a.z*b.z;
-}
 
 void vector3::ln(quater const& q)
 {
@@ -423,11 +338,6 @@ void vector3::imaginaries(const quater& in)
 	x=in.x; y=in.y; z=in.z;
 }
 
-void vector3::rotate( const quater& q)
-{
-	vector3 t(*this);
-	rotate(q, t);
-}
 
 void vector3::rotate( const matrix4& mat)
 {
@@ -445,12 +355,26 @@ void vector3::rotate( const quater& a, vector3 const& v)
 	D3DXMatrixRotationQuaternion(&matRot, a);
 	D3DXVec3TransformNormal(*this, v, &matRot);
 #else*/
+#if 0
 	quater inv_a;
 	inv_a.inverse(a);
     quater c = a * quater(0, v.x, v.y, v.z) * inv_a;
     x=c.x;
 	y=c.y;
 	z=c.z;
+#else
+	// faster 
+	// Extract the vector part of the quaternion
+    const vector3 &u=a.imaginaries();
+
+    // Extract the scalar part of the quaternion
+    double s = a.w;
+
+    // Do the math
+    (*this) = (2.0 * u% v) * u
+          + (s*s - u% u) * v
+          + (2.0 * s) * u.cross( v);
+#endif
 //#endif
 }
 

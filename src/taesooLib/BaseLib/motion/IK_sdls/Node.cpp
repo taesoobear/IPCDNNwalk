@@ -383,6 +383,25 @@ void RelativeConstraint::calcJacobian(Node* m, MatrixRmn& J)
 }
 */
 
+void HingeJoint::_updateGrad_S_JT(double* g, vector3 const& deltaS, vector3 const& target)
+{
+	// see calc_jacobian_rotate in jacobi.cpp
+#if 0
+	vector3 lin = GetS(); // joint pos (abs_pos).
+	lin-=target; // arm = joint pos - target
+	lin=lin.cross(GetW()); // lin.cross(abs_pos-target, axis0)
+#else
+	// 위랑 같은 식임.
+	vector3 lin;
+	lin.cross(GetW(), target-GetS());
+#endif
+
+	g[GetJointNum()]+=deltaS%lin;
+}
+void HingeJoint::_updateGrad_S_JT_residual(double* g, vector3 const& deltaS_lpos)
+{
+	g[GetJointNum()]-=deltaS_lpos%GetW();
+}
 void HingeJoint::_calcJacobian(MatrixRmn& J, int i_row, vector3 const& target) 
 {
 	// see calc_jacobian_rotate in jacobi.cpp
@@ -444,6 +463,11 @@ double SlideJoint::GetDTheta()
 	}
 	return qd;
 }
+void SlideJoint::_updateGrad_S_JT(double* g, vector3 const& deltaS, vector3 const& target)
+{
+	g[GetJointNum()]+=deltaS%GetW();
+}
+
 void SlideJoint::_calcJacobian(MatrixRmn& J, int i_row, vector3 const& target) 
 {
 	// see calc_jacobian_rotate in jacobi.cpp
@@ -476,6 +500,36 @@ FreeJoint::FreeJoint()
 {
 }
 
+void FreeJoint::_updateGrad_S_JT(double* g, vector3 const& deltaS, vector3 const& target)
+{
+	vector3 axis(0,0,0);
+	vector3 axis0;
+	vector3 lin;
+	int j=GetJointNum();
+	for(int i=0; i<3; i++)
+	{
+		axis[i]=1.0;
+		axis0.rotate(_global.rotation, axis);
+		lin.cross(axis0, target-GetS());
+		g[j+i]+=deltaS%axis0;	
+		g[j+i+3]+=deltaS%lin;
+		axis[i]=0.0;
+	}
+}
+void FreeJoint::_updateGrad_S_JT_residual(double* g, vector3 const& deltaS_lpos)
+{
+	vector3 axis(0,0,0);
+	vector3 axis0;
+	vector3 lin;
+	int j=GetJointNum();
+	for(int i=0; i<3; i++)
+	{
+		axis[i]=1.0;
+		axis0.rotate(_global.rotation, axis);
+		g[j+i+3]-=deltaS_lpos%axis0;
+		axis[i]=0.0;
+	}
+}
 void FreeJoint::_calcJacobian(MatrixRmn& J, int i_row, vector3 const& target)
 {
 	vector3 axis(0,0,0);

@@ -19,10 +19,12 @@ namespace OpenHRP {
   {
   protected:
 	  std::vector<VRMLloader*> mTrees;
+	  std::vector<std::string> mTreeNames;
 	  std::vector<LinkPair> mPairs;
   public:
   
     virtual int addModel(VRMLloader* loader); // returns characterIndex
+	void changeLastModelName(const char* charName) { mTreeNames.back()=charName;} // overwrite name.
 	int addObstacle(OBJloader::Geometry const& mesh); // returns characterIndex
 	VRMLloader* getModel(int ichar) { return mTrees[ichar];}
 
@@ -33,6 +35,8 @@ namespace OpenHRP {
   
 	std::vector<LinkPair> const& getCollisionPairs() const	{ return mPairs;}
 
+	virtual void _addCollisionPair(int ichar1, int ibone1, int ichar2, int ibone2);
+	// used only in CollisionChecker (deprecated)
 	virtual void addCollisionPair(VRMLloader* skel1, int ibone1, VRMLloader* skel2, int ibone2);
     virtual void removeCollisionPair(LinkPair   const& colPair)=0;
 

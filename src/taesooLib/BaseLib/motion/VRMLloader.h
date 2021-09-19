@@ -22,6 +22,11 @@ namespace HRP_JOINT
 	};
 }
 
+namespace OpenHRP
+{
+	class DynamicsSimulator_TRL_LCP;
+}
+
 struct VRML_TRANSFORM;
 struct _HRP_JOINT;
 struct HRP_SHAPE;
@@ -95,11 +100,13 @@ class VRMLloader_subtree;
 class VRMLloader: public MotionLoader
 {
 	double _frameRate;
+
 public:
 	TString url;
 	TString name;
 	TString version;
 	TStrings info;
+
 	
 	virtual TString getName() { return name;}
 	VRMLloader(OBJloader::Geometry const& mesh, bool useFixedJoint=false);
@@ -140,6 +147,19 @@ public:
 	void _importVRML(CTextFile& tf);
 
 	virtual void setCurPoseAsInitialPose();
+
+
+	// DynamicsSimulator_TRL_LCP acknowledges this constraint. 
+	void addRelativeConstraint(int ibone1, vector3 const& lpos1, int ibone2, vector3 const& lpos2);
+	struct Constraint
+	{
+		int ibone1, ibone2;
+		vector3 localpos1, localpos2;
+	};
+	std::vector<Constraint> constraints;
+public:
+	void _getAllRelativeConstraints(intvectorn& ibone, vector3N& localpos) const;
+
 protected:
 	void _clear();
 	void _checkMass();

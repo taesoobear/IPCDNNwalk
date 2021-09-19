@@ -24,6 +24,20 @@ MCPsolver::MCPsolver()
 	numGaussSeidelInitialIteration = DEFAULT_NUM_GAUSS_SEIDEL_INITIAL_ITERATION;
 	gaussSeidelMaxRelError = DEFAULT_GAUSS_SEIDEL_MAX_REL_ERROR;
 }
+void MCPsolver::initWorkspace()
+{
+	//mod
+	if(globalNumContactNormalVectors!=0){
+		_mem_contactIndexToMu.setSize(globalNumContactNormalVectors);
+		_mem_mcpHi.setSize(globalNumContactNormalVectors);
+		_CI2Mu=&_mem_contactIndexToMu[0];
+		_mcpHi=&_mem_mcpHi[0];
+	}
+	//_mem_contactIndexToMu.setSize(globalNumContactNormalVectors);
+	//_mem_mcpHi.setSize(globalNumContactNormalVectors);
+	//_CI2Mu=&_mem_contactIndexToMu[0];
+	//_mcpHi=&_mem_mcpHi[0];
+}
 void MCPsolver::solveMCPByProjectedGaussSeidel(const rmdmatrix& __M, const dvector& __b, dvector& __x)
 {
 	_M=&__M(0,0);

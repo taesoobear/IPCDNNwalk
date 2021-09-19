@@ -66,9 +66,17 @@ public:
 	vector3N array_rel_ang_vel;
 
 	BoneVelocityForwardKinematics(const MotionLoader* loader);
-
-	void setBodyVel(int ibone, vector3 const& lin_vel, vector3 const& ang_vel);
-	void getJointVel(int ibone, vector3 & lin_vel, vector3 & ang_vel);
+	
+	// compute local velocity from relative velocity (forwardKinematics)
 	void computeDS(BoneForwardKinematics const& fk);
+
+	// inverseKinematics:
+	// 1. set local velocity
+	void setBodyVel(int ibone, vector3 const& lin_vel, vector3 const& ang_vel);
+
+	// 2. compute relative velocity from local velocity
 	void computeDQfromDS(BoneForwardKinematics const& fk);
+
+	// 3. get relative velocity
+	void getJointVel(int ibone, vector3 & lin_vel, vector3 & ang_vel);
 };

@@ -7,8 +7,8 @@
 
 void OpenHRP::CollisionDetector::addModel(const char* charName, CharacterInfo const& model)
 {
-	ASSERT(model.loader->name==charName);
 	addModel(model.loader);
+	mTreeNames.back()=charName; // overwrite name.
 }
 
 
@@ -29,7 +29,9 @@ int OpenHRP::CollisionDetector::addObstacle(OBJloader::Geometry const& mesh)
 }
 int OpenHRP::CollisionDetector::addModel(VRMLloader* loader)
 {
+	Msg::verify(mTrees.size()==mTreeNames.size(), "CollisionDetector::addModel?");
 	mTrees.push_back(loader);
+	mTreeNames.push_back(std::string(loader->name.ptr()));
 	return mTrees.size()-1;
 }
 
@@ -44,13 +46,14 @@ bool OpenHRP::CollisionDetector::queryContactDeterminationForDefinedPairs(
 	}
 	return testIntersectionsForDefinedPairs(collisions);
 }
-static int charaIndex(std::vector<VRMLloader*> const& _characters, const char* name)
+static int charaIndex(std::vector<std::string> const& _characterNames, const char* name)
 {
-	for(int i=0; i<_characters.size(); i++)
-		if(_characters[i]->name==name)
+	for(int i=0; i<_characterNames.size(); i++)
+		if(_characterNames[i]==name)
 			return i;
 	return -1;
 }
+// deprecated
 static int charaIndex(std::vector<VRMLloader*> const& _characters, VRMLloader* skel)
 {
 	for(int i=0; i<_characters.size(); i++)
@@ -79,15 +82,15 @@ void OpenHRP::CollisionDetector::addCollisionPair(LinkPair const& colPair, bool 
 {
 	mPairs.push_back(colPair);
 	LinkPair& pair=mPairs.back();
-	pair.charIndex[0]=charaIndex(mTrees, pair.charName1);
-	pair.charIndex[1]=charaIndex(mTrees, pair.charName2);
+	pair.charIndex[0]=charaIndex(mTreeNames, pair.charName1);
+	pair.charIndex[1]=charaIndex(mTreeNames, pair.charName2);
 	pair.margin=0;
 
 	for(int i=0; i<2; i++)
 	{
 		if(pair.charIndex[i]==-1)
 		{
-			Msg::msgBox("character %s or %s not found", pair.charName1.ptr(), pair.charName2.ptr());
+			Msg::msgBox("addCollisionPair: character %s or %s not found", pair.charName1.ptr(), pair.charName2.ptr());
 			mPairs.resize(mPairs.size()-1);
 			return;
 		}
@@ -109,6 +112,38 @@ void OpenHRP::CollisionDetector::addCollisionPair(LinkPair const& colPair, bool 
 		pair.link[i]=&body->VRMLbone(lindex);
 	}
 }
+void OpenHRP::CollisionDetector::_addCollisionPair(int ichara1, int ibone1, int ichara2, int ibone2)
+{
+
+	mPairs.resize(mPairs.size()+1);
+	LinkPair& pair=mPairs.back();
+	pair.charIndex[0]=ichara1;
+	pair.charIndex[1]=ichara2;
+	pair.margin=0;
+
+	for(int i=0; i<2; i++)
+	{
+		if(pair.charIndex[i]==-1)
+		{
+			Msg::msgBox("??? character not found %d", pair.charIndex[i]);
+			mPairs.resize(mPairs.size()-1);
+			return;
+		}
+
+		VRMLloader* body = mTrees[pair.charIndex[i]];
+		int lindex;
+		if(i==0)
+			lindex=ibone1;
+		else
+			lindex=ibone2;
+
+		if(lindex==-1)
+			pair.link[i]=NULL; // not a bone.
+		else
+			pair.link[i]=&body->VRMLbone(lindex);
+	}
+}
+// deprecated
 void OpenHRP::CollisionDetector::addCollisionPair(VRMLloader* skel1, int ibone1, VRMLloader* skel2, int ibone2)
 {
 
@@ -122,7 +157,7 @@ void OpenHRP::CollisionDetector::addCollisionPair(VRMLloader* skel1, int ibone1,
 	{
 		if(pair.charIndex[i]==-1)
 		{
-			Msg::msgBox("character not found");
+			Msg::msgBox("character (skel) not found");
 			mPairs.resize(mPairs.size()-1);
 			return;
 		}

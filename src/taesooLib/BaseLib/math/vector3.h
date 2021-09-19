@@ -39,13 +39,13 @@ class vector3
 	void mult(const matrix4& mat, const vector3& v);
 	void divide(const vector3& v, double a)	{ mult(v, 1/a);};
 	void cross(const vector3&, const vector3&);
-	vector3 cross(const vector3& other) const	{ vector3 c; c.cross(*this, other); return c;}
-	vector3 mult(const vector3& o) const		{ return vector3(x*o.x, y*o.y, z*o.z);}
+	inline vector3 cross(const vector3& other) const	{ vector3 c; c.cross(*this, other); return c;}
+	inline vector3 mult(const vector3& o) const		{ return vector3(x*o.x, y*o.y, z*o.z);}
 	void normalize( const vector3 & );
-	vector3 dir()	{ vector3 temp; temp.normalize(*this); return temp; }
+	inline vector3 dir()	{ vector3 temp; temp.normalize(*this); return temp; }
 	void negate(const vector3&);
 	void interpolate( double, vector3 const&, vector3 const& );
-	void lerp( vector3 const& a, vector3 const& b, double t)	{ interpolate(t, a, b);}
+	inline void lerp( vector3 const& a, vector3 const& b, double t)	{ interpolate(t, a, b);}
 	void blend(const vectorn& weight, const matrixn& aInputVector);
 	//! quaternion ln
 	/*!	A unit quaternion, is defined by:
@@ -56,26 +56,25 @@ class vector3
 	void log( const quater& q)		{ ln(q);}
 
 	// to avoid unnecessary copy, use q.exp(v) instead.
-	quater exp() const;
-	void rotate( const quater& q);
+	quater exp() const ;
+	inline void rotate( const quater& q) { vector3 t(*this); rotate(q, t); }
 	void rotate( const matrix4& m); // applies only the linear part of m.
 	void rotate( const quater& q, vector3 const& in);
 	void angularVelocity( quater const& q1, quater const& q2);
 	void linearVelocity(vector3 const& v1, vector3 const& v2);
 	inline void difference(vector3 const& v1, vector3 const& v2)	{ linearVelocity(v1, v2);}
 
-    double    operator%( vector3 const&) const;
+    inline double    operator%( vector3 const& b) const{ return x*b.x+y*b.y+z*b.z;}
     double    operator/( vector3 const&) const;
-    vector3    operator+( vector3 const& ) const;
-    vector3    operator-( vector3 const& ) const;
+    inline vector3    operator+( vector3 const& other) const { return vector3(x+other.x, y+other.y, z+other.z);}
+    inline vector3    operator-( vector3 const& other) const { return vector3(x-other.x, y-other.y, z-other.z);}
+    inline vector3    operator*( double b) const { return vector3(x*b, y*b, z*b);}
+    inline vector3    operator/( double a) const { double b=1.0/a; return vector3(x*b, y*b, z*b);}
+	inline friend vector3  operator*( double b, vector3 const& a)  { return vector3(a.x*b, a.y*b, a.z*b);}
 
-    vector3    operator*( double ) const;
-    vector3    operator/( double ) const;
-	friend vector3    operator*( double, vector3 const& ) ;
-
-	// element multiplication (예전 버전에서는 crossproduct 로 정의되어 있었음. 주의할 것).
+	// element multiplication (!= cross product) 예전 버전에서는 crossproduct 로 정의되어 있었음. 주의할 것).
 	vector3    operator*( vector3 const& ) const;
-	void operator*=(vector3 const& );
+	inline void operator*=(vector3 const& a) { x*=a.x; y*=a.y; z*=a.z; }
 	bool operator==(vector3 const& )const;
 
 	// unary operations
@@ -93,13 +92,13 @@ class vector3
 	void rotationVector(const quater& in);
 	quater quaternion() const;	//!< rotation vector를 quaternion으로 바꾼다.	== quater q; q.setRotation(*this); }
 
-	void operator+=( vector3 const& );
-    void operator-=( vector3 const& );
-    void operator*=( double );
-    void operator/=( double );
-	vector3& operator=(vector3 const& );
+	inline void operator+=( vector3 const& b) { x+=b.x; y+=b.y; z+=b.z; }
+    inline void operator-=( vector3 const& b) { x-=b.x; y-=b.y; z-=b.z; }
+    inline void operator*=( double a) { x*=a; y*=a; z*=a; }
+    inline void operator/=( double a) { this->operator*=(1.0/a); }
+	inline vector3& operator=(vector3 const& a) { x=a.x; y=a.y; z=a.z; return *this; }
 	void hermite(const vector3& p1, const vector3& t1, const vector3& p2, const vector3& t2, double t);	//!< hermite interpolation of p1 and p2. 0<=t<=1
-	vector3  operator-() const	{ vector3 c; c.negate(*this); return c;};
+	inline vector3  operator-() const	{ return vector3(-x, -y,-z);}
 
 	inline void makeFloor( const vector3& cmp )
     {
@@ -132,13 +131,13 @@ class vector3
 	// calc -pi to pi angle assuming axis=0 (plane constraint): axis 0:x, 1: y, 2:z
 	double angle2ds(vector3 const& b, int axis) const;
 
-    double& operator[] (int i)						{ return (&x)[i];}
-	const double& operator[] (int i) const			{ return (&x)[i];}
-	double  getValue( int i ) const					{ return (&x)[i];}
-    void   getValue( double d[3] )					{ d[0]=x; d[1]=y; d[2]=z;}
+    inline double& operator[] (int i)						{ return (&x)[i];}
+	inline const double& operator[] (int i) const			{ return (&x)[i];}
+	inline double  getValue( int i ) const					{ return (&x)[i];}
+    inline void   getValue( double d[3] )					{ d[0]=x; d[1]=y; d[2]=z;}
 
-    void   setValue( double d[3] )					{ x=d[0]; y=d[1]; z=d[2]; }
-	void   setValue(double xx, double yy, double zz )	{ x=xx; y=yy; z=zz;}
+    inline void   setValue( double d[3] )					{ x=d[0]; y=d[1]; z=d[2]; }
+	inline void   setValue(double xx, double yy, double zz )	{ x=xx; y=yy; z=zz;}
 	void   setValue(const vectorn& other, int start=0);
 
 	TString output() const;

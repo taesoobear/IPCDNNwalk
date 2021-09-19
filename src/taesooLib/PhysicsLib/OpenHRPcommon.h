@@ -82,7 +82,7 @@ namespace OpenHRP
 		::vector3 position; // unused for soft bodies
 		::vector3 normal;
 		double	  idepth;
-		int inode; // unused for articulated rigid bodies
+		int inode[2]; // unused for articulated rigid bodies
 	};
 
 	typedef std::vector<CollisionPoint> CollisionPointSequence;

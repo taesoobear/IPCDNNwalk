@@ -343,15 +343,20 @@ void DynamicsSimulator_TRL_LCP::init(double timeStep,
 		}
 	}
 }
+
 void DynamicsSimulator_TRL_LCP::initSimulation()
 {
-	//world.initialize(); // moved to init (which is less frequently called)
+#if 1
+	world.initialize(); // moved to init (which is less frequently called)
+	_contactForceSolver->initialize();
+#else // buggy but faster.
 	int n = _characters.size();
 	for(int i=0; i<n; i++){
 		TRL::ForwardDynamicsABM* fd=world.forwardDynamics(i);
 		if(!fd) Msg::error("??? fd==NULL. did you call init(...)");
 		fd->calcPositionAndVelocityFK();
 	}
+#endif
 	_updateCharacterPose();
 }
 
@@ -386,6 +391,8 @@ void DynamicsSimulator_TRL_LCP::registerCollisionCheckPair
 {
 	int bodyIndex1 = world.bodyIndex(charName1);
 	int bodyIndex2 = world.bodyIndex(charName2);
+	Msg::verify(bodyIndex1!=-1, "TRL_LCP::registerCollisionCheckPair error1");
+	Msg::verify(bodyIndex2!=-1, "TRL_LCP::registerCollisionCheckPair error2");
 	double staticFriction=param[0];
 	double slipFriction=param[1];
 
@@ -658,9 +665,28 @@ void DynamicsSimulator_TRL_LCP::get_contact_jacob(int ichar, matrixn & M, vector
 	assert(cc==noc);
 }
 
-void DynamicsSimulator_TRL_LCP::addRelativeConstraint(Bone& bone1,vector3 boneVector1,Bone& bone2, vector3 boneVector2)
+void DynamicsSimulator_TRL_LCP::_registerCharacter(const char *name, CharacterInfo const& cinfo)
 {
-	TRL::BodyPtr targetBody = world.body(0);
+	DynamicsSimulator_TRL_penalty::_registerCharacter(name, cinfo);
+	if (cinfo.loader->constraints.size()>0)
+	{
+		auto& array_con=cinfo.loader->constraints;
+		for(int i=0; i<array_con.size(); i++)
+		{
+			auto& con=array_con[i];
+			addRelativeConstraint(
+					_characters.size()-1, 
+					cinfo.loader->bone(con.ibone1),
+					con.localpos1,
+					cinfo.loader->bone(con.ibone2),
+					con.localpos2);
+		}
+	}
+
+}
+void DynamicsSimulator_TRL_LCP::addRelativeConstraint(int ichara, Bone& bone1,vector3 boneVector1,Bone& bone2, vector3 boneVector2)
+{
+	TRL::BodyPtr targetBody = world.body(ichara);
 	TRL::Body::LinkConnection linkCon;
 	linkCon.link[0]=getTRLlink(targetBody, ((VRMLTransform&)bone1).lastHRPjointIndex());
 	linkCon.link[1]=getTRLlink(targetBody, ((VRMLTransform&)bone2).lastHRPjointIndex());
@@ -674,10 +700,10 @@ void DynamicsSimulator_TRL_LCP::addRelativeConstraint(Bone& bone1,vector3 boneVe
 	return;
 }
 
-void DynamicsSimulator_TRL_LCP::removeRelativeConstraint(Bone& bone1, Bone& bone2)
+void DynamicsSimulator_TRL_LCP::removeRelativeConstraint(int ichara, Bone& bone1, Bone& bone2)
 {
 
-	TRL::BodyPtr targetBody = world.body(0);
+	TRL::BodyPtr targetBody = world.body(ichara);
 	TRL::Link* targetLink1 = getTRLlink(targetBody,((VRMLTransform&)bone1).lastHRPjointIndex());
 	TRL::Link* targetLink2 = getTRLlink(targetBody,((VRMLTransform&)bone2).lastHRPjointIndex());
 	TRL::Body::LinkConnectionArray& targetBodyLinks =  targetBody->linkConnections;
