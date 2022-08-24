@@ -115,7 +115,7 @@ namespace BaselibLUA {
 #define BEGIN_OGRE_CHECK try {
 #define END_OGRE_CHECK	} catch ( Ogre::Exception& e ) {Msg::msgBox(e.getFullDescription().c_str());}
 
-#if OGRE_VERSION_MINOR>=9
+#if OGRE_VERSION_MINOR>=9||OGRE_VERSION_MAJOR>=13
 #include "Overlay/OgreOverlayManager.h"
 #include "Overlay/OgreOverlayContainer.h"
 #include "Overlay/OgreOverlayElement.h"

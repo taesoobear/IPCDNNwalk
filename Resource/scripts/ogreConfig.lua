@@ -17,3 +17,9 @@ function shadowMaterial(input)
    return input
 end
 
+if RE.getOgreVersionMinor()>=12 then
+	numMainLights=5
+	if depthShadow then
+		numMainLights=1 -- no difference
+	end
+end

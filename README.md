@@ -36,11 +36,15 @@ How to build (Mac)
 =
   1. First, install necessary dependencies:
 ```
-  brew install boost fltk eigen gsl cmake lua@5.1
+  brew install fltk eigen gsl cmake lua@5.1
+  pip3 install wxPython
+  (intel mac)
   cd /usr/local/bin; ln -s lua5.1 lua
+  (m1 mac)
+	ln -s /opt/homebrew/bin/lua5.1 /opt/homebrew/bin/lua
 ```
 
-  2. Then, build Ogre 1.12 from sources (see below).
+  2. Then, build Ogre 13.4 or Ogre 1.12 from sources (see below).
 
   3. Install more dependencies (after reading src/Makefile carefully):
 ```

@@ -1,9 +1,135 @@
 #include "stdafx.h"
-#ifndef NO_OGRE
-
 #include "renderer.h"
 #include "FltkMotionWindow.h"
 #include "OgreMotionLoader.h"
+
+#ifndef NO_OGRE
+void SkinnedMeshLoader ::getInfo(SkinnedMeshFromVertexInfo& vi) const
+{
+	SkinnedMeshLoader & meshLoader=(SkinnedMeshLoader&)(*this);
+	int nv=meshLoader.getCurrMesh().numVertex();
+	auto& vertices=vi.vertices;
+	vertices.resize(nv);
+	for (int i=0; i<nv; i++)
+		meshLoader.getVertexInfo(i, vertices[i].treeIndices, vertices[i].localpos, vertices[i].weights);
+}
+#endif
+
+SkinnedMeshFromVertexInfo::SkinnedMeshFromVertexInfo( const char* filename)
+{
+	BinaryFile file;
+	Msg::verify(file.openRead(filename), filename);
+	int version=file.unpackInt(); // version
+	int nv=file.unpackInt();
+	vertices.resize(nv);
+	for(int vi=0; vi<vertices.size(); vi++)
+	{
+		file.unpack(vertices[vi].treeIndices);
+		file.unpack(vertices[vi].localpos);
+		file.unpack(vertices[vi].weights);
+	}
+	file.close();
+}
+void SkinnedMeshFromVertexInfo::exportSkinInfo(const char* filename) const
+{
+	BinaryFile file;
+	Msg::verify(file.openWrite(filename), filename);
+	file.packInt(0); // version
+	file.packInt(vertices.size());
+	for(int vi=0; vi<vertices.size(); vi++)
+	{
+		file.pack(vertices[vi].treeIndices);
+		file.pack(vertices[vi].localpos);
+		file.pack(vertices[vi].weights);
+	}
+	file.close();
+
+}
+void SkinnedMeshFromVertexInfo::getVertexInfo(int v1, int v2, int v3, vector3 const& baryCoeffs, intvectorn& treeIndices, vector3N& lpos, vectorn &weights)
+{
+	VertexInfo& info1=vertices[v1];
+	VertexInfo& info2=vertices[v2];
+	VertexInfo& info3=vertices[v3];
+
+	// now merge these three infos into one.
+	//
+	// basic idea
+	// (M*lpos+b)*w1+(M*lpos2+b)*w2
+	// = M*(lpos*w1+lpos2*w2)+b*(w1+w2)
+	// = (M*(lpos*w1+lpos2*w)/(w1+w2) + b)*(w1+w2)
+	treeIndices=info1.treeIndices;
+	lpos=info1.localpos;
+	weights=info1.weights*baryCoeffs.x;
+
+	for (int i=0;i< treeIndices.size(); i++)
+		lpos(i)*=weights(i); // lpos*w1
+
+	for(int ii=0; ii<2; ii++)
+	{
+		VertexInfo* oinfo;
+		double b;
+		if (ii==0)
+		{
+			oinfo=&vertices[v2];
+			b=baryCoeffs.y;
+		}
+		else
+		{
+			oinfo=&vertices[v3];
+			b=baryCoeffs.z;
+		}
+		intvectorn& tio=treeIndices;
+		intvectorn& ti=oinfo->treeIndices;
+		for (int i=0;i< ti.size(); i++)
+		{
+			int fi=tio.findFirstIndex(ti(i));
+			if (fi==-1 ){
+				treeIndices.pushBack(ti(i));
+				double w=oinfo->weights(i)*b;
+				lpos.pushBack(oinfo->localpos(i)*w);
+				weights.pushBack(w);
+			}
+			else{
+				double w=oinfo->weights(i)*b;
+				lpos(fi)+=oinfo->localpos(i)*w;
+				weights(fi)+=w;
+			}
+		}
+	}
+	intvectorn& ti=treeIndices;
+	for (int i=0;i< ti.size(); i++)
+		lpos(i)*=1.0/weights(i);//  (lpos*w1 +lpos2*w2)/(w1+w2)
+}
+void SkinnedMeshFromVertexInfo::_calcVertexPosition( MotionLoader const& loader, int vertexIndex, vector3& vpos)
+{
+	vpos.zero();
+	auto& vi=vertices[vertexIndex];
+	for (int j=0; j < vi.weights.size(); j++)
+		vpos+=(loader.bone(vi.treeIndices(j)).getFrame()*vi.localpos(j))*vi.weights(j);
+}
+void SkinnedMeshFromVertexInfo::_calcVertexPosition( BoneForwardKinematics const& fksolver, int vertexIndex, vector3& vpos)
+{
+	vpos.zero();
+	auto& vi=vertices[vertexIndex];
+	for (int j=0; j < vi.weights.size(); j++)
+		vpos+=(fksolver.global(vi.treeIndices(j))*vi.localpos(j))*vi.weights(j);
+}
+vector3 SkinnedMeshFromVertexInfo::calcSurfacePointPosition( MotionLoader const& loader, intvectorn const& treeIndices, vectorn const& weights, vector3N const& localpos)
+{
+	vector3 vpos(0,0,0);
+	for (int j=0; j < weights.size(); j++)
+		vpos+=(loader.bone(treeIndices(j)).getFrame()*localpos(j))*weights(j);
+	return vpos;
+}
+void SkinnedMeshFromVertexInfo::calcVertexPositions(MotionLoader const& loader, OBJloader::Mesh& mesh)
+{
+	Msg::verify(mesh.numVertex()==vertices.size(), "#vertex does not match");
+	for (int i=0; i<mesh.numVertex(); i++)
+		_calcVertexPosition(loader, i, mesh.getVertex(i));
+
+}
+#ifndef NO_OGRE
+
 
 //#define USE_SKIN_ENTITY
 #ifdef USE_SKIN_ENTITY
@@ -99,6 +225,28 @@ void MeshBone::getOffsetTransform(matrix4& m) const
 
     m.setTransform(translate, scale, rotate);
 }
+void MeshBone::printBindingInfo() const
+{
+	vector3 scale;
+	scale= mDerivedScale.mult(mBindDerivedInverseScale);
+	std::cout<<"scale:"<<scale;
+	std::cout<<" bindinvori:"<<mBindDerivedInverseOrientation;
+	std::cout<<" bindinvpos:"<<mBindDerivedInversePosition<<std::endl;
+}
+void MeshBone::printHierarchy(int depth)
+{
+	printf("%d \n", treeIndex());
+	for(int ii=0; ii<depth; ii++) printf(" ");
+
+	if (treeIndex()>=1 )
+	{
+		printf("%s : %d, R: %d, T: %d ", NameId, treeIndex(), rotJointIndex(), transJointIndex() );
+		((MeshBone&)*this).printBindingInfo();
+	}
+
+	for(Node *i=m_pChildHead; i!=NULL; i=i->m_pSibling)
+		i->printHierarchy(depth+1);
+}
 
 
 
@@ -110,8 +258,9 @@ void MeshShape_countIndicesAndVertices(Ogre::SkinEntity * entity, size_t & index
 void MeshShape_countIndicesAndVertices(Ogre::Entity * entity, size_t & index_count, size_t & vertex_count);
 #endif
 
-SkinnedMeshLoader::SkinnedMeshLoader(const char* ogreMeshFile, bool unpackTexCoord)
-:MotionLoader()
+SkinnedMeshLoader::SkinnedMeshLoader(const char* ogreMeshFile, bool unpackTexCoord, bool useDQinterpolation)
+:MotionLoader(),
+	_useDQinterpolation(useDQinterpolation)
 {
 #ifdef USE_SKIN_ENTITY
 	Ogre::SkinEntity* pEntity=Ogre::createSkinEntity(*(RE::renderer().mScene), RE::generateUniqueName().ptr(), ogreMeshFile);
@@ -142,7 +291,8 @@ SkinnedMeshLoader::SkinnedMeshLoader(const char* ogreMeshFile, bool unpackTexCoo
 	cout << "-----------------------------------------------------------"<<endl;
 	cout << "Now See the Tree Structure" << endl;
 	cout << "-----------------------------------------------------------"<<endl;
-#if OGRE_VERSION_MINOR>=12
+#if OGRE_VERSION_MINOR>=12 || OGRE_VERSION_MAJOR>=13
+
 	Ogre::Bone* pRootBone = si->getRootBones()[0];
 #else
 	Ogre::Bone* pRootBone = si->getRootBone();
@@ -161,7 +311,8 @@ SkinnedMeshLoader::SkinnedMeshLoader(const char* ogreMeshFile, bool unpackTexCoo
 	m_pTreeRoot->AddChild(new MeshBone());
 	((Bone*)m_pTreeRoot)->child()->setChannels("XYZ", "ZXY");
 
-#if OGRE_VERSION_MINOR>=12
+#if OGRE_VERSION_MINOR>=12|| OGRE_VERSION_MAJOR>=13
+
 	Ogre::Bone* pBone = si->getRootBones()[0];
 #else
 	Ogre::Bone* pBone = si->getRootBone();
@@ -193,6 +344,8 @@ SkinnedMeshLoader::SkinnedMeshLoader(const char* ogreMeshFile, bool unpackTexCoo
 	mMesh.mesh.resize(vertex_count, index_count/3);
 	mMesh.blendIndex.setSize(vertex_count, 4);
 	mMesh.blendWeight.setSize(vertex_count, 4);
+	mMesh.blendIndex.setAllValue(0);
+	mMesh.blendWeight.setAllValue(0.0);
 
     bool added_shared = false;
 	size_t current_offset = 0;
@@ -406,6 +559,85 @@ void SkinnedMeshLoader::sortBones(MotionLoader const& referenceSkeleton)
 			mMesh.blendIndex[i][j]=bones[mMesh.blendIndex[i][j]]->treeIndex();
 }
 
+double SkinnedMeshLoader::getDerivedScale(int treeIndex)
+{
+	MeshBone& bone=((MeshBone&)getBoneByTreeIndex(treeIndex));
+	return bone.mDerivedScale.x;
+}
+double SkinnedMeshLoader::getBindingPoseInverseScale(int treeIndex)
+{
+	MeshBone& bone=((MeshBone&)getBoneByTreeIndex(treeIndex));
+	return bone.mBindDerivedInverseScale.x;
+}
+void SkinnedMeshLoader::getVertexInfo(int vertIdx, intvectorn& treeIndices,  vector3N& localpos, vectorn &weights)
+{
+	m_real * pBlendWeight=mMesh.blendWeight[vertIdx];
+	int * pBlendIndex=mMesh.blendIndex[vertIdx];
+
+	vector3& sourceVec=mMesh.mesh.getVertex(vertIdx);
+
+	unsigned short numWeightsPerVertex=mMesh.blendIndex.cols();
+#ifdef _DEBUG
+	printf("numweights2 %d\n", numWeightsPerVertex);
+#endif
+	ASSERT(numWeightsPerVertex<=4);
+	treeIndices.setSize(numWeightsPerVertex);
+	localpos.setSize(numWeightsPerVertex);
+	weights.setSize(numWeightsPerVertex);
+
+	int count=0;
+//#define DEBUG_GETVERTEXINFO
+
+#ifdef DEBUG_GETVERTEXINFO
+	vector3 accumVecPos(0,0,0);
+	vector3 accumVecPos2(0,0,0);
+#endif
+	for (unsigned short blendIdx = 0; blendIdx < numWeightsPerVertex; ++blendIdx)
+	{
+		// Blend by multiplying source by blend matrix and scaling by weight
+		// Add to accumulator
+		// NB weights must be normalised!!
+		m_real weight = pBlendWeight[blendIdx];
+		if (weight)
+		{
+			matrix4 m;
+			MeshBone& bone=((MeshBone&)getBoneByTreeIndex(pBlendIndex[blendIdx]));
+			vector3 scale;
+			quater rotate;
+			vector3 translate;
+			scale= bone.mDerivedScale.mult(bone.mBindDerivedInverseScale);
+#ifdef DEBUG_GETVERTEXINFO
+			// Combine orientation with binding pose inverse orientation
+			rotate = bone.getRotation() * bone.mBindDerivedInverseOrientation;
+			translate = bone.getTranslation() + rotate * (scale.mult(bone.mBindDerivedInversePosition));
+
+			m.setTransform(translate, scale, rotate);
+			accumVecPos+= m*sourceVec*weight;
+#endif
+			weights[count]=weight;
+
+			rotate=bone.mBindDerivedInverseOrientation;
+			translate=rotate*(scale.mult(bone.mBindDerivedInversePosition));
+			m.setTransform(translate, scale, rotate);
+			localpos[count]=m*sourceVec;
+			treeIndices[count]=pBlendIndex[blendIdx];
+
+#ifdef DEBUG_GETVERTEXINFO
+			accumVecPos2+=(bone.getFrame()*localpos[count])*weight;
+#endif
+			count++;
+		}
+	}
+
+	treeIndices.resize(count);
+	localpos.resize(count);
+	weights.resize(count);
+
+#ifdef DEBUG_GETVERTEXINFO
+	std::cout << accumVecPos << "==" << accumVecPos2 << std::endl;
+	std::cout<<weights<<std::endl;
+#endif
+}
 
 void SkinnedMeshLoader::retrieveAnimatedMesh(OBJloader::Mesh& mesh)
 {
@@ -415,18 +647,18 @@ void SkinnedMeshLoader::retrieveAnimatedMesh(OBJloader::Mesh& mesh)
 		((MeshBone&)getBoneByTreeIndex(i)).getOffsetTransform(_cachedBoneMatrices[i]);
 	}
 
-#define USE_DUAL_QUATERNION
-#ifdef USE_DUAL_QUATERNION
 	std::vector<dualQuaternion> _cachedDualQuaternions;
-	_cachedDualQuaternions.resize(GetNumTreeNode());
-
-	for(int i=1; i<GetNumTreeNode(); i++)
-	{
-		_cachedDualQuaternions[i]=_cachedBoneMatrices[i];
-	}
 	dualQuaternion dqTemp;
 	dualQuaternion dqArray[4];
-#endif
+	if(_useDQinterpolation)
+	{
+		_cachedDualQuaternions.resize(GetNumTreeNode());
+
+		for(int i=1; i<GetNumTreeNode(); i++)
+		{
+			_cachedDualQuaternions[i]=_cachedBoneMatrices[i];
+		}
+	}
 	// 아래 코드는 Ogre::SkinEntity::softwareVertexBlend를 고쳐서 작성하였음.
 	size_t numVertices=mMesh.mesh.numVertex();
 
@@ -456,38 +688,40 @@ void SkinnedMeshLoader::retrieveAnimatedMesh(OBJloader::Mesh& mesh)
 
 		vector3* sourceNor=(mMesh.option.useNormal)?&mMesh.mesh.getNormal(vertIdx):NULL;
 
-#ifdef USE_DUAL_QUATERNION
-
-		for (unsigned short blendIdx = 0; blendIdx < numWeightsPerVertex; ++blendIdx)
+		if(_useDQinterpolation)
 		{
-			dqArray[blendIdx]=_cachedDualQuaternions[pBlendIndex[blendIdx]];
+			for (unsigned short blendIdx = 0; blendIdx < numWeightsPerVertex; ++blendIdx)
+			{
+				dqArray[blendIdx]=_cachedDualQuaternions[pBlendIndex[blendIdx]];
 
+			}
+
+			dqTemp=dualQuaternion::sDLB(numWeightsPerVertex, pBlendWeight, dqArray);
+
+			accumVecPos=dqTemp.transform(sourceVec);
+			accumVecNorm.rotate(dqTemp.mReal, *sourceNor);
 		}
+		else
+		{
+			for (unsigned short blendIdx = 0; blendIdx < numWeightsPerVertex; ++blendIdx)
+			{
+				// Blend position, use 3x4 matrix
+				const matrix4& mat = _cachedBoneMatrices[pBlendIndex[blendIdx]];
+				qtemp.setRotation(mat);
 
-		dqTemp=dualQuaternion::sDLB(numWeightsPerVertex, pBlendWeight, dqArray);
+				// Blend by multiplying source by blend matrix and scaling by weight
+				// Add to accumulator
+				// NB weights must be normalised!!
+				m_real weight = pBlendWeight[blendIdx];
+				if (weight)
+				{
+					accumVecPos+= mat*sourceVec*weight;
 
-		accumVecPos=dqTemp.transform(sourceVec);
-		accumVecNorm.rotate(dqTemp.mReal, *sourceNor);
-#else
-		for (unsigned short blendIdx = 0; blendIdx < numWeightsPerVertex; ++blendIdx)
-        {
-			// Blend position, use 3x4 matrix
-			const matrix4& mat = _cachedBoneMatrices[pBlendIndex[blendIdx]];
-			qtemp.setRotation(mat);
-
-			// Blend by multiplying source by blend matrix and scaling by weight
-            // Add to accumulator
-            // NB weights must be normalised!!
-            m_real weight = pBlendWeight[blendIdx];
-            if (weight)
-            {
-				accumVecPos+= mat*sourceVec*weight;
-
-                if (sourceNor)
-					accumVecNorm+= qtemp*(*sourceNor)*weight;
-            }
+					if (sourceNor)
+						accumVecNorm+= qtemp*(*sourceNor)*weight;
+				}
+			}
 		}
-#endif
 		mesh.getVertex(vertIdx)=accumVecPos;
 
 		// Stored blended vertex in temp buffer
@@ -844,8 +1078,11 @@ void skinnedMeshLoader_retrieveData(SkinnedMeshLoader::VertexBlendMesh& mesh, in
     srcElemBlendWeights->baseVertexPointerToElement(pBuffer, &pBlendWeight);
     unsigned short numWeightsPerVertex =
         VertexElement::getTypeCount(srcElemBlendWeights->getType());
-	ASSERT(numWeightsPerVertex ==4);
+	ASSERT(numWeightsPerVertex <=4);
 
+#ifdef _DEBUG
+	printf("numweights1 %d\n", numWeightsPerVertex);
+#endif
 	int numVertices=sourceVertexData->vertexCount;
 
 	for(size_t vertIdx=0; vertIdx<numVertices; vertIdx++)
@@ -960,5 +1197,4 @@ PLDPrimMesh* RE::createMesh(const Motion& mot, SkinnedMeshLoader *pTgtSkel, cons
 	pSkin->m_pTimer->StartAnim();
 	return pSkin;
 }
-
 #endif

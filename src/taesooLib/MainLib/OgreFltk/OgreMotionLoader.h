@@ -1,7 +1,6 @@
 // OgreMotionLoader.h: interface for the Ogre Skinned Mesh Character Skeleton
 //
 //////////////////////////////////////////////////////////////////////
-#ifndef NO_OGRE
 #pragma once
 
 //#include "nodestack.h"
@@ -9,6 +8,36 @@
 #include "Mesh.h"
 #include "pldprimskin.h"
 
+class SkinnedMeshFromVertexInfo
+{
+	public:
+	struct VertexInfo
+	{
+		intvectorn treeIndices;
+		vector3N localpos;
+		vectorn weights;
+	};
+	std::vector<VertexInfo> vertices;
+	int numVertex() const { return vertices.size();}
+		SkinnedMeshFromVertexInfo(){}
+		SkinnedMeshFromVertexInfo(const char* filename);
+
+		void exportSkinInfo(const char* filename) const;
+		vector3 calcSurfacePointPosition( MotionLoader const& loader, intvectorn const& treeIndices, vectorn const& weights, vector3N const& localpos);
+		void _calcVertexPosition( MotionLoader const& loader, int vertexIndex, vector3& out);
+		void _calcVertexPosition( BoneForwardKinematics const& loader, int vertexIndex, vector3& out);
+		inline vector3 calcVertexPosition( MotionLoader const& loader, int vertexIndex) { vector3 out; _calcVertexPosition(loader, vertexIndex, out); return out; }
+		inline vector3 calcVertexPosition( BoneForwardKinematics const& fkSolver, int vertexIndex) { vector3 out; _calcVertexPosition(fkSolver, vertexIndex, out); return out; }
+		void calcVertexPositions(MotionLoader const& loader, OBJloader::Mesh& mesh);
+
+		void resize(int numVertex) { vertices.resize(numVertex);}
+		inline intvectorn& treeIndices(int vertexIndex){ return vertices[vertexIndex].treeIndices;}
+		inline vector3N& localPos(int vertexIndex){ return vertices[vertexIndex].localpos;}
+		inline vectorn& weights(int vertexIndex){ return vertices[vertexIndex].weights;}
+		void getVertexInfo(int v1, int v2, int v3, vector3 const& baryCoeffs, intvectorn& treeIndices, vector3N& localpos, vectorn &weights);
+};
+
+#ifndef NO_OGRE
 /// OgreMesh파일의 skeleton구조의 한 본에 해당한다. 
 class MeshBone : public Bone
 {
@@ -18,6 +47,8 @@ public:
 	unsigned short mOgreBoneHandle;	
 	void Unpack(Ogre::Bone* pBone);
 	void getOffsetTransform(matrix4& m) const;
+	void printBindingInfo() const;
+	virtual void printHierarchy(int depth=0);
 
 	vector3 mDerivedScale;
 	vector3 mBindDerivedInverseScale;
@@ -31,11 +62,13 @@ class UnmergeInfo;
 // 또한 skinning에 필요한 모든 정보를 읽어온다.
 class SkinnedMeshLoader : public MotionLoader
 {
+	bool _useDQinterpolation;
 public:
-	SkinnedMeshLoader(const char* ogreMeshFile, bool unpackTexCoord=false);
+	SkinnedMeshLoader(const char* ogreMeshFile, bool unpackTexCoord=false, bool useDQinterpolation=true);
 	//SkinnedMeshLoader(const char *filename);
 	virtual ~SkinnedMeshLoader();
 	
+	void getInfo(SkinnedMeshFromVertexInfo& vi) const;
 	class VertexBlendMesh
 	{
 	public:
@@ -75,6 +108,9 @@ public:
 
 	// setSkeleton시 업데이트된 position과 normal을 가져온다. index는 가져오지 않는다!
 	void retrieveAnimatedMesh(OBJloader::Mesh& mesh);
+	void getVertexInfo(int vertexIndex, intvectorn& treeIndices, vector3N& localpos, vectorn &weights);
+	double getDerivedScale(int treeIndex);
+	double getBindingPoseInverseScale(int treeIndex);
 
 	intvectorn ogreBoneToBone;
 
@@ -82,7 +118,6 @@ private:
 	std::vector<matrix4> _cachedBoneMatrices;
 	void DumpChildParser(Ogre::Node* , int tab=0);
 };
-
 
 
 

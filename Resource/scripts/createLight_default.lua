@@ -5,19 +5,17 @@ if rootnode then
 lightnode=RE.createChildSceneNode(rootnode, "LightNode")
 RE.ogreSceneManager():setAmbientLight(0.4, 0.4, 0.4)
 
-if RE.getOgreVersionMinor()==12 then
-
+if RE.getOgreVersionMinor()>=12 then
 
 	local function randomNormal()
 		return (math.random()-0.5)*2
 	end
 
-
-	local numMainLights=10
-	if depthShadow then
-		--numMainLights=1 -- no difference
+	local textureShadow=false
+	if not stencilShadow and not depthShadow then
+		textureShadow=true
 	end
-	local lightVar=0.01
+	local lightVar=0.02
 	
 	local sc=math.pow(0.5, 1/numMainLights)
 	local light1D=0.8
@@ -35,6 +33,12 @@ if RE.getOgreVersionMinor()==12 then
 			lightOS=0.2/numMainLights
 		end
 		sc=0.9
+		if textureShadow then
+			sc=0.995
+			highQualityRendering=true
+		end
+	else
+		sc=0.975
 	end
 
 	if highQualityRendering then
@@ -45,8 +49,14 @@ if RE.getOgreVersionMinor()==12 then
 		if stencilShadow then
 			sc=math.pow(0.5, 1/numMainLights)
 		else
-			lightVar=0.2
-			sc=0.99
+			if depthShadow then
+				lightVar=0.2
+				sc=0.99
+			else
+				numMainLights=100
+				lightVar=0.3
+				sc=0.998
+			end
 			RE.ogreSceneManager():setShadowTextureCount(numMainLights)
 		end
 		local function randomNormal()
@@ -75,7 +85,15 @@ if RE.getOgreVersionMinor()==12 then
 			light=RE.ogreSceneManager():createLight("Mainlight"..i)
 		end
 		light:setType("LT_DIRECTIONAL")
-		light:setDirection(-0.5+lightVar*(randomNormal()),-0.7,0.5+lightVar*(randomNormal()))
+
+		if RE.getOgreVersionMinor()==12 then
+			light:setDirection(-0.5+lightVar*(randomNormal()),-0.7,0.5+lightVar*(randomNormal()))
+			lightnode:attachObject(light)
+		else
+			local node=lightnode:createChildSceneNode("mainlightnode"..i)
+			node:setDirection(vector3(-0.5+lightVar*(randomNormal()),-0.7,0.5+lightVar*(randomNormal())))
+			node:attachObject(light)
+		end
 		if i==1 then
 			light:setDiffuseColour(light1D,light1D,light1D)
 			light:setSpecularColour(light1S,light1S,light1S)
@@ -84,7 +102,7 @@ if RE.getOgreVersionMinor()==12 then
 			light:setSpecularColour(lightOS,lightOS,lightOS)
 		end
 		light:setCastShadows(true)
-		lightnode:attachObject(light)
+		
 	end
 else
 	light=RE.ogreSceneManager():createLight("Mainlight")

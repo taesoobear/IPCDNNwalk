@@ -9,13 +9,13 @@ def printPath(path):
         print('Closed, no files selected')
     else:
         print(path)
-def get_path(wildcard, s, d):
+def get_path(title, wildcard, s, d):
     app = wx.App(None)
     if s==wx.FD_OPEN:
         style = s | wx.FD_FILE_MUST_EXIST
     else:
         style = s 
-    dialog = wx.FileDialog(None, 'Open', wildcard=wildcard, style=style, defaultDir=d)
+    dialog = wx.FileDialog(None, title, wildcard=wildcard, style=style, defaultDir=d)
     if dialog.ShowModal() == wx.ID_OK:
         path = dialog.GetPath()
     else:
@@ -40,15 +40,16 @@ if pattern.find('{')>0:
 
 for i in range(len(patterns)):
         pattern=patterns[i]
+        pattern=pattern.split('.')[-1] # work-around a bug in wxWidget.
         if pattern.find('*')<0:
                 pattern='*.'+pattern
 
         if npattern=='':
             npattern=pattern
         else:
-            npattern=npattern+"|"+pattern
+            npattern=npattern+";"+pattern
 if sys.argv[4]=='OPEN':
-    printPath(get_path(npattern,wx.FD_OPEN, sys.argv[3]))
+    printPath(get_path(sys.argv[1]+' '+sys.argv[2], npattern,wx.FD_OPEN, sys.argv[3]))
 else:
-    printPath(get_path(npattern,wx.FD_SAVE, sys.argv[3]))
+    printPath(get_path(sys.argv[1]+' '+sys.argv[2], npattern,wx.FD_SAVE, sys.argv[3]))
 

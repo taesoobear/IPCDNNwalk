@@ -3154,9 +3154,17 @@ name='Ogre.Light',
 			}
 
 			static void setDirection(Ogre::Light* light, m_real x, m_real y, m_real z)
-			{light->setDirection(Ogre::Vector3(x,y,z));}
+			{
+				#if OGRE_VERSION_MAJOR<13
+				light->setDirection(Ogre::Vector3(x,y,z));
+				#endif
+			}
 			static void setPosition(Ogre::Light* light, m_real x, m_real y, m_real z)
-			{light->setPosition(x,y,z);}
+			{
+				#if OGRE_VERSION_MAJOR<13
+				light->setPosition(x,y,z);
+				#endif
+			}
 			static void setDiffuseColour(Ogre::Light* light, m_real x, m_real y, m_real z)
 			{light->setDiffuseColour(Ogre::ColourValue(x,y,z));}
 			static void setSpecularColour(Ogre::Light* light, m_real x, m_real y, m_real z)
@@ -3240,7 +3248,7 @@ staticMemberFunctions={[[
 			wrapperCode=[[
 			inline static void setChildPosition(Ogre::Overlay* overlay, const char* name, int x, int y)
 			{
-#if OGRE_VERSION_MINOR<9
+#if OGRE_VERSION_MINOR<9 || OGRE_VERSION_MAJOR>=13
 				Ogre::OverlayElement* pElt=overlay->getChild(name);
 #else
 				Ogre::OverlayContainer* pElt=overlay->getChild(name);
@@ -3507,6 +3515,12 @@ staticMemberFunctions={[[
 #endif
 
 			}
+			static void setDirection(Ogre::SceneNode* pNode, vector3 const& t)
+			{
+#ifndef NO_OGRE
+				pNode->setDirection(t.x,t.y,t.z);
+#endif
+			}
 			static Ogre::SceneNode* createChildSceneNode(Ogre::SceneNode* pNode, const char* name)
 			{OGRE_PTR(return pNode->createChildSceneNode(name));}
 			static Ogre::SceneNode* createChildSceneNode2(Ogre::SceneNode* pNode)
@@ -3547,6 +3561,7 @@ staticMemberFunctions={[[
 			static void translate(Ogre::SceneNode* pNode, vector3 const& t)
 			static void rotate(Ogre::SceneNode* pNode, quater const& t)
 			static void translate(Ogre::SceneNode* pNode, m_real x, m_real y, m_real z)
+			static void setDirection(Ogre::SceneNode* pNode, vector3 const& t)
 			static void scale(Ogre::SceneNode* pNode, vector3 const& t)
 			static void scale(Ogre::SceneNode* pNode, m_real x, m_real y, m_real z)
 			static void scale(Ogre::SceneNode* pNode, m_real x)
@@ -3744,8 +3759,6 @@ static void setPosition(Ogre::SceneNode* pNode, m_real x, m_real y, m_real z)
 			static void showBoundingBox(Ogre::SceneNode* node, bool bValue)
 			static void setRenderqueueOverlay(Ogre::SceneManager* pmgr,Ogre::Entity* roEntity, ushort groupID)
 							  ]]},
-			  memberFunctions={[[
-			  ]]}
 		},
 		{
 			name='Bone',
@@ -4119,6 +4132,7 @@ memberFunctions={[[
 			},
 			memberFunctions={
 				[[
+				const BoneForwardKinematics & getState() const	
 				void updateBoneLength(MotionLoader const& loader)
 				void setPose(const Motion& mot, int iframe)
 				void setPose(int iframe)
@@ -4147,6 +4161,7 @@ memberFunctions={[[
 			memberFunctions={[[
 			void setPoseDOF(const vectorn& poseDOF);
 			void setPose(BoneForwardKinematics const& in) @ setSamePose
+			void setPose(IK_sdls::LoaderToTree const& in) @ setSamePose
 			void setMaterial(int, const char*); @ setBoneMaterial
 			void getPose(Posture & posture); @ getPose
 			]]},
@@ -5252,6 +5267,9 @@ memberFunctions={[[
 					#ifdef NO_GUI
 					return 7;
 					#else
+#if OGRE_VERSION_MAJOR>=13 
+						return OGRE_VERSION_MAJOR;
+#endif
 					return OGRE_VERSION_MINOR;
 					#endif
 				}
@@ -5584,7 +5602,7 @@ int FlGenShortcut(const char* s);
 #define BEGIN_OGRE_CHECK try {
 #define END_OGRE_CHECK	} catch ( Ogre::Exception& e ) {Msg::msgBox(e.getFullDescription().c_str());}
 
-#if OGRE_VERSION_MINOR>=9
+#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
 #include "Overlay/OgreOverlay.h"
 #include "Overlay/OgreOverlayManager.h"
 #include "Overlay/OgreOverlayContainer.h"

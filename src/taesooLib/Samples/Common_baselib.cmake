@@ -28,28 +28,32 @@ if(UNIX)
 	#	add_definitions(-DNDEBUG)
 	#endif()
 	message("Unix OS")
-	set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -ftemplate-depth-100 -msse2 -mfpmath=sse -Wno-deprecated -std=c++11")
+	#set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -ftemplate-depth-100 -msse2 -mfpmath=sse -Wno-deprecated -std=c++11")
+	set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -ftemplate-depth-100 -Wno-deprecated -std=c++11")
 	if (APPLE)
+		find_package(PkgConfig REQUIRED)
+		pkg_check_modules(EIGEN eigen3 REQUIRED)
+		pkg_check_modules(LUA lua5.1 REQUIRED)
+		include_directories(${EIGEN_INCLUDE_DIRS})
+		set(LUA_INCLUDE ${LUA_INCLUDE_DIRS})
+		set(LUA_LIB ${LUA_LIBRARIES})
+		set(HOMEBREW_DIR /opt/homebrew)
+
 		set(OGRE_INCLUDE 
+			${HOMEBREW_DIR}/include
 			"/usr/local/include/"
-			/usr/local/include/eigen3
+			"/usr/local/include/OGRE"
             "/Applications/OgreSDK/include/OGRE" 
 			"/Applications/OgreSDK/include/OIS"
 			"/Applications/OgreSDK/boost"
 			"/Applications/OgreSDK/include/OGRE/RenderSystems/GL/OSX"
 			"/Applications/OgreSDK/include/OGRE/RenderSystems/GL"
 			)
-		set(LUA_INCLUDE "/opt/local/include/lua-5.1" "/opt/local/include" "/usr/local/include/lua-5.1")
-		if(EXISTS "/opt/local/lib/lua-5.1/liblua-5.1.a")
-			set(LUA_LIB "/opt/local/lib/lua-5.1/liblua-5.1.a")
-		else()
-			set(LUA_LIB "/usr/local/lib/liblua.5.1.dylib")
-		endif()
-		if(EXISTS "/opt/local/lib/lua-5.1/liblua-5.1.a")
-			link_directories( "/opt/local/lib/")
-		else()
-			link_directories( "/usr/local/lib/")
-		endif()
+		link_directories(
+			${HOMEBREW_DIR}/lib
+			/usr/local/lib
+			/opt/homebrew/lib
+			)
 	else()
 		set(OGRE_INCLUDE "/usr/include/OGRE"
 			"/usr/include/OIS"
