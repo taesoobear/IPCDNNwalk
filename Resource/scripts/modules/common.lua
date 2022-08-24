@@ -412,12 +412,24 @@ end
 function registerContactPairAll(model, loader, floor, simulator, param)
 	if not param  then
 		param=vectorn ()
-		param:setValues(0.5,0.5, model.penaltyForceStiffness, model.penaltyForceDamp)
+		param:setValues(0.5,0.5, model.penaltyForceStiffness or 10000, model.penaltyForceDamp or 1000)
 	end
    for i=1,loader:numBone()-1 do
-
-      local bone_i=loader:VRMLbone(i)
-      simulator:registerCollisionCheckPair(loader:name(),bone_i.NameId, floor:name(), floor:bone(1):name(), param)
+	   for j=1, floor:numBone()-1 do
+		   local bone_i=loader:VRMLbone(i)
+		   simulator:registerCollisionCheckPair(loader:name(),bone_i.NameId, floor:name(), floor:bone(j):name(), param)
+	   end
+   end
+end
+function registerContactPairOnly(model, loader, floor, simulator, treeIndices, param)
+	if not param  then
+		param=vectorn ()
+		param:setValues(0.5,0.5, model.penaltyForceStiffness, model.penaltyForceDamp)
+	end
+	for ii=0, treeIndices:size()-1 do
+		local i=treeIndices(ii)
+		local bone_i=loader:VRMLbone(i)
+		simulator:registerCollisionCheckPair(loader:name(),bone_i.NameId, floor:name(), floor:bone(1):name(), param)
    end
 end
 
@@ -473,7 +485,7 @@ function calcDerivative_row(i, dmotionDOF, motionDOF)
    if model then frameRate=model.frame_rate end
    dmotionDOF_i:rmult(frameRate)
    
-   assert(motionDOF.dofInfo:numSphericalJoint()==1) 
+   assert(not motionDOF.dofInfo or motionDOF.dofInfo:numSphericalJoint()==1) 
    -- otherwise following code is incorrect
    local T=MotionDOF.rootTransformation(motionDOF:row(i))
    local V=T:twist( MotionDOF.rootTransformation(motionDOF:row(i+1)), 1/frameRate)
@@ -1377,6 +1389,7 @@ if MotionUtil then
 	function MotionUtil.calcSkeletonMesh(fn)
 		local objFolder=string.sub(fn, 1, -5).."_sd"
 
+		os.createDir(objFolder)
 		local tempFile=objFolder.."/temp.wrl"
 		local mot=Motion(mLoader)
 		mot:resize(1)

@@ -30,7 +30,7 @@ void Register_mainlib(lua_State*L);
 #include "ScriptWin.h"
 static void handleLUAerror(lua_State* L)
 {
-	printf("handleLUAerror:\n");
+	Msg::print("handleLUAerror:\n");
 	luna_printStack(L);
 	luaL_dostring(L, "dbg.traceBack()");
 	luaL_dostring(L, "dbg.console()");
@@ -38,12 +38,11 @@ static void handleLUAerror(lua_State* L)
 class GlobalUI;
 GlobalUI* getGlobalUI();
 
-using namespace std;
 inline void getglobal(lunaStack& l, const char* func)
 {
 	l.getglobal(func);
 	if(lua_isnil(l.L,-1)){
-		cout << func <<" is nil!!!\n";
+		Msg::error("%s  is nil!!!\n", func);
 	}
 }
 static void fastPrint(const char* out)
@@ -61,14 +60,14 @@ static void fastPrint(const char* out)
 	{
 		start=MAX(0, prevOut.length()-5);
 	}
-	printf("-%s", &out[start]);
+	Msg::print("-%s", &out[start]);
 	fflush(stdout);
 	prevOut=out;
 }
 
 static void printFlush(const char* out)
 {
-	printf("%s", out);
+	Msg::print("%s", out);
 	fflush(stdout);
 }
 
@@ -183,7 +182,7 @@ void ScriptWin::checkErrorFunc(lunaStack&l)
 	if (errorFunc==0){
 		l.getglobal("dbg", "console");
 		errorFunc=l.gettop();
-		if (errorFunc==0) printf("Warning! cannot find the error function!\n");
+		if (errorFunc==0) Msg::print("Warning! cannot find the error function!\n");
 	}
 #endif
 }
@@ -193,7 +192,7 @@ void ScriptWin::luna_call(lunaStack& l,int numIn, int numOut)
 	checkErrorFunc(l);
 	if(lua_pcall(l.L,numIn,numOut,errorFunc))
 	{
-		printf("ScriptWin::luna_call\n");
+		Msg::print("Error in ScriptWin::luna_call.\n");
 		handleLUAerror(l.L);
 	}
 #else
@@ -250,7 +249,7 @@ void ScriptWin::onCallback(FlLayout::Widget const& w, Fl_Widget * pWidget, int u
 		{
 #ifdef _MSC_VER
 			{
-				printf("scriptfn: %s\n", new_script.ptr());
+				Msg::print("scriptfn: %s\n", new_script.ptr());
 				LUAwrapper L;
 				if(IsFileExist("../MainLib/WrapperLua/mylib.lua"))
 					L.dofile("../MainLib/WrapperLua/mylib.lua");
@@ -260,7 +259,7 @@ void ScriptWin::onCallback(FlLayout::Widget const& w, Fl_Widget * pWidget, int u
 				L<<new_script;
 				L.call(1,1);
 				L>>new_script;
-				printf("scriptfn: %s\n", new_script.ptr());
+				Msg::print("scriptfn: %s\n", new_script.ptr());
 			}
 #endif
 			setLabel(findButton("scriptfn"), new_script);
@@ -384,13 +383,21 @@ void ScriptWin::initLuaEnvironment()
 void ScriptWin::loadScript(const char* script, const char* scriptstring)
 {
 	initLuaEnvironment();
-	_loadScript(L, this, script);
-	lunaStack l(L);
+
+	char luastring[2000];
+	sprintf(luastring, "g_luaScript='%s'", script);
+	luaL_dostring(L, luastring);
+	::_loadScript(L, this, script);
+
 	if(scriptstring)
 		luaL_dostring(L, scriptstring);
 	if(script){
+		lunaStack l(L);
 		getglobal(l,"ctor");
-		luna_call(l,0,0);
+		if(lua_isnil(l.L, -1))
+			Msg::error("error! ctor is nil");
+		else
+			luna_call(l,0,0);
 	}
 }
 
@@ -459,7 +466,7 @@ int ScriptWin::work(TString const& workname, lunaStack& L)
 		{
 			setLabel(findButton("scriptfn"), str);
 			redraw();
-			_loadScript(this->L, this, getLabel(findButton("scriptfn")));
+			::_loadScript(this->L, this, getLabel(findButton("scriptfn")));
 		}
 	}
 	else if(workname=="dostring" && this->L)
@@ -515,7 +522,7 @@ int ScriptWin::handleRendererMouseEvent(int ev, int x, int y, int button)
 	}
 
 	lunaStack l(L);
-	getglobal(l,"handleRendererEvent");
+	l.getglobal("handleRendererEvent");
 	if(lua_isnil(l.L, -1))
 	{
 		return 0;
@@ -563,7 +570,7 @@ int	ScriptWin::handleRendererEvent(int ev)
 			int key;
 			lunaStack l(L);
 			key=Fl::event_key();
-			getglobal(l,"handleRendererEvent");
+			l.getglobal("handleRendererEvent");
 			if(lua_isnil(l.L, -1))
 			{
 				return 0;

@@ -25,7 +25,7 @@ bool Box2D::contains(vector2 const& pt, double margin)	const
 	return false;
 }
 
-inline double __max(double a, double b, double c)
+inline double __max_hyu(double a, double b, double c)
 {
 	if(a>b)
 	{
@@ -43,18 +43,20 @@ inline double __max(double a, double b, double c)
 double Box2D::distance(vector2 const& p)
 {
 	Box2D& rect=*this;
-	double dx = __max(rect.min.x() - p.x(), 0.0, p.x() - rect.max.x());
-	double dy = __max(rect.min.y() - p.y(), 0.0, p.y() - rect.max.y());
+	double dx = __max_hyu(rect.min.x() - p.x(), 0.0, p.x() - rect.max.x());
+	double dy = __max_hyu(rect.min.y() - p.y(), 0.0, p.y() - rect.max.y());
 	return sqrt(dx*dx + dy*dy);
 }
 double Box2D::negativeDistance(vector2 const& p)
 {
 	Box2D& rect=*this;
-	double dx = __max(rect.min.x() - p.x(), 0.0, p.x() - rect.max.x());
-	double dy = __max(rect.min.y() - p.y(), 0.0, p.y() - rect.max.y());
+	double dx = __max_hyu(rect.min.x() - p.x(), 0.0, p.x() - rect.max.x());
+	double dy = __max_hyu(rect.min.y() - p.y(), 0.0, p.y() - rect.max.y());
 	if(dx==0.0)
 	{
 	}
+	assert(false);
+	return 0;
 }
 
 Plane::Plane ()
@@ -351,6 +353,61 @@ std::pair<bool, m_real> Ray::intersects(const Sphere& sphere) const
     }
 }
 
+int Ray::pickBarycentric(const OBJloader::Mesh& mesh, vector3 & baryCoeffs, vector3 & pickPos)
+{
+	auto& ray=*this;
+	double rayParam=DBL_MAX;
+	int argMin=-1;
+	vector3 normal;
+	for(int i=0; i<mesh.numFace(); i++)
+	{
+		OBJloader::Face const& f=mesh.getFace(i);
+		vector3 a=mesh.getVertex(f.vi(0));
+		vector3 b=mesh.getVertex(f.vi(1));
+		vector3 c=mesh.getVertex(f.vi(2));
+		normal=mesh.calcFaceNormal(i);
+
+		auto res=ray.intersects(a,b,c,normal,true,false);
+		if(res.first) 
+		{
+			if(res.second<rayParam)
+			{
+				rayParam=res.second;
+				argMin=i;
+			}
+		}
+	}
+	if (rayParam!=DBL_MAX)
+	{
+		pickPos=ray.getPoint(rayParam);
+
+		OBJloader::Face const& f=mesh.getFace(argMin);
+		// getBarycentric
+		{
+			auto& p=pickPos;
+			vector3 v1=mesh.getVertex(f.vi(0));
+			vector3 v2=mesh.getVertex(f.vi(1));
+			vector3 v3=mesh.getVertex(f.vi(2));
+			vector3 v3v1 = v3 - v1;
+			vector3 v2v1 = v2 - v1;
+			vector3 pv1 = p - v1;
+
+			double v123Area = v2v1.cross( v3v1).length();
+			double v12PArea = pv1.cross( v2v1).length();
+			double v13PArea = pv1.cross( v3v1).length();
+
+			double v3Coeff = v12PArea / v123Area;
+			double v2Coeff = v13PArea / v123Area;
+			double v1Coeff = 1.0 - v2Coeff - v3Coeff;
+
+			baryCoeffs[0] = v1Coeff;
+			baryCoeffs[1] = v2Coeff;
+			baryCoeffs[2] = v3Coeff;
+		}
+		return argMin;
+	}
+	return -1;
+}
 namespace intersectionTest
 {
 void LineSegment::resetPosition(const vector3& from, const vector3& to)

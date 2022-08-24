@@ -347,6 +347,10 @@ void DynamicsSimulator_TRL_LCP::init(double timeStep,
 void DynamicsSimulator_TRL_LCP::initSimulation()
 {
 #if 1
+	int n = world.numBodies();
+	for(int i=0; i < n; ++i){
+        world.body(i)->calcForwardKinematics(false, false);
+	}
 	world.initialize(); // moved to init (which is less frequently called)
 	_contactForceSolver->initialize();
 #else // buggy but faster.
@@ -358,6 +362,14 @@ void DynamicsSimulator_TRL_LCP::initSimulation()
 	}
 #endif
 	_updateCharacterPose();
+
+	for(int i=0; i<world.numBodies(); i++)
+		world.body(i)->clearExternalForces();
+#ifdef RBDL_ENABLE_LOGGING
+	OutputToFile("output_trl.log", LogOutput.str().c_str());
+	ClearLogOutput();
+	OutputToFile("output_trl.log", "::initSimulationEnd");
+#endif
 }
 
 void DynamicsSimulator_TRL_LCP::setParam_Epsilon_Kappa(double eps, double kap)

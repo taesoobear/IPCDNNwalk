@@ -173,7 +173,7 @@ void Node::addChildren(std::list<Node*>& children)
 void Node::printHierarchy(int depth)
 {
 	for(int ii=0; ii<depth; ii++) printf(" ");
-	printf("%s \n", NameId);
+	Msg::print("%s \n", NameId);
 	for(Node *i=m_pChildHead; i!=NULL; i=i->m_pSibling)
 		i->printHierarchy(depth+1);
 }

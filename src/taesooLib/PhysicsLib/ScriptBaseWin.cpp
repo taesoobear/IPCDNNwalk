@@ -2,7 +2,7 @@
 #include "physicsLib.h"
 
 #include "DynamicsSimulator_penaltyMethod.h"
-#include "InertiaCalculator.h"
+//#include "InertiaCalculator.h"
 
 #include "../MainLib/WrapperLua/luna_mainlib.h"
 #include "../MainLib/OgreFltk/VRMLloader.h"
@@ -18,6 +18,7 @@ ScriptBaseWin::ScriptBaseWin(int x, int y, int w, int h, MotionPanel& mp,FltkRen
 
 void ScriptBaseWin::createMenu()
 {
+	resetToDefault();
 	setUniformGuidelines(10);
 	for(int i=0; i<scripts.size(); i++)
 	{
@@ -103,6 +104,7 @@ void VRMLloader_checkMass(VRMLloader& l)
 		}
 	}
 }
+/*
 void VRMLloader_setTotalMass(VRMLloader & l, m_real totalMass)
 {
 	vectorn mass;
@@ -111,11 +113,7 @@ void VRMLloader_setTotalMass(VRMLloader & l, m_real totalMass)
 	mass.resize(l.numBone());
 	inertia.resize(l.numBone());
 
-#ifndef NO_BULLET
 	InertiaCalculator ic;
-#else
-	InertiaCalculatorAnalytic ic;
-#endif
 	mass[0]=0.0;
 	for(int b=1; b<l.numBone(); b++)
 	{
@@ -154,6 +152,7 @@ void VRMLloader_setTotalMass(VRMLloader & l, m_real totalMass)
 
 // calculate all center of masses and inertia tensors based on geometry.
 void VRMLloader_setTotalMass(VRMLloader & l, m_real totalMass);
+*/
 void VRMLloader_checkMass(VRMLloader& l);
 
 

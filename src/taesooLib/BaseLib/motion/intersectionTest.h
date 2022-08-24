@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../BaseLib/math/tvector.h"
+#include "../../BaseLib/motion/Mesh.h"
 class Box2D
 {
 	public:
@@ -77,6 +78,7 @@ public:
 	{
 		return mOrigin + (mDirection * t);
 	}
+	void scale(double s) { mOrigin*=s;}
 	void translate(vector3 const& t) { mOrigin+=t; }
 
 	std::pair<bool, m_real> intersects(const Plane& p) const;
@@ -89,6 +91,10 @@ public:
 
 	std::pair<bool, m_real> intersects(const vector3& a,
     const vector3& b, const vector3& c, bool bCCW=true) const;
+
+	// returns faceIndex  or -1
+	int pickBarycentric(const OBJloader::Mesh &mesh, vector3 & baryCoeffs, vector3& pickPos);
+
 };
 
 namespace intersectionTest

@@ -22,11 +22,6 @@ namespace HRP_JOINT
 	};
 }
 
-namespace OpenHRP
-{
-	class DynamicsSimulator_TRL_LCP;
-}
-
 struct VRML_TRANSFORM;
 struct _HRP_JOINT;
 struct HRP_SHAPE;
@@ -200,4 +195,5 @@ public:
 	void fullbodyPoseToSubpose(vectorn const & fullpose, vectorn &subpose) const;
 
 };
+
 #endif

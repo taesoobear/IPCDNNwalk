@@ -1579,7 +1579,7 @@ MotionPanel::MotionPanel(int x, int y, int w, int h)
 		cry+=20*mScaleFactor;
 	m_menuMotion.initChoice(crx,cry, (100+80)*mScaleFactor, 20*mScaleFactor);
 
-	int nitem=76;
+	int nitem=77;
 	m_menuOp.size(nitem);
 
 	int item=0;
@@ -1630,6 +1630,7 @@ MotionPanel::MotionPanel(int x, int y, int w, int h)
 	m_menuOp.item(item++, "Set playback speed",0, Hash("Set speed"));
 	m_menuOp.item(item++, "Toggle background",0, Hash("Toggle background"));
 	m_menuOp.item(item++, "Toggle skybox", 0, Hash("TgSb"));
+	m_menuOp.item(item++, "Turn-off fog", 0, Hash("Turn-off fog"));
 	m_menuOp.item(item++, "Change background color", 0, Hash("ChBg"));
 	m_menuOp.item(item++, "Change shadow technique", 0, Hash("ChSh"));
 	m_menuOp.item(item++, "Toggle logo", 0, Hash("TgLg"));

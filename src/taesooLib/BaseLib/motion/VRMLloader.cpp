@@ -357,7 +357,7 @@ void VRMLTransform::pack(FILE* file, int level)
   if(mJoint->jointAxis2)
   {
 	  fprintf(file,"  jointAxis2");
-	  //printf("length():%d\n",mJoint->AxisNum);
+	  //Msg::print("length():%d\n",mJoint->AxisNum);
 	  for(int i=0;i<mJoint->AxisNum;i++)
 	  {
 		  fprintf(file," %f %f %f %f",mJoint->jointAxis2Angle[i],mJoint->jointAxis2[i].x,mJoint->jointAxis2[i].y,mJoint->jointAxis2[i].z);
@@ -739,7 +739,7 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
 {
   TString token=file.GetToken();
 #ifdef _DEBUG
-  printf("token: %s", token.ptr());
+  Msg::print("token: %s", token.ptr());
 #endif
   if(token=="DEF")
     {
@@ -747,7 +747,7 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
       token=file.GetToken();
     }
 #ifdef _DEBUG
-  printf(" %s %s\n", NameId, token.ptr());
+  Msg::print(" %s %s\n", NameId, token.ptr());
 #endif
 
   mVRMLtype=token;
@@ -761,7 +761,7 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
 	{
 	  token=file.GetToken();
 #ifdef _DEBUG
-  printf("Joint token: %s", token.ptr());
+	  Msg::print("Joint token: %s", token.ptr());
 #endif
 	  if(token=="translation")
 	  {
@@ -828,7 +828,7 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
     {
       token=file.GetToken();
 #ifdef _DEBUG
-  printf("segment_token: %s", token.ptr());
+	  Msg::print("segment_token: %s", token.ptr());
 #endif
       ASSERT(token=="{");
       mSegment=new HRP_SEGMENT();
@@ -915,7 +915,7 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
 			  size.y=atof(file.GetToken());
 			  size.z=atof(file.GetToken());
 
-			  //printf("Box size %s\n", size.output().ptr());
+			  //Msg::print("Box size %s\n", size.output().ptr());
 			  token=file.GetToken();
 
 			  if (token=="color")
