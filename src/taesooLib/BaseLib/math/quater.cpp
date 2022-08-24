@@ -5,7 +5,7 @@
 #include "vector3.h"
 #include "matrix3.h"
 #include "Operator_NR.h"
-static m_real eps = 0.0001;
+static m_real eps = 1e-5;
 
 
 void quater::negate(quater const& a)

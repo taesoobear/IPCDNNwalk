@@ -39,6 +39,7 @@ class MotionDOFinfo
   enum DOFtype_T { ROTATE, SLIDE, QUATERNION_W, QUATERNION_X, QUATERNION_Y, QUATERNION_Z};
 
   MotionLoader & skeleton() const	{return *_sharedinfo->mSkeleton;}
+  int parentIndex(int ibone) const ;
   int numDOF() const; // including quaternion's additional variables.
   int numActualDOF() const; // numDOF()- numSphericalJoint()
   int numBone() const;
@@ -46,7 +47,7 @@ class MotionDOFinfo
   int DOFtype(int ibone, int offset) const;
   int DOFindex(int ibone, int offset) const;
   int sphericalDOFindex(int isphericalJoint) const;
-  int numSphericalJoint() const;
+  int numSphericalJoint() const; // including the free root joint (if any).
   double frameRate() const;
   void setFrameRate(double f);
   void getDOF(Posture const& p, vectorn& dof) const;

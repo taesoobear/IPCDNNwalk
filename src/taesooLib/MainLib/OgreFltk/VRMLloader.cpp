@@ -5,6 +5,7 @@
 #include "../MainLib/OgreFltk/pldprimskin_impl.h"
 #include "../MainLib/OgreFltk/renderer.h"
 #include "../BaseLib/math/conversion.h"
+#include "../BaseLib/motion/IK_sdls/NodeWrap.h"
 #ifndef NO_OGRE
 #include <OgreSceneNode.h>
 #include <OgreSceneManager.h>
@@ -57,6 +58,7 @@ void VRMLloader_updateMeshEntity(VRMLloader& l)
 	  OBJloader::MeshToEntity::Option o;
 	  o.useTexCoord=false;
 	  o.buildEdgeList=true;
+	  o.useColor=true;
 	  //o.buildEdgeList=false;
 
 	  HRP_SHAPE_MESH_TO_ENTITY* oo=new HRP_SHAPE_MESH_TO_ENTITY() ;
@@ -134,6 +136,18 @@ void PLDPrimVRML::setPose(BoneForwardKinematics const& in)
 	in.getPoseFromLocal(pose);
 	SetPose(pose, *mVRMLL);*/
 }
+void PLDPrimVRML::setPose(IK_sdls::LoaderToTree const& in)
+{
+	int nb=mChain->getSkeleton().numBone();
+	for(int i=1; i<nb; i++)
+		mChain->_global(i)=in.globalFrame(i);
+	_updateEntities(*mChain);
+
+  	/*
+	static Posture pose;
+	in.getPoseFromLocal(pose);
+	SetPose(pose, *mVRMLL);*/
+}
 
 void PLDPrimVRML::SetPose(const Posture & posture, const MotionLoader& skeleton)
 {
@@ -163,9 +177,12 @@ void PLDPrimVRML::_updateEntities(BoneForwardKinematics & fk)
 		VRMLTransform* ll=((VRMLTransform*)&mVRMLL->getBoneByTreeIndex(i));
 		if(ll->mShape)
 		{
-			mSceneNodes[i]->resetToInitialState();
-			mSceneNodes[i]->rotate(ToOgre(fk.global(i).rotation));
-			mSceneNodes[i]->translate(ToOgre(fk.global(i).translation));
+			auto* ptr=mSceneNodes[i];
+			if (ptr){
+				ptr->resetToInitialState();
+				ptr->rotate(ToOgre(fk.global(i).rotation));
+				ptr->translate(ToOgre(fk.global(i).translation));
+			}
 		}
 	}
 	__drawConstraints(*mVRMLL);

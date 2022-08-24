@@ -6,6 +6,7 @@
 #define nullptr NULL
 #endif
 #include "../../BaseLib/math/conversion.h"
+#include "../../BaseLib/motion/Liegroup.h"
 #include <Eigen/Core>
 #include <Eigen/Dense>
 typedef Eigen::Matrix< double, 6, 6> CMatrix66;
@@ -15,6 +16,8 @@ typedef Eigen::Matrix< double, 6, 1> CVector6;
 typedef Eigen::Matrix <double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor > RMatrixXd;
 typedef Eigen::Map<RMatrixXd  , Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, 1> > RMatrixXdView;
 typedef Eigen::Map<Eigen::MatrixXd  , Eigen::Unaligned, Eigen::Stride<Eigen::Dynamic, 1> > MatrixXdView;
+typedef Eigen::Matrix<double, 3, 3, Eigen::RowMajor> RMatrix33;
+typedef Eigen::Matrix< double, 3,1> CVector3;
 
 /****************************************************************
  * for matrixn <-> MatrixXd conversion without copying elements *
@@ -22,9 +25,27 @@ typedef Eigen::Map<Eigen::MatrixXd  , Eigen::Unaligned, Eigen::Stride<Eigen::Dyn
 // the folowing four functions share the original memory.
 // returns a row-major Eigen matrix (no element copying)
 inline RMatrixXdView eigenView(matrixn const& m) { return RMatrixXdView((double*)&m(0,0), m.rows(), m.cols(), Eigen::Stride<Eigen::Dynamic, 1>(m._getStride(), 1));}
+inline RMatrix33& eigenView(matrix3 const& m) { ASSERT(sizeof(double)*9==sizeof(RMatrix33));  return *((RMatrix33*) &m);}
+inline CVector3& eigenView(vector3 const& m) { ASSERT(sizeof(double)*3==sizeof(CVector3));  return *((CVector3*) &m);}
+inline CVector6& eigenView(Liegroup::se3 const& m) { ASSERT(sizeof(double)*6==sizeof(CVector6));  return *((CVector6*) &m);}
+inline matrix3& trlView(RMatrix33 const& m) { ASSERT(sizeof(double)*9==sizeof(RMatrix33));  return *((matrix3*) &m);}
+inline vector3& trlView(CVector3 const& m) { ASSERT(sizeof(double)*3==sizeof(CVector3));  return *((vector3*) &m);}
+inline Liegroup::se3& trl_se3(CVector6 const& m) { ASSERT(sizeof(double)*6==sizeof(CVector6));  return *((Liegroup::se3*) &m);}
+
+inline vector3 toVector3(Eigen::VectorXd const& v, int i) { return vector3(v[i], v[i+1], v[i+2]);}
+
 
 // returns a column-major Eigen matrix (no element copying but returns a transposed matrix.)
 inline MatrixXdView eigenTView(matrixn const& m) { return MatrixXdView((double*)&m(0,0), m.cols(), m.rows(), Eigen::Stride<Eigen::Dynamic, 1>(m._getStride(), 1));}
+inline MatrixXdView eigenTView(vectorn const& m) { return MatrixXdView((double*)&m(0), m.size(), 1, Eigen::Stride<Eigen::Dynamic, 1>(m._getStride(), 1));}
+
+namespace Liegroup {
+	// Ad == dAd'
+	inline CMatrix66 Ad(transf const& b) { matrixn m(6,6); Liegroup::dAd(m, b); return eigenTView(m);}
+	inline CMatrix66 dAd(transf const& b) { matrixn m(6,6); Liegroup::dAd(m, b); return eigenView(m);}
+	inline CMatrix66 dot_Ad(transf const& b, matrix4 const& dotB) { matrixn m(6,6); Liegroup::dot_dAd(m, b, dotB); return eigenTView(m);}
+	inline CMatrix66 dot_dAd(transf const& b, matrix4 const& dotB) { matrixn m(6,6); Liegroup::dot_dAd(m, b, dotB); return eigenView(m);}
+}
 
 // returns a matrixn
 inline matrixnView matView(RMatrixXd const& x) { Msg::verify(x.rows()==1 || &x(1,0)-&x(0,0)==x.cols(), "Stride!=cols(). I don't know how to obtain the stride of Eigen::Matrix. So I just assumed this but..."); return matrixnView((double*)&x(0,0), x.rows(), x.cols(), x.cols());}
@@ -38,7 +59,7 @@ inline matrixnView matTView(Eigen::MatrixXd const& x) { Msg::verify(x.cols()==1 
 inline Eigen::Map<Eigen::VectorXd> eigenView(vectorn const& v1) { Msg::verify(v1._getStride()==1,"cannot be converted to Eigen::Map<VectorXd>"); return Eigen::VectorXd::Map((double*)&v1[0], v1.size());}
 inline vectornView vecView(Eigen::VectorXd const& x) { return vectornView((double*)&x(0), x.size(), 1); }
 
-// all the following functions copy the data.
+// all the following functions copy the data. Use eigenView for referencing.
 // convert to BaseLib type.
 inline vector3 toBase(Eigen::Vector3d const & v) { return vector3(v(0), v(1), v(2));}
 inline quater toBase(Eigen::Quaterniond const& q) { return quater(q.w(), q.x(), q.y(), q.z());}

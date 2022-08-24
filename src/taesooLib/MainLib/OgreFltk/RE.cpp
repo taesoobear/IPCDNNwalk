@@ -765,7 +765,7 @@ void RE::removeEntity(Ogre::SceneNode* node)
 
 			//std::cout<<"name :::"<<node->getName()<<std::endl;
 
-#if OGRE_VERSION_MINOR >= 12 
+#if OGRE_VERSION_MINOR >= 12  || OGRE_VERSION_MAJOR>=13
 			((Ogre::SceneNode*)(node->getParent()))->removeAndDestroyChild(node);
 #else
 			((Ogre::SceneNode*)(node->getParent()))->removeAndDestroyChild(node->getName());

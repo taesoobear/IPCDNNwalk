@@ -10,7 +10,6 @@ class Interpolator;
 class TimeSensor;
 class Posture;
 class OgreRenderer;
-class BoneForwardKinematics;
 class MotionManager;
 class Motion;
 #ifndef NO_OGRE
@@ -66,15 +65,6 @@ protected:
 	virtual int UpdateBone();
 
 	MotionLoader* mSkel;
-	//! Bone Matrix를 모두 update한다.
-	/*!
-	모든 child의 MatCombined를 아래의 방식으로 update한다.
-	MR: MatRot
-	MC: MatCombined
-	라 할때
-	MCchild = MRroot *...* MRgrandparent * MRparent * MRchild
-	*/
-	BoneForwardKinematics* mChain;
 };
 class PLDPrimBone : public PLDPrimSkel
 {

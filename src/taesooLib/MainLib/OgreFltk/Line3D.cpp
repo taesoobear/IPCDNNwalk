@@ -11,7 +11,8 @@
 #include <OgreEntity.h>
 #include "renderer.h"
 
-#if OGRE_VERSION_MINOR>=12
+#if OGRE_VERSION_MINOR>=12|| OGRE_VERSION_MAJOR>=13
+
 #include <OgreMaterialManager.h>
 #include <OgreMesh.h>
 void _setMaterial(Ogre::SimpleRenderable* ptr, const char* name)
@@ -781,7 +782,7 @@ const Vector3 &DynamicLines::getWorldPosition(void) const
 
 void BillboardLineList::line(int i, vector3 const& start, vector3 const & end, m_real tu1, m_real tu2)
 {
-#if OGRE_VERSION_MINOR >= 8 
+#if OGRE_VERSION_MINOR >= 8||OGRE_VERSION_MAJOR>=13 
 	addChainElement(i, Ogre::BillboardChain::Element(
 		ToOgre(start), thickness, tu1, Ogre::ColourValue(1,1,1,1), Ogre::Quaternion(1,0,0,0)));
 	addChainElement(i, Ogre::BillboardChain::Element(
@@ -796,7 +797,8 @@ void BillboardLineList::line(int i, vector3 const& start, vector3 const & end, m
 
 void ColorBillboardLineList::line(int i, vector3 const& start, vector3 const & end, vector3 const & rgbcolor, m_real tu1, m_real tu2)
 {
-#if OGRE_VERSION_MINOR >= 8 
+#if OGRE_VERSION_MINOR >= 8 ||OGRE_VERSION_MAJOR>=13 
+
 	addChainElement(i, Ogre::BillboardChain::Element(
 		ToOgre(start), thickness, tu1, Ogre::ColourValue(rgbcolor[0],rgbcolor[1],rgbcolor[2],1), Ogre::Quaternion(1,0,0,0)));
 	addChainElement(i, Ogre::BillboardChain::Element(
@@ -811,7 +813,8 @@ void ColorBillboardLineList::line(int i, vector3 const& start, vector3 const & e
 
 void ColorWidthBillboardLineList::line(int i, vector3 const& start, vector3 const & end, vector3 const & rgbcolor, m_real width, m_real tu1, m_real tu2)
 {
-#if OGRE_VERSION_MINOR >= 8 
+#if OGRE_VERSION_MINOR >= 8 ||OGRE_VERSION_MAJOR>=13 
+
 	addChainElement(i, Ogre::BillboardChain::Element(
 		ToOgre(start), width, tu1, Ogre::ColourValue(rgbcolor[0],rgbcolor[1],rgbcolor[2],1), Ogre::Quaternion(1,0,0,0)));
 	addChainElement(i, Ogre::BillboardChain::Element(
@@ -885,7 +888,7 @@ void ColorPointList::fillHardwareBuffers()
 	}
 
    // Initialization stuff 
-	prepareHardwareBuffers(mPoints.size()*6, 0);
+	prepareHardwareBuffers(mPoints.size(), 0);
 
 
    // Drawing stuff 

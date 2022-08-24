@@ -4,6 +4,7 @@
 
 #include "OpenHRPcommon.h"
 #include "../BaseLib/motion/VRMLloader.h"
+#include "../BaseLib/motion/Liegroup.h"
 class VRMLloader;
 class VRMLTransform;
 class vector3;
@@ -67,11 +68,13 @@ namespace OpenHRP
 			void getChain(vectorn& poseDOF);
 			std::string name;
 			private:
-			vectorn _tempPose; // last simulated pose
+			mutable vectorn _tempPose; // last simulated pose
 			friend class DynamicsSimulator;
 		};
 		std::vector<Character*> _characters;
-		virtual const vectorn & getLastSimulatedPose(int ichara=0) const { return _characters[ichara]->_tempPose;}
+		virtual const vectorn & getLastSimulatedPose(int ichara=0) const { ASSERT(false); 
+			return _characters[ichara]->_tempPose;
+		}
 
 		DynamicsSimulator(bool useSimpleColdet=true);
 		DynamicsSimulator(const char* collisionDetectorType);
@@ -125,6 +128,8 @@ namespace OpenHRP
 		::vector3 getWorldAngVel(int ichara, VRMLTransform* b) const;
 		::vector3 getWorldAngAcc(int ichara, VRMLTransform* b) const;
 
+		virtual void getBodyVelocity(int chara, VRMLTransform* b, Liegroup::se3& V) const { Msg::msgBox("Error! getBodyVelocity not implemented yet");}
+
 		virtual void addRelativeConstraint(int ichara, Bone& bone1,::vector3 boneVector1,Bone& bone2,::vector3 boneVector2) { Msg::msgBox("Error! addRelativeConstraint not implemented.");}
 		virtual void removeRelativeConstraint(int ichara, Bone& bone1, Bone& bone2) { Msg::msgBox("Error! removeRelativeConstraint not implemented.");}
 
@@ -153,7 +158,7 @@ namespace OpenHRP
 				double timeStep,
 				OpenHRP::DynamicsSimulator::IntegrateMethod integrateOpt)=0;
 		
-		virtual double currentTime()=0;
+		virtual double currentTime() const =0;
 		virtual void setCurrentTime(double t){ Msg::error("setCurrentTime not implmented yet");}
 
 		virtual void setTimestep(double timeStep)
@@ -190,10 +195,23 @@ namespace OpenHRP
 		// after chainging JOINT_VALUE, you usually need to call initSimulation().
 		virtual void setLinkData(int i, LinkDataType t, vectorn const& in)=0;
 
+		// shortcuts
 		inline void setPoseDOF(int ichara, vectorn const& v) { setLinkData(ichara, OpenHRP::DynamicsSimulator::JOINT_VALUE, v);}
-		inline void getPoseDOF(int ichara, vectorn & v) { getLinkData(ichara, OpenHRP::DynamicsSimulator::JOINT_VALUE, v);}
-		inline vectorn getPoseDOF(int ichara) { vectorn v; getLinkData(ichara, OpenHRP::DynamicsSimulator::JOINT_VALUE, v);return v;}
+		inline void getPoseDOF(int ichara, vectorn & v) const { ((DynamicsSimulator *)this)->getLinkData(ichara, OpenHRP::DynamicsSimulator::JOINT_VALUE, v);}
+		inline vectorn getPoseDOF(int ichara) const { vectorn v; getPoseDOF(ichara, v);return v;}
+		inline void setDPoseDOF(int ichara, vectorn const& v) { setLinkData(ichara, OpenHRP::DynamicsSimulator::JOINT_VELOCITY, v);}
+		inline void getDPoseDOF(int ichara, vectorn & v)  const{ ((DynamicsSimulator *)this)->getLinkData(ichara, OpenHRP::DynamicsSimulator::JOINT_VELOCITY, v);}
+		inline vectorn getDPoseDOF(int ichara) const { vectorn v; getDPoseDOF(ichara,  v);return v;}
 
+		// SDFAST style packing (x,y,z,qx,qy,qz,theta1,theta2,...,thetaN,qw), which is different from the MotionDOF/PoseDOF format  (x,y,z,qw,qx,qy,qz, theta1, ..., thetaN)
+		virtual void setQ(int ichara, vectorn const& v);
+		virtual void getQ(int ichara, vectorn & v) const ;
+		inline vectorn getQ(int ichara) const { vectorn v; getQ(ichara, v);return v;}
+		//   (wx, wy, wz, vx, vy, vz, dtheta1, dtheta2, ...,dthetaN). w, v is in the global coordinate unlike dpose.
+		virtual void setDQ(int ichara, vectorn const& v);
+		virtual void getDQ(int ichara, vectorn& v) const;
+		inline vectorn getDQ(int ichara) const { vectorn v; getDQ(ichara, v); return v;}
+		virtual void setU(int ichara, const vectorn& in);
 		///////////////////////////////////////////////
 		// utilities
 		///////////////////////////////////////////////
@@ -213,6 +231,7 @@ namespace OpenHRP
 		// num DOFs including redundant coordinates (w)
 		inline int rdof(int ichar=0) const { return skeleton(ichar).dofInfo.numDOF();}
 		inline int dof(int ichar=0) const { return skeleton(ichar).dofInfo.numActualDOF();}
+		inline int numSphericalJoints(int ichara) const { return skeleton(ichara).dofInfo.numSphericalJoint();}
 
 		void registerContactQueryBone(int contactQueryIndex, VRMLTransform* bone);
 		bool queryContact(int index);
@@ -224,8 +243,14 @@ namespace OpenHRP
 		// for QPservo
 		void getContactLinkBoneIndex(int ipair, intvectorn & ibone);
 		int getNumAllLinkPairs() const;
+
+		Liegroup::dse3 calcMomentumCOM(int ichara);
+		Liegroup::dse3 calcMomentumCOMfromPose(int ichara, double delta_t, vectorn const& poseFrom, vectorn const& poseTo);
+		void  calcInertia(int ichara,vectorn const& pose, vectorn& inertia) const;
 	protected:
-		vectorn& _getLastSimulatedPose(int ichara=0) { return _characters[ichara]->_tempPose;}
+		vectorn& _getLastSimulatedPose(int ichara=0) const { 
+			return _characters[ichara]->_tempPose;
+		}
 	};
 }
 #endif

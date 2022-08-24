@@ -462,12 +462,16 @@ function dbg.console(msg, stackoffset)
 		if line=="" then
 			line=debug.prevLine
 		end
+		if not line then
+			-- end of file.
+			line='cont'
+		end
 		debug.prevLine=line
 		local cmd=at(line,1)
 		local cmd_arg=tonumber(string.sub(line,2))
 		if not (string.sub(line,2)=="" or cmd_arg) then
 			if not ( cmd=="r" and at(line,2)==" ") then
-				if not string.isOneOf(cmd, ":", ";") then
+				if not string.isOneOf(cmd, ":", ";","?") then
 					cmd=nil
 				end
 			end
@@ -480,6 +484,8 @@ function dbg.console(msg, stackoffset)
 			print('bt[level=3]      : backtrace. Prints callstack')
 			print(';(lua statement) : eval lua statements. Usually, ";" can be omitted. e.g.) print(a) ')
             print('                   print or printTable can be omitted too            e.g.) a ')
+			print('?                : Type ? for help. e.g. ? torch.bitor')
+			print('help             : shows the usage of dbg.console (this debugger)')
 			print(':(lua statement) : eval lua statements and exit debug console. e.g.) :dbg.startCount(10)')
 			print('s[number=1]      : proceed n steps')
 			print('n		        : go to the next line')
@@ -489,11 +495,12 @@ function dbg.console(msg, stackoffset)
 			print('e[level=2]       : show current line (at callstack level 2) in gedit editor')
 			print('v[level=2]       : show current line (at callstack level 2) in vi editor')
 			print('c[level=2]       : show nearby lines (at callstack level 2) here')
-			print('l[level=2]       : print local variables. Results are saved into \'l variable.')
-			print("                      e.g) DEBUG]>print('l.self.mVec)")
+			print('l[level=2]       : print local variables. Results are saved into `(backquote) variables.')
+			print("                      e.g) DEBUG]>print(`self.mVec)")
 			print('clist            : list luna classes')
 			print('clist className  : list functions in the class')
 			print('cont             : exit debug mode')
+			print('exit				: os.exit(0)')
 			print('global variables : Simply type "a" to print the content of a global variable "a".')
 			print('local variables  : Simply type "`a" to print the content of a local variable "a".')
 			print('lua statement    : run it')
@@ -503,6 +510,8 @@ function dbg.console(msg, stackoffset)
 		elseif string.sub(line,1,2)=="bt" then dbg.callstack(tonumber(string.sub(line,3)) or 3)
 		elseif line=="clist" or string.sub(line,1,6)=='clist ' then
 			dbg.listLunaClasses(line)		
+		elseif line=='exit' then
+			os.exit(0)
 		elseif cmd=="c" or cmd=="v" then
 			if cmd_arg==nil then
 				local level=stackoffset
@@ -553,6 +562,9 @@ function dbg.console(msg, stackoffset)
 			end
 		elseif cmd==";" then
 			handleStatement(string.sub(line,2))
+		elseif cmd=='?' then
+			print("help("..string.sub(line,2)..")")
+			handleStatement("help("..string.sub(line,2)..")")
 		elseif cmd==":" then
 			handleStatement(string.sub(line,2))
 			break
@@ -1098,6 +1110,7 @@ local function zip_with_helper(result_helper, rh_arg, ...)
 end
 
  --[[
+ --usage: list_filtered=array.filter(function (x) return x.somecriteria==true end, list)
     filter(func, [one or more tables])
 
     Selects the items from the argument list(s), calls
@@ -1220,6 +1233,20 @@ function array:pushBack(...)
 	assert(self)
 	for i, x in ipairs({...}) do
 		table.insert(self, x)
+	end
+end
+function array:pushFront(...)
+	assert(self)
+	local b={}
+	for i, x in ipairs(self) do
+		b[i]=x
+	end
+	for i, x in ipairs({...}) do
+		self[i]=x
+	end
+	local n=#{...}
+	for i, x in ipairs(b) do
+		self[n+i]=x
 	end
 end
 
@@ -1522,7 +1549,13 @@ function table.toHumanReadableString(t, spc)
 		elseif tv=="table" then
 			return table.toHumanReadableString(v,spc+4)
 		elseif tv=="userdata" then
-			return v:toLuaString()
+			if v.toLuaString then
+				return v:toLuaString()
+			else
+				assert(v.toTable)
+				local ttt=v:toTable()
+				return ttt[2]..'.fromTable('..table.toHumanReadableString(ttt, spc+4)..')'
+			end
 		end
 	end
 
@@ -1655,7 +1688,7 @@ function table.toPrettyString(t, maxLen)
 			str_k="['"..k.."']="
 			out=out..str_k..packValue(v, maxLen-#out)..', '
 		elseif tk~="number" or k>N then	 
-			str_k='['..k..']='
+			str_k='['..tostring(k)..']='
 			out=out..str_k..packValue(v, maxLen-#out)..', '
 		end
 		if #out>maxLen then
@@ -2016,8 +2049,20 @@ function os.deleteFiles(mask)
    end
 end
 
+-- 이거 아마도 원하는 함수가 아닐 듯. os.parentPath 를 대신 시도해보시오.
 function os.parentDir(currDir)
+	if currDir=='' then
+		return '..'
+	elseif currDir:sub(1,2)=='..' then
+		return '../'..currDir
+	end
    return os.rightTokenize(os.fromWindowsFileName(currDir), "/")
+end
+function os.parentPath(dir)
+	if dir:sub(-1)=='/' then
+		dir=dir:sub(1, -2)
+	end
+	return select(2, os.processFileName(dir))
 end
 
 function os.relativeToAbsolutePath(folder,currDir)
@@ -2059,6 +2104,17 @@ function os.absoluteToRelativePath(folder, currDir) -- param1: folder or file na
 	return string.trimSpaces(str)
 end
 
+function os.joinPath(path1, path2)
+	if path1:len()~=0 then
+		if path1:sub(-1)=='/' then
+			return path1..path2
+		else
+			return path1..'/'..path2
+		end
+	else
+		return path2
+	end
+end
 function os.currentDirectory()
 	if os.isUnix() then
 		return os.capture('pwd')

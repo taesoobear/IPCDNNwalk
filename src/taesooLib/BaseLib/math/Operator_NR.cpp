@@ -42,6 +42,8 @@ namespace m
 		vectorn lu_col;
 		C_temp=E;
 		lu_col.setSize(E.rows());
+
+		// Use LU decomposition to invert E[][] and find det(E) 
 		Vec_INT indx(E.rows());
 		m_real d;
 		NR::ludcmp(C_temp, indx, d);

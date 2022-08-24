@@ -18,6 +18,7 @@ public:
 	CTextFile();
 	virtual ~CTextFile();
 	bool OpenReadFile(const char *fileName);
+	bool OpenMemory(const char *text);
 	void CloseFile();
 
 	char* GetToken(bool& bLineChanged);

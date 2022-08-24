@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "quater.h"
 class matrix3  
 {
 public:
@@ -30,6 +31,23 @@ public:
 	void sub(matrix3 const& a,matrix3 const& b);
 	void mult(matrix3 const& a,matrix3 const& b);
 	void mult(matrix3 const& a, m_real b);
+	inline vector3 mult(const vector3 &b) const
+	{
+		vector3 c;
+		c.x=_11*b.x+_12*b.y+_13*b.z;
+		c.y=_21*b.x+_22*b.y+_23*b.z;
+		c.z=_31*b.x+_32*b.y+_33*b.z;
+		return c;
+	}
+	inline vector3 multT(const vector3 &b) const
+	{
+		vector3 c;
+		c.x=_11*b.x+_21*b.y+_31*b.z;
+		c.y=_12*b.x+_22*b.y+_32*b.z;
+		c.z=_13*b.x+_23*b.y+_33*b.z;
+		return c;
+	}
+	inline quater toQuater() const { quater q; q.setRotation(*this); return q;}
 
 	friend vector3 operator*(matrix3 const& a, vector3 const& b);
 	friend vector3 operator*(vector3 const& b, matrix3 const& a);
@@ -64,6 +82,7 @@ public:
 	void zero();
 	void identity();
 	void transpose( void );
+	inline matrix3 transpose() const { matrix3 o(*this); o.transpose(); return o;}
 	void negate( void );
 	bool inverse(matrix3 const& a);
 	bool inverse();

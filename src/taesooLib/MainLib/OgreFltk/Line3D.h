@@ -96,7 +96,8 @@ public:
 	void begin();	// not required for a new object.
 	void line(int i, vector3 const& start, vector3 const& end);
 
-#if OGRE_VERSION_MINOR>=12
+#if OGRE_VERSION_MINOR>=12|| OGRE_VERSION_MAJOR>=13
+
 	void setMaterial(const char* name);
 #endif
 	// after finishing add~~, end() must be called.
@@ -151,7 +152,8 @@ public:
 	void quad(int i, vector3 const& pos);
 	void end();
 
-#if OGRE_VERSION_MINOR>=12
+#if OGRE_VERSION_MINOR>=12|| OGRE_VERSION_MAJOR>=13
+
 	void setMaterial(const char* name);
 #endif
 	virtual void createVertexDeclaration();

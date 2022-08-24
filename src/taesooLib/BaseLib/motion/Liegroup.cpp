@@ -30,6 +30,17 @@ void Liegroup::se3::Ad(transf const& T, Liegroup::se3 const& o)
 	tmp2+=T.rotation*o.V();
 	V()=tmp2;
 }
+void Liegroup::se3::Ad(quater const& rot, Liegroup::se3 const& o)
+{
+	W()=rot*o.W();
+	V()=rot*o.V();
+}
+
+void Liegroup::se3::Ad(vector3 const& trans, Liegroup::se3 const& o)
+{
+	W()=o.W();
+	V()=o.V()+trans.cross(o.W());
+}
 
 void Liegroup::dse3::dAd(transf const& T, dse3 const& o)
 {
@@ -146,7 +157,7 @@ Liegroup::se3 Liegroup::twist(transf const& self, transf const& tf2, double time
 	return Liegroup::se3(vector3(v._23*-1, v._13, v._12*-1), 
 						vector3(v._14, v._24, v._34));
 }
-Liegroup::se3 transf_twist_nonlinear(transf const& tf1, transf const& tf2, double timestep)
+Liegroup::se3 Liegroup::twist_nonlinear(transf const& tf1, transf const& tf2, double timestep)
 {
 	transf inv_tf1;
 	inv_tf1=tf1.inverse();

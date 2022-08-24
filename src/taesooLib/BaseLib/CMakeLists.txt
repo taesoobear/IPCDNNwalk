@@ -82,6 +82,8 @@ LIST(APPEND utility "./utility/checkPoints.cpp")
 
 set(motion
 
+  "./motion/InertiaCalculator.cpp"
+  "./motion/InertiaCalculator.h"
   "./motion/intersectionTest.cpp"
   "./motion/intersectionTest.h"
 	"./motion/Liegroup.cpp"
@@ -173,6 +175,21 @@ set(motion
 "./motion/IK_sdls/VectorRn.cpp"
 "./motion/IK_sdls/VectorRn.h"
 "./motion/IK_lbfgs/lbfgs.cpp"
+# following files are extracted from bullet-2.68 and have been heavily modified.
+	motion/gjk/btGjkEpa2.cpp 
+	motion/gjk/btGjkEpa.cpp 
+	motion/gjk/btCollisionShape.cpp
+	motion/gjk/btConvexShape.cpp
+	motion/gjk/btConvexInternalShape.cpp
+	motion/gjk/btSphereShape.cpp
+	motion/gjk/btPolyhedralConvexShape.cpp
+	motion/gjk/btConvexHullShape.cpp 
+	motion/gjk/btCollisionObject.cpp 
+	motion/gjk/btVoronoiSimplexSolver.cpp 
+	motion/gjk/btSubSimplexConvexCast.cpp 
+	motion/gjk/btConvexCast.cpp 
+	#motion/gjk/btBoxShape.cpp 
+	#motion/gjk/btMinkowskiSumShape.cpp 
 )
 
 

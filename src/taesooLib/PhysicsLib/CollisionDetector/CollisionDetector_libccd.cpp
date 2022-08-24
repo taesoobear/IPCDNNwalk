@@ -97,6 +97,7 @@ int checkCollision(ccd_real_t& depth,
 
 
 CollisionDetector_libccd::CollisionDetector_libccd() 
+	:CollisionDetector()
 {
 #ifdef COL_DEBUG
 	FILE* fl=fopen("broadPhase.txt", "wt");
@@ -230,7 +231,7 @@ void CollisionDetector_libccd_init_ColObject(OpenHRP::CollisionDetector_libccd::
 			copy(vector3(0,0,0), capsule.pos);
 			copy(quater(1,0,0,0), capsule.quat);
 			capsule._data=NULL;
-			capsule.radius=e.elementSize.x*0.5;
+			capsule.radius=e.elementSize.x*0.5; // half diameter
 			capsule.height=e.elementSize.y*0.5; // finally fixed bug!!!
 			pCol->co[subMesh].cap=capsule;
 			pCol->co[subMesh].cap._data=(void*)&info;

@@ -388,11 +388,7 @@ void ContactForceSolver::setContactConstraintPoints(LinkPair& linkPair, Collisio
 			vector3 v[2];
 			for(int k=0; k < 2; ++k){
 				Link* link = linkPair.link[k];
-				if(link->jointType == Link::FIXED_JOINT){
-					v[k] = 0.0;
-				} else {
-					v[k] = link->vo + cross(link->w, contact.point);
-				}
+				v[k] = link->vo + cross(link->w, contact.point);
 			}
 			contact.relVelocityOn0 = v[1] - v[0];
 			contact.normalProjectionOfRelVelocityOn0 = dot(contact.normalTowardInside(1), contact.relVelocityOn0);

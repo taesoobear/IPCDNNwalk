@@ -15,17 +15,24 @@ void VRMLloader_updateMeshEntity(VRMLloader& l);
 
 class PLDPrimCyl;
 class OgreRenderer;
+namespace IK_sdls
+{
+	class LoaderToTree;
+}
 class PLDPrimVRML: public PLDPrimSkel
 {
 	VRMLloader* mVRMLL;
 	PLDPrimCyl* mDrawSkel;
-	void _updateEntities(BoneForwardKinematics&fk);
 public:
 	PLDPrimVRML(VRMLloader* pVRMLL, bool bDrawSkeleton, const OgreRenderer& renderer);
 	virtual ~PLDPrimVRML();
 	
+	const VRMLloader& _getSkeleton() { return *mVRMLL;}
+	BoneForwardKinematics& _getChain() { return *mChain;}
+	void _updateEntities(BoneForwardKinematics&fk);
 	void setPoseDOF(const vectorn& poseDOF);
 	void setPose(BoneForwardKinematics const& in);
+	void setPose(IK_sdls::LoaderToTree const& in);
 	void applyAnim(const MotionDOF& motion);
 	virtual void SetPose(const Posture & posture, const MotionLoader& skeleton);
 	virtual void setPoseDOF(const vectorn& poseDOF, MotionDOFinfo const& info) { setPoseDOF(poseDOF); }

@@ -63,6 +63,7 @@ public:
 	void setRotationX(m_real angle);
 	void setRotationY(m_real angle);
 	void setRotationZ(m_real angle);
+	inline void setSkew(vector3 const& w) { _11=0.0; _12=-1.0*w.z; _13=w.y; _21=w.z; _22=0.0; _23=-1.0*w.x; _31=-1.0*w.y; _32=w.x; _33=0.0;}
 	void setRotation(const char* aChannel, m_real *aValue, bool bRightToLeft=false);	//!< from euler angle. aChannel="YXZ" or something like that.
 	void setAxisRotation(const vector3& vecAxis, const vector3& front, const vector3& vecTarget); 	//!< front벡터를 vecAxis를 중심으로 회전해서 vecTarget과 vecAxis가 이루는 평면에 놓이도록 만드는 Matrix를 구한다.
 	void setIdentityRot();	
@@ -70,8 +71,7 @@ public:
 	// setTranslation preserves rotation parts unless manually specified otherwise (bPreserveCurrentRotation=false)
 	void setTranslation(const vector3& tx, bool bPreserveCurrentRotation=true);		//!< 다른 set계열 함수와 달리 rotation파트는 건드리지 않는다. 	
 
-	void transpose();
-	
+	inline void transpose() { matrix4 temp(*this); transpose(temp); }
 	
 	void mult(const matrix4& a, const matrix4& b);
 	void add(const matrix4& a, const matrix4& b);
@@ -93,11 +93,13 @@ public:
 	void leftMultRotation(const vector3& axis, m_real angle);
 	void leftMultTranslation(const vector3& vec);
 
-	matrix4 operator*(matrix4 const& a) const { matrix4 t; t.mult(*this,a); return t;}
-	matrix4 operator+(matrix4 const& a) const { matrix4 t; t.add(*this,a); return t;}
-	matrix4 operator-(matrix4 const& a) const { matrix4 t; t.sub(*this,a); return t;}
+	inline matrix4 operator*(matrix4 const& a) const { matrix4 t; t.mult(*this,a); return t;}
+	inline matrix4 operator+(matrix4 const& a) const { matrix4 t; t.add(*this,a); return t;}
+	inline matrix4 operator-(matrix4 const& a) const { matrix4 t; t.sub(*this,a); return t;}
 	vector3 operator*(vector3 const& a) const;
 	vector3 rotate(vector3 const & direction) const;
+	inline matrix4 inverse() const { matrix4 t; t.inverse(*this); return t;}
+	inline matrix4 T() const { matrix4 t; t.transpose(*this); return t;}
 	void operator*=(double b) ;
 	
 	// inquiry functions

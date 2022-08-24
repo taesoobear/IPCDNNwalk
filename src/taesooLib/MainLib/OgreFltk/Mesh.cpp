@@ -9,7 +9,8 @@
 
 #include <OgreMeshManager.h>
 #include <OgreSubMesh.h>
-#if OGRE_VERSION_MINOR >= 12
+#if OGRE_VERSION_MINOR >= 12|| OGRE_VERSION_MAJOR>=13
+
 #include <OgreMesh.h>
 #endif
 #include <OgreRoot.h>
@@ -109,8 +110,14 @@ MeshToEntity::Option::Option()
 	useColor=false, useNormal=true, useTexCoord=true; buildEdgeList=false; dynamicUpdate=false;
 	meshId=RE::generateUniqueName();
 }
-MeshToEntity::MeshToEntity(const OBJloader::Mesh& mesh, const char* meshId, bool buildEdgeList, bool dynamicUpdate)
-:MeshToEntity(mesh, meshId, Option(false, true, true, buildEdgeList, dynamicUpdate))
+MeshToEntity::MeshToEntity(const OBJloader::Mesh& mesh, const char* meshId, bool buildEdgeList, bool dynamicUpdate, bool useNormal, bool useTexCoord)
+:MeshToEntity(mesh, meshId, Option(false, useNormal, useTexCoord, buildEdgeList, dynamicUpdate))
+{
+	//std::cout<<"b "<<buildEdgeList <<" d "<<dynamicUpdate<<std::endl;
+	//std::cout<<"b "<<mSavedOption.buildEdgeList <<" d "<<mSavedOption.dynamicUpdate<<std::endl;
+}
+MeshToEntity::MeshToEntity(const OBJloader::Mesh& mesh, const char* meshId, bool buildEdgeList, bool dynamicUpdate, bool useNormal, bool useTexCoord, bool useColor)
+:MeshToEntity(mesh, meshId, Option(useColor, useNormal, useTexCoord, buildEdgeList, dynamicUpdate))
 {
 	//std::cout<<"b "<<buildEdgeList <<" d "<<dynamicUpdate<<std::endl;
 	//std::cout<<"b "<<mSavedOption.buildEdgeList <<" d "<<mSavedOption.dynamicUpdate<<std::endl;
@@ -240,8 +247,10 @@ MeshToEntity::MeshToEntity(const OBJloader::Mesh& mesh, const char* meshId, Opti
 				elem->baseVertexPointerToElement(vertex, &pFloat);
 				break;
 			case VET_COLOUR:
+#if OGRE_VERSION_MAJOR<13
 			case VET_COLOUR_ABGR:
 			case VET_COLOUR_ARGB:
+#endif
 				elem->baseVertexPointerToElement(vertex, &pRGBA);
 				break;
 			default:
@@ -289,6 +298,7 @@ MeshToEntity::MeshToEntity(const OBJloader::Mesh& mesh, const char* meshId, Opti
 						float(c(1)),
 						float(c(2)),
 						float(c(3)));
+
 					rs->convertColourValue(colour, pRGBA++);
 				}
 				break;
@@ -316,8 +326,16 @@ MeshToEntity::MeshToEntity(const OBJloader::Mesh& mesh, const char* meshId, Opti
 	//mMesh->_setBounds(Ogre::AxisAlignedBox(ToOgre(min), ToOgre(max)), false);
 	//mMesh->_setBoundingSphereRadius(min.distance(max)*2);
 
-	mMesh->_setBounds(box);
-	mMesh->_setBoundingSphereRadius(box.getMinimum().distance(box.getMaximum()));
+	if(option.dynamicUpdate)
+	{
+		mMesh->_setBounds(Ogre::AxisAlignedBox(Ogre::AxisAlignedBox::EXTENT_INFINITE));
+		mMesh->_setBoundingSphereRadius(1e5);
+	}
+	else
+	{
+		mMesh->_setBounds(box);
+		mMesh->_setBoundingSphereRadius(box.getMinimum().distance(box.getMaximum()));
+	}
 
 	if(option.buildEdgeList)
 	{
@@ -838,7 +856,8 @@ void testOBJloader()
 #endif
 }
 
-#if OGRE_VERSION_MINOR >= 12
+#if OGRE_VERSION_MINOR >= 12|| OGRE_VERSION_MAJOR>=13
+
 void _setMaterial(Ogre::SimpleRenderable* ptr, const char* name);
 void OBJloader::MeshEntity::setMaterial(const char* name)
 {

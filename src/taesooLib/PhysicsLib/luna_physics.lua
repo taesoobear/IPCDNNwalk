@@ -303,6 +303,8 @@ bindTargetPhysics={
 				VRMLTransform* getBone2(int ilinkpair)
 				]]},
 				staticMemberFunctions={[[
+				OpenHRP::CollisionDetector* OpenHRP::createCollisionDetector_bullet(); 
+				OpenHRP::CollisionDetector* OpenHRP::createCollisionDetector_gjk(); 
 				OpenHRP::CollisionDetector* OpenHRP::createCollisionDetector_libccd();
 				]]}
 			},
@@ -319,6 +321,7 @@ bindTargetPhysics={
 					virtual void addCollisionPair(VRMLloader* skel1, int ibone1, VRMLloader* skel2, int ibone2);
 					virtual void setWorldTransformations(int charIndex, BoneForwardKinematics const& fk); 
 					virtual void rayTest(int ichar, int ilink, vector3 const& from, vector3 const& to, OpenHRP::CollisionDetector::RayTestResult& result);
+					virtual void rayTestBackside(int ichar, int ilink, vector3 const& from, vector3 const& to, OpenHRP::CollisionDetector::RayTestResult& result);
 					virtual bool testIntersectionsForDefinedPairs(OpenHRP::CollisionSequence & collisions);
 					]]},
 			},
@@ -382,12 +385,15 @@ bindTargetPhysics={
 					}
 					static void setPose(PLDPrimVRML& prim, OpenHRP::DynamicsSimulator& s, int ichara)
 					{
+						/*
 						static Posture pose;
 						OpenHRP::DynamicsSimulator::Character* c=s._characters[ichara];
 						c->chain->getPoseFromLocal(pose);
 						//			printf("y=%s \n", c->chain->local(5).translation.output().ptr());
 						//			printf("y=%s \n", c->chain->global(5).translation.output().ptr());
 						prim.SetPose(pose, *c->skeleton);
+						*/
+						prim.setPose(s.getWorldState(ichara));
 					}
 					]],
 					staticMemberFunctions={[[
@@ -399,9 +405,15 @@ bindTargetPhysics={
 					static void setPose(PLDPrimVRML& prim, OpenHRP::DynamicsSimulator& s, int ichara) 
 					]]},
 					memberFunctions={[[	
+					void calcInertia(int ichara,vectorn const& pose, vectorn& inertia) const
+					Liegroup::dse3 calcMomentumCOMfromPose(int ichara, double t, vectorn const& poseFrom, vectorn const& poseTo)
+					Liegroup::dse3 calcMomentumCOM(int ichara);
 					void setPoseDOF(int ichara, vectorn const& v)
+					void setDPoseDOF(int ichara, vectorn const& v)
 					void getPoseDOF(int ichara, vectorn & v) 
+					void getDPoseDOF(int ichara, vectorn & v) 
 					vectorn getPoseDOF(int ichara) const 
+					vectorn getDPoseDOF(int ichara) const 
 					OpenHRP::CollisionDetector* getCollisionDetector();
 					OpenHRP::CollisionSequence* getCollisionSequence();
 					void drawDebugInformation() 
@@ -417,6 +429,7 @@ bindTargetPhysics={
 					void initSimulation();
 					int rdof(int ichar) const 
 					int dof(int ichar) const 
+					int numSphericalJoints(int ichara) const;
 					void getWorldPosition(int ichara, VRMLTransform* b, vector3 const& localpos, vector3& globalpos) const;
 					vector3 getWorldPosition(int ichara, VRMLTransform* b, vector3 const& localpos) const;
 					vector3 getWorldVelocity(int ichara,VRMLTransform* b, vector3 const& localpos) const;
@@ -452,6 +465,15 @@ bindTargetPhysics={
 					void getContactLinkBoneIndex(int ipair, intvectorn & ibone);
 					void addRelativeConstraint(int ichara, Bone& bone1,vector3 boneVector1,Bone& bone2, vector3 boneVector2);
 					void removeRelativeConstraint(int ichara, Bone& bone1, Bone& bone2)	
+
+
+					void setQ(int ichara, vectorn const& v);
+					void getQ(int ichara, vectorn & v) const ;
+					vectorn getQ(int ichara) const 
+					void setDQ(int ichara, vectorn const& v);
+					void getDQ(int ichara, vectorn& v) const;
+					vectorn getDQ(int ichara) const 
+					void setU(int ichara, const vectorn& in);
 					]]},
 					enums={
 						{"EULER","(int)OpenHRP::DynamicsSimulator::EULER"},
@@ -483,7 +505,6 @@ bindTargetPhysics={
 				inheritsFrom='OpenHRP::DynamicsSimulator',
 				ctors={'()','(const char*)'},
 				memberFunctions={[[
-				Liegroup::dse3 calcMomentumCOM(int ichara);
 				]]}
 			},
 			{
@@ -503,25 +524,22 @@ bindTargetPhysics={
 				void calcBodyJacobianAt(int ichar, int ibone, matrixn& jacobian, vector3 const& localpos);
 				void calcDotBodyJacobianAt(int ichar, int ibone, matrixn& jacobian, matrixn& dotjacobian, vector3 const& localpos);
 				void calcMomentumDotJacobian(int ichar, matrixn& jacobian, matrixn& dotjacobian)
-				void calcInertia(int ichara,vectorn const& pose, vectorn& inertia) const
-				Liegroup::dse3 calcMomentumCOMfromPose(int ichara, double t, vectorn const& poseFrom, vectorn const& poseTo)
-				Liegroup::dse3 calcMomentumCOM(int ichara);
 				void poseToQ(vectorn const& v, vectorn& out)
 				void dposeToDQ(quater const& rootOri, vectorn const& v, vectorn& out)
 				void torqueToU(const vectorn& cf, vectorn& U)
 				void QToPose(vectorn const& v, vectorn& out)
-				void setQ(int ichara, vectorn const& v) 
-				void getQ(int ichara, vectorn & v) const 
-				vectorn getQ(int ichara) const 
-				void getDQ(int ichara, vectorn& v);
-				vectorn getDQ(int ichara) const 
-				void setDQ(int ichara, vectorn const& v);
+				void setNonStatePoseDOF(int ichara, vectorn const& v);
+				void setNonStateDQ(int ichara, vectorn const& dq);
+				void setNonStateDDQ(int ichara, vectorn const& ddq);
+				void getSphericalState(int ichara, vectorn & q, vectorn& dq); 
+				void setSphericalState(int ichara, const vectorn& q, const vectorn& dq); 
+				void setTau(int ichara, const vectorn& tau); 
+				transf getNonStateRootQ(int ichara);
 				void setState(int ichara, vectorn const& v)  
 				void getState(int ichara, vectorn & v) const 
 				void setDDQ(int ichara, vectorn const& v);
 				void getU(int ichara, vectorn& out);
 				vectorn getU(int ichara);
-				void setU(int ichara, const vectorn& out);
 				int calcS(int ichara, int ibone, matrixn& S);
 				void stateToEulerZYX(vectorn const& q, vectorn const& dq, vectorn& eulerState);
 				void stateToEulerYXZ(vectorn const& q, vectorn const& dq, vectorn& eulerState);
@@ -575,7 +593,7 @@ bindTargetPhysics={
 			namespace='MotionUtil',
 			ifndef='NO_GUI',
 			functions={[[
-			void VRMLloader_setTotalMass(VRMLloader & l, m_real totalMass);
+			//void VRMLloader_setTotalMass(VRMLloader & l, m_real totalMass);
 			void VRMLloader_checkMass(VRMLloader& l);
 			]]}
 		},
@@ -628,7 +646,7 @@ function generatePhysicsBind()
 	//#include "RMatrixLUA.h"
 
 	#include "DynamicsSimulator_penaltyMethod.h"
-	#include "InertiaCalculator.h"
+	#include "../BaseLib/motion/InertiaCalculator.h"
 	#include "../BaseLib/math/OperatorStitch.h"
 	#include "clapack_wrap.h"
 	#include "SDRE.h"
@@ -645,6 +663,8 @@ function generatePhysicsBind()
 		class DynamicsSimulator_TRL_QP;
 		class DynamicsSimulator_TRL_penalty;
 		class CollisionDetector_libccd;
+		OpenHRP::CollisionDetector* createCollisionDetector_bullet();
+		OpenHRP::CollisionDetector* createCollisionDetector_gjk();
 		OpenHRP::CollisionDetector* createCollisionDetector_libccd();
 		bool CollisionCheck(OpenHRP::CollisionDetector &s, OpenHRP::CollisionSequence & collisions, std::string chekmesh, std::string skipmesh);
 	}
@@ -678,12 +698,11 @@ function generatePhysicsBind()
 	#include "../PhysicsLib/mrdplot.hpp"
 	]])
 	write([[
-	void VRMLloader_setTotalMass(VRMLloader & l, m_real totalMass);
+	//void VRMLloader_setTotalMass(VRMLloader & l, m_real totalMass);
 	void VRMLloader_checkMass(VRMLloader& l);
 	]])
 	writeDefinitions(bindTargetPhysics, 'Register_physicsbind',
 	[[
-	MainLib.VRMLloader.setTotalMass=MotionUtil.VRMLloader_setTotalMass
 	MainLib.VRMLloader.checkMass=MotionUtil.checkMass
 	]]
 	) -- input bindTarget can be non-overlapping subset of entire bindTarget 

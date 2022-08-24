@@ -87,7 +87,8 @@ void MeshConnectivity::selectFacesFromVertices( boolN const& selectedVertices, b
 				if (j->faceIndex==-1)
 				{
 					printf("warning! selectFacesFromVertices!!!\n");
-					ASSERT(false);
+					printf("vertex %d has errorneous adjacent faces\n",v);
+					//ASSERT(false);
 					//Msg::error("selectFaces");
 					return;
 				}
@@ -187,8 +188,8 @@ static void rearrangeFaces(OBJloader::Mesh& mesh, int startFace, bitvectorn & co
 	{
 		if(connectedFaces(i))
 		{
-			puts("rearrange faces 1");
-			ASSERT(false);
+			puts("error in rearrange faces 1");
+			throw std::runtime_error("rearrange faces 1");
 			return;
 		}
 	}
@@ -220,7 +221,7 @@ static void rearrangeFaces(OBJloader::Mesh& mesh, int startFace, bitvectorn & co
 		if(firstFill==connectedFaces.size()) return;
 	}
 }
-void OBJloader::Mesh::pack(BinaryFile& bf)
+void OBJloader::Mesh::pack(BinaryFile& bf) const
 {
 	int version=2;
 	bf.packInt(version);
@@ -315,12 +316,19 @@ bool OBJloader::Mesh::loadObj(const char* filename)
 
 		for (int f=0; f<numFc; f++)
 		{
-			ASSERT(getFace(f).indexes[0][(Buffer::Type)b]>=-1 &&
-				getFace(f).indexes[0][(Buffer::Type)b] < numElements);
-			ASSERT(getFace(f).indexes[1][(Buffer::Type)b]>=-1 &&
-				getFace(f).indexes[1][(Buffer::Type)b] < numElements);
-			ASSERT(getFace(f).indexes[2][(Buffer::Type)b]>=-1 &&
-				getFace(f).indexes[2][(Buffer::Type)b] < numElements);
+			if(
+				   	!(getFace(f).indexes[0][(Buffer::Type)b]>=-1 &&
+				getFace(f).indexes[0][(Buffer::Type)b] < numElements) ||
+			!(getFace(f).indexes[1][(Buffer::Type)b]>=-1 &&
+				getFace(f).indexes[1][(Buffer::Type)b] < numElements) ||
+			!(getFace(f).indexes[2][(Buffer::Type)b]>=-1 &&
+				getFace(f).indexes[2][(Buffer::Type)b] < numElements))
+			{
+				printf("warning!!! this mesh's face %d (%d,%d,%d) has a problem with buffer %d\n", f, 
+				getFace(f).indexes[0][(Buffer::Type)b],		
+				getFace(f).indexes[1][(Buffer::Type)b],		
+				getFace(f).indexes[2][(Buffer::Type)b],	b);
+			}
 		}
 	}
 #endif
@@ -447,7 +455,7 @@ void OBJloader::Mesh::_loadObj(CTextFile& file)
 				loadOBJ_unpack(tc,typeCode,f,2);
 
 				TString temp=file.GetToken();
-				if (temp.length()>0 && temp[0]>='0' && temp[0]<='9')
+				while (temp.length()>0 && temp[0]>='0' && temp[0]<='9')
 				{
 					//printf("a: %d %d %d//", f.vertexIndex(0), f.vertexIndex(1), f.vertexIndex(2));
 					m_arrayFace.push_back(f);
@@ -455,10 +463,12 @@ void OBJloader::Mesh::_loadObj(CTextFile& file)
 					loadOBJ_unpack(ta, typeCode, f, 0);
 					loadOBJ_unpack(tc, typeCode, f, 1);
 					loadOBJ_unpack(temp, typeCode, f, 2);
+					tc=temp;
 					//printf("b: %d %d %d\n", f.vertexIndex(0), f.vertexIndex(1), f.vertexIndex(2));
+					temp=file.GetToken();
+
 				}
-				else
-					file.Undo();
+				file.Undo();
 			}
 			else
 			{
@@ -551,6 +561,10 @@ bool OBJloader::Mesh::loadMesh(const char* file_name_, bool bInit)
 	vector3 x_tmp;
 	std::ifstream fin;
 
+	TString fn(file_name_);
+	if (fn.right(4).toUpper()==".OBJ")
+		Msg::error("use loadOBJ instead!!!");
+
 	fin.open(file_name_);
 
 	if ( !fin.is_open() ) return false;
@@ -615,17 +629,6 @@ void OBJloader::Mesh::_saveObj(std::ofstream & fout, bool vn, bool vt)
 		}
 	}
 
-	if(vn)
-	{
-		int n=numNormal();
-		for (int i=0; i<n; i++) {
-			vector3& x_tmp=getNormal(i);
-
-			// node position in {mesh file reference frame}
-			fout << "vn " <<x_tmp.x <<" "<< x_tmp.y <<" "<< x_tmp.z<<std::endl;
-		}
-	}
-
 	if(vt)
 	{
 		int n=numTexCoord();
@@ -637,27 +640,67 @@ void OBJloader::Mesh::_saveObj(std::ofstream & fout, bool vn, bool vt)
 		}
 	}
 
+	if(vn)
+	{
+		int n=numNormal();
+		for (int i=0; i<n; i++) {
+			vector3& x_tmp=getNormal(i);
+
+			// node position in {mesh file reference frame}
+			fout << "vn " <<x_tmp.x <<" "<< x_tmp.y <<" "<< x_tmp.z<<std::endl;
+		}
+	}
+
 	int m=m_arrayFace.size();
 
 	// get mesh indexes from file
+	if (faceGroups.size()>=1 &&  faceGroups.end(faceGroups.size()-1)==m)
+	{
+		for(int f=0; f<faceGroups.size(); f++)
+		{
+			fout << "s "<< f +1<<std::endl;
+			for (int i=faceGroups.start(f); i<faceGroups.end(f); i++) {
+				fout << "f "<< getFace(i).vi(0) +1;
+				if(vt)
+					fout << "/"<< getFace(i).texCoordIndex(0) +1;
+				if(vn)
+					fout << "/"<< getFace(i).normalIndex(0) +1;
+
+				fout << " " << getFace(i).vi(1) +1;
+				if(vt)
+					fout << "/"<< getFace(i).texCoordIndex(1) +1;
+				if(vn)
+					fout << "/"<< getFace(i).normalIndex(1) +1;
+
+				fout << " " << getFace(i).vi(2) +1;
+				if(vt)
+					fout << "/"<< getFace(i).texCoordIndex(2) +1;
+				if(vn)
+					fout << "/"<< getFace(i).normalIndex(2) +1;
+				fout<<std::endl;
+			}
+		}
+		return;
+	}
+
 	for (int i=0; i<m; i++) {
 		fout << "f "<< getFace(i).vi(0) +1;
-		if(vn)
-			fout << "/"<< getFace(i).normalIndex(0) +1;
 		if(vt)
 			fout << "/"<< getFace(i).texCoordIndex(0) +1;
+		if(vn)
+			fout << "/"<< getFace(i).normalIndex(0) +1;
 
 		fout << " " << getFace(i).vi(1) +1;
-		if(vn)
-			fout << "/"<< getFace(i).normalIndex(1) +1;
 		if(vt)
 			fout << "/"<< getFace(i).texCoordIndex(1) +1;
+		if(vn)
+			fout << "/"<< getFace(i).normalIndex(1) +1;
 
 		fout << " " << getFace(i).vi(2) +1;
-		if(vn)
-			fout << "/"<< getFace(i).normalIndex(2) +1;
 		if(vt)
 			fout << "/"<< getFace(i).texCoordIndex(2) +1;
+		if(vn)
+			fout << "/"<< getFace(i).normalIndex(2) +1;
 		fout<<std::endl;
 	}
 
@@ -1220,8 +1263,16 @@ void OBJloader::classifyTriangles(OBJloader::Mesh& mesh)
 		bitvectorn connectedFaces;
 		while(1)
 		{
-			findConnectedFaces(mesh, startFace, connectedFaces);
-			rearrangeFaces(mesh, startFace, connectedFaces);
+			try 
+			{
+				findConnectedFaces(mesh, startFace, connectedFaces);
+				rearrangeFaces(mesh, startFace, connectedFaces);
+			}
+			catch( std::exception& e)
+			{
+				connectedFaces.resize(mesh.numFace());
+				connectedFaces.setAllValue(true);
+			}
 
 			int endFace=startFace+connectedFaces.count();
 			mesh.faceGroups.pushBack(startFace, endFace);
@@ -1660,7 +1711,7 @@ FaceEdge MeshConnectivity::next(FaceEdge const& fe) const
 	if(!(out.isNull() || out.source(mMesh)==fe.source(mMesh)))
 	{
 		puts("error! MeshConnectivity::next");
-		ASSERT(false);
+		throw std::runtime_error("MeshConnectivity::next");
 	}
 	return out;
 }

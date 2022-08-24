@@ -25,6 +25,11 @@ void Tree::SetSeqNum(Node* node)
 		node->seqNumJoint = nJoint++;
 		node->seqNumEffector = -1;
 		break;
+	case BALLJOINT:
+		node->seqNumJoint = nJoint;
+		nJoint+=3;
+		node->seqNumEffector = -1;
+		break;
 	case EFFECTOR:
 		node->seqNumJoint = -1;
 		node->seqNumEffector = nEffector++;

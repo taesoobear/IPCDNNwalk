@@ -26,6 +26,7 @@ public:
 	void openWrite(){buffer.clear();}
 	virtual void _packArray(void *buffer, int count, size_t size);
 	virtual void _unpackArray(void *buffer, int count, size_t size);
+	virtual void close();
 };
 
 #endif

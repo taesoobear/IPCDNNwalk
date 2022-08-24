@@ -8,7 +8,6 @@
 
 #include "TextFile.h"
 #include "TypeString.h"
-#include "TArray.h"
 class vectorn;
 class intvectorn;
 class matrixn;
@@ -19,7 +18,9 @@ class quaterN;
 class matrix4;
 class vector3;
 class quater;
+namespace BaseLib {
 class BitArray;
+}
 class hypermatrixn;
 
 /// Type을 저장한다.
@@ -31,7 +32,7 @@ public:
 	virtual ~BinaryFile();
 	bool openWrite(const char *fileName, bool singlePrecisionMode=false);
 	bool openRead(const char *fileName);
-	void close();
+	virtual void close();
 
 	void packInt(int num);
 	void packFloat(double num);
@@ -46,15 +47,14 @@ public:
 	void pack(const intmatrixn& mat);
 	void pack(const vector3N& mat);
 	void pack(const quaterN& mat);
-	void pack(const TArray<TString>& aSz);
 	void pack(const TStrings& aSz);
 	void pack(const boolN& vec);
 	void pack(const matrix4& mat);
-	void pack(const BitArray& bits);
+	void pack(const BaseLib::BitArray& bits);
 	void pack(const hypermatrixn& mat3d);
 
 
-	void unpack(BitArray& bits);
+	void unpack(BaseLib::BitArray& bits);
 	void unpackInt(int& num);
 	void unpackFloat(double& num);
 	int	unpackInt()					{ int num; unpackInt(num); return num; }
@@ -71,7 +71,6 @@ public:
 	void unpack(intvectorn& vec);
 	void unpack(matrixn& mat);
 	void unpack(intmatrixn& mat);
-	void unpack(TArray<TString>& aSz);
 	void unpack(TStrings& aSz);
 	void unpack(boolN& vec);
 	void unpack(quaterN& mat);

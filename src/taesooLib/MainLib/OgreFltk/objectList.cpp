@@ -131,7 +131,7 @@ Ogre::MovableObject	* createObject(const char* node_name, const char* typeName, 
 		for(int i=0, ni=_data.rows(); i<ni; i++)
 		{
 			vectornView r=_data.row(i);
-#if OGRE_VERSION_MINOR >= 8 
+#if OGRE_VERSION_MINOR >= 8 || OGRE_VERSION_MAJOR>=13
 			line->addChainElement(0, Ogre::BillboardChain::Element(ToOgre(r.toVector3(0)), r(6), r(7), Ogre::ColourValue(r(3),r(4), r(5), 1), Ogre::Quaternion(1,0,0,0)));
 #else
 			line->addChainElement(0, Ogre::BillboardChain::Element(ToOgre(r.toVector3(0)), r(6), r(7), Ogre::ColourValue(r(3),r(4), r(5), 1)));
@@ -200,12 +200,11 @@ Ogre::MovableObject	* createObject(const char* node_name, const char* typeName, 
 }
 
 #endif
-typedef std::shared_ptr<Ogre::SceneNode> SceneNodePtr;
-typedef std::list<SceneNodePtr>::iterator objectIterator;
+typedef std::list<Ogre::SceneNode*>::iterator objectIterator;
 typedef std::map<TString, objectIterator, cmpTString>::iterator nameIterator;
 struct ScheduledSceneNodePtr
 {
-	SceneNodePtr ptr;
+	Ogre::SceneNode* ptr;
 	m_real timeLeft;
 };
 class objectList_data
@@ -259,12 +258,12 @@ Ogre::MovableObject* ObjectList::_find(const char* node_name)
 }
 ObjectList::~ObjectList()
 {
+	_members->mScheduledObjects.clear();
 	if(RE::rendererValid()&&_members->mRootSceneNode)
 	{
 		RE::removeEntity(_members->mRootSceneNode);
 		RE::renderer().removeFrameMoveObject(this);
 	}
-	_members->mScheduledObjects.clear();
 	delete _members;
 }
 
@@ -459,8 +458,7 @@ Ogre::SceneNode* ObjectList::registerObjectScheduled(Ogre::MovableObject* pObjec
 	pNode->attachObject(pObject);
 	pNode->setVisible(_members->isVisible);
 #endif
-	// automatic removal
-	i->ptr.reset(pNode, (void(*)(Ogre::SceneNode*))RE::removeEntity);
+	i->ptr=pNode;
 	i->timeLeft=destroyTime;
 	return pNode;
 }
@@ -489,7 +487,10 @@ int ObjectList::FrameMove(float fElapsedTime)
 		i->timeLeft-=fElapsedTime;
 
 		if(i->timeLeft<0.0)
+		{
+			RE::removeEntity(i->ptr);
 			i=_members->mScheduledObjects.erase(i);
+		}
 		else
 			i++;
 	}

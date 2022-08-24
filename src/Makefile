@@ -9,7 +9,7 @@ BIN_FOLDER=../build_$(EXE)
 BIN_TO_SRC=../../src
 SRC_TO_WORK=../work
 SRC_TO_EXE=../work/$(EXE)
-NUM_CORES=$(shell if [-f /proc/cpuinfo]; then cat /proc/cpuinfo | grep processor | wc -l;	else echo 4;fi)
+NUM_CORES=$(shell if test -f /proc/cpuinfo; then cat /proc/cpuinfo | grep processor | wc -l;	else echo 4;fi)
 
 # all depends on init_finished.txt
 all: init_finished.txt

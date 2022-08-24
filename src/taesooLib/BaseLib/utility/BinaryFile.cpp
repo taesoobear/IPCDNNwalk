@@ -34,3 +34,8 @@ void MemoryFile::_unpackArray(void *_buffer, int count, size_t size)
 }
 
 
+void MemoryFile::close()
+{
+	buffer.clear();
+	readCounter=0;
+}

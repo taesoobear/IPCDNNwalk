@@ -41,6 +41,7 @@ namespace OBJloader
 		void copyFrom(Geometry const& otherMesh);
 		void operator=(Geometry const& otherMesh);
 		void operator=(Mesh const& otherMesh);
+		void assignMesh(OBJloader::Mesh const& otherMesh);
 
 		void merge(Geometry const& a, Geometry const& b);
 		void rigidTransform(transf const& b);
@@ -57,7 +58,7 @@ namespace OBJloader
 		virtual bool saveObj(const char* filename, bool vn, bool vt);
 		virtual bool loadObj(const char* filename);
 
-		virtual void pack(BinaryFile& bf);
+		virtual void pack(BinaryFile& bf) const;
 		virtual void unpack(BinaryFile& bf);
 
 		void initBox(const vector3& size);

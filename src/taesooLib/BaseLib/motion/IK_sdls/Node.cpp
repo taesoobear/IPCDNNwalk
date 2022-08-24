@@ -584,6 +584,16 @@ void FreeJoint::Integrate(vectorn const& dTheta, double timeStep)
 
 	post_integrate();
 }
+void BallJoint::Integrate(vector3 const& omega, double timeStep)
+{
+	quater p_ep_dot; 
+	vector3 p_ang_vel;
+	p_ang_vel.rotate(_local.rotation, rel_ang_vel);
+	angvel2qdot(p_ep_dot, _local.rotation, rel_ang_vel*timeStep);
+	_local.rotation+=p_ep_dot;
+	_local.rotation.normalize();
+	rel_ang_vel.rotate(_local.rotation.inverse(), p_ang_vel);
+}
 void FreeJoint::Integrate(VectorRn const& dTheta) 
 {
 	// see above. 
@@ -594,7 +604,6 @@ void FreeJoint::Integrate(VectorRn const& dTheta)
 	pre_integrate();
 	_local.translation+=p_lin_vel;
 	_local.rotation+=p_ep_dot;
-
 	post_integrate();
 }
 	
@@ -615,20 +624,5 @@ void FreeJoint::post_integrate()
 }
 void IK_sdls::angvel2qdot(quater& out, const quater& q, const vector3& omega)
 {
-	// W(t)=(0, omega.x, omega.y, omega.z)
-	// qdot = 0.5 * W(t) * q
-	// Using quaternion multiplication rule,...
-	// qdot =0.5*[ -qx -qy -qz; qw qz -qy ; -qz qw qx; qy -qx qw] *[ x y z]'
-	// .. is different from the code below. The above W(t) is the global angular velocity.
-	//
-	// When omega is the body angular velocity
-	// qdot = 0.5 * q * W(t) 
-	// Using quaternion multiplication rule,...
-	
-	double qw = q.w, qx = q.x, qy = q.y, qz = q.z;
-	double x = omega.x, y=omega.y, z = omega.z;
-	out.w = - 0.5 * (qx*x + qy*y + qz*z);
-	out.x = 0.5 * (qw*x - qz*y + qy*z);
-	out.y = 0.5 * (qz*x + qw*y - qx*z);
-	out.z = 0.5 * (- qy*x + qx*y + qw*z);
+	out=q.angvel2qdot(omega);
 }

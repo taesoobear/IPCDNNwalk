@@ -103,7 +103,34 @@ static bool ReadFromFile(FILE*& file, char* buff, const char* seps)
 		}
 	}
 }
+FILE *fmemopen(void *buf, size_t size, const char *opentype)
+{
+	FILE *f;
 
+	assert(strcmp(opentype, "r") == 0);
+
+	f = tmpfile();
+	fwrite(buf, 1, size, f);
+	rewind(f);
+
+	return f;
+}
+
+bool CTextFile::OpenMemory(const char *text)
+{
+
+	Init();
+	ASSERT(m_pFile==NULL);
+	void* buf=(void*)text;
+	m_pFile=fmemopen(buf,strlen(text)+1, "rt");
+	if(!m_pFile){
+	   	throw std::runtime_error("openmemory");
+	}
+	//if(!m_pFile) return false;
+	ReadOneLine();
+
+	return true;
+}
 bool CTextFile::OpenReadFile(const char *fileName)
 {
 	Init();

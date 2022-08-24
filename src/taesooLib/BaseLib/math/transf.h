@@ -35,6 +35,7 @@ class transf
 	void slerp(double t, transf const& a, transf const& b);
 
 	void operator=(matrix4 const& a);
+	void operator=(transf const& a);
 
 	vector3 encode2D() const;
 	void decode2D(vector3 const& in);

@@ -28,8 +28,9 @@ namespace OBJloader
 		int size() const;
 		void resize(int n, int m);
 	};
-	struct Face
+	class Face
 	{
+	public:
 		Face();
 		_tvector<int,Buffer::NUM_BUFFER> indexes[3];
 
@@ -139,6 +140,14 @@ namespace OBJloader
 		};
 		MergeInfo* mergeDuplicateVertices(bool bReturnMergeInfo=false, double distThr=0.00001);
 		MergeInfo* mergeVertices(std::vector<std::pair<int,int> > const& vertexPairs, bool bReturnMergeInfo=false);
+		inline intvectorn _mergeDuplicateVertices(double distThr=0.00001)
+		{
+			MergeInfo* mi=mergeDuplicateVertices(true, distThr);
+			intvectorn newvi=mi->newVertexIndex;
+			delete mi->backupMesh;
+			delete mi;
+			return newvi;
+		}
 
 		// ex) a->merge(a, b);
 		void merge(Mesh const& a, Mesh const& b);
@@ -155,7 +164,7 @@ namespace OBJloader
 		virtual bool saveObj(const char* filename, bool vn, bool vt);
 		virtual bool loadObj(const char* filename);
 
-		virtual void pack(BinaryFile& bf);
+		virtual void pack(BinaryFile& bf) const;
 		virtual void unpack(BinaryFile& bf);
 		void _unpackMeshVersion(int version, BinaryFile& bf);
 		

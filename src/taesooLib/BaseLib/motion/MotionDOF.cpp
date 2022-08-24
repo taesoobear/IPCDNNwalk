@@ -38,6 +38,10 @@ MotionDOFinfo::MotionDOFinfo(const MotionDOFinfo& info)
 	mFrameRate=30;
 }
 
+int MotionDOFinfo::parentIndex(int ibone) const 
+{
+	return skeleton().bone(ibone).parent()->treeIndex();
+}
 MotionDOFinfo::~MotionDOFinfo()
 {
 }
@@ -128,6 +132,7 @@ void MotionDOFinfo::getDOF(Posture const& p, vectorn& dof) const
 	dof.resize(numDOF());
 
 	MotionLoader* mSkeleton=_sharedinfo->mSkeleton;
+
 	for(int i=1; i<mSkeleton->numBone(); i++)
 	{
 		Bone& bone=mSkeleton->bone(i);
@@ -135,24 +140,12 @@ void MotionDOFinfo::getDOF(Posture const& p, vectorn& dof) const
 		{
 			int start=startT(i);
 			int ti=bone.transJointIndex();
-			vector3 init_pos(0,0,0);
-			if(i!=1)
-				init_pos=bone.getOffsetTransform().translation;
+			vector3 init_pos= bone.getOffsetTransform().translation;
 			for(int c=0, nc=bone.getTranslationalChannels().length();
 				c<nc; c++)
 			{
-				switch(bone.getTranslationalChannels()[c])
-				{
-				case 'X':
-					dof[start+c]=p.m_aTranslations[ti].x-init_pos.x;
-					break;
-				case 'Y':
-					dof[start+c]=p.m_aTranslations[ti].y-init_pos.y;
-					break;
-				case 'Z':
-					dof[start+c]=p.m_aTranslations[ti].z-init_pos.z;
-					break;
-				}
+				int xyz=bone.getTranslationalChannels()[c]-'X';
+				dof[start+c]=p.m_aTranslations[ti][xyz]-init_pos[xyz]; // X or Y or Z
 			}
 		}
 
@@ -766,27 +759,48 @@ void MotionDOF::align( MotionDOF const& motA, MotionDOF const& motB)
 	cs0.calc(matView(idOut.offset_q).lval(),matView(idA.offset_q).lval(), matView(idB.offset_q).lval());
 
 	idOut.reconstruct(out, out.mInfo.frameRate());
-
-	matrixn temp=matViewCol(motB, 7);
-
-	MotionLoader const& skel=mInfo.skeleton();
-	for(int i=1; i<skel.numBone(); i++)
+	if(numDOF()>7)
 	{
-		Bone& bone=skel.bone(i);
-		if(mInfo.hasAngles(i))
+		matrixn temp=matViewCol(motB, 7);
+
+		MotionLoader const& skel=mInfo.skeleton();
+		for(int i=1; i<skel.numBone(); i++)
 		{
-			int startR=mInfo.startR(i);
-			int endR=mInfo.endR(i);
+			Bone& bone=skel.bone(i);
+			if(mInfo.hasAngles(i))
+			{
+				int startR=mInfo.startR(i);
+				int endR=mInfo.endR(i);
 
-			for(int j=startR; j<endR; j++)
-				alignAngles(temp.column(j-7), motA(motA.numFrames()-1, j));
+				for(int j=startR; j<endR; j++)
+					alignAngles(temp.column(j-7), motA(motA.numFrames()-1, j));
+			}
 		}
-	}
 
-	cs0.calc(matViewCol(out,7).lval(), matViewCol(motA, 7), temp);
+		cs0.calc(matViewCol(out,7).lval(), matViewCol(motA, 7), temp);
+	}
 
 	mInfo=motA.mInfo;
 }
+void MotionDOF::alignSimple( MotionDOF const& motA, MotionDOF const& motB)
+{
+	MotionDOF& out=*this;
+	out.changeLength(motA.length()+motB.length());
+	out.range(0, motA.rows())=motA;
+	out.range(motA.rows(), out.rows())=motB.range(1, motB.rows());
+	transf A=motA.rootTransformation(motA.rows()-1);
+	A.rotation=A.rotation.rotationY();
+	transf B=motB.rootTransformation(0);
+	B.rotation=B.rotation.rotationY();
+	transf delta;
+	delta.difference(B, A);
+	delta.translation.y=0;
+	//std::cout <<delta<<std::endl;
+	//std::cout<<out.row(motA.rows())[2]<<std::endl;
+	out.range(motA.rows(), out.rows()).transform(delta);
+	//std::cout<<out.row(motA.rows())[2]<<std::endl;
+}
+
 
 void MotionDOF::stitchDeltaRep( MotionDOF const& motA, MotionDOF const& motB)
 {
@@ -943,6 +957,10 @@ void MotionDOF::reconstructData(transf const& startTransf, matrixn& out) const
 
 
 MotionDOFview MotionDOF::range(int start, int end)
+{
+	return MotionDOFview (&value(start,0), end-start, cols(), stride, mInfo);
+}
+const MotionDOFview MotionDOF::range(int start, int end) const
 {
 	return MotionDOFview (&value(start,0), end-start, cols(), stride, mInfo);
 }

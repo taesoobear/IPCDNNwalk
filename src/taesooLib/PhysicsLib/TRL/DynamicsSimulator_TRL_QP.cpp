@@ -263,12 +263,25 @@ void DynamicsSimulator_TRL_QP::init(double timeStep,
 void DynamicsSimulator_TRL_QP::initSimulation()
 {
 	//world.initialize(); // moved to init (which is less frequently called)
+#if 1
+	int n = world.numBodies();
+	for(int i=0; i < n; ++i){
+        world.body(i)->calcForwardKinematics(false, false);
+	}
+	world.initialize(); // moved to init (which is less frequently called)
+	_contactForceSolver->initialize();
+#else // buggy but faster.
 	int n = _characters.size();
 	for(int i=0; i<n; i++){
 		TRL::ForwardDynamicsABM* fd=world.forwardDynamics(i);
+		if(!fd) Msg::error("??? fd==NULL. did you call init(...)");
 		fd->calcPositionAndVelocityFK();
 	}
+#endif
 	_updateCharacterPose();
+
+	for(int i=0; i<world.numBodies(); i++)
+		world.body(i)->clearExternalForces();
 	collisionDetector->queryContactDeterminationForDefinedPairs(_characters, *collisions);
 	_contacts->solve(collisionDetector->getCollisionPairs(),*collisions);
 }
@@ -304,6 +317,8 @@ void DynamicsSimulator_TRL_QP::registerCollisionCheckPair
 {
 	int bodyIndex1 = world.bodyIndex(charName1);
 	int bodyIndex2 = world.bodyIndex(charName2);
+	Msg::verify(bodyIndex1!=-1, "TRL_LCP::registerCollisionCheckPair error1");
+	Msg::verify(bodyIndex2!=-1, "TRL_LCP::registerCollisionCheckPair error2");
 	double staticFriction=param[0];
 	double slipFriction=param[1];
 
@@ -472,85 +487,6 @@ void DynamicsSimulator_TRL_QP::stepKinematic2(int ichar, vectorn const& ddq)
 }
 
 
-Liegroup::se3 transf_twist_nonlinear(transf const& tf1, transf const& tf2, double timestep);
-// calc momentum assuming constant velocity while steadily transforming from poseFrom to poseTo in 1 second. (0 <= t <= 1)
-Liegroup::dse3 DynamicsSimulator_TRL_penalty::calcMomentumCOMfromPose(int ichara, double delta_t, vectorn const& poseFrom, vectorn const& poseTo)
-{
-	VRMLloader* skel=_characters[ichara]->skeleton;
-	TRL::BodyPtr cinfo=world.body(ichara);
-	BoneForwardKinematics chain1(skel), chain2(skel);
-	chain1.init();
-	chain2.init();
-
-	::vector3 com(0,0,0);
-	Liegroup::dse3 H(0,0,0,0,0,0);
-
-	m_real totalMass=0.0;
-	chain1.setPoseDOF(poseFrom);
-	chain2.setPoseDOF(poseTo);
-	for(int ibone=1; ibone<skel->numBone(); ibone++)
-	{
-		VRMLTransform& bone=skel->VRMLbone(ibone);
-		ASSERT(bone.mSegment);
-		double mass=bone.mass();
-		com+=chain1.global(bone).toGlobalPos(bone.localCOM())*mass;
-		totalMass+=mass;
-		//Liegroup::se3 V=transf_twist(chain1.global(bone), chain2.global(bone),delta_t);
-		Liegroup::se3 V=transf_twist_nonlinear(chain1.global(bone), chain2.global(bone),delta_t);
-		//printf("%d : %s, %f %f %f\n", ibone, V.W().output().ptr(), body->V[0], body->V[1], body->V[2]);
-		//printf("%d : %s, %f %f %f\n", ibone, V.V().output().ptr(), body->V[3], body->V[4], body->V[5]);
-
-		Liegroup::Inertia I(mass, bone.momentsOfInertia(), mass*bone.localCOM());
-		H+=(I*V).inv_dAd(chain1.global(bone));
-	}
-
-	com/=totalMass;
-
-	//printf("I: %f %f %f %f %f %f, %f,%f\n", I._I[0],I._I[1],I._I[2],I._I[3],I._I[4],I._I[5],I._m, totalMass);
-
-	Liegroup::dse3 v;
-	v.dAd(transf(quater(1,0,0,0), com), H);
-	return v;
-}
-void  DynamicsSimulator_TRL_penalty::calcInertia(int ichara,vectorn const& pose, vectorn& inertia) const
-{
-	VRMLloader* skel=_characters[ichara]->skeleton;
-	TRL::BodyPtr cinfo=world.body(ichara);
-	BoneForwardKinematics chain(skel);
-	chain.init();
-	::vector3 com(0,0,0);
-	m_real totalMass=0.0;
-
-	Liegroup::Inertia I;
-	chain.setPoseDOF(pose);
-
-	// T_(-COM)*T_G*T(lCOM)*local_position_WT_COM
-	for(int ibone=1; ibone<skel->numBone(); ibone++)
-	{
-		VRMLTransform& bone=skel->VRMLbone(ibone);
-		ASSERT(bone.mSegment);
-		double mass=bone.mass();
-		com+=chain.global(bone).toGlobalPos(bone.localCOM())*mass;
-		totalMass+=mass;
-
-
-		Liegroup::Inertia Ii(mass, bone.momentsOfInertia(), mass*bone.localCOM());
-		Ii=Ii.transform(chain.global(bone).inverse()); // inverse is there because of dAd transformation
-		//Ii=Ii.transform(toGMBS(chain2.global(bone).inverse()));
-		//printf("Ii: %f %f %f %f %f %f, %f\n", body->I._I[0],body->I._I[1],body->I._I[2],body->I._I[3],body->I._I[4],body->I._I[5],body->I._m);
-		//printf("Ii: %f %f %f %f %f %f, %f\n", Ii._I[0],Ii._I[1],Ii._I[2],Ii._I[3],Ii._I[4],Ii._I[5],Ii._m);
-		for (int i=0;i<6; i++) I._I[i]+=Ii._I[i];
-		for (int i=0;i<3; i++) I._r[i]+=Ii._r[i];
-		I._m+=Ii._m;
-	}
-
-	com/=totalMass;
-
-	I=I.transform(transf(quater(1,0,0,0), com)); // inv(T_{com*-1}) == T_com
-	//printf("I: %f %f %f %f %f %f, %f,%f\n", I._I[0],I._I[1],I._I[2],I._I[3],I._I[4],I._I[5],I._m, totalMass);
-
-	inertia.setValues(10, I._I[0], I._I[1], I._I[2],  I._I[3],I._I[4],I._I[5],I._m, I._r[0], I._r[1], I._r[2]);
-}
 
 
 void DynamicsSimulator_TRL_QP::get_contact_pos(int ichar, vector3N & M, CollisionSequence& collisionSequence)

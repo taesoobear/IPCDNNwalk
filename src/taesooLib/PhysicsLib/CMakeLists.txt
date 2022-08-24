@@ -1,7 +1,7 @@
 # -*- mode: cmake; -*-
 project(PhysicsLib)
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.0)
 
 # Make sure the compiler can find include files from our Hello library.
 set (CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../Samples")
@@ -78,11 +78,14 @@ set(src
   "DynamicsSimulator_QP.h"
   "convexhull/graham.cpp"
   "CollisionDetector.cpp"
+	  CollisionDetector/Bullet/CollisionDetector_bullet.cpp
+	  CollisionDetector/Bullet/CollisionDetector_bullet.h
+	  CollisionDetector/CollisionDetector_gjk.cpp
+	  CollisionDetector/CollisionDetector_gjk.h
   "ScriptBaseWin.cpp"
   "ScriptBaseWin.h"
   "DynamicsSimulator.cpp"
   "DynamicsSimulator_penaltyMethod.cpp"
-  "InertiaCalculator.cpp"
   "OpenHRPcommon.cpp"
 	)
 

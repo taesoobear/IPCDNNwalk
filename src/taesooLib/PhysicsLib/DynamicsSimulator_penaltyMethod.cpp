@@ -15,7 +15,7 @@ namespace OpenHRP
 static double _footSize=6;
 static vector3 _trans=vector3(0,0.01,0);
 static double _front=0;
-static vector3 _contactForceVis(0.05, 0, 0.05);
+static vector3 _contactForceVis(0.01, 0.01, 0.01);
 DynamicsSimulator_penaltyMethod::DynamicsSimulator_penaltyMethod(bool useSimpleColdet):
 	DynamicsSimulator(useSimpleColdet){}
 DynamicsSimulator_penaltyMethod::DynamicsSimulator_penaltyMethod(const char* coldet):

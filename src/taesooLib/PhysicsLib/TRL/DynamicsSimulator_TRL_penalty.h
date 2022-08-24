@@ -44,9 +44,7 @@ namespace OpenHRP {
 
 		~DynamicsSimulator_TRL_penalty();
 
-		void  calcInertia(int ichara,vectorn const& pose, vectorn& inertia) const;
-		Liegroup::dse3 calcMomentumCOM(int ichara);
-		Liegroup::dse3 calcMomentumCOMfromPose(int ichara, double delta_t, vectorn const& poseFrom, vectorn const& poseTo);
+		virtual void getBodyVelocity(int chara, VRMLTransform* b, Liegroup::se3& V) const ;
 		void calcMomentumDotJacobian(int ichar, matrixn& jacobian, matrixn& dotjacobian);
 
 		virtual void getWorldVelocity(int ichara, VRMLTransform* b
@@ -70,7 +68,7 @@ namespace OpenHRP {
 		virtual void init(double timeStep,
 						  OpenHRP::DynamicsSimulator::IntegrateMethod integrateOpt);
 
-		double currentTime();
+		double currentTime() const;
 		void setCurrentTime(double t);
 
 		/* dw, dv, tauext, fext are w.r.t world coordinate
@@ -116,7 +114,25 @@ namespace OpenHRP {
 		virtual void getLinkData(int ichara, LinkDataType t, vectorn& out);
 		virtual void setLinkData(int ichara, LinkDataType t, vectorn const& in);
 
+		// if model contains spherical joints, use getSphericalState* and setTau functions.
+		/*
+		 * our spherical state packing is different!!!
+		 *
+		 *  in our case, linear parts appear first, and then 3 DOF ball joints (YUP).
+		 *         root                                     |     3           3         ...   
+		 q_linear= [x, y, z, hinge1, hinge2, hinge3, hinge4]
+		 q_quat  =                                          [qw,qx,qy,qz, qw2,qx2,qy2,qz2, qw3,qx3,qy3,qz3, ....]
+		 q= [q_linear, q_quat]
+		dq=	[dx,dy,dz,dhinge1,dhinge2,dhinge3,dhinge4,        wx,wy,wz,     wx2,wy2,wz2,     wx3,wy3,wz3, ...
+		tau is packed in the same way with dq.
 
+		dq : body velocity for all joints
+		tau :  only for the root joint, external force/torque are around the world origin 
+				all joint torques : self-local
+		*/
+		void getSphericalState(int ichara, vectorn & q, vectorn& dq); // packing is different from setLinkData or setQ/setDQ
+		void setSphericalState(int ichara, const vectorn& q, const vectorn& dq); // packing is different from setLinkData or setQ/setDQ
+		void setTau(int ichara, const vectorn& tau); // packing is different from setLinkData or setU
 
 		// conversion
 		// input:
@@ -138,31 +154,35 @@ namespace OpenHRP {
 		inline void QToPose(vectorn const& v, vectorn& out) { int rdof=v.size(); out.setSize(rdof); out.setVec3(0, v.toVector3(0)); out[3]=v[rdof-1]; out.setVec3(4, v.toVector3(3)); out.range(7, rdof)=v.range(6, rdof-1);}
 
 		// SDFAST style packing (x,y,z,qx,qy,qz,theta1,theta2,...,thetaN,qw), which is different from the MotionDOF/PoseDOF format  (x,y,z,qw,qx,qy,qz, theta1, ..., thetaN)
-		inline void setQ(int ichara, vectorn const& v) { assert(v.size()==rdof(ichara)); setQ(ichara, &v(0)); }
-		inline void getQ(int ichara, vectorn & v) const { v.setSize(rdof(ichara)); getQ(ichara, &v(0));}
-		inline vectorn getQ(int ichara) const { vectorn v; v.setSize(rdof(ichara)); getQ(ichara, &v(0));return v;}
+		virtual void setQ(int ichara, vectorn const& v) override { assert(v.size()==rdof(ichara)); _setQ(ichara, &v(0)); }
+		virtual void getQ(int ichara, vectorn & v) const  override{ v.setSize(rdof(ichara)); _getQ(ichara, &v(0));}
 
-		//   (wx, wy, wz, vx, vy, vz, dtheta1, dtheta2, ...,dthetaN). w, v is in the global coordinate unlike dpose.
-		inline void setDQ(int ichara, vectorn const& v){ assert(v.size()==dof(ichara)); if(v.size()>0) setDQ(ichara, &v(0)); }
-		inline void getDQ(int ichara, vectorn& v) const{ v.setSize(dof(ichara)); if(v.size()>0) getDQ(ichara, &v(0));}
-		inline vectorn getDQ(int ichara) const{ vectorn v; v.setSize(dof(ichara)); if(v.size()>0) getDQ(ichara, &v(0));return v;}
+		virtual void setDQ(int ichara, vectorn const& v) override { assert(v.size()==dof(ichara)); if(v.size()>0) _setDQ(ichara, &v(0)); }
+		virtual void getDQ(int ichara, vectorn& v) const override { v.setSize(dof(ichara)); if(v.size()>0) _getDQ(ichara, &v(0));}
+		virtual void setU(int ichara, const vectorn& in) override;
+
+		// for fixed joints
+		void setNonStatePoseDOF(int ichara, vectorn const& pose);
+		void setNonStateDQ(int ichara, vectorn const& dq);
+		void setNonStateDDQ(int ichara, vectorn const& ddq);
+		transf getNonStateRootQ(int ichara);
+
 
 		// state = [q, dq]
-		inline void setState(int ichara, vectorn const& v) { assert(v.size()==rdof(ichara )+dof(ichara)); setState(ichara, &v(0)); }
-		inline void getState(int ichara, vectorn & v) const { v.setSize(rdof(ichara)+dof(ichara)); getState(ichara, &v(0));}
-		inline void getState(int ichara, double v[]) const { getQ(ichara, &v[0]); getDQ(ichara, &v[rdof()]);}
-		inline void setState(int ichara, double v[]) { setQ(ichara, &v[0]);  setDQ(ichara, &v[rdof()]); }
-		inline void getU(int ichara, vectorn& v) const { v.setSize(dof(ichara)); getU(ichara, &v[0]);}
-		inline vectorn getU(int ichara) const  {vectorn v; v.setSize(dof(ichara)); getU(ichara, &v[0]);return v;}
-		void setU(int ichara, const vectorn& in);
+		inline void setState(int ichara, vectorn const& v) { assert(v.size()==rdof(ichara )+dof(ichara)); _setState(ichara, &v(0)); }
+		inline void getState(int ichara, vectorn & v) const { v.setSize(rdof(ichara)+dof(ichara)); _getState(ichara, &v(0));}
+		inline void _getState(int ichara, double v[]) const { _getQ(ichara, &v[0]); _getDQ(ichara, &v[rdof()]);}
+		inline void _setState(int ichara, double v[]) { _setQ(ichara, &v[0]);  _setDQ(ichara, &v[rdof()]); }
+		inline void getU(int ichara, vectorn& v) const { v.setSize(dof(ichara)); _getU(ichara, &v[0]);}
+		inline vectorn getU(int ichara) const  {vectorn v; v.setSize(dof(ichara)); _getU(ichara, &v[0]);return v;}
+		void setDDQ(int ichara, vectorn const& v);
 
 		// pointer access
-		void getQ(int ichara, double v[]) const; 
-		void setQ(int ichara, const double v[]);
-		void getDQ(int ichara, double v[]) const;
-		void setDQ(int ichara, const double v[]);
-		void setDDQ(int ichara, vectorn const& v);
-		void getU(int ichara, double v[]) const; 
+		void _getQ(int ichara, double v[]) const; 
+		void _setQ(int ichara, const double v[]);
+		void _getDQ(int ichara, double v[]) const;
+		void _setDQ(int ichara, const double v[]);
+		void _getU(int ichara, double v[]) const; 
 
 		// yaw (Z), pitch (Y), roll (X) assuming that up is Z, front is X.
 		// e->[x,y,z,rz,ry,rx,theta1,... ,dx,dy,dz,drz,dry,drx,theta1,..]

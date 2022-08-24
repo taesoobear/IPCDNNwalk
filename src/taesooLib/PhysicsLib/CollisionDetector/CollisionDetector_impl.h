@@ -45,11 +45,9 @@ namespace OpenHRP {
 
 		virtual ~CollisionDetector_impl();
 
-		virtual void addModel(const char* charName,
-							  CharacterInfo const& model);
+		virtual void addModel(const char* charName, CharacterInfo const& model);
 
-		virtual void addCollisionPair(
-									  LinkPair const & colPair,
+		virtual void addCollisionPair( LinkPair const & colPair,
 									  bool convexsize1,
 									  bool convexsize2
 									  );
@@ -69,7 +67,6 @@ namespace OpenHRP {
 
 		int _contactIntersection(CdCheckPair* rPair);
 
-		vector<CdJoint *> joints;
 	};
 }
 

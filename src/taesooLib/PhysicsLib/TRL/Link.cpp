@@ -46,6 +46,10 @@ Link::Link()
 	sibling = 0;
 	child = 0;
 	
+	vo.zero();
+	w.zero();
+	dvo.zero();
+	dw.zero();
 }
 
 

@@ -22,7 +22,9 @@ namespace OpenHRP {
 	  std::vector<std::string> mTreeNames;
 	  std::vector<LinkPair> mPairs;
   public:
-  
+	  CollisionDetector(){}
+	  virtual ~CollisionDetector(){}
+
     virtual int addModel(VRMLloader* loader); // returns characterIndex
 	void changeLastModelName(const char* charName) { mTreeNames.back()=charName;} // overwrite name.
 	int addObstacle(OBJloader::Geometry const& mesh); // returns characterIndex
@@ -57,6 +59,7 @@ namespace OpenHRP {
 	};
 
 	virtual void rayTest(int ichar, int ilink, vector3 const& from, vector3 const& to, RayTestResult& result);
+	virtual void rayTestBackside(int ichar, int ilink, vector3 const& from, vector3 const& to, RayTestResult& result){Msg::error("not implemented yet");}
 	
 
 	////////////////////////////////////////////////////////

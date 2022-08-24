@@ -387,28 +387,15 @@ bindTargetBaseLib={
 		},
 		{ 
 			name='TStrings',
-			ctors={'()'},
+			ctors={'()', '(int)'},
 			wrapperCode=[[
-			inline static void set(TStrings& a, int i, const char* b)
-			{
-				a[i]=b;
-			}
-			inline static void set(TStrings& a, int i)
-			{
-				a[i]="";
-			}
-			inline static void pushBack(TStrings& a, const char* i)
-			{
-				TString temp(i);
-				a.pushBack(temp);
-			}
 			]],
 			staticMemberFunctions={[[
-			void set(TStrings& a, int i, const char* b)
-			void set(TStrings& a, int i)
-			void pushBack(TStrings& a, const char* i)
 			]]},
 			memberFunctions={[[
+			void set( int i)
+			void set( int i, const char* b)
+			void pushBack(const char* i)
 			TString operator[](int i)	@ __call
 			TString data(int i)					
 			TString back()						
@@ -446,6 +433,15 @@ bindTargetBaseLib={
 			]]
 		},
 		{
+			name='intmatrixnView', inheritsFrom='intmatrixn',
+			ctors={
+				[[
+						(const intmatrixn& )
+						(const intmatrixnView&)
+				]]
+			},
+		},
+		{
 			name='util.BinaryFile',
 			className='BinaryFile',
 			decl=[[#include "../../BaseLib/motion/version.h"]],
@@ -463,6 +459,14 @@ bindTargetBaseLib={
 				{
 					pLoader->unpack(bf);
 				}
+				inline static void _packVRMLloader(BinaryFile& bf, VRMLloader* pLoader)
+				{
+					pLoader->_exportBinary(bf);
+				}
+				inline static void _unpackVRMLloader(BinaryFile& bf, VRMLloader* pLoader)
+				{
+					pLoader->_importBinary(bf);
+				}
 				inline static void _pack(BinaryFile& bf, Posture& pose)
 				{
 					bf.pack(MOT_VERSION_STRING[MOT_RECENT_VERSION]);
@@ -479,6 +483,8 @@ bindTargetBaseLib={
 			staticMemberFunctions=[[
 				void _pack(BinaryFile& bf, MotionLoader* pLoader);
 				void _unpack(BinaryFile& bf, MotionLoader* pLoader);
+				void _packVRMLloader(BinaryFile& bf, VRMLloader* pLoader);
+				void _unpackVRMLloader(BinaryFile& bf, VRMLloader* pLoader);
 				void _pack(BinaryFile& bf, Posture& pose)
 				void _unpack(BinaryFile& bf, Posture& pose)
 			]],
@@ -843,10 +849,10 @@ bindTargetBaseLib={
 				inline static void rsub(vectorn & a, m_real b)	{a-=b;}
 				inline static void rdiv(vectorn & a, m_real b) {a/=b;}
 				inline static void rmult(vectorn & a, m_real b) {a*=b;}
-				inline static void rmult(vectorn & a, vectorn const&b) {for(int i=0; i<a.size(); i++) a[i]*=b[i];}
+				inline static void rmult(vectorn & a, vectorn const&b) {Msg::verify(a.size()==b.size(), "size err");for(int i=0; i<a.size(); i++) a[i]*=b[i];}
 				inline static void setAllValue(vectorn & a, m_real b) {a.setAllValue(b);}
-				inline static void radd(vectorn & a, vectorn const& b)	{a+=b;}
-				inline static void rsub(vectorn & a, vectorn const& b)	{a-=b;}
+				inline static void radd(vectorn & a, vectorn const& b)	{Msg::verify(a.size()==b.size(), "size err");a+=b;}
+				inline static void rsub(vectorn & a, vectorn const& b)	{Msg::verify(a.size()==b.size(), "size err");a-=b;}
 				inline static void smoothTransition(vectorn &c, m_real s, m_real e, int size)
 				{
 					c.setSize(size);
@@ -1018,6 +1024,7 @@ bindTargetBaseLib={
 				[[
 				()
 				(matrix3 const&)
+				(quater const& q)
 				]]
 			},	
 			properties={'double _11','double _12','double _13',
@@ -1030,6 +1037,7 @@ bindTargetBaseLib={
 				vector3 operator*(matrix3 const& a, vector3 const& b)
 				vector3 operator*(vector3 const& b, matrix3 const& a)
 				matrix3 operator*(matrix3 const& a, matrix3 const& b)
+				matrix3 operator*(matrix3 const& a, double b)
 				TString out(matrix3 &l) @ __tostring
 				]]
 			},
@@ -1126,6 +1134,8 @@ bindTargetBaseLib={
 				matrix4 operator-(matrix4 const& a) const
 				matrix4 operator=(matrix4 const& b) const
 				void operator*=(double b) 
+				vector3 getColumn(int i) 
+				void setColumn(int i, vector3 const& v) 
 				]]
 			},
 		},
@@ -1194,6 +1204,7 @@ bindTargetBaseLib={
 			inline static void setAllValue(matrixn & a, m_real b) {a.setAllValue(b);}
 			inline static void radd(matrixn & a, matrixn const& b)	{a+=b;}
 			inline static void rsub(matrixn & a, matrixn const& b)	{a-=b;}
+			inline static vectorn mean(matrixn& a) { vectorn c; c.mean(a); return c;}
 
 			inline static void pushBack(matrixn& mat, const vectorn& v) { mat.pushBack(v);}
 
@@ -1245,6 +1256,7 @@ bindTargetBaseLib={
 				static void setAllValue(matrixn & a, m_real b) 
 				static void radd(matrixn & a, matrixn const& b)	
 				static void rsub(matrixn & a, matrixn const& b)	
+				static vectorn mean(matrixn& a) 
 				static void pushBack(matrixn& mat, const vectorn& v) 
 				static void transpose(matrixn& a)
 				static void sampleRow(matrixn const& in, m_real criticalTime, vectorn& out)
@@ -1414,6 +1426,10 @@ bindTargetBaseLib={
 			{vector3 c;c.add(a,b);return c;}
 			inline static vector3 __sub(vector3 const& a, vector3 const& b)
 			{vector3 c;c.sub(a,b);return c;}
+			inline static vector3 __mul(vector3 const& a, matrix3 const& b)
+			{
+				return a*b;
+			}
 			inline static double dotProduct(vector3 const& a, vector3 const& b)
 			{
 				return a%b;
@@ -1433,6 +1449,7 @@ bindTargetBaseLib={
 				[[
 				vector3 __mul(vector3 const& a, double b);
 				vector3 __mul(double b, vector3 const& a);
+				vector3 __mul(vector3 const& a, matrix3 const& b);
 				vector3 __div(vector3 const& a, double b);
 				vector3 __add(vector3 const& a, vector3 const& b);
 				vector3 __sub(vector3 const& a, vector3 const& b);
@@ -1464,6 +1481,7 @@ bindTargetBaseLib={
 				vector3 cross(const vector3&) const;
 				m_real distance(const vector3& other) const;
 				void normalize();
+				vector3 dir() const; @ unitVector
 				void multadd(const vector3&, m_real);	
 				m_real length() const;
 				void ln( const quater& q);
@@ -1529,6 +1547,7 @@ bindTargetBaseLib={
 				void setY(vector4 & a, m_real b);
 				void setZ(vector4 & a, m_real b);
 				void setW(vector4 & a, m_real b);
+				static void set(vector4 & a, m_real x, m_real y, m_real z, m_real w) 
 				]]
 			},
 			memberFunctions = -- list of strings of c++ function declarations.
@@ -1601,6 +1620,7 @@ bindTargetBaseLib={
 						void setAxisRotation(const vector3& vecAxis, const vector3& front, const vector3& vecTarget);
 						void identity()
 						quater   inverse() const
+						quater   rotationY() const
 						void decompose(quater& rotAxis_y, quater& offset) const;
 						void decomposeTwistTimesNoTwist (const vector3& rkAxis, quater& rkTwist, quater& rkNoTwist) const;
 						void decomposeNoTwistTimesTwist (const vector3& rkAxis, quater& rkNoTwist, quater& rkTwist) const;
@@ -1629,6 +1649,7 @@ bindTargetBaseLib={
 						void setRotation(const vector3& )
 						void setRotation(const matrix4& a)
 						void normalize();
+						quater normalized() const;
 						void align(const quater& other)
 						TString output(); @ __tostring
 						void blend(const vectorn& weight, matrixn& aInputQuater);
@@ -1918,7 +1939,7 @@ bindTargetBaseLib={
 					memberFunctions=[[
 					void computeTree()
 					int nDOF() 
-					int nDOFinTree() 
+					int nJoints() 
 					double calcInertia(const VRMLloader& loader, vectorn& inertia) const; 
 					intvectorn const& getDQindex();
 					IK_sdls::Node* getJoint(int jointindex)
@@ -1934,6 +1955,7 @@ bindTargetBaseLib={
 					vector3 getWorldVelocity(int ibone);
 					vector3 getWorldAngVel(int ibone);
 					void integrate(MotionDOFinfo const& mDofInfo, vectorn const& dtheta, double timeStep);
+					void integrate(MotionDOFinfo const& mDofInfo, double timeStep);
 					void calcEffectorJacobianTranspose(matrixn& J);
 					void calcJacobianTransposeAt(matrixn& J, int ibone, vector3 const& localpos);
 					void getJacobianSparsity(boolN& hasValue, int ibone);
@@ -1943,18 +1965,26 @@ bindTargetBaseLib={
 					vector3 calcCOM(const VRMLloader& loader);
 					void calcCOMjacobianTranspose(const VRMLloader& loader, matrixn& JT, int chainRootBone, int chainTailBone);
 					void calcCOMjacobianTranspose(const VRMLloader& loader, matrixn& JT);
+					void updateGrad_S_JT(vectorn& g,vector3 const& deltaS, int ibone, vector3 const& localpos);
+					void updateCOM_grad_S_JT(vectorn & grad, const VRMLloader& loader, vector3 const& deltaS, double wx, double wy, double wz);
 					void calcRotJacobianTranspose(matrixn& J, int ibone);
 					void calcMomentumJacobianTranspose(const VRMLloader& loader, matrixn& JT);
 					Liegroup::dse3 calcMomentumCOM(const VRMLloader& loader);
+					Liegroup::se3 calcInverseInertiaTimesMomentumCOM(const VRMLloader& loader);
 					Liegroup::dse3 calcMomentumCOMfromPose(const VRMLloader& loader,double delta_t, BoneForwardKinematics &chain1); 
 					Liegroup::dse3 calcMomentumCOMtoPose(const VRMLloader& loader,double delta_t, BoneForwardKinematics &chain2); 
 					void getDTheta( vectorn& dq) 
 					void getTheta( vectorn& q) 
 					void setTheta( vectorn const& q) 
+					void getSphericalState(MotionDOFinfo const& spherical_dofInfo, vectorn& q, vectorn& dq) const;
+					void setSphericalState(MotionDOFinfo const& spherical_dofInfo, const vectorn& q, const vectorn& dq) const;
+					void getSphericalQ(MotionDOFinfo const& spherical_dofInfo, vectorn& q) const;
+					void setSphericalQ(MotionDOFinfo const& spherical_dofInfo, const vectorn& q) const;
 					void getDQ( vectorn& dq) 
 					void getQ( vectorn& q) 
 					void setQ( vectorn const& q) 
 					void setDQ( vectorn const& q) 
+					void setLinkData(vectorn const& pose, vectorn const& dpose)
 					]],
 					staticMemberFunctions=[[
 					void Print(IK_sdls::LoaderToTree& self)
@@ -2463,7 +2493,9 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 			className='OBJloader::MeshToEntity',
 			ctors={
 				'(const OBJloader::Mesh& mesh, const char* ogreMeshName)',
-				'(const OBJloader::Mesh& mesh, const char* ogreMeshName, bool buildEdgeList, bool dynamicUpdate)'
+				'(const OBJloader::Mesh& mesh, const char* ogreMeshName, bool buildEdgeList, bool dynamicUpdate)',
+				'(const OBJloader::Mesh& mesh, const char* ogreMeshName, bool buildEdgeList, bool dynamicUpdate, bool useNormal, bool useTexCoord)',
+				'(const OBJloader::Mesh& mesh, const char* ogreMeshName, bool buildEdgeList, bool dynamicUpdate, bool useNormal, bool useTexCoord, bool useColor)'
 			},
 			memberFunctions={[[
 			void updatePositions();
@@ -2599,7 +2631,7 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 			},
 			enums={
 				{"BOX", "(int)OBJloader::Element::BOX"},
-				{"CYLINDER", "(int)OBJloader::Element::BOX"},
+				{"CYLINDER", "(int)OBJloader::Element::CYLINDER"},
 				{"CAPSULE", "(int)OBJloader::Element::CAPSULE"},
 				{"OBJ", "(int)OBJloader::Element::OBJ"},
 				{"ELLIPSOID", "(int)OBJloader::Element::ELLIPSOID"},
@@ -2635,6 +2667,7 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 			void merge(OBJloader::Geometry const& a, OBJloader::Geometry const& b); 
 			void convertToOBJ()
 			void copyFrom(OBJloader::Geometry const& otherMesh); @ assign
+			void assignMesh(OBJloader::Mesh const& otherMesh); 
 			]],
 		},
 		{
@@ -3182,12 +3215,19 @@ staticMemberFunctions={[[
 					e.setRenderingDistance(dist);
 #endif
 				}
+				static void setRenderQueueGroup(Ogre::Entity& e, int queueid)
+				{
+#ifndef NO_OGRE
+					e.setRenderQueueGroup((Ogre::uint8) queueid);
+#endif
+				}
 			]],
 			staticMemberFunctions={[[
 				void setNormaliseNormals(Ogre::Entity& e)
 				void setNormaliseNormals(Ogre::Entity& e, bool )
 				void setMaterialName(Ogre::Entity& e, const char* matName)
 				void getBoundingBox(Ogre::Entity& e, vector3& min, vector3& max)
+				void setRenderQueueGroup(Ogre::Entity& e, int queueid)
 				void setRenderingDistance (Ogre::Entity& e, double dist)
 			]]},
 			memberFunctions={[[
@@ -3862,6 +3902,7 @@ memberFunctions={[[
 				void samplePose(m_real criticalTime, vectorn& out) const;
 				void stitch(MotionDOF const& motA, MotionDOF const& motB);
 				void align(MotionDOF const& motA, MotionDOF const& motB);
+				void alignSimple(MotionDOF const& motA, MotionDOF const& motB);
 				void stitchDeltaRep(MotionDOF const& motA, MotionDOF const& motB);
 				vectornView row(int i); @ __call
 				vector3 convertToDeltaRep();	// see interframeDifference
@@ -3904,6 +3945,7 @@ memberFunctions={[[
 	void init();
 	void forwardKinematics();
 	void inverseKinematics();
+	void inverseKinematicsExact();
 	void updateBoneLength(MotionLoader const& loader);
 	void operator=(BoneForwardKinematics const& other);
 	void setPose(const Posture& pose);
@@ -4358,6 +4400,7 @@ memberFunctions={[[
 			void frameTime(float ftime)		@ setFrameTime
 			bool isDiscontinuous(int fr) const;//			{ return m_aDiscontinuity[fr%m_maxCapacity];}
 			void setDiscontinuity(int fr, bool value);//	{ m_aDiscontinuity.setValue(fr%m_maxCapacity, value);}
+			void setDiscontinuity(boolN const& bit);
 			Posture& pose(int iframe) const;
 			void CalcInterFrameDifference(int startFrame ); @ calcInterFrameDifference
 			void ReconstructDataByDifference(int startFrame ); @ reconstructFromInterFrameDifference
@@ -4622,10 +4665,28 @@ inheritsFrom='LUAwrapper::Worker',
 				'(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel)',
 				'(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, bool bCurrPoseAsBindPose)',
 				'(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, const char* convfilename, bool bCurrPoseAsBindPose)',
+				'(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, TStrings const& bonesA, TStrings const& bonesB, bool bCurrPoseAsBindPose)',
 			},
 			memberFunctions={[[
 			void setTargetSkeleton(const Posture & srcposture);	
 			void setTargetSkeletonBothRotAndTrans(const Posture& srcposture);
+			MotionLoader* source() 
+			MotionLoader* target()
+			]]}
+		},
+		{
+			name='MotionUtil.PoseTransfer2',
+			className='PoseTransfer2',
+			ctors={
+				'(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, TStrings const& bonesA, TStrings const& bonesB, double posScaleFactor )',
+				'(MotionLoader* loaderA, MotionLoader* loaderB)',
+				'(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, const char* convfilename, double posScaleFactor )',
+			},
+			memberFunctions={[[
+			void _setTargetSkeleton();
+			void setTargetSkeleton(const Posture & srcposture);	
+			void setTargetSkeleton(const vectorn & srcposture);	
+			void setTargetSkeleton(const BoneForwardKinematics & srcposture);	
 			MotionLoader* source() 
 			MotionLoader* target()
 			]]}
@@ -4636,6 +4697,7 @@ inheritsFrom='LUAwrapper::Worker',
 			properties={"Motion m_cPostureIP @ mMotion", 
 						"MotionDOFinfo dofInfo"},
 			memberFunctions= [[
+				void loadAnimation(Motion& mot, const char* fn) @ loadAnimationExt
 				void insertSiteBones();
 				BoneForwardKinematics & fkSolver() const	
 				void readJointIndex(const char* filename);
@@ -4685,12 +4747,9 @@ inheritsFrom='LUAwrapper::Worker',
 				void _changeVoca(int jointVoca, Bone & bone);
 				void _updateTreeIndex();
 				void _initDOFinfo();
+				void printHierarchy();
 				]],
 			wrapperCode=[[
-			static void printHierarchy(MotionLoader& skel)
-			{
-				skel.GetNode(0)->printHierarchy();
-			}
 
 			static MotionLoader* getMotionLoader(const char* fn)
 			{
@@ -4742,7 +4801,6 @@ inheritsFrom='LUAwrapper::Worker',
 				static void loadAnimation(MotionLoader& skel, Motion& mot, const char* fn)
 				static MotionLoader* _create(const char* filename) @ ;adopt=true;
 				static void _append(MotionLoader* l, const char* motFile)
-				static void printHierarchy(MotionLoader& skel)
 				static MotionLoader* getMotionLoader(const char* fn)
 				]]},
 			enums={
@@ -4917,6 +4975,7 @@ memberFunctions={[[
 				static std::string HRPjointName(VRMLTransform& t, int i)
 				]]},
 				memberFunctions={[[
+				void createNewShape()
 				void translateMesh( vector3 const& trans);
 				void setJointPosition(vector3 const& trans);
 				void setJointAxes(const char* axes)
@@ -4943,6 +5002,18 @@ memberFunctions={[[
 				void jointToBody(vector3& lposInOut) const;
 				void bodyToJoint(vector3& lposInOut) const;
 				]] },
+			},
+			{
+				name='CTextFile',
+				ctors={'()'},
+				memberFunctions=[[
+				bool OpenReadFile(const char *fileName);
+				bool OpenMemory(const char *text);
+				void CloseFile();
+				void setSeperators(const char* seps);
+				TString const& getSeperators() const;
+				const char* GetToken()
+				]]
 			},
 							{
 								name='VRMLloader',
@@ -4974,7 +5045,9 @@ memberFunctions={[[
 									"()", 
 									"(const char*)",
 									"(VRMLloader const&)",
-									"(MotionLoader const&,double)"
+									"(MotionLoader const&,double)",
+									"(OBJloader::Geometry const&, bool)",
+									"(CTextFile& vrmlFile)"
 								},
 								staticMemberFunctions={[[
 								VRMLTransform* upcast(Bone& bone)
@@ -4988,11 +5061,16 @@ memberFunctions={[[
 								memberFunctions={
 								--void setTotalMass( m_real totalMass); 
 								[[
+								void setTotalMass( m_real totalMass); 
+								void changeAll3DOFjointsToSpherical()
+								void changeAllMultiDOFjointsToSpherical()
+								void changeAllJointsToSpherical()
 								void operator=(VRMLloader const&);
 								void _initDOFinfo();
 								void printDebugInfo(); 
 								void changeTotalMass( m_real totalMass); 
 									VRMLTransform& VRMLbone(int treeIndex) const;
+									void setChannels(Bone& bone, const char* translation_axis, const char* rotation_axis);
 									void insertChildJoint(Bone& parent, const char* tchannels, const char* rchannels, const char* nameId, bool bMoveChildren);
 									void insertChildJoint(Bone& parent, const char* tchannels, const char* rchannels, const char* nameId, bool bMoveChildren, vector3 const& offset);
 									vector3 calcCOM() const;
@@ -5073,6 +5151,7 @@ memberFunctions={[[
 			namespace='util',
 			functions={[[
 				void Msg::msgBox(const char*) @ msgBox
+				void Msg::error(const char*) @ error
 			]]}
 		},
 		{

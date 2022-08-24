@@ -4,6 +4,7 @@
 #include "stdafx.h"
 #include "mathclass.h"
 #include "matrix3.h"
+#include "../../PhysicsLib/TRL/eigenSupport.h"
 
 matrix3::matrix3()
 {
@@ -171,13 +172,15 @@ void matrix3::Invert( matrix3 &Dst )const
 
 bool matrix3::inverse()
 {
-	matrix3 t(*this);
-	return inverse(t);
+	eigenView(*this).noalias()=eigenView(*this).inverse();
+	return true;
 }
 
 bool matrix3::inverse(matrix3 const& src) 
 {
 	
+#if 0
+	// Too inaccurate!!!!
 	// Invert a 3x3 using cofactors.  This is about 8 times faster than
 	// the Numerical Recipes code which uses Gaussian elimination.
 
@@ -216,6 +219,10 @@ bool matrix3::inverse(matrix3 const& src)
                 m[iRow][iCol] *= fInvDet;
         }
 
+#else
+	eigenView(*this)=eigenView(src).inverse();
+#endif
+	
 	return true;
 }
 matrix3::matrix3(matrix3 const& a)

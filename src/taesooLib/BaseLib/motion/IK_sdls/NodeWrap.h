@@ -57,6 +57,12 @@ struct NodeWrap
 		axes="F";
 		node[0]=new IK_sdls::FreeJoint();
 	}
+	void createBallJoint(Bone* _bone)
+	{
+		bone=_bone;
+		axes="B";
+		node[0]=new IK_sdls::BallJoint(bone->getOffsetTransform().translation);
+	}
 	void createNodes(Bone* _bone, const char* _axes)
 	{
 		bone=_bone;
@@ -144,7 +150,7 @@ class LoaderToTree
 		void compareTrees(vector3 trans);
 	public:
 		inline int nDOF() { return _nDOF;}
-		inline int nDOFinTree() { return mTree.GetNumJoint();}
+		inline int nJoints() { return mTree.GetNumJoint();}
 		// set useEulerRoot to false, if you do not know what to do.
 		// set useFixedRootPos to false, if you do not know what to do.
 		LoaderToTree(MotionLoader& skeleton, bool useEulerRoot, bool useFixedRootPos);
@@ -167,44 +173,12 @@ class LoaderToTree
 			mTree.Compute();// updates effector positions too.
 		}
 		inline void computeTree() { mTree.Compute(); }
+
+
+		// compatible with get/setLinkData
 		void setPoseDOF(IK_sdls::Tree & mTree, MotionDOFinfo const& mDofInfo, vectorn const& pose, std::vector<IK_sdls::NodeWrap>& mNode);
+		// DTheta: root joint contains body-local linear and angular velocities. compatible with TRL simulators' pose and dpose from getLinkData.
 		void setVelocity(MotionDOFinfo const& mDofInfo, vectorn const& dtheta);
-
-		const transf & globalFrame(int ibone) const { return getLastNode(ibone)->globalFrame();}
-
-		// query / conversion
-		// SDFAST style packing (x,y,z,qx,qy,qz,theta1,theta2,...,thetaN,qw), which is different from the MotionDOF/PoseDOF format  (x,y,z,qw,qx,qy,qz, theta1, ..., thetaN)
-		void setEulerQ(const double* q); //(x,y,z,rz,rx,ry,theta1,theta2,...,thetaN)
-		void setQuaterQ(const double* q); //(x,y,z,qx,qy,qz,theta1,theta2,...,thetaN,qw)
-		void setQ(const double* q);
-		void getQ(double* q); // get internal representation (euler angles or a quaternion for rootOri)
-		
-		// get theta/dtheta which is compatible with EffectorJacobian. 
-		// theta is a sparse subvector of q
-		void getTheta(double* x);
-		void setTheta(const double* x);
-
-		//
-		// DTheta: root joint contains body-local linear and angular velocities. incompatible with TRL simulators' pose and dpose.
-		// q : compatible with TRL simulators (getQ, setQ. but not with sim.getLinkData(JOINT_VALUE, pose) --> use sim.poseToDQ)
-		// dq : compatible with TRL simulators (getDQ, setDQ. but not with sim.getLinkData(JOINT_VELOCITY, dpose) --> use sim.dposeToDQ)
-		// R0*DTheta[0:3] == dq[3:6] (global linear velocity)
-		// R0*DTheta[3:6] == dq[0:3] (global angular velocity)
-		// note that angular velocity appears first here.
-		void setDQ(const double* dq); // (wx,wy,wz, vx,vy,vz, dtheat1, dtheta2, ..., dthetaN), w,v in global.
-		void getDQ(double* dq);
-		inline void getDTheta( vectorn& dq) { getDTheta(&dq[0]); }
-		inline void getTheta( vectorn& q) { getTheta(&q[0]); }
-		inline void setTheta( vectorn const& q) { setTheta(&q[0]); }
-		inline void getDQ( vectorn& dq) { getDQ(&dq[0]); }
-		inline void getQ( vectorn& q) { getQ(&q[0]); }
-		inline void setQ( vectorn const& q) { setQ(&q[0]); }
-		inline void setDQ( vectorn const& q) { setDQ(&q[0]); }
-		void getDTheta(double* dq);
-
-		static void poseToQ(vectorn const& pose, vectorn& q);
-		static void dposeToDQ(quater const& rootOri, vectorn const& dpose, vectorn& dq) ;
-
 		inline void setLinkData(vectorn const& pose, vectorn const& dpose)
 		{
 			vectorn q, dq;
@@ -212,12 +186,6 @@ class LoaderToTree
 			dposeToDQ(pose.toQuater(3), dpose, dq);
 			setQuaterQ(&q[0]); setDQ(dq);
 		}
-
-		// error : dS%dS + verticalCoef*dS.y*dS.y
-		double computeConstraintError(double verticalCoef=0.0);
-		void computeConstraintErrorGradient(double* g, double verticalCoef=0.0);
-
-		
 		// inverse kinematics
 		inline void getPoseDOF(MotionDOFinfo const& mDofInfo, vectorn & pose) 
 		{
@@ -225,19 +193,76 @@ class LoaderToTree
 		}
 		void getPoseDOF(MotionDOFinfo const& mDofInfo, vectorn& pose, std::vector<IK_sdls::NodeWrap>const& mNode);
 		void getVelocity(MotionDOFinfo const& mDofInfo, vectorn & dtheta);
-		vector3 getWorldVelocity(int ibone){ 
-			IK_sdls::Node* n=getLastNode(ibone);
-			return n->_global.rotation*n->bodyLinVel();
-		}
-		vector3 getWorldAngVel(int ibone)
-		{
-			IK_sdls::Node* n=getLastNode(ibone);
-			return n->_global.rotation*n->bodyAngVel();
-		}
 
+		const transf & globalFrame(int ibone) const { return getLastNode(ibone)->globalFrame();}
+		
+
+		// for skeletons with spherical joints, get/setSphericalState is often more convenient than getPoseDOF/getVelocity.
+		/* 
+		 * our spherical state packing is different!!!
+		 *
+		 *  in our case, linear parts appear first, and then 3 DOF ball joints (YUP).
+		 *         root                                     |     3           3         ...   
+		 q_linear= [x, y, z, hinge1, hinge2, hinge3, hinge4]
+		 q_quat  =                                          [qw,qx,qy,qz, qw2,qx2,qy2,qz2, qw3,qx3,qy3,qz3, ....]
+		 q= [q_linear, q_quat]
+		dq=	[dx,dy,dz,dhinge1,dhinge2,dhinge3,dhinge4,        wx,wy,wz,     wx2,wy2,wz2,     wx3,wy3,wz3, ...
+		tau is packed in the same way with dq. (but in body coordinate)
+		*/
+		void getSphericalState(MotionDOFinfo const& spherical_dofInfo, vectorn& q, vectorn& dq) const; // works even when "this" is created from a different dofinfo.
+		void setSphericalState(MotionDOFinfo const& spherical_dofInfo, const vectorn& q, const vectorn& dq) ; // works only when "this" is created from the same dofinfo.
+		void getSphericalQ(MotionDOFinfo const& spherical_dofInfo, vectorn& q) const;
+		void setSphericalQ(MotionDOFinfo const& spherical_dofInfo, const vectorn& q);
+		
+		inline vector3 getWorldVelocity(int ibone){ IK_sdls::Node* n=getLastNode(ibone); return n->_global.rotation*n->bodyLinVel(); }
+		inline vector3 getWorldAngVel(int ibone) { IK_sdls::Node* n=getLastNode(ibone); return n->_global.rotation*n->bodyAngVel(); }
+
+		// this function does not update node velocities
 		// setPoseDOF, integrate(dtheta), getPoseDOF
 		void integrate(MotionDOFinfo const& mDofInfo, vectorn const& dtheta, double timestep);
 
+		// this function does not update node velocities
+		// setPoseDOF, setVelocity, integrate(), getPoseDOF, getVelocity
+		// or setSphericalState, integrate(), getSphericalState
+		void integrate(MotionDOFinfo const& mDofInfo, double timestep);
+
+		// query / conversion 
+		// the Q/DQ-related functions do not work for ball joints (except a free root joint). Use get/setSpherical* functions for ball joints.
+		// q : compatible with TRL simulators' getQ, setQ. but not with sim.getLinkData(JOINT_VALUE, pose) --> use sim.poseToDQ
+		// dq : compatible with TRL simulators' getDQ, setDQ. but not with sim.getLinkData(JOINT_VELOCITY, dpose) --> use sim.dposeToDQ
+		// R0*DTheta[0:3] == dq[3:6] (global linear velocity)
+		// R0*DTheta[3:6] == dq[0:3] (global angular velocity)
+		// note that angular velocity appears first here.
+		// SDFAST style packing (x,y,z,qx,qy,qz,theta1,theta2,...,thetaN,qw), which is different from the MotionDOF/PoseDOF format  (x,y,z,qw,qx,qy,qz, theta1, ..., thetaN)
+		void setEulerQ(const double* q); //(x,y,z,rz,rx,ry,theta1,theta2,...,thetaN)
+		void setQuaterQ(const double* q); //(x,y,z,qx,qy,qz,theta1,theta2,...,thetaN,qw)
+		void setQ(const double* q);
+		void getQ(double* q); // get internal representation (euler angles or a quaternion for rootOri)
+		void setDQ(const double* dq); // (wx,wy,wz, vx,vy,vz, dtheat1, dtheta2, ..., dthetaN), w,v in global.
+		void getDQ(double* dq);
+		inline void getDQ( vectorn& dq) { getDQ(&dq[0]); }
+		inline void getQ( vectorn& q) { getQ(&q[0]); }
+		inline void setQ( vectorn const& q) { setQ(&q[0]); }
+		inline void setDQ( vectorn const& q) { setDQ(&q[0]); }
+
+		static void poseToQ(vectorn const& pose, vectorn& q);
+		static void dposeToDQ(quater const& rootOri, vectorn const& dpose, vectorn& dq) ;
+
+		// get theta/dtheta which is compatible with EffectorJacobian. 
+		// theta/dtheta are internal representations. incompatible with simulators. 
+		// theta is a sparse subvector of q
+		void getTheta(double* x);
+		void setTheta(const double* x);
+		void getDTheta(double* dq);
+		inline void getDTheta( vectorn& dq) { getDTheta(&dq[0]); }
+		inline void getTheta( vectorn& q) { getTheta(&q[0]); }
+		inline void setTheta( vectorn const& q) { setTheta(&q[0]); }
+
+		// error : dS%dS + verticalCoef*dS.y*dS.y
+		double computeConstraintError(double verticalCoef=0.0);
+		void computeConstraintErrorGradient(double* g, double verticalCoef=0.0);
+
+		
 		IK_sdls::Tree mTree;
 
 		inline int numJoint() { return mNodeTraverse.size();}
@@ -250,7 +275,7 @@ class LoaderToTree
 		const IK_sdls::Node* getLastNode(int treeIndex) const { return getNode(treeIndex).back();}
 		IK_sdls::Node* getNode(int treeIndex, int dofIndex) { return mNode[mBoneToNode[treeIndex]].node[dofIndex]; }
 		const IK_sdls::Node* getNode(int treeIndex, int dofIndex) const { return mNode[mBoneToNode[treeIndex]].node[dofIndex]; }
-		int getVarIndex(int treeIndex, int dofIndex) { return mNode[mBoneToNode[treeIndex]].node[dofIndex]->GetJointNum(); }
+		int getVarIndex(int treeIndex, int dofIndex)const { return mNode[mBoneToNode[treeIndex]].node[dofIndex]->GetJointNum(); }
 		int getVarIndexByAxis(int treeIndex, const char *axis);
 
 		// compute the transpose of the effector jacobian matrix.
@@ -283,6 +308,7 @@ class LoaderToTree
 		Liegroup::dse3 calcMomentumCOMtoPose(const VRMLloader& loader,double delta_t, BoneForwardKinematics &chain2); 
 		// momentum from DQ
 		Liegroup::dse3 calcMomentumCOM(const VRMLloader& loader); 
+		Liegroup::se3 calcInverseInertiaTimesMomentumCOM(const VRMLloader& loader); 
 
 		// returns total_mass and I s.t.
 		//  r=vector3(I(7), I(8), I(9))

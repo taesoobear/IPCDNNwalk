@@ -16,6 +16,7 @@
 #elif defined (__APPLE__)
 #define USE_NATIVE_FILE_CHOOSER
 #include <FL/Fl_Native_File_Chooser.H>
+#include <unistd.h>
 #endif
 #else // NO_GUI
 
@@ -76,33 +77,23 @@ static TString _FlChooseFile_python(const char* message, const char* path, const
 	TString cmd;
 #ifdef __APPLE__
 	if(bCreate)
-		cmd.format("python filechooser_mac.py '%s' '%s' '%s' SAVE", message, Mask, path);
+		cmd.format("python3 filechooser_wx.py '%s' '%s' '%s' SAVE", message, Mask, path);
 	else
-	{
-			/*
-		if (strlen(Mask)==5)
-			cmd.format("./mac_openFileDialog %s %s", path, &Mask[2]);
-			//std::string url=chooseFileMac(path, &Mask[2]);
-			//printf("%s\n", url.c_str());
-			//return TString(url.c_str());
-		else
-			*/
-			cmd.format("python filechooser_mac.py '%s' '%s' '%s' OPEN", message, Mask, path);
-	}
+		cmd.format("python3 filechooser_wx.py '%s' '%s' '%s' OPEN", message, Mask, path);
 #else
-	if(IsFileExist("/usr/bin/python"))
-	{
-		if(bCreate)
-			cmd.format("python filechooser.py '%s' '%s' '%s' SAVE", message, Mask, path);
-		else
-			cmd.format("python filechooser.py '%s' '%s' '%s' OPEN", message, Mask, path);
-	}
-	else 
+	if(IsFileExist("/usr/bin/python3"))
 	{
 		if(bCreate)
 			cmd.format("python3 filechooser_wx.py '%s' '%s' '%s' SAVE", message, Mask, path);
 		else
 			cmd.format("python3 filechooser_wx.py '%s' '%s' '%s' OPEN", message, Mask, path);
+	}
+	else 
+	{
+		if(bCreate)
+			cmd.format("python filechooser.py '%s' '%s' '%s' SAVE", message, Mask, path);
+		else
+			cmd.format("python filechooser.py '%s' '%s' '%s' OPEN", message, Mask, path);
 	}
 #endif
 	printf("%s\n", cmd.ptr());

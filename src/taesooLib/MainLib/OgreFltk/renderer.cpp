@@ -24,7 +24,7 @@
  #include <OISJoyStick.h>
  #include <OISInputManager.h>
 #endif
-#if OGRE_VERSION_MINOR>=12
+#if OGRE_VERSION_MINOR>=12 || OGRE_VERSION_MAJOR>=13
 #include "Bites/OgreBitesConfigDialog.h"
 #endif
 #endif
@@ -164,7 +164,7 @@ void OgreRenderer::Viewport::setupRTT(OgreRenderer& renderer, int width, int hei
 	Ogre::ShadowTechnique shadowTechnique=(Ogre::ShadowTechnique )config.GetInt("shadowTechnique");
 	int depthShadow=config.GetInt("depthShadow")==1;
 
-#if OGRE_VERSION_MINOR>=12
+#if OGRE_VERSION_MINOR>=12 || OGRE_VERSION_MAJOR>=13
 	if (depthShadow)
 	{
 		mScene->setShadowTexturePixelFormat(Ogre::PF_FLOAT32_R);
@@ -172,6 +172,7 @@ void OgreRenderer::Viewport::setupRTT(OgreRenderer& renderer, int width, int hei
 	}
 #endif
 
+	mScene->setShadowTextureSize(512);
 	mScene->setShadowTechnique( shadowTechnique);		
 
 	if (renderer.mRoot->getRenderSystem()->getCapabilities()->hasCapability(Ogre::RSC_HWRENDER_TO_TEXTURE))
@@ -196,7 +197,7 @@ void OgreRenderer::Viewport::setupRTT(OgreRenderer& renderer, int width, int hei
 
 
 	if (depthShadow){
-#if OGRE_VERSION_MINOR>=12
+#if OGRE_VERSION_MINOR>=12 || OGRE_VERSION_MAJOR>=13
 		auto mSceneMgr=mScene;
 		std::string CUSTOM_ROCKWALL_MATERIAL("Ogre/DepthShadowmap/Receiver/RockWall");
 		std::string CUSTOM_CASTER_MATERIAL("PSSM/shadow_caster");
@@ -216,16 +217,9 @@ void OgreRenderer::Viewport::init(OgreRenderer& renderer, vectorn const& param)
 	int width=param(0);
 	int height=param(1);
 #ifndef NO_OGRE
-		//mScene = renderer.mRoot->createSceneManager("OctreeSceneManager", "OgreFltk");
-	if(param.size()==3)
-	{
-		TString temp;
-		temp.format("OgreFltk%d", (int)param(2));
-		mScene = renderer.mRoot->createSceneManager(Ogre::ST_GENERIC, temp.ptr());
-	}
-	else
-		mScene = renderer.mRoot->createSceneManager(Ogre::ST_GENERIC, "OgreFltk");
-#if OGRE_VERSION_MINOR>=9
+	//mScene = renderer.mRoot->createSceneManager("OctreeSceneManager", "OgreFltk");
+	mScene = renderer.mRoot->createSceneManager();
+#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
 	mScene->addRenderQueueListener(renderer.mOverlaySystem);
 #endif
 #endif
@@ -262,12 +256,17 @@ void OgreRenderer::Viewport::_init(OgreRenderer& renderer,int width, int height)
 {
 	// Taesoo Camera.
 	m_pViewpoint=new Viewpoint();
+
+#ifdef NO_OGRE
+	m_pViewpoint->setDefaultView();
+#else
 	FILE* fp;
 	VERIFY(fp=fopen("../Resource/viewpoint.txt","r"));
 	m_pViewpoint->ReadViewPoint(fp);	
 //	m_pViewpoint->ReadViewPoint("../Resource/viewpoint.txt");	
 	fclose(fp);
 	FileCloseForGetToken();
+#endif
 
 
 	/*m_pViewpoint->GetArcBall().SetWindow( width, height,0.85f );
@@ -282,9 +281,17 @@ void OgreRenderer::Viewport::_init(OgreRenderer& renderer,int width, int height)
 	TString cameraname;
 	cameraname.format("Camera %d", cameraIndex++);
 	mCam = mScene->createCamera(cameraname.ptr());
+
 	mCam->setFarClipDistance(config.GetInt("farClipDistance"));
 //	mCam->setPosition(m_pViewpoint->m_vecVPos.x, m_pViewpoint->m_vecVPos.y, m_pViewpoint->m_vecVPos.z);
+#if OGRE_VERSION_MAJOR<13
 	mCam->lookAt(m_pViewpoint->m_vecVAt.x, m_pViewpoint->m_vecVAt.y, m_pViewpoint->m_vecVAt.z);
+#else
+	mCameraNode=mScene->getRootSceneNode()->createChildSceneNode();
+	mCameraNode->attachObject(mCam);
+	mCameraNode->setFixedYawAxis(true); // fix lookAt calls
+	mCameraNode->lookAt(Ogre::Vector3(m_pViewpoint->m_vecVAt.x, m_pViewpoint->m_vecVAt.y, m_pViewpoint->m_vecVAt.z), Ogre::Node::TS_PARENT);
+#endif
 	mCam->setNearClipDistance(config.GetInt("nearClipDistance"));
 	mCam->setFOVy(Ogre::Radian(Ogre::Degree(45)));
 
@@ -377,7 +384,7 @@ OgreRenderer::OgreRenderer()
 	_constructor("../Resource/ogreconfig_personal.txt", "../Resource/ogreconfig_mac.txt","plugins_mac.cfg", "ogre_mac.cfg");
 #else // LINUX
 
-#if OGRE_VERSION_MINOR >= 12 
+#if OGRE_VERSION_MINOR >= 12 || OGRE_VERSION_MAJOR>=13
 	_constructor("../Resource/ogreconfig_personal.txt", "../Resource/ogreconfig_linux12.txt", "plugins_linux12.cfg", "ogre_linux12.cfg");
 #else
 	_constructor("../Resource/ogreconfig_personal.txt", "../Resource/ogreconfig_linux.txt", "plugins_linux.cfg", "ogre_linux.cfg");
@@ -416,14 +423,17 @@ void OgreRenderer::_constructor(const char* fallback_configFileName, const char*
 	m_fElapsedTime=0.f;
 	m_fCaptureFPS=30.f;
 	mbTimeStop=false;
-#if OGRE_VERSION_MINOR>=12
+
+#if	OGRE_VERSION_MAJOR>=13
+	mResourceFile="../Resource/resources13.cfg";
+#elif OGRE_VERSION_MINOR>=12 
 	mResourceFile="../Resource/resources12.cfg";
 #else
 	mResourceFile="../Resource/resources.cfg";
 #endif
 
 #ifndef NO_OGRE
-#if OGRE_VERSION_MINOR>=9
+#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
 	mOverlaySystem=NULL;
 #endif
 	// Make the root
@@ -439,7 +449,7 @@ void OgreRenderer::_constructor(const char* fallback_configFileName, const char*
 
 	mRoot = new Ogre::Root(plugins_file, ogre_config, (log)?"":"Ogre.log");
 
-#if OGRE_VERSION_MINOR>=9
+#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
 	mOverlaySystem=new Ogre::OverlaySystem();
 #endif
 
@@ -532,7 +542,7 @@ void OgreRenderer::firstInit(void* handle, int width, int height)
 		catch(Ogre::Exception &e)
 		{
 			Msg::msgBox("init failed - showing configuration dialog");
-#if OGRE_VERSION_MINOR>=12
+#if OGRE_VERSION_MINOR>=12 || OGRE_VERSION_MAJOR>=13
 			if(!mRoot->showConfigDialog( OgreBites::getNativeConfigDialog()))
 #else
 			if(!mRoot->showConfigDialog())
@@ -606,7 +616,7 @@ void OgreRenderer::firstInit(void* handle, int width, int height)
 		// Clean up.
 		if(mRoot)
 		{
-#if OGRE_VERSION_MINOR>=9
+#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
 			delete mOverlaySystem;
 #endif
 			delete mRoot;
@@ -656,8 +666,13 @@ void OgreRenderer::Viewport::changeView(matrix4 const& matview)
 {
 #ifndef NO_OGRE
 	m_pViewpoint->SetViewMatrix(matview);
+#if OGRE_VERSION_MAJOR<13
 	mCam->setPosition(m_pViewpoint->m_vecVPos.x, m_pViewpoint->m_vecVPos.y, m_pViewpoint->m_vecVPos.z);
 	mCam->lookAt(m_pViewpoint->m_vecVAt.x, m_pViewpoint->m_vecVAt.y, m_pViewpoint->m_vecVAt.z);
+#else
+	mCameraNode->setPosition(m_pViewpoint->m_vecVPos.x, m_pViewpoint->m_vecVPos.y, m_pViewpoint->m_vecVPos.z);
+	mCameraNode->lookAt(Ogre::Vector3(m_pViewpoint->m_vecVAt.x, m_pViewpoint->m_vecVAt.y, m_pViewpoint->m_vecVAt.z), Ogre::Node::TS_PARENT);
+#endif
 //	mCam->lookAt(m_pViewpoint->m_vecVAt.x, m_pViewpoint->m_vecVAt.y, m_pViewpoint->m_vecVAt.z);
 #endif
 }
@@ -668,9 +683,15 @@ void OgreRenderer::Viewport::changeView(Viewpoint const& view)
 	m_real m_zoom;
 #ifndef NO_OGRE
 	//float interval = isLeft ? -config.GetFloat("interval") : config.GetInt("interval");
+#if OGRE_VERSION_MAJOR<13
 	mCam->setPosition(m_pViewpoint->m_vecVPos.x, m_pViewpoint->m_vecVPos.y, m_pViewpoint->m_vecVPos.z);
 	mCam->lookAt(m_pViewpoint->m_vecVAt.x, m_pViewpoint->m_vecVAt.y, m_pViewpoint->m_vecVAt.z);
 	mCam->setFixedYawAxis( true, ToOgre(m_pViewpoint->m_vecVUp));
+#else
+	mCameraNode->setPosition(m_pViewpoint->m_vecVPos.x, m_pViewpoint->m_vecVPos.y, m_pViewpoint->m_vecVPos.z);
+	mCameraNode->lookAt(Ogre::Vector3(m_pViewpoint->m_vecVAt.x, m_pViewpoint->m_vecVAt.y, m_pViewpoint->m_vecVAt.z), Ogre::Node::TS_PARENT);
+	mCameraNode->setFixedYawAxis( true, ToOgre(m_pViewpoint->m_vecVUp));
+#endif
 
 	//	std::cout << mCam->getName() << mCam->getPosition() << std::endl;
 	if(mCam->isCustomProjectionMatrixEnabled())
@@ -929,7 +950,7 @@ void OgreRenderer::setupResources(void)
 	}
 	if(config.GetInt("showConfigDlg"))
 	{
-#if OGRE_VERSION_MINOR>=12
+#if OGRE_VERSION_MINOR>=12 || OGRE_VERSION_MAJOR>=13
 		if(!mRoot->showConfigDialog( OgreBites::getNativeConfigDialog()))
 #else
 		if(!mRoot->showConfigDialog())
@@ -944,7 +965,7 @@ void OgreRenderer::setupResources(void)
 		if(!mRoot->restoreConfig())
 		{
 			printf("Displaying configuration dialog...\n");
-#if OGRE_VERSION_MINOR>=12
+#if OGRE_VERSION_MINOR>=12 || OGRE_VERSION_MAJOR>=13
 			if(!mRoot->showConfigDialog( OgreBites::getNativeConfigDialog()))
 #else
 			if(!mRoot->showConfigDialog())
@@ -1265,7 +1286,11 @@ void OgreRenderer::createInputSystems(size_t hWnd)
 					// Get window size
 					unsigned int _width, _height, depth;
 					int left, top;
+#if OGRE_VERSION_MAJOR<13
 					mWnd->getMetrics( _width, _height, depth, left, top );
+#else
+					mWnd->getMetrics( _width, _height, left, top );
+#endif
 					int width=_width;
 					int height=_height;
 

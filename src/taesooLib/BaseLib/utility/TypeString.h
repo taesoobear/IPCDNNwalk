@@ -150,6 +150,7 @@ class TStrings
 	std::vector<TString> mStrings;
 public:
 	TStrings(){}
+	TStrings(int n){  init(n);}
 	virtual~TStrings(){}
 
 	TString& operator[](int i)				{ return mStrings[i];}
@@ -171,5 +172,9 @@ public:
     void trimSamePrefix(const TStrings& other);	// 모든 문자열이 같은 prefix로 시작하는 경우 잘라준다.
 	// 못찾으면 size() return;
 	int find(const char* other) const;
+	void set( int i, const char* b);
+	void set( int i);
+	std::string get(int i) const;
+	void pushBack(const char* i);
 };
 #endif

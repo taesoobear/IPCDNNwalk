@@ -79,6 +79,9 @@ struct edge_struct
 	node_struct* _t;             // target node
 	void* _data;
 
+	inline int source() const { return _s->_index;}
+	inline int target() const { return _t->_index;}
+	inline int index() const { return _index;}
 };
 
 template <class NodeType, class EdgeType=EmptyData>
@@ -499,7 +502,7 @@ bool BELLMAN_FORD(const graph<T, TE>& G, node<T,TE> s, const edge_array<float>& 
 	TGL_for_all_nodes(v,G)
 	{
 		pred[v] ._ptr= 0;
-		dist[v] = FLT_MAX;
+		dist[v] = float(INT_MAX-1000);
 	}
 
 

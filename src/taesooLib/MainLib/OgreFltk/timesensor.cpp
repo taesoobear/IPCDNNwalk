@@ -171,6 +171,11 @@ float TimeSensor::getTotalTimeFromInterpolator()
 	InterpolatorLinear* apip=((InterpolatorLinear*)(GetFirstInterpolator()));
 	return apip->GetCycleInterval();
 }
+	Interpolator* TimeSensor::GetFirstInterpolator()
+	{ 
+		Msg::verify(hasInterpolator(), "no interpolator found!!!");
+		return *m_cInterpolatorList.begin();
+	}
 
 int TimeSensor::getEndFrameFromInterpolator()
 {

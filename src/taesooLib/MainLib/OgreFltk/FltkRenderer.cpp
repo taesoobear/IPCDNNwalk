@@ -7,6 +7,9 @@
 #include "TraceManager.h"
 #include "FlLayout.h"
 #include "FlChoice.h"
+#ifndef WIN32 
+#include <unistd.h>
+#endif
 #ifdef NO_GUI
 #include "../MainLib/console/traceManager.h"
 
@@ -40,12 +43,14 @@ Msg::FltkMsg g_cFltkMsgUtil;
 
 #ifndef NO_OGRE
 #include <Ogre.h>
-#if OGRE_VERSION_MINOR>=9
+#if OGRE_VERSION_MINOR>=9|| OGRE_VERSION_MAJOR>=13
+
 //http://www.ogre3d.org/forums/viewtopic.php?f=2&t=79694
 #include <Overlay/OgreOverlayManager.h>
 #include <Overlay/OgreOverlayElement.h>
 #include <Overlay/OgreOverlayContainer.h>
-#if OGRE_VERSION_MINOR>=12
+#if OGRE_VERSION_MINOR>=12|| OGRE_VERSION_MAJOR>=13
+
 #include <Overlay/OgreOverlay.h>
 #endif
 #endif // OGRE_VERSION_MINOR==9
@@ -249,7 +254,11 @@ int FltkRenderer::renderWindowWidth() const
 	{
 		unsigned int width, height, depth;
 		int top, left;
+#if OGRE_VERSION_MAJOR<13
 		RE::renderer().mWnd->getMetrics(width, height, depth, left, top);
+#else
+		RE::renderer().mWnd->getMetrics(width, height, left, top);
+#endif
 		return width;
 	}
 
@@ -261,7 +270,11 @@ int FltkRenderer::renderWindowHeight() const
 	{
 		unsigned int width, height, depth;
 		int top, left;
+#if OGRE_VERSION_MAJOR<13
 		RE::renderer().mWnd->getMetrics(width, height, depth, left, top);
+#else
+		RE::renderer().mWnd->getMetrics(width, height, left, top);
+#endif
 		return height;
 	}
 	return (m_RenderView)?m_RenderView->h():h();
@@ -813,6 +826,10 @@ void FltkRenderer::onCallback(Fl_Widget * pWidget, int userData)
 				Msg::msgBox("%s", e.getFullDescription().c_str());
 		}
 	}
+	else if(userData==Hash("Turn-off fog"))
+	{
+		mOgreRenderer->viewport().mScene->setFog(Ogre::FOG_NONE,Ogre::ColourValue(0,0,0), 0, 0, 0);
+	}
 	else if(userData==Hash("TgLg"))
 	{
 		try{
@@ -949,6 +966,7 @@ void FltkRenderer_toggleCursor()
 				overlay->show();
 
 #if OGRE_VERSION_MINOR<9
+
 				Ogre::OverlayElement* pElt=overlay->getChild("TCursor");
 				pElt->setPosition(500,300);
 				pElt->show();
@@ -1191,17 +1209,20 @@ m_sliderSpeed(				80*4,h-20,200,20,"")
 	int crx=80*4+200;//+80;
 	int cry=h-20;
 	m_menuOp.initChoice(crx, cry, 100, 20, "");
-	m_menuOp.size(10);
-	m_menuOp.item(0, "Operations");
-	m_menuOp.item(1, "Toggle background",0, Hash("Toggle background"), FL_CTRL+'g');
-	m_menuOp.item(2, "Toggle skybox", 0, Hash("TgSb"));
-	m_menuOp.item(3, "Change background color", 0, Hash("ChBg"));
-	m_menuOp.item(4, "Change shadow technique", 0, Hash("ChSh"));
-	m_menuOp.item(5, "Toggle logo", 0, Hash("TgLg"));
-	m_menuOp.item(6, "Toggle cursor", 0, Hash("TgCs"));
-	m_menuOp.item(7, "Capture (capture.jpg)", 0, Hash("Capt"));
-	m_menuOp.item(8, "OgreTraceManager", 0, Hash("OgreTraceManager"));
-	m_menuOp.item(9, "SetCaptureFPS", 0, Hash("SetCaptureFPS"));
+	m_menuOp.size(11);
+	int c=0;
+	m_menuOp.item(c++, "Operations");
+	m_menuOp.item(c++, "Toggle background",0, Hash("Toggle background"), FL_CTRL+'g');
+	m_menuOp.item(c++, "Toggle skybox", 0, Hash("TgSb"));
+	m_menuOp.item(c++, "Turn-off fog", 0, Hash("Turn-off fog"));
+	m_menuOp.item(c++, "Change background color", 0, Hash("ChBg"));
+	m_menuOp.item(c++, "Change shadow technique", 0, Hash("ChSh"));
+	m_menuOp.item(c++, "Toggle logo", 0, Hash("TgLg"));
+	m_menuOp.item(c++, "Toggle cursor", 0, Hash("TgCs"));
+	m_menuOp.item(c++, "Capture (capture.jpg)", 0, Hash("Capt"));
+	m_menuOp.item(c++, "OgreTraceManager", 0, Hash("OgreTraceManager"));
+	m_menuOp.item(c++, "SetCaptureFPS", 0, Hash("SetCaptureFPS"));
+
 	m_menuOp.value(0);
 	connect(m_menuOp);
 	// this (Fl_Window) 그룹이 끝났음
@@ -1300,17 +1321,14 @@ bool FltkRenderer::keyPressed( const OIS::KeyEvent &e ) {
 	if( e.key == OIS::KC_A)
 	{
 		printf("a pressed\n");
-#ifdef __APPLE__
 		__control=false;
 		__alt=false;
-#endif
 	}
 	if( e.key == OIS::KC_Z)
 	{
 		printf("shift pressed\n");
 		shift=true;
 	}
-#ifdef __APPLE__
 	if( e.key == OIS::KC_X)
 	{
 		printf("control pressed\n");
@@ -1321,7 +1339,6 @@ bool FltkRenderer::keyPressed( const OIS::KeyEvent &e ) {
 		printf("alt pressed\n");
 		__alt=true;
 	}
-#endif
     return true;
 }
  
@@ -1344,12 +1361,10 @@ bool FltkRenderer::keyReleased( const OIS::KeyEvent &e ) {
 
 	if( e.key == OIS::KC_Z)
 		shift=false;
-#ifdef __APPLE__
 	if( e.key == OIS::KC_X)
 		__control=false;
 	else if( e.key == OIS::KC_C)
 		__alt=false;
-#endif
     return true;
 }
  
@@ -1423,7 +1438,7 @@ int FltkRenderer::handle_mouse(int ev, int x, int y, int button)
 	case FL_DRAG:
 	case FL_RELEASE:
 		{
-			//printf("view event %d %d %d %d\n", ev, Fl::event_ctrl(),Fl::event_x(), Fl::event_y());
+			//RE::output("viewev", "view event %d %d %d %d %d %d\n", ev, Fl::event_ctrl(), OIS_event_ctrl(), OIS_event_alt(), Fl::event_x(), Fl::event_y());
 
 			if(!mOgreRenderer->isActive()) break;
 

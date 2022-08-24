@@ -54,8 +54,10 @@ include_directories (
 	"/usr/include/python3.6"
 	"/usr/include/python3.7m"
 	"/usr/include/python3.8"
-	"/usr/local/lib/python3.6/dist-packages/numpy/core/include" #numpy headers
+	"/opt/homebrew/lib/python3.10/site-packages/numpy/core/include" #numpy headers
+	"/usr/local/lib/python3.10/dist-packages/numpy/core/include" #numpy headers
 	"/usr/local/lib/python3.8/site-packages/numpy/core/include"
+	"/usr/local/lib/python3.6/dist-packages/numpy/core/include" #numpy headers
 	.
 	../../taesooLib/Samples/QP_controller/qpOASES-3.0beta/include
 	../../taesooLib/Samples/scripts

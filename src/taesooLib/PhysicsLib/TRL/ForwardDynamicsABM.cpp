@@ -460,8 +460,9 @@ void ForwardDynamicsABM::calcABMPhase3()
 		getVector3(root->dw, x, 3);
 
     } else {
-        root->dvo .zero();
-        root->dw .zero();
+		// 기구학적으로 세팅 될 수도 있음.
+        //root->dvo .zero();
+        //root->dw .zero();
     }
 
     int n = traverse.numLinks();

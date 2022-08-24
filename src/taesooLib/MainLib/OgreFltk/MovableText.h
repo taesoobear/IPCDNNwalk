@@ -10,7 +10,7 @@
 #ifndef __include_MovableText_H__
 #define __include_MovableText_H__
 #ifndef NO_OGRE
-#if OGRE_VERSION_MINOR>=9
+#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
 #include <Overlay/OgreFontManager.h>
 #include <Overlay/OgreFont.h>
 #endif

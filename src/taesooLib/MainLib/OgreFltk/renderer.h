@@ -31,8 +31,11 @@ class CImage;
 #ifndef NO_GUI
  namespace OIS { class Mouse; class Keyboard; class InputManager;}
 #endif
-#if OGRE_VERSION_MINOR>=9
+
+#ifndef NO_OGRE
+#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
 #include <Overlay/OgreOverlaySystem.h>
+#endif
 #endif
 // frame listener 선언 
 class OgreRenderer : public Ogre::FrameListener
@@ -91,6 +94,9 @@ public:
 		Ogre::SceneManager *mScene;
 		Ogre::Camera *mCam;
 		Ogre::Viewport *mView;
+#if OGRE_VERSION_MAJOR>=13
+        Ogre::SceneNode* mCameraNode;       // camera node
+#endif
 #endif
 		Viewpoint* m_pViewpoint;
 	};
@@ -108,7 +114,7 @@ public:
     OIS::Mouse        *mMouse;
     OIS::Keyboard     *mKeyboard;
     OIS::InputManager *mInputSystem;
-#if OGRE_VERSION_MINOR>=9
+#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
 	Ogre::OverlaySystem*  mOverlaySystem;
 #endif
 #endif

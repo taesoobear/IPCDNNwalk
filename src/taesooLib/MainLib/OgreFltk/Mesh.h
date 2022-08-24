@@ -37,7 +37,8 @@ namespace OBJloader
 		MeshToEntity_DATA* mData;
 		Ogre::Mesh* mMesh;
 		MeshToEntity(const Mesh& mesh, const char* ogreMeshName, Option option=Option ());
-		MeshToEntity(const Mesh& mesh, const char* ogreMeshName, bool buildEdgeList, bool dynamicUpdate);
+		MeshToEntity(const Mesh& mesh, const char* ogreMeshName, bool buildEdgeList, bool dynamicUpdate, bool useNormal=true, bool useTexCoord=true);
+		MeshToEntity(const Mesh& mesh, const char* ogreMeshName, bool buildEdgeList, bool dynamicUpdate, bool useNormal, bool useTexCoord, bool useColor);
 		~MeshToEntity();
 		void updatePositions();
 		void updatePositionsAndNormals();
@@ -64,7 +65,7 @@ namespace OBJloader
 		MeshEntity ():Mesh(), SimplerRenderable(){}
 		virtual void firstInit()=0;		// initialize structure.
 		virtual void update()=0;		// when only vertex positions are changed, you can call update();
-#if OGRE_VERSION_MINOR >= 12
+#if OGRE_VERSION_MINOR >= 12 || OGRE_VERSION_MAJOR>=13
 		void setMaterial(const char* name);
 #endif
 	};

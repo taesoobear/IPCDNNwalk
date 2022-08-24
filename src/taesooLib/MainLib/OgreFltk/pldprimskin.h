@@ -23,6 +23,8 @@ public:
 	PLDPrimSkin();
 	virtual ~PLDPrimSkin();
 
+	const BoneForwardKinematics & getState() const	{return *mChain;}
+
 	// reimplement this.
 	virtual void SetPose(const Posture & posture, const MotionLoader& skeleton){}
 	virtual void setPoseDOF(const vectorn& poseDOF, MotionDOFinfo const& info);
@@ -52,6 +54,15 @@ public:
 protected:
 	DrawCallback* mDrawCallback;
 	DrawCallback* mBeforeDrawCallback;
+	//! Bone Matrix를 모두 update한다.
+	/*!
+	모든 child의 MatCombined를 아래의 방식으로 update한다.
+	MR: MatRot
+	MC: MatCombined
+	라 할때
+	MCchild = MRroot *...* MRgrandparent * MRparent * MRchild
+	*/
+	BoneForwardKinematics* mChain;
 };
 #include "../../BaseLib/utility/TArray.h"
 namespace RE

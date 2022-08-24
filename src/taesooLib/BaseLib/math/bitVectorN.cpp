@@ -4,6 +4,7 @@
 
 class vectorn;
 class intvectorn;
+using namespace BaseLib;
 #include "../utility/TArray.h"
 // used only in this file.
 class _boolN_worker
@@ -53,7 +54,7 @@ class _boolN_worker
 		inline int calcBitArrayPos(int nIndex) const			{ return nIndex/32;};
 		inline int calcBitArrayIndex(int nIndex) const			{ return nIndex%32;};
 		int m_nSize;
-		std::vector<BitArray> m_aBitArrays;
+		std::vector<BaseLib::BitArray> m_aBitArrays;
 };
 
 _boolN_worker::_boolN_worker()

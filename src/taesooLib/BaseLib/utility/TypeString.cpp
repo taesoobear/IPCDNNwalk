@@ -1341,3 +1341,20 @@ bool __stdcall operator !=(LPCSTR Str1, const TypeString &Str2)
 */
 
 
+	void TStrings::set( int i, const char* b)
+	{
+		(*this)[i]=b;
+	}
+	void TStrings::set( int i)
+	{
+		(*this)[i]="";
+	}
+	std::string TStrings::get(int i)const
+	{
+		return std::string((*this)[i].ptr());
+	}
+	void TStrings::pushBack(const char* i)
+	{
+		TString temp(i);
+		pushBack(temp);
+	}

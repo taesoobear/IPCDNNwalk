@@ -25,6 +25,9 @@ public:
 	// calc local from global. Bone lengths are fixed.
 	void inverseKinematics();
 
+	// calc local from global. Bone lengths can change.
+	void inverseKinematicsExact();
+
 	void updateBoneLength(MotionLoader const& loader); 
 
 	void operator=(BoneForwardKinematics const& other);

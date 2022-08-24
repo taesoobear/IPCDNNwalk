@@ -288,6 +288,7 @@ protected:
 class PoseTransfer
 {
 	void _ctor(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, const char* convfilename, bool bCurrPoseAsBindPose);
+	void _ctor_part2(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, TStrings& convTable, bool bCurrPoseAsBindPose);
 public:
 	/*!
 	joint의 targetindex를 conversion table을 사용해 세팅한다.
@@ -301,6 +302,7 @@ public:
 	*/
 	PoseTransfer(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, const char* convfilename=NULL, bool bCurrPoseAsBindPose=false);
 	PoseTransfer(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, bool bCurrPoseAsBindPose);
+	PoseTransfer(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, TStrings const& convInfoA, TStrings const& convInfoB, bool bCurrPoseAsBindPose);
 
 	// srcposture: srcSkeleton과 호환되는 posture.
 	// results can be retrieved using
@@ -353,11 +355,14 @@ class PoseTransfer2
 	public:
 	PoseTransfer2(MotionLoader* loaderA, MotionLoader* loaderB, TStrings const& convInfoA, TStrings const& convInfoB, double posScaleFactor);
 	PoseTransfer2(MotionLoader* loaderA, MotionLoader* loaderB);
+	PoseTransfer2(MotionLoader* loaderA, MotionLoader* loaderB, const char* convfilename, double posScaleFactor);
 
 	void _setTargetSkeleton();
 	inline void setTargetSkeleton(Posture const& poseA) { loaderA->setPose(poseA); _setTargetSkeleton(); }
 	inline void setTargetSkeleton(vectorn const& poseA) { loaderA->setPoseDOF(poseA); _setTargetSkeleton(); }
-
+	inline void setTargetSkeleton(BoneForwardKinematics const& poseA) { loaderA->fkSolver()=poseA; _setTargetSkeleton(); }
+	inline MotionLoader* source()  { return loaderA;}
+	inline MotionLoader* target()  { return loaderB;}
 	MotionLoader *loaderA, *loaderB;
 	intvectorn rAtoB_additionalAindices, rAtoB_additionalBindices, targetIndexAtoB, BtoA, parentIdx;
 	quaterN rAtoB, rAtoB_missing, rAtoB_additional;

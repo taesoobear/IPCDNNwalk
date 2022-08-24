@@ -48,10 +48,10 @@ static void getShapeFN(TString& shapeFn, TString const& url, TString const& name
 	shapeFn=url.left(-4)+"_sd/"+nameid+".obj";
 	shapeFn.replace(":", "_"); // : in a filename is not supported in a Windows system.
 }
-static void pack_HRP_SEGMENT(BinaryFile& bf, HRP_SEGMENT * mSegment, TString const& url,TString const& nameid, OBJloader::Geometry & mesh )
+static void pack_HRP_SEGMENT(BinaryFile& bf, HRP_SEGMENT * mSegment, TString const& url,TString const& nameid, OBJloader::Geometry const & mesh )
 {
 	bf.packInt(1);
-	vector3 com=mSegment->centerOfMass;
+	vector3 & com=mSegment->centerOfMass;
 	matrix3 & inertia=mSegment->momentsOfInertia;
 	bf.pack(com);
 	bf.packFloat(mSegment->mass);
@@ -89,11 +89,26 @@ VRMLTransform::~VRMLTransform()
   delete mShape;
   delete mTransform;
 }
+void VRMLTransform::printHierarchy(int depth)
+{
+	for(int ii=0; ii<depth; ii++) Msg::print(" ");
+
+	if (treeIndex()>=1 && getSkeleton().dofInfo._sharedinfo)
+	{
+		Msg::print("%s : %d, R: %d, T: %d %s:%s ", NameId, treeIndex(), rotJointIndex(), transJointIndex(), getRotationalChannels().ptr(), getTranslationalChannels().ptr() );
+		Msg::print("startT: %d endR: %d ",getSkeleton().dofInfo.startT(treeIndex()), getSkeleton().dofInfo.endR(treeIndex()));
+		Msg::print("jointId: %d numJoints:%d ", HRPjointIndex(0), numHRPjoints());
+		Msg::print("offset: %s \n",getOffsetTransform().translation.output().ptr());
+	}
+
+	for(Node *i=m_pChildHead; i!=NULL; i=i->m_pSibling)
+		i->printHierarchy(depth+1);
+}
 static void unexpectedToken(CTextFile& file, TString const& token, const char* msg)
 {
 	  Msg::msgBox("unexpected token %s! %s. next 10 lines will be printed to console.", token.ptr(),msg);
 	  for (int i=0; i<10; i++)
-		  printf("%s\n", file.GetLine());
+		  Msg::print("%s\n", file.GetLine());
 	  ASSERT(0);
 }
 
@@ -604,8 +619,16 @@ void VRMLloader::setChannels(Bone& bone, const char* translation_axis, const cha
 	VRMLTransform* b=(VRMLTransform*)&bone;
 	Msg::verify(b->mJoint, "Error! this VRMLTransform has no joint");
 
-	b->mJoint->jointType=HRP_JOINT::GENERAL;
-	b->mJoint->jointAxis=TString(translation_axis)+"_"+TString(rotation_axis);
+	if(strlen(translation_axis)==0)
+	{
+		b->mJoint->jointType=HRP_JOINT::ROTATE;
+		b->mJoint->jointAxis=TString(rotation_axis);
+	}
+	else
+	{
+		b->mJoint->jointType=HRP_JOINT::GENERAL;
+		b->mJoint->jointAxis=TString(translation_axis)+"_"+TString(rotation_axis);
+	}
 
 	b->setChannels(translation_axis, rotation_axis);
 	_initDOFinfo();
@@ -664,7 +687,7 @@ void VRMLTransform::unpack(VRMLloader& l, BinaryFile & bf)
 	if(bf.unpackInt())
 	{
 		mSegment=new HRP_SEGMENT();
-		vector3 com=mSegment->centerOfMass;
+		vector3 &com=mSegment->centerOfMass;
 		matrix3 & inertia=mSegment->momentsOfInertia;
 		bf.unpack(com);
 		mSegment->mass=bf.unpackFloat();
@@ -1022,6 +1045,8 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
 	  
 	  if(token=="name")
 	    l.name=file.GetQuotedText();
+	  else if(token=="url")
+	    l.url=file.GetQuotedText();
 	  else if (token=="frameRate")
 	  {
 		  l._frameRate=atof(file.GetToken());
@@ -1129,9 +1154,65 @@ void VRMLTransform::setJointAxes(const char* axes)
 		  setChannels( mJoint->jointAxis, "");//
 		  return;
 	  }
+	  else if(mJoint->jointType==HRP_JOINT::FREE)
+	  {
+		  if (strlen(axes)==0)
+		  {
+			  mJoint->jointType=HRP_JOINT::FIXED;
+			  setChannels( "", "");//
+		  }
+		  else
+		  {
+			  Msg::msgBox("Error! cannot change axes (case1 - not implemented yet). %s:%s:%d", NameId , mVRMLtype.ptr(), mJoint->jointType);
+		  }
+	  }
   }
+  else
+	  Msg::msgBox("Error! cannot change axes. %s:%s:%d", NameId , mVRMLtype.ptr(), mJoint->jointType);
+}
+void VRMLloader::changeAll3DOFjointsToSpherical()
+{
+	Posture pose;
+	getPose(pose);
+	for(int i=1; i<numBone(); i++)
+	{
+		auto& bone=VRMLbone(i);
+		if( bone.mJoint->jointType==HRP_JOINT::ROTATE && bone.getRotationalChannels().length()==3)
+			bone.mJoint->jointType=HRP_JOINT::BALL;
+	}
 
-  Msg::msgBox("Error! cannot change axes. %s:%s:%d", NameId , mVRMLtype.ptr(), mJoint->jointType);
+	_initDOFinfo(); 
+	setPose(pose);
+
+}
+void VRMLloader::changeAllMultiDOFjointsToSpherical()
+{
+	Posture pose;
+	getPose(pose);
+	for(int i=1; i<numBone(); i++)
+	{
+		auto& bone=VRMLbone(i);
+		if( bone.mJoint->jointType==HRP_JOINT::ROTATE && bone.getRotationalChannels().length()>1)
+			bone.mJoint->jointType=HRP_JOINT::BALL;
+	}
+
+	_initDOFinfo(); 
+	setPose(pose);
+}
+
+void VRMLloader::changeAllJointsToSpherical()
+{
+	Posture pose;
+	getPose(pose);
+	for(int i=1; i<numBone(); i++)
+	{
+		auto& bone=VRMLbone(i);
+		if( bone.mJoint->jointType==HRP_JOINT::ROTATE )
+			bone.mJoint->jointType=HRP_JOINT::BALL;
+	}
+
+	_initDOFinfo(); 
+	setPose(pose);
 }
 void VRMLTransform::initBones()
 {
@@ -1153,7 +1234,7 @@ void VRMLTransform::initBones()
 		  setChannels("", mJoint->jointAxis);
 		  setArbitraryAxes(mJoint->jointAxis2);
 		  if( mJoint->jointAxis2Angle!=0)
-			  printf("warning! non-zero default angle is no longer supported!\n");
+			  Msg::print("warning! non-zero default angle is no longer supported!\n");
 
 		}
 		else
@@ -1370,7 +1451,12 @@ static void replaceUseNode(VRMLTransform* node, VRMLTransform* root)
     }
 }
 bool VRMLTransform::hasShape() const {return mShape!=NULL;}
-OBJloader::Geometry& VRMLTransform::getMesh() const { return mShape->mesh;}
+OBJloader::Geometry& VRMLTransform::getMesh() const { Msg::verify(hasShape(), "error! no shape!!!");return mShape->mesh;}
+void VRMLTransform::createNewShape()
+{
+	delete mShape;
+	mShape=new HRP_SHAPE();
+}
 void VRMLTransform::UnpackChildren(VRMLloader& l, CTextFile& file)
 {
   TString token=file.GetToken();
@@ -1590,17 +1676,39 @@ VRMLloader::VRMLloader(OBJloader::Geometry const& mesh, bool useFixedJoint)
 	:MotionLoader()
 {
 	_frameRate=30;
-	CTextFile file;
-	const char* filename="../Resource/mesh/floor_y.wrl";
-	if(!file.OpenReadFile(filename))
-		Msg::msgBox("error opening %s", filename);
-	_importVRML(file);
 
+	m_pTreeRoot=new VRMLTransform();
+	m_pTreeRoot->SetNameId("floor");
+	VRMLTransform* root=new VRMLTransform();
+	MemoryFile m;
+
+	// VRMLTransform::pack
+	m.packInt(0);
+	m.pack("WAIST");
+	if(useFixedJoint)
+	{
+		m.packInt(HRP_JOINT::FIXED);
+		m.pack("");
+	}
+	else
+	{
+		m.packInt(HRP_JOINT::FREE);
+		m.pack("Z");
+	}
+	m.packInt(0);
+	m.pack(vector3(0,0,0)); //joint->translation
+
+	url.format("BODY_%s", RE::generateUniqueName().ptr());
+	HRP_SEGMENT mSegment;
+	pack_HRP_SEGMENT(m, &mSegment, url, TString("WAIST"), mesh);
+	m.packInt(0);
+	m.pack("WAIST");
+	root->unpack(*this, m);
+	m_pTreeRoot->AddChild(root);
+	_initDOFinfo(); 
 	name=RE::generateUniqueName();
 	url=name+".wrl";
-	VRMLbone(1).mShape->mesh=mesh;
-	if(!useFixedJoint)
-		VRMLbone(1).mJoint->jointType=HRP_JOINT::FREE;
+
 	_initDOFinfo();
 	//VRMLloader_updateMeshEntity(*l);
 }
@@ -1635,51 +1743,54 @@ VRMLloader::VRMLloader(CTextFile& vrmlFile)
 void VRMLloader::_initDOFinfo()
 {
 	((VRMLTransform*)m_pTreeRoot)->initBones();
-  int numChannel;
-  MakeBoneArrayFromTree(numChannel);
+	int numChannel;
+	MakeBoneArrayFromTree(numChannel);
 
-  int curJoint=0;
-  for(int i=1;i<numBone(); i++)
-    {
-      VRMLTransform* ll=((VRMLTransform*)&getBoneByTreeIndex(i));
-
-      ASSERT(ll->mJoint);
-      // override joint index.
-      ll->mJoint->jointStartId=curJoint;
-      if(ll->mJoint->jointType==HRP_JOINT::FREE	  ||
-		  ll->mJoint->jointType==HRP_JOINT::FIXED  ||
-		  ll->mJoint->jointType==	HRP_JOINT::BALL)
-	curJoint++;
-      else 
+	int curJoint=0;
+	for(int i=1;i<numBone(); i++)
 	{
-	  curJoint+=ll->getRotationalChannels().length();
-	  curJoint+=ll->getTranslationalChannels().length();
+		VRMLTransform* ll=((VRMLTransform*)&getBoneByTreeIndex(i));
+
+		ASSERT(ll->mJoint);
+		// override joint index.
+		ll->mJoint->jointStartId=curJoint;
+		if(ll->mJoint->jointType==HRP_JOINT::FREE	  ||
+				ll->mJoint->jointType==HRP_JOINT::FIXED  ||
+				ll->mJoint->jointType==	HRP_JOINT::BALL)
+			curJoint++;
+		else 
+		{
+			curJoint+=ll->getRotationalChannels().length();
+			curJoint+=ll->getTranslationalChannels().length();
+		}
+
+		ll->mJoint->jointEndId=curJoint;
 	}
 
-      ll->mJoint->jointEndId=curJoint;
-		
-		
-    }
+	// DOF information
+	bitvectorn useSpherical;
+	useSpherical.resize(numBone());
+	useSpherical.clearAll();
+	for(int i=1;i<numBone(); i++)
+	{
+		VRMLTransform* ll=((VRMLTransform*)&getBoneByTreeIndex(i));
+		ASSERT(ll->mJoint);
+		if(ll->mJoint->jointType==HRP_JOINT::FREE || ll->mJoint->jointType==HRP_JOINT::BALL)
+			useSpherical.setAt(i);
+	}
 
-  // DOF information
-  bitvectorn useSpherical;
-  useSpherical.resize(numBone());
-  useSpherical.clearAll();
-  for(int i=1;i<numBone(); i++)
-    {
-      VRMLTransform* ll=((VRMLTransform*)&getBoneByTreeIndex(i));
-      ASSERT(ll->mJoint);
-      if(ll->mJoint->jointType==HRP_JOINT::FREE ||
-		 ll->mJoint->jointType==HRP_JOINT::BALL
-		  )
-	useSpherical.setAt(i);
-    }
-
-  if(!dofInfo._sharedinfo)
-	  dofInfo._sharedinfo=new MotionDOFinfo::SharedInfo;
-  dofInfo._sharedinfo->init(*this, useSpherical);
-  dofInfo.mFrameRate=_frameRate;
-  //printf("frameRate: %f\n", _frameRate);
+	if(!dofInfo._sharedinfo)
+	   	dofInfo._sharedinfo=new MotionDOFinfo::SharedInfo;
+	dofInfo._sharedinfo->init(*this, useSpherical);
+	dofInfo.mFrameRate=_frameRate;
+#ifdef _DEBUG
+	for(int i=1;i<numBone(); i++)
+	{
+		if(useSpherical(i))
+			ASSERT(VRMLbone(i).numHRPjoints()==1);
+	}
+#endif
+	//Msg::print("frameRate: %f\n", _frameRate);
 }
 
 void VRMLTransform::copyFrom(VRMLTransform const& bone)
@@ -1754,7 +1865,13 @@ void VRMLloader::scale(float fScale, Motion& mot)
 	bone->mShape->mesh.scale(fScale);
       totalMass+=(bone->mSegment)?bone->mSegment->mass:0;
     }
-  //setTotalMass( totalMass);
+  setTotalMass( totalMass);
+
+  for (int i=0; i<constraints.size(); i++)
+	{
+		constraints[i].localpos1*=fScale;
+		constraints[i].localpos2*=fScale;
+	}
 }
 VRMLTransform& VRMLloader::VRMLbone(int treeIndex) const
 {
@@ -1763,8 +1880,8 @@ VRMLTransform& VRMLloader::VRMLbone(int treeIndex) const
 
 
 
+#include "InertiaCalculator.h"
 
-/*
 void VRMLloader::setTotalMass(m_real totalMass)
 {
 	VRMLloader & l=*this;
@@ -1775,6 +1892,7 @@ void VRMLloader::setTotalMass(m_real totalMass)
 	inertia.resize(l.numBone());
 
 	InertiaCalculator ic;
+	//InertiaCalculatorAnalytic ic;
 	mass[0]=0.0;
 	for(int b=1; b<l.numBone(); b++)
 	{
@@ -1783,8 +1901,8 @@ void VRMLloader::setTotalMass(m_real totalMass)
 		if(bone.mShape)
 		{
 			ic.calculateFromMesh(bone.mShape->mesh);
-			mass[b]=ic.volume();
-			inertia[b]=ic.inertia();
+			mass[b]=ic.volume()*1000.0; // water density
+			inertia[b]=ic.inertia()*1000.0;
 			bone.mSegment->centerOfMass=ic.centerOfMass();
 		}
 		else
@@ -1796,7 +1914,7 @@ void VRMLloader::setTotalMass(m_real totalMass)
 
 	m_real scale=totalMass/mass.sum();
 
-	_checkMass();
+	if(totalMass==0.0) scale=1.0;
 
 	for(int b=1; b<l.numBone(); b++)
 	{
@@ -1808,8 +1926,8 @@ void VRMLloader::setTotalMass(m_real totalMass)
 			bone.mSegment->momentsOfInertia.mult(inertia[b],scale);
 		}
 	}
+	_checkMass();
 }
-*/
 void VRMLloader::_checkMass()
 {
 	VRMLloader& l=*this;
@@ -2004,6 +2122,9 @@ void VRMLloader::_importBinary(BinaryFile& bf)
 	  root->unpack(*this,bf);
 	  m_pTreeRoot->SetNameId("HumanoidBody");
 	  m_pTreeRoot->AddChild(root);
+
+	  VRMLTransform* n=((VRMLTransform*)(m_pTreeRoot->m_pChildHead));
+	  n->_getOffsetTransform().translation.zero();
 	  _initDOFinfo(); 
 }
 void VRMLloader::exportBinary(const char* filename)

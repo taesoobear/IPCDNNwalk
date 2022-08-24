@@ -27,6 +27,18 @@ void Geometry::copyFrom(Geometry const& otherMesh)
 	Mesh::copyFrom(otherMesh);
 	elements=otherMesh.elements;
 }
+void Geometry::assignMesh(OBJloader::Mesh const& otherMesh)
+{
+	Mesh::copyFrom(otherMesh);
+	int nE=otherMesh.faceGroups.size();
+	elements.resize(nE);
+	for(int i=0; i<nE; i++)
+	{
+		elements[i].elementType=Element::OBJ;
+		elements[i].tf.identity();
+	}
+
+}
 
 bool Geometry::saveObj(const char* filename, bool vn, bool vt)
 {
@@ -67,7 +79,7 @@ bool Geometry::loadObj(const char* filename)
 }
 
 // always make file format backward compatible.
-void Geometry::pack(BinaryFile& bf)
+void Geometry::pack(BinaryFile& bf) const
 {
 	int version=1; // version 1: geometry. 
 	bf.packInt(version);
@@ -277,7 +289,7 @@ void Geometry::classifyTriangles()
 
 
 void Geometry::operator=(Geometry const& otherMesh) { copyFrom(otherMesh); }
-void Geometry::operator=(Mesh const& otherMesh) { Mesh::copyFrom(otherMesh);}
+void Geometry::operator=(Mesh const& otherMesh) { assignMesh(otherMesh);}
 void Geometry::merge(Geometry const& a, Geometry const& b)
 {
 	// avoid aliasing

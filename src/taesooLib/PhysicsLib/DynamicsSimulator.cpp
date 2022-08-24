@@ -1,4 +1,5 @@
 #include "physicsLib.h"
+#include "../BaseLib/motion/IK_sdls/NodeWrap.h"
 #include "OpenHRPcommon.h"
 #include "DynamicsSimulator.h"
 #include "../MainLib/OgreFltk/MotionManager.h"
@@ -74,6 +75,7 @@ void makeCharacterInfo(VRMLloader const& input, OpenHRP::CharacterInfo& output)
 						l.mother=jointID-1;
 					if(jointID!=je-1)
 						l.daughter=jointID+1;
+
 				}
 			if(!ll->isRootBone())
 				ls.mother=((VRMLTransform* )ll->parent())->mJoint->jointEndId-1;
@@ -100,8 +102,15 @@ void makeCharacterInfo(VRMLloader const& input, OpenHRP::CharacterInfo& output)
 							break;
 						}
 				}
+			//for(int jointID=js; jointID<je; jointID++)
+			//{
+			//		OpenHRP::LinkInfo& l=output.links[jointID];
+			//		printf("joint %d: mother %d, daughter %d sister %d\n", jointID, l.mother, l.daughter, l.sister);
+			//}
 		}
 }
+#define NO_BULLET 
+// bullet simulator is deprecated. to use bullet simulator, use sample_bullet.git instead
 
 namespace OpenHRP
 {
@@ -136,8 +145,9 @@ namespace OpenHRP
 		chain->getPoseFromGlobal(p);
 		skeleton->dofInfo.getDOF(p, poseDOF);
 	}
-#ifndef NO_BULLET
 	OpenHRP::CollisionDetector* createCollisionDetector_bullet();
+	OpenHRP::CollisionDetector* createCollisionDetector_gjk();
+#ifndef NO_BULLET
 	OpenHRP::CollisionDetector* createCollisionDetector_bullet2(DynamicsSimulator*psim);
 	OpenHRP::CollisionDetector* createCollisionDetector_simple();
 #endif
@@ -151,17 +161,14 @@ namespace OpenHRP
 #ifndef NO_BULLET
 		if(tid=="SIMPLE")
 			collisionDetector =createCollisionDetector_simple();
-		else if(tid=="BULLET")
-			collisionDetector =createCollisionDetector_bullet();
 		else if(tid=="BULLET2")
 			collisionDetector =createCollisionDetector_bullet2(this);
 		else 
 #else
-		if(tid=="SIMPLE")
-		{
-			ASSERT(false);
-			//collisionDetector =createCollisionDetector_simple2();
-		}
+		if(tid=="BULLET")
+			collisionDetector =createCollisionDetector_bullet();
+		else if(tid=="GJK")
+			collisionDetector =createCollisionDetector_gjk();
 		else
 #endif
 			if(tid=="LIBCCD")
@@ -201,10 +208,11 @@ namespace OpenHRP
 
 	DynamicsSimulator::~DynamicsSimulator()
 	{
-		delete collisionDetector;
-		delete collisions;
+		delete collisionDetector; collisionDetector=NULL;
+		delete collisions; collisions=NULL;
 		for(int i=0; i<_characters.size(); i++)
 			delete _characters[i];
+		_characters.clear();
 	}
 
 	void DynamicsSimulator::_updateCharacterPose()
@@ -674,5 +682,195 @@ int DynamicsSimulator::findCharacter(const char* _name)
 			return i;
 	}
 	return -1;
+}
+
+
+// calc momentum assuming constant velocity while steadily transforming from poseFrom to poseTo in 1 second. (0 <= t <= 1)
+Liegroup::dse3 DynamicsSimulator::calcMomentumCOMfromPose(int ichara, double delta_t, vectorn const& poseFrom, vectorn const& poseTo)
+{
+	VRMLloader* skel=_characters[ichara]->skeleton;
+	BoneForwardKinematics chain1(skel), chain2(skel);
+	chain1.init();
+	chain2.init();
+
+	::vector3 com(0,0,0);
+	Liegroup::dse3 H(0,0,0,0,0,0);
+
+	m_real totalMass=0.0;
+	chain1.setPoseDOF(poseFrom);
+	chain2.setPoseDOF(poseTo);
+	for(int ibone=1; ibone<skel->numBone(); ibone++)
+	{
+		VRMLTransform& bone=skel->VRMLbone(ibone);
+		ASSERT(bone.mSegment);
+		double mass=bone.mass();
+		com+=chain1.global(bone).toGlobalPos(bone.localCOM())*mass;
+		totalMass+=mass;
+		//Liegroup::se3 V=transf_twist(chain1.global(bone), chain2.global(bone),delta_t);
+		Liegroup::se3 V=Liegroup::twist_nonlinear(chain1.global(bone), chain2.global(bone),delta_t);
+		//printf("%d : %s, %f %f %f\n", ibone, V.W().output().ptr(), body->V[0], body->V[1], body->V[2]);
+		//printf("%d : %s, %f %f %f\n", ibone, V.V().output().ptr(), body->V[3], body->V[4], body->V[5]);
+
+		Liegroup::Inertia I(mass, bone.momentsOfInertia(), mass*bone.localCOM());
+		H+=(I*V).inv_dAd(chain1.global(bone));
+	}
+
+	com/=totalMass;
+
+	//printf("I: %f %f %f %f %f %f, %f,%f\n", I._I[0],I._I[1],I._I[2],I._I[3],I._I[4],I._I[5],I._m, totalMass);
+
+	Liegroup::dse3 v;
+	v.dAd(transf(quater(1,0,0,0), com), H);
+	return v;
+}
+
+Liegroup::dse3 DynamicsSimulator::calcMomentumCOM(int ichara)
+{
+#if 0
+	// use all joints including internal dummy joints
+	TRL::BodyPtr cinfo=world.body(ichara);
+	Liegroup::dse3 out;
+	vector3 com=cinfo->calcCM();
+	cinfo->calcTotalMomentum(out.F(), out.M());
+	return out.dAd(transf(quater(1,0,0,0), com));
+#else
+	// use only those described in the wrl file.
+	// slightly different result from the above, but is 
+	// consistent with jacobian matrices. 
+	VRMLloader* skel=_characters[ichara]->skeleton;
+
+	::vector3 com(0,0,0);
+	Liegroup::dse3 H(0,0,0,0,0,0);
+
+	m_real totalMass=0.0;
+	for(int ibone=1; ibone<skel->numBone(); ibone++)
+	{
+		VRMLTransform& bone=skel->VRMLbone(ibone);
+		ASSERT(bone.mSegment);
+		double mass=bone.mass();
+		transf & G=getWorldState(ichara)._global(bone);
+		com+=(G*bone.localCOM())*mass;
+		totalMass+=mass;
+		quater invR=getWorldState(ichara)._global(bone).rotation.inverse();
+
+		Liegroup::se3 V;
+		getBodyVelocity(ichara, &bone, V);
+		Liegroup::Inertia I(mass, bone.momentsOfInertia(), mass*bone.localCOM());
+		H+=(I*V).inv_dAd(G);
+	}
+
+	com/=totalMass;
+
+	Liegroup::dse3 v;
+	v.dAd(transf(quater(1,0,0,0), com), H);
+
+
+	return v;
+#endif
+}
+void  DynamicsSimulator::calcInertia(int ichara,vectorn const& pose, vectorn& inertia) const
+{
+	VRMLloader* skel=_characters[ichara]->skeleton;
+	BoneForwardKinematics chain(skel);
+	chain.init();
+	::vector3 com(0,0,0);
+	m_real totalMass=0.0;
+
+	Liegroup::Inertia I;
+	chain.setPoseDOF(pose);
+
+	// T_(-COM)*T_G*T(lCOM)*local_position_WT_COM
+	for(int ibone=1; ibone<skel->numBone(); ibone++)
+	{
+		VRMLTransform& bone=skel->VRMLbone(ibone);
+		ASSERT(bone.mSegment);
+		double mass=bone.mass();
+		com+=chain.global(bone).toGlobalPos(bone.localCOM())*mass;
+		totalMass+=mass;
+
+
+		Liegroup::Inertia Ii(mass, bone.momentsOfInertia(), mass*bone.localCOM());
+		Ii=Ii.transform(chain.global(bone).inverse()); // inverse is there because of dAd transformation
+		//Ii=Ii.transform(toGMBS(chain2.global(bone).inverse()));
+		//printf("Ii: %f %f %f %f %f %f, %f\n", body->I._I[0],body->I._I[1],body->I._I[2],body->I._I[3],body->I._I[4],body->I._I[5],body->I._m);
+		//printf("Ii: %f %f %f %f %f %f, %f\n", Ii._I[0],Ii._I[1],Ii._I[2],Ii._I[3],Ii._I[4],Ii._I[5],Ii._m);
+		for (int i=0;i<6; i++) I._I[i]+=Ii._I[i];
+		for (int i=0;i<3; i++) I._r[i]+=Ii._r[i];
+		I._m+=Ii._m;
+	}
+
+	com/=totalMass;
+
+	I=I.transform(transf(quater(1,0,0,0), com)); // inv(T_{com*-1}) == T_com
+	//printf("I: %f %f %f %f %f %f, %f,%f\n", I._I[0],I._I[1],I._I[2],I._I[3],I._I[4],I._I[5],I._m, totalMass);
+
+	inertia.setValues(10, I._I[0], I._I[1], I._I[2],  I._I[3],I._I[4],I._I[5],I._m, I._r[0], I._r[1], I._r[2]);
+}
+void DynamicsSimulator::setQ(int ichara, vectorn const& in)
+{
+	int numSphericalJoint=skeleton(ichara).dofInfo.numSphericalJoint();
+	if (numSphericalJoint==0)
+	{
+		setPoseDOF(ichara, in);
+	}
+	else
+	{
+		Msg::verify(numSphericalJoint==1, "setQ doesn't support ball joints. Use setSphericalState instead!!!");
+		int rdof=in.size();
+		vectorn v(rdof);
+		v.setVec3(0, in.toVector3(0));
+		quater q=in.toQuater(2);
+		q.w=in[rdof-1];
+		v.setQuater(3, q);
+		v.range(7, rdof)=in.range(6, rdof-1);
+		setPoseDOF(ichara, v);
+	}
+}
+void DynamicsSimulator::getQ(int ichara, vectorn & out) const 
+{
+	int numSphericalJoint=skeleton(ichara).dofInfo.numSphericalJoint();
+	if (numSphericalJoint==0)
+	{
+		getPoseDOF(ichara, out);
+	}
+	else
+	{
+		Msg::verify(numSphericalJoint==1, "setQ doesn't support ball joints. Use setSphericalState instead!!!");
+		vectorn v;
+		getPoseDOF(ichara, v);
+		IK_sdls::LoaderToTree::poseToQ(v, out);
+	}
+}
+void DynamicsSimulator::setDQ(int ichara, vectorn const& v)
+{
+	int numSphericalJoint=skeleton(ichara).dofInfo.numSphericalJoint();
+	if (numSphericalJoint==0)
+	{
+		setDPoseDOF(ichara, v);
+	}
+	else
+	{
+		Msg::verify(numSphericalJoint==1, "setDQ doesn't support ball joints. Use setSphericalState instead!!!");
+		Msg::error("DynamicsSimulator::setDQ not implemented yet!");
+	}
+}
+void DynamicsSimulator::getDQ(int ichara, vectorn& out) const
+{
+	int numSphericalJoint=skeleton(ichara).dofInfo.numSphericalJoint();
+	if (numSphericalJoint==0)
+	{
+		getDPoseDOF(ichara, out);
+	}
+	else
+	{
+		Msg::verify(numSphericalJoint==1, "getDQ doesn't support ball joints. Use getSphericalState instead!!!");
+		vectorn v;
+		getDPoseDOF(ichara, v);
+		IK_sdls::LoaderToTree::dposeToDQ(getWorldState(ichara).global(1).rotation, v, out);
+	}
+}
+void DynamicsSimulator::setU(int ichara, const vectorn& in)
+{
+	Msg::error("not impl");
 }
 }

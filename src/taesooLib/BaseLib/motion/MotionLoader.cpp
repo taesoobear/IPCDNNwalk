@@ -9,133 +9,6 @@
 #include "MotionDOF.h"
 #include "MotionWrap.h"
 
-	transf const& BoneForwardKinematics::global(const Bone& bone) const	{ return m_global[bone.treeIndex()];}
-	transf const& BoneForwardKinematics::local(const Bone& bone) const	{ return m_local[bone.treeIndex()];}
-	transf & BoneForwardKinematics::_global(const Bone& bone) 	{ return m_global[bone.treeIndex()];}
-	transf & BoneForwardKinematics::_local(const Bone& bone) 	{ return m_local[bone.treeIndex()];}
-
-
-BoneForwardKinematics::BoneForwardKinematics(MotionLoader* pskel)
-:m_skeleton(pskel)
-{	
-}
-
-void BoneForwardKinematics::forwardKinematics()
-{
-	// this is thread unsafe so.. 
-	// NodeStack  & stack=m_skeleton->m_TreeStack;
-	NodeStack  stack;
-	stack.Initiate();
-
-	Node *src=m_skeleton->m_pTreeRoot->m_pChildHead;	// dummy노드는 사용안함.
-	int index=-1;
-
-	while(TRUE) 
-	{
-		while(src)
-		{
-			index++;
-			ASSERT(src->NodeType==BONE);
-			Bone* pBone=(Bone*)src;
-			int treeindex=pBone->treeIndex();
-			if(stack.GetTop())
-				_global(treeindex).mult(
-				global(*((Bone*)stack.GetTop())), local(treeindex));
-			else
-				_global(treeindex)=local(treeindex);
-
-			stack.Push(src);
-
-			src=src->m_pChildHead;
-		}
-		stack.Pop(&src);
-		if(!src) break;
-		src=src->m_pSibling;
-	}
-}
-
-
-
-void BoneForwardKinematics::init()
-{
-	m_local.resize(m_skeleton->numBone());
-	m_global.resize(m_skeleton->numBone());
-	m_local[0].identity();
-	m_global[0].identity();
-
-	for(int i=1, ni=m_skeleton->numBone(); i<ni; i++)
-		m_local[i]=m_skeleton->bone(i).getOffsetTransform();
-
-	forwardKinematics();
-}
-
-void BoneForwardKinematics::operator=(BoneForwardKinematics const& other)
-{
-	ASSERT(getSkeleton().numBone()==other.getSkeleton().numBone());
-
-	for(int i=0,ni=getSkeleton().numBone(); i<ni; i++)
-	{
-		_local(i)=other.local(i);
-		_global(i)=other.global(i);	
-	}
-}
-void BoneForwardKinematics::setPose(const Posture& pose)
-{
-	if(m_local.size()==0)
-		init();
-	// update root position and rotations
-	for(int ijoint=0, nj=m_skeleton->numRotJoint(); ijoint<nj; ijoint++)
-	{
-		// update rotations
-		int target=m_skeleton->getTreeIndexByRotJointIndex(ijoint);
-		m_local[target].rotation=pose.m_aRotations[ijoint];
-	}
-
-	for(int ijoint=0, nj=MIN(m_skeleton->numTransJoint(), pose.m_aTranslations.size()); ijoint<nj; ijoint++)
-	{
-		// update translations
-		int target=m_skeleton->getTreeIndexByTransJointIndex(ijoint);
-		m_local[target].translation=pose.m_aTranslations[ijoint];
-	}
-
-	forwardKinematics();
-}
-
-void BoneForwardKinematics::setPoseDOF(const vectorn& dof)
-{
-	// thread unsafe equivalent: setPose(m_skeleton->dofInfo.setDOF(poseDOF));	
-	int start=0;
-	MotionDOFinfo& dofInfo=m_skeleton->dofInfo;
-	for(int i=1; i<m_skeleton->numBone(); i++)
-	{
-		Bone& bone=m_skeleton->bone(i);
-		if(bone.transJointIndex()!=-1)
-		{
-			vector3& trans=m_local[bone.treeIndex()].translation;
-			int nc=bone.getLocalTrans(trans, &dof[start]);
-			start+=nc;
-		}
-
-		int ri=bone.rotJointIndex();
-		if(ri==-1) continue;
-
-		quater& rotation=m_local[bone.treeIndex()].rotation;
-		if(dofInfo.hasQuaternion(i))
-		{
-			rotation=dof.toQuater(start);
-			start+=4;
-		}
-
-		if(dofInfo.hasAngles(i))
-		{
-			int nc=bone.getLocalOri(rotation, &dof[start]);
-			start+=nc;
-		}
-	}
-	assert(start==dof.size());
-	forwardKinematics();
-}
-
 int Bone::getLocalTrans(vector3& trans, const double* dof)
 {
 	trans.setValue(0,0,0);
@@ -186,122 +59,6 @@ int Bone::getLocalOri(quater& qRot, const double* dof)
 		qRot.setRotation(getRotationalChannels(), aValue);
 	}
 	return nc;
-}
-
-void BoneForwardKinematics::getPoseFromLocal(Posture& pose) const
-{
-	pose.Init(m_skeleton->numRotJoint(), m_skeleton->numTransJoint());
-
-	// update root position and rotations
-	for(int ijoint=0, nj=m_skeleton->numRotJoint(); ijoint<nj; ijoint++)
-	{
-		// update rotations
-		int target=m_skeleton->getTreeIndexByRotJointIndex(ijoint);
-		pose.m_aRotations[ijoint]=m_local[target].rotation;
-	}
-
-	for(int ijoint=0, nj=m_skeleton->numTransJoint(); ijoint<nj; ijoint++)
-	{
-		// update translations
-		int target=m_skeleton->getTreeIndexByTransJointIndex(ijoint);
-		pose.m_aTranslations[ijoint]=m_local[target].translation;
-	}
-}
-
-void BoneForwardKinematics::getPoseFromGlobal(Posture& pose) const
-{
-	pose.Init(m_skeleton->numRotJoint(), m_skeleton->numTransJoint());
-
-	// update root position and rotations
-	for(int ijoint=0, nj=m_skeleton->numRotJoint(); ijoint<nj; ijoint++)
-	{
-		// update rotations
-        Bone& target=m_skeleton->getBoneByRotJointIndex(ijoint);
-		pose.m_aRotations[ijoint]=global(*target.parent()).toLocalRot(global(target).rotation);
-	}
-	for(int ijoint=0, nj=m_skeleton->numTransJoint(); ijoint<nj; ijoint++)
-	{
-		// update translations
-        Bone& target=m_skeleton->getBoneByTransJointIndex(ijoint);
-		pose.m_aTranslations[ijoint]=global(*target.parent()).toLocalPos(global(target).translation);
-	}
-}
-void BoneForwardKinematics::updateBoneLength(MotionLoader const& loader)
-{
-	for(int i=2; i<loader.numBone()-1 ; i++)
-		m_local[i].translation=loader.bone(i).getOffsetTransform().translation;
-
-	forwardKinematics();
-}
-
-void BoneForwardKinematics::getPoseDOFfromGlobal(vectorn& poseDOF) const
-{
-	Posture p;
-	getPoseFromGlobal(p);
-	m_skeleton->dofInfo.getDOF(p, poseDOF);
-}
-void BoneForwardKinematics::getPoseDOFfromLocal(vectorn& poseDOF) const
-{
-	Posture p;
-	getPoseFromLocal(p);
-	m_skeleton->dofInfo.getDOF(p, poseDOF);
-}
-void BoneForwardKinematics::inverseKinematics()
-{
-	Posture pose;
-	getPoseFromGlobal(pose);
-	setPose(pose);
-}
-
-void BoneForwardKinematics::setChain(const Posture& pose, const Bone & bone)
-{
-	// update rotate chains
-	vector3 offset;
-	const Bone* pBone=&bone;
-	while(pBone->child())
-		pBone=pBone->child();
-	do
-	{
-		if(pBone->rotJointIndex()!=-1)
-			_local(*pBone).rotation=pose.m_aRotations[pBone->rotJointIndex()];
-
-		if(pBone->transJointIndex()!=-1)
-			_local(*pBone).translation=pose.m_aTranslations[pBone->transJointIndex()];
-
-		pBone=pBone->parent();
-	}
-	while(pBone);
-
-	setChain(bone);
-}
-
-void BoneForwardKinematics::setChain(const Bone & bone)
-{
-
-	int chain[m_local.size()]; // stack
-	int chain_size=0;
-
-	const Bone* ibone=&bone;
-	while(ibone->child())
-		ibone=ibone->child();
-
-	while(1)
-	{
-		chain[chain_size++]=ibone->treeIndex();
-		Msg::verify(chain_size<20,"bone_FK stack overflow");
-
-		Bone* parent=ibone->parent();
-		if(!parent) break;
-		ibone=parent;
-	}
-
-
-	ASSERT(&m_skeleton->bone(chain[chain_size-1])==(Bone*)m_skeleton->m_pTreeRoot);	// dummy node
-	ASSERT(&m_skeleton->bone(chain[chain_size-2])==((Bone*)m_skeleton->m_pTreeRoot)->child());
-
-	_global(chain[chain_size-2])=local(chain[chain_size-2]);
-	for(int i=chain_size-3; i>=0; i--)
-		_global(chain[i]).mult(global(chain[i+1]), local(chain[i]));
 }
 
 //////////////////////////////////////////////////////////////////////
@@ -774,7 +531,14 @@ MotionLoader::MotionLoader()
 {
 	_initTranslationTable(m_translationTable);
 	m_pFactory=new TDefaultFactory<Posture>();
-	dofInfo._sharedinfo	=NULL;
+
+	createDummyRootBone();
+	insertChildBone(*((Bone*)m_pTreeRoot), "root");
+	insertJoint(*((Bone*)(m_pTreeRoot->m_pChildHead)), "RT");
+
+	if(!dofInfo._sharedinfo)
+		dofInfo._sharedinfo=new MotionDOFinfo::SharedInfo;
+	dofInfo._sharedinfo->init(*this);
 }
 
 MotionLoader::MotionLoader(const char* filename, const char* option)
@@ -1169,7 +933,7 @@ static void _getBoneByTransJoint(MotionLoader const& skel, std::vector<Bone*>& _
 
 void MotionLoader::removeBone(Bone& target)
 {
-	Msg::verify(target.getRotationalChannels()==0,"removeBone1");
+	//Msg::verify(target.getRotationalChannels()==0,"removeBone1");
 	Msg::verify(target.getTranslationalChannels()==0,"removeBone2");
 	Msg::verify(target.parent(),"removeBone3");
 
@@ -1265,6 +1029,7 @@ void MotionLoader::removeBone(Bone& target)
 			for(int j=0; j<m_cPostureIP.numFrames(); j++)
 			{
 				temp=m_cPostureIP.pose(j);
+				m_cPostureIP.pose(j).Init(numRotJoint(), numTransJoint());
 				for(int k=0; k<numRotJoint(); k++)
 				{
 					m_cPostureIP.pose(j).m_aRotations[_rotJoint2bone[k]->rotJointIndex()]=
@@ -1950,12 +1715,13 @@ void MotionLoader::sortBones(MotionLoader const& referenceSkeleton)
 
 void Bone::printHierarchy(int depth)
 {
-	for(int ii=0; ii<depth; ii++) printf(" ");
+	for(int ii=0; ii<depth; ii++) Msg::print(" ");
 
 	if (treeIndex()>=1 && getSkeleton().dofInfo._sharedinfo)
 	{
-		printf("%s : %d, R: %d, T: %d %s:%s ", NameId, treeIndex(), rotJointIndex(), transJointIndex(), getRotationalChannels().ptr(), getTranslationalChannels().ptr() );
-		printf("startT: %d endR: %d\n",getSkeleton().dofInfo.startT(treeIndex()), getSkeleton().dofInfo.endR(treeIndex()));
+		Msg::print("%s : %d, R: %d, T: %d %s:%s ", NameId, treeIndex(), rotJointIndex(), transJointIndex(), getRotationalChannels().ptr(), getTranslationalChannels().ptr() );
+		Msg::print("startT: %d endR: %d ",getSkeleton().dofInfo.startT(treeIndex()), getSkeleton().dofInfo.endR(treeIndex()));
+		Msg::print("offset: %s \n",getOffsetTransform().translation.output().ptr());
 	}
 
 	for(Node *i=m_pChildHead; i!=NULL; i=i->m_pSibling)
@@ -1972,6 +1738,35 @@ PoseTransfer::PoseTransfer(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, bool 
 {
 	_ctor(pSrcSkel, pTgtSkel, NULL, bCurrPoseAsBindPose);
 }
+
+static void readMappingFile(TStrings & convTable, MotionLoader* pSrcSkel, const char* convfilename)
+{
+	convTable.resize(pSrcSkel->numBone());
+	CTextFile file;
+
+	Msg::verify(file.OpenReadFile(convfilename), "file open error %s", convfilename);
+
+	char *token;
+	while(token=file.GetToken())
+	{
+		char* jointName=token;
+
+		int iindex=pSrcSkel->GetIndex(jointName);
+
+		if(iindex==-1)
+		{
+			Msg::print("warning %s not exist\n", jointName);
+		}
+		else
+		{
+			int ijoint=pSrcSkel->getRotJointIndexByTreeIndex(iindex);
+			ASSERT(ijoint<pSrcSkel->numRotJoint());
+			//convTable[ijoint]=file.GetToken();
+			convTable[iindex]=file.GetToken();
+		}
+	}
+	file.CloseFile();
+}
 void PoseTransfer::_ctor(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, const char* convfilename, bool bCurrPoseAsBindPose)
 {
 	mpSrcSkel=pSrcSkel;
@@ -1981,31 +1776,7 @@ void PoseTransfer::_ctor(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, const c
 
 	if(convfilename && convfilename[0]!=0)
 	{
-		CTextFile file;
-
-		Msg::verify(file.OpenReadFile(convfilename), "file open error %s", convfilename);
-
-		char *token;
-		while(token=file.GetToken())
-		{
-			char* jointName=token;
-
-			int iindex=pSrcSkel->GetIndex(jointName);
-
-			if(iindex==-1)
-			{
-				printf("warning %s not exist\n", jointName);
-			}
-			else
-			{
-				int ijoint=pSrcSkel->getRotJointIndexByTreeIndex(iindex);
-				ASSERT(ijoint<pSrcSkel->numRotJoint());
-				//convTable[ijoint]=file.GetToken();
-				convTable[iindex]=file.GetToken();
-			}
-		}
-
-		file.CloseFile();
+		readMappingFile(convTable, pSrcSkel, convfilename);
 	}
 	else
 	{
@@ -2016,6 +1787,25 @@ void PoseTransfer::_ctor(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, const c
 			convTable[ibone]=pSrcSkel->GetName(ibone);
 		}
 	}
+	_ctor_part2(pSrcSkel,  pTgtSkel, convTable, bCurrPoseAsBindPose);
+}
+PoseTransfer::PoseTransfer(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, TStrings const& convInfoA, TStrings const& convInfoB, bool bCurrPoseAsBindPose)
+{
+	TStrings convTable;
+	convTable.resize(pSrcSkel->numBone());
+	for(int i=0; i<convInfoA.size(); i++)
+	{
+		int ibone=pSrcSkel->getTreeIndexByName(convInfoA[i]);
+		convTable[ibone]=convInfoB[i];
+	}
+
+	_ctor_part2(pSrcSkel,  pTgtSkel, convTable, bCurrPoseAsBindPose);
+}
+
+void PoseTransfer::_ctor_part2(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, TStrings& convTable, bool bCurrPoseAsBindPose)
+{
+	mpSrcSkel=pSrcSkel;
+	mpTgtSkel=pTgtSkel;
 
 	m_aTargetIndex.setSize(pSrcSkel->numRotJoint());
 	m_aTargetIndexByTransJoint.setSize(pSrcSkel->numTransJoint());
@@ -2032,7 +1822,7 @@ void PoseTransfer::_ctor(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, const c
 			TString const& jointName=convTable[ibone];
 			int iindex=mpTgtSkel->GetIndex(jointName);
 			if(iindex==-1)
-				printf("warning %s not exist\n", jointName.ptr());
+				Msg::print("warning %s not exist\n", jointName.ptr());
 			m_aTargetIndexByTransJoint[i]=iindex;
 		}
 		else
@@ -2048,7 +1838,7 @@ void PoseTransfer::_ctor(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, const c
 			int iindex=mpTgtSkel->GetIndex(jointName);
 			m_aTargetIndex[i]=iindex;
 			if(iindex==-1)
-				printf("warning %s not exist\n", jointName.ptr());
+				Msg::print("warning %s not exist\n", jointName.ptr());
 			else
 			{
 				Bone& bone=mpTgtSkel->bone(iindex);
@@ -2281,6 +2071,21 @@ PoseTransfer2::PoseTransfer2(MotionLoader* loaderA, MotionLoader* loaderB)
 		convInfoB[i-1]=loaderA->bone(i).name();
 	}
 	_ctor(loaderA, loaderB, convInfoA, convInfoB, 1.0);
+}
+PoseTransfer2::PoseTransfer2(MotionLoader* loaderA, MotionLoader* loaderB, const char* convfilename, double posScaleFactor)
+{
+	TStrings convInfoA, convInfoB, temp;
+	readMappingFile(temp, loaderA, convfilename);
+	for (int i=1;i< loaderA->numBone();i++)
+	{
+		if (temp[i].length()>0 )
+		{
+			convInfoA.pushBack(loaderA->bone(i).name());
+			convInfoB.pushBack(temp[i]);
+		}
+	}
+
+	_ctor(loaderA, loaderB, convInfoA, convInfoB, posScaleFactor);
 }
 void PoseTransfer2::_ctor(MotionLoader* _loaderA, MotionLoader* _loaderB, TStrings const& convInfoA, TStrings const& convInfoB, double _posScaleFactor)
 {

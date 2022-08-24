@@ -51,10 +51,12 @@ public:
 	void unpack(VRMLloader& l, BinaryFile& bf);
 	void copyFrom(VRMLTransform const& bone);	
 	void setJointAxes(const char* axes);
+	virtual void printHierarchy(int depth);
 
 	// shortcuts:
 	bool hasShape() const;
 	OBJloader::Geometry& getMesh() const;
+	void createNewShape() ; // replacing the existing one if any.
 	int numHRPjoints() const;
 	int HRPjointIndex(int i) const;
 	int DOFindex(int i) const;
@@ -124,6 +126,9 @@ public:
 	void exportBinary(const char* filename);
 	VRMLTransform& VRMLbone(int treeIndex) const;
 	int numHRPjoints();
+	void changeAll3DOFjointsToSpherical();
+	void changeAllMultiDOFjointsToSpherical(); 
+	void changeAllJointsToSpherical(); // except the root.
 	
 	virtual void scale(float fScale, Motion& mot);
 
@@ -133,7 +138,7 @@ public:
 	void setChannels(Bone& bone, const char* translation_axis, const char* rotation_axis);
 	void insertChildJoint(Bone& parent, const char* tchannels, const char* rchannels, const char* nameId, bool bMoveChildren);
 	void insertChildJoint(Bone& parent, const char* tchannels, const char* rchannels, const char* nameId, bool bMoveChildren, vector3 const& offset);
-	//void setTotalMass( m_real totalMass);
+	void setTotalMass( m_real totalMass);
 	void printDebugInfo();
 	void changeTotalMass( m_real newtotalMass);
 	static void projectAngles(vectorn & temp1);

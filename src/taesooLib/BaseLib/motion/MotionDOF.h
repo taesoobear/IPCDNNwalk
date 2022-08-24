@@ -37,6 +37,7 @@ public:
 	void calcForwardDerivative(int i, vectorn & dpose, double frameRate=120) const;
 	
 	MotionDOFview range(int start, int end);	// [start, end)
+	const MotionDOFview range(int start, int end) const;	// [start, end)
 	MotionDOFview range_c(int first, int last);	// [first, last] (closed interval)
 	matrixnView _matView();
 	int numFrames()	const			{ return rows(); }
@@ -56,11 +57,14 @@ public:
 	void samplePose(m_real criticalTime, vectorn& out) const;
 	void sampleBone(int ibone, m_real criticalTime, vectorn& out) const;
 
-	// out.length() will become motA.length()+motB.length()
+	// for the following three functions: 
 	// out.size() will become motA.size()+motB.size()-1
+	// in other words, out.length() will become motA.length()+motB.length()
 	void stitch(MotionDOF const& motA, MotionDOF const& motB);
+	// modifies 1 frame in the middle. (Basically, a very abrupt transition.)
 	void align(MotionDOF const& motA, MotionDOF const& motB);
-
+	// does not modify any frame. (no stitch.) Just concat so that the last pose of motA is colocated with the first pose of motB
+	void alignSimple(MotionDOF const& motA, MotionDOF const& motB);
 
 	// Encode InterframeDifference.
 	// The Delta representation is not compatible with MotionLoader.

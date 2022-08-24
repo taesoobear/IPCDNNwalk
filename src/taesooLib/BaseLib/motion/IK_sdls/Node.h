@@ -11,10 +11,10 @@ typedef double m_real;
 #ifndef M_PI 
 #define M_PI 3.141592
 #endif
-enum Purpose {HINGEJOINT, SLIDEJOINT, FREEJOINT,EFFECTOR, DUMMY_EFFECTOR};
+enum Purpose {HINGEJOINT, SLIDEJOINT, FREEJOINT,BALLJOINT, EFFECTOR, DUMMY_EFFECTOR};
 
 // Taesoo Kwon completely rewrote many parts of the original tutorial code by Buss,
-// and added support for SlideJoint, FreeJoint, RelativeConstraint, and velocity integration.
+// and added support for SlideJoint, FreeJoint, BallJoint, RelativeConstraint, and velocity integration.
 
 namespace MotionUtil
 {
@@ -60,10 +60,11 @@ public:
 	virtual void updateLocal(){}
 
 	bool IsEffector() const { return purpose==EFFECTOR; } 
-	bool IsJoint() const { return purpose==HINGEJOINT || purpose==SLIDEJOINT; }
+	bool IsJoint() const { return purpose==HINGEJOINT || purpose==SLIDEJOINT || purpose==BALLJOINT; }
 	bool IsHingeJoint() const { return purpose==HINGEJOINT;}
 	bool IsSlideJoint() const{ return purpose==SLIDEJOINT; }
 	bool IsFreeJoint() const {return purpose==FREEJOINT;}
+	bool IsBallJoint() const {return purpose==BALLJOINT;}
 
 	int GetEffectorNum() const { return seqNumEffector; }
 	int GetJointNum() const { return seqNumJoint; }
@@ -73,10 +74,10 @@ public:
 	void Freeze() { freezed = true; }
 	void UnFreeze() { freezed = false; }
 
-	vector3 const& bodyLinVel() { return loc_lin_vel;}
-	vector3 const& bodyAngVel() { return loc_ang_vel;}
-	vector3 const& relLinVel() { return rel_lin_vel;}
-	vector3 const& relAngVel() { return rel_ang_vel;}
+	vector3 const& bodyLinVel() const { return loc_lin_vel;}
+	vector3 const& bodyAngVel()  const{ return loc_ang_vel;}
+	vector3 const& relLinVel() const { return rel_lin_vel;}
+	vector3 const& relAngVel()  const{ return rel_ang_vel;}
 
 	Node* left;				// left child
 	Node* right;			// right sibling
@@ -161,6 +162,19 @@ public:
 	virtual void _updateGrad_S_JT(double* g, vector3 const& deltaS, vector3 const& target);
 	virtual void _updateGrad_S_JT_residual(double* g, vector3 const& deltaS_lpos){}
 	virtual void _calcRotJacobian(MatrixRmn& J, int i_row);
+};
+
+class BallJoint : public Node
+{
+public:
+	BallJoint(const vector3 &lpos):Node(lpos, BALLJOINT){}
+	inline vector3 const& GetJointVel3DOF() const {return rel_ang_vel;}
+	inline void SetJointVel3DOF(vector3 const& omega) {
+		rel_ang_vel=omega;
+		rel_lin_vel.zero();
+	}
+	void Integrate(vector3 const& omega, double timestep);
+
 };
 
 class Effector : public Node

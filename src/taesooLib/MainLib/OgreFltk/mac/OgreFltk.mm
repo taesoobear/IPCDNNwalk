@@ -1,13 +1,13 @@
 
 #import <Cocoa/Cocoa.h>
 #import <Ogre.h>
-#import <OgreOSXCocoaView.h>
+#import <OgreOSXCocoaView.h> // located in ogre-13.4.3 -> copy to /usr/local/include/OGRE/
 #define __glew_h__
-#include <OgreOSXCocoaWindow.h>
+#include <OgreOSXCocoaWindow.h>// located in ogre-13.4.3 -> copy to /usr/local/include/OGRE/
 using namespace Ogre;
 
 
-#if OGRE_VERSION_MINOR >= 12 
+#if OGRE_VERSION_MINOR >= 12 || OGRE_VERSION_MAJOR>=13
 #define COCOA_WINDOW CocoaWindow
 #else
 #define COCOA_WINDOW OSXCocoaWindow

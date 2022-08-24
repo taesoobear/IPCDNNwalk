@@ -30,7 +30,11 @@ Torus Knot Software Ltd.
 -----------------------------------------------------------------------------
 */
 
+#if OGRE_VERSION_MAJOR<13
 #include "OgreStableHeaders.h"
+#else
+#include "OgreLodStrategy.h"
+#endif
 #include "OgreSkinEntity.h"
 
 #include "OgreMeshManager.h"
@@ -58,6 +62,14 @@ Torus Knot Software Ltd.
 
 namespace Ogre {
     
+	inline bool isLodManual(Ogre::MeshPtr mMesh)
+	{
+#if OGRE_VERSION_MAJOR>=13
+		return mMesh->hasManualLodLevel();
+#else
+		return mMesh->isLodManual();
+#endif
+	}
 	void softwareVertexSkinning2(
         const float *pSrcPos, float *pDestPos,
         const float *pSrcNorm, float *pDestNorm,
@@ -182,7 +194,7 @@ namespace Ogre {
 		buildSkinSubEntityList(mMesh, &mSkinSubEntityList);
 
 		// Check if mesh is using manual LOD
-		if (mMesh->isLodManual())
+		if (isLodManual(mMesh))
 		{
 			ushort i, numLod;
 			numLod = mMesh->getNumLodLevels();
@@ -203,7 +215,11 @@ namespace Ogre {
 		{
 			mFrameBonesLastUpdated = new unsigned long(std::numeric_limits<unsigned long>::max());
 			mNumBoneMatrices = mSkeletonInstance->getNumBones();
+#if OGRE_VERSION_MAJOR<13
 			mBoneMatrices = static_cast<Matrix4*>(AlignedMemory::allocate(sizeof(Matrix4) * mNumBoneMatrices));
+#else
+            mBoneMatrices = static_cast<Affine3*>(OGRE_MALLOC_SIMD(sizeof(Affine3) * mNumBoneMatrices, MEMCATEGORY_ANIMATION));
+#endif
 		}
 		if (hasSkeleton() || hasVertexAnimation())
 		{
@@ -511,7 +527,11 @@ namespace Ogre {
             aa_box = child_itr->second->getBoundingBox();
             TagPoint* tp = (TagPoint*)child_itr->second->getParentNode();
             // Use transform local to skeleton since world xform comes later
+#if OGRE_VERSION_MAJOR>=13
+            aa_box.transform(tp->_getFullLocalTransform());
+#else
             aa_box.transformAffine(tp->_getFullLocalTransform());
+#endif
 
             full_aa_box.merge(aa_box);
         }
@@ -565,7 +585,7 @@ namespace Ogre {
 
         SkinEntity* displayEntity = this;
 		// Check we're not using a manual LOD
-        if (mMeshLodIndex > 0 && mMesh->isLodManual())
+        if (mMeshLodIndex > 0 && isLodManual(mMesh))
         {
             // Use alternate SkinEntity
             assert( static_cast< size_t >( mMeshLodIndex - 1 ) < mLodSkinEntityList.size() &&
@@ -621,6 +641,7 @@ namespace Ogre {
         // TODO work out a way to allow bones to be rendered when SkinEntity not centered
         if (mDisplaySkeleton && hasSkeleton())
         {
+#if OGRE_VERSION_MAJOR<13
             int numBones = mSkeletonInstance->getNumBones();
             for (int b = 0; b < numBones; ++b)
             {
@@ -632,6 +653,7 @@ namespace Ogre {
                      queue->addRenderable(bone->getDebugRenderable(1));
                 }
             }
+#endif
         }
 
 
@@ -867,8 +889,14 @@ namespace Ogre {
                 // when using software animation.
                 if (!mBoneWorldMatrices)
                 {
+#if OGRE_VERSION_MAJOR<13
                     mBoneWorldMatrices =
                         static_cast<Matrix4*>(AlignedMemory::allocate(sizeof(Matrix4) * mNumBoneMatrices));
+#else
+                    mBoneWorldMatrices =
+                        static_cast<Affine3*>(OGRE_MALLOC_SIMD(sizeof(Affine3) * mNumBoneMatrices, MEMCATEGORY_ANIMATION));
+                    std::fill(mBoneWorldMatrices, mBoneWorldMatrices + mNumBoneMatrices, Affine3::IDENTITY);
+#endif
                 }
 
                 OptimisedUtil::getImplementation()->concatenateAffineMatrices(
@@ -885,7 +913,7 @@ namespace Ogre {
 	{
 		if (vdata->hwAnimationDataList.size() < numberOfElements)
 		{
-#if OGRE_VERSION_MINOR>=9
+#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
 			vdata->allocateHardwareAnimationElements(numberOfElements, true);
 #else
 			vdata->allocateHardwareAnimationElements(numberOfElements);
@@ -1087,6 +1115,7 @@ namespace Ogre {
 		for (VertexData::HardwareAnimationDataList::const_iterator i = destData->hwAnimationDataList.begin();
 			i != destData->hwAnimationDataList.end(); ++i)
 		{
+#if OGRE_VERSION_MAJOR<13
 			const VertexData::HardwareAnimationData& animData = *i;
 			if (!destData->vertexBufferBinding->isBufferBound(
 				animData.targetVertexElement->getSource()))
@@ -1095,6 +1124,16 @@ namespace Ogre {
 				destData->vertexBufferBinding->setBinding(
 					animData.targetVertexElement->getSource(), srcBuf);
 			}
+#else
+            const VertexData::HardwareAnimationData& animData = *i;
+            if (!destData->vertexBufferBinding->isBufferBound(
+                animData.targetBufferIndex))
+            {
+                // Bind to a safe default
+                destData->vertexBufferBinding->setBinding(
+                    animData.targetBufferIndex, srcBuf);
+            }
+#endif
 		}
 
 	}
@@ -1229,8 +1268,13 @@ namespace Ogre {
         {
             subMesh = mesh->getSubMesh(i);
             subEnt = new SkinSubEntity(this, subMesh);
+#if OGRE_VERSION_MAJOR<13
             if (subMesh->isMatInitialised())
                 subEnt->setMaterialName(subMesh->getMaterialName());
+#else
+            if (subMesh->getMaterial())
+                subEnt->setMaterial(subMesh->getMaterial());
+#endif
             sublist->push_back(subEnt);
         }
     }
@@ -1581,7 +1625,7 @@ namespace Ogre {
             "Only 16-bit indexes supported for now");
 
         // Potentially delegate to LOD SkinEntity
-        if (mMesh->isLodManual() && mMeshLodIndex > 0)
+        if (isLodManual(mMesh) && mMeshLodIndex > 0)
         {
             // Use alternate SkinEntity
             assert( static_cast< size_t >( mMeshLodIndex - 1 ) < mLodSkinEntityList.size() &&
@@ -1622,9 +1666,13 @@ namespace Ogre {
 
         // Calculate the object space light details
         Vector4 lightPos = light->getAs4DVector();
+#if OGRE_VERSION_MAJOR<13
         Matrix4 world2Obj = mParentNode->_getFullTransform().inverseAffine();
         lightPos = world2Obj.transformAffine(lightPos);
-
+#else
+        Affine3 world2Obj = mParentNode->_getFullTransform().inverse();
+        lightPos = world2Obj * lightPos;
+#endif
         // We need to search the edge list for silhouette edges
         EdgeData* edgeList = getEdgeList();
 
@@ -1727,8 +1775,14 @@ namespace Ogre {
         updateEdgeListLightFacing(edgeList, lightPos);
 
         // Generate indexes and update renderables
+#if OGRE_VERSION_MAJOR<13
         generateShadowVolume(edgeList, *indexBuffer, light,
             mShadowRenderables, flags);
+#else
+		size_t indexBufferUsedSize;
+        generateShadowVolume(edgeList, *indexBuffer, indexBufferUsedSize, light,
+            mShadowRenderables, flags);
+#endif
 
 
         return ShadowRenderableListIterator(mShadowRenderables.begin(), mShadowRenderables.end());
@@ -1923,7 +1977,7 @@ namespace Ogre {
         MovableObject::setRenderQueueGroup(queueID);
 
         // Set render queue for all manual LOD entities
-        if (mMesh->isLodManual())
+        if (isLodManual(mMesh))
         {
             LODSkinEntityList::iterator li, liend;
             liend = mLodSkinEntityList.end();
@@ -2005,7 +2059,11 @@ namespace Ogre {
             mMesh->_initAnimationState(mAnimationState);
             mFrameBonesLastUpdated = new unsigned long(std::numeric_limits<unsigned long>::max());
             mNumBoneMatrices = mSkeletonInstance->getNumBones();
+#if OGRE_VERSION_MAJOR<13
             mBoneMatrices = static_cast<Matrix4*>(AlignedMemory::allocate(sizeof(Matrix4) * mNumBoneMatrices));
+#else
+            mBoneMatrices = static_cast<Affine3*>(OGRE_MALLOC_SIMD(sizeof(Affine3) * mNumBoneMatrices, MEMCATEGORY_ANIMATION));
+#endif
 
             mSharedSkeletonEntities->erase(this);
             if (mSharedSkeletonEntities->size() == 1)
@@ -2152,6 +2210,8 @@ namespace Ogre {
 		delete obj;
 	}
 
+
+#if OGRE_VERSION_MAJOR<13
 	// taesoo
 	void SkinEntity::softwareVertexBlend(Matrix4 *boneMatrices, Ogre::Mesh::IndexMap& indexMap, VertexData* sourceVertexData, VertexData* targetVertexData, bool blendNormals)
 	{
@@ -2304,7 +2364,13 @@ namespace Ogre {
         if (includeNormals && destNormBuf != destPosBuf) destNormBuf->unlock();
 #endif
 	}
+#else
 
+	void SkinEntity::softwareVertexBlend(Affine3 *boneMatrices, Ogre::Mesh::IndexMap& indexMap, VertexData* sourceVertexData, VertexData* targetVertexData, bool blendNormals)
+	{
+		Msg::error("software vertex blend not implemented yet");
+	}
+#endif
 
 
 	void softwareVertexSkinning(

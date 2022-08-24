@@ -63,7 +63,8 @@ public:
 	inline float GetEndFrame()														{ return m_fEndFrame;};
 	inline float GetReturnFrame()													{ return m_fReturnFrame;};
 	inline float GetCycleInterval()													{ return m_fCycleInterval;};	
-	Interpolator* GetFirstInterpolator()											{ return *m_cInterpolatorList.begin();};
+	bool hasInterpolator() const { return !m_cInterpolatorList.empty();}
+	Interpolator* GetFirstInterpolator();
 	void update();
 private:
 	

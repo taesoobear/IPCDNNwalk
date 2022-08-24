@@ -510,13 +510,6 @@ void BinaryFile::pack(const intmatrixn& mat)
 			_packInt(mat[i][j]);
 }
 
-void BinaryFile::pack(const TArray<TString>& aSz)
-{
-	_packInt(TYPE_STRINGN);
-	_packInt(aSz.size());
-	for(int i=0; i<aSz.size(); i++)
-		pack((const char*)aSz[i]);
-}
 
 void BinaryFile::pack(const TStrings& aSz)
 {
@@ -564,14 +557,14 @@ void BinaryFile::_unpackBit(bitvectorn& vec)
 		vec.setRawData(t, vec.size());
 	}
 }
-void BinaryFile::pack(const BitArray& bits)
+void BinaryFile::pack(const BaseLib::BitArray& bits)
 {
 	_packInt(TYPE_BITN);
 	_packInt(32);
 	_packInt(int(bits.m_Bits));
 }
 
-void BinaryFile::unpack(BitArray& bits)
+void BinaryFile::unpack(BaseLib::BitArray& bits)
 {
 	Msg::verify(_unpackInt()==TYPE_BITN, "unpack bitArray failed");
 	Msg::verify(_unpackInt()==32, "unpack bitArray failed");
@@ -740,13 +733,6 @@ void BinaryFile::unpack(intmatrixn& mat)
 			_unpackInt(mat[i][j]);
 }
 
-void BinaryFile::unpack(TArray<TString>& aSz)
-{
-	Msg::verify(_unpackInt()==TYPE_STRINGN,"unpackTArray<TString> failed");
-	aSz.init(_unpackInt());
-	for(int i=0; i<aSz.size(); i++)
-		unpack(aSz[i]);
-}
 
 void BinaryFile::unpack(TStrings& aSz)
 {

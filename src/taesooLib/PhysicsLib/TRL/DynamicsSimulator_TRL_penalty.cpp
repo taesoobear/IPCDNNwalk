@@ -11,6 +11,7 @@
  *
  */
 #include "physicsLib.h"
+#include "../../BaseLib/motion/IK_sdls/NodeWrap.h"
 #include "DynamicsSimulator.h"
 #include "Body.h"
 #include <vector>
@@ -27,7 +28,7 @@
 #include "TRL_common.h"
 #include "../BaseLib/motion/VRMLloader_internal.h"
 
-using namespace OpenHRP;
+//using namespace OpenHRP;
 using namespace std;
 
 
@@ -35,7 +36,7 @@ using namespace std;
 static const int debugMode = false;
 static const bool enableTimeMeasure = false;
 
-DynamicsSimulator_TRL_penalty::DynamicsSimulator_TRL_penalty(bool usc)
+OpenHRP::DynamicsSimulator_TRL_penalty::DynamicsSimulator_TRL_penalty(bool usc)
 :DynamicsSimulator_penaltyMethod(usc)
 {
 	if(debugMode){
@@ -46,7 +47,7 @@ DynamicsSimulator_TRL_penalty::DynamicsSimulator_TRL_penalty(bool usc)
 	world.setRungeKuttaMethod();
 }
 
-DynamicsSimulator_TRL_penalty::DynamicsSimulator_TRL_penalty(const char* coldet)
+OpenHRP::DynamicsSimulator_TRL_penalty::DynamicsSimulator_TRL_penalty(const char* coldet)
 :DynamicsSimulator_penaltyMethod(coldet)
 {
 	if(debugMode){
@@ -58,59 +59,27 @@ DynamicsSimulator_TRL_penalty::DynamicsSimulator_TRL_penalty(const char* coldet)
 }
 
 
-DynamicsSimulator_TRL_penalty::~DynamicsSimulator_TRL_penalty()
+OpenHRP::DynamicsSimulator_TRL_penalty::~DynamicsSimulator_TRL_penalty()
 {
 	if(debugMode){
 		cout << "DynamicsSimulator_TRL_penalty::~DynamicsSimulator_TRL_penalty()" << endl;
 	}
 }
 
-Liegroup::dse3 DynamicsSimulator_TRL_penalty::calcMomentumCOM(int ichara)
+void OpenHRP::DynamicsSimulator_TRL_penalty::getBodyVelocity(int chara, VRMLTransform* b, Liegroup::se3& V) const 
 {
-#if 0
-	// use all joints including internal dummy joints
-	TRL::BodyPtr cinfo=world.body(ichara);
-	Liegroup::dse3 out;
-	vector3 com=cinfo->calcCM();
-	cinfo->calcTotalMomentum(out.F(), out.M());
-	return out.dAd(transf(quater(1,0,0,0), com));
-#else
-	// use only those described in the wrl file.
-	// slightly different result from the above, but is 
-	// consistent with jacobian matrices. 
-	VRMLloader* skel=_characters[ichara]->skeleton;
-	TRL::BodyPtr cinfo=world.body(ichara);
+	TRL::BodyPtr cinfo=world.body(chara);
 
-	::vector3 com(0,0,0);
-	Liegroup::dse3 H(0,0,0,0,0,0);
+	TRL::Link* link=getTRLlink(cinfo,b->HRPjointIndex(b->numHRPjoints()-1));
+	quater R;
+	R.setRotation(link->attitude());
+	quater invR=R.inverse();
 
-	m_real totalMass=0.0;
-	for(int ibone=1; ibone<skel->numBone(); ibone++)
-	{
-		VRMLTransform& bone=skel->VRMLbone(ibone);
-		ASSERT(bone.mSegment);
-		double mass=bone.mass();
-		transf & G=getWorldState(ichara)._global(bone);
-		com+=(G*bone.localCOM())*mass;
-		totalMass+=mass;
-		quater invR=getWorldState(ichara)._global(bone).rotation.inverse();
-
-		TRL::Link* link=getTRLlink(cinfo,bone.HRPjointIndex(bone.numHRPjoints()-1));
-		Liegroup::se3 V(invR*link->w, invR*link->v);
-		Liegroup::Inertia I(mass, bone.momentsOfInertia(), mass*bone.localCOM());
-		H+=(I*V).inv_dAd(G);
-	}
-
-	com/=totalMass;
-
-	Liegroup::dse3 v;
-	v.dAd(transf(quater(1,0,0,0), com), H);
-
-
-	return v;
-#endif
+	V.W()=invR*link->w;
+	V.V()=invR*link->v;
 }
-void DynamicsSimulator_TRL_penalty::_registerCharacter
+
+void OpenHRP::DynamicsSimulator_TRL_penalty::_registerCharacter
 (
  const char *name,
  CharacterInfo const& chara
@@ -145,8 +114,10 @@ void DynamicsSimulator_TRL_penalty::_registerCharacter
 		MotionDOFinfo &dofInfo=chara.loader->dofInfo;
 		int sj=b.mJoint->jointStartId;
 		int sDOF=dofInfo.startDQ(i);
-		int nDOF=dofInfo.endDQ(i)-sDOF;
-		for(int jj=0; jj<nDOF; jj++)
+		int nJoint=dofInfo.endDQ(i)-sDOF;
+		if (dofInfo.hasQuaternion(i))
+			nJoint=1;// spherical joint
+		for(int jj=0; jj<nJoint; jj++)
 		{
 			TRL::Link* j=getTRLlink(cinfo,jj+sj);
 			j->dqIndex=sDOF+jj;
@@ -159,7 +130,7 @@ void DynamicsSimulator_TRL_penalty::_registerCharacter
 	}
 }
 
-void DynamicsSimulator_TRL_penalty::setTimestep(double ts)
+void OpenHRP::DynamicsSimulator_TRL_penalty::setTimestep(double ts)
 {
 	world.setTimeStep(ts);
 	for(int i=0; i<world.numBodies(); i++)
@@ -168,15 +139,15 @@ void DynamicsSimulator_TRL_penalty::setTimestep(double ts)
 		fd->setTimeStep(ts);
 	}
 }
-double DynamicsSimulator_TRL_penalty::getTimestep()
+double OpenHRP::DynamicsSimulator_TRL_penalty::getTimestep()
 {
 	return world.timeStep();
 }
-void DynamicsSimulator_TRL_penalty::setCurrentTime(double t)
+void OpenHRP::DynamicsSimulator_TRL_penalty::setCurrentTime(double t)
 {
     world.setCurrentTime(t);
 }
-void DynamicsSimulator_TRL_penalty::init(
+void OpenHRP::DynamicsSimulator_TRL_penalty::init(
 		double timeStep,
 		OpenHRP::DynamicsSimulator::IntegrateMethod integrateOpt)
 {	
@@ -197,12 +168,19 @@ void DynamicsSimulator_TRL_penalty::init(
 	world.setGravityAcceleration(world.getGravityAcceleration());
 }
 
-void DynamicsSimulator_TRL_penalty::initSimulation()
+void OpenHRP::DynamicsSimulator_TRL_penalty::initSimulation()
 {
 	if(debugMode){
 		cout << "DynamicsSimulator_TRL_penalty::initSimulation()" << endl;
 	}
+#ifdef RBDL_ENABLE_LOGGING
+	OutputToFile("output_trl.log", "::initSimulation");
+#endif
 
+	int n = world.numBodies();
+	for(int i=0; i < n; ++i){
+        world.body(i)->calcForwardKinematics(false, false);
+	}
 	world.initialize();
 
 	_updateCharacterPose();
@@ -210,11 +188,19 @@ void DynamicsSimulator_TRL_penalty::initSimulation()
 	_contactForces.clear();
 	_calcContactForce(*collisions);
 
+	for(int i=0; i<world.numBodies(); i++)
+		world.body(i)->clearExternalForces();
+
+#ifdef RBDL_ENABLE_LOGGING
+	OutputToFile("output_trl.log", LogOutput.str().c_str());
+	ClearLogOutput();
+	OutputToFile("output_trl.log", "::initSimulationEnd");
+#endif
 }
 
 //#include "../BaseLib/utility/QPerformanceTimer.h"
 
-void DynamicsSimulator_TRL_penalty::getWorldVelocity(int ichara, VRMLTransform* b
+void OpenHRP::DynamicsSimulator_TRL_penalty::getWorldVelocity(int ichara, VRMLTransform* b
 			, ::vector3 const& localpos
 			, ::vector3& velocity) const
 {
@@ -223,27 +209,30 @@ void DynamicsSimulator_TRL_penalty::getWorldVelocity(int ichara, VRMLTransform* 
 	TRL::Link* link=getTRLlink(cinfo,b->HRPjointIndex(b->numHRPjoints()-1));
 
 	velocity=link->v+cross(link->w, link->R * localpos);
+
 	//RE::output(b->name(), "%s",velocity.output().ptr());
+	//if (ichara==0) cout << "worldvel at "<<currentTime()<<" :"<<b->treeIndex()<<", "<<velocity <<endl;
 }	
 
-void DynamicsSimulator_TRL_penalty::getWorldAngVel(int ichara, VRMLTransform* b, ::vector3& angvel) const
+void OpenHRP::DynamicsSimulator_TRL_penalty::getWorldAngVel(int ichara, VRMLTransform* b, ::vector3& angvel) const
 { 
   	TRL::BodyPtr cinfo=((DynamicsSimulator_TRL_penalty*)this)->world.body(ichara);
 	TRL::Link* link=getTRLlink(cinfo,b->HRPjointIndex(b->numHRPjoints()-1));
 	angvel=link->w;
 }
 
-void DynamicsSimulator_TRL_penalty::getWorldAcceleration(int ichara,VRMLTransform* b
+void OpenHRP::DynamicsSimulator_TRL_penalty::getWorldAcceleration(int ichara,VRMLTransform* b
 			, ::vector3 const& localpos
 			, ::vector3& acc) const
 {
 	TRL::BodyPtr cinfo=((DynamicsSimulator_TRL_penalty*)this)->world.body(ichara);
 	TRL::Link* link=getTRLlink(cinfo,b->HRPjointIndex(b->numHRPjoints()-1));
 
-	acc=link->dv+cross(link->dw, link->R* localpos);
+	vector3 gp=link->R*localpos+link->p;
+	acc= link->dvo - cross(gp, link->dw) + cross(link->w, vector3(link->vo + cross(link->w, gp)));
 }
 
-void DynamicsSimulator_TRL_penalty::addForceToBone
+void OpenHRP::DynamicsSimulator_TRL_penalty::addForceToBone
 (int ichara, VRMLTransform* b, ::vector3 const& localpos, ::vector3 const& force)
 {
 	TRL::BodyPtr cinfo=world.body(ichara);
@@ -254,10 +243,11 @@ void DynamicsSimulator_TRL_penalty::addForceToBone
 	::vector3 gf=getWorldState(ichara)._global(*b).toGlobalDir(force);
 	::vector3 gp=getWorldState(ichara)._global(*b).toGlobalPos(localpos);
 
+	//if (ichara==0) cout << "contact at "<<currentTime()<<" :"<<b->treeIndex()<<", "<<gp <<", "<<gf<<endl;
 	link->fext+=gf;
 	link->tauext+=gp.cross(gf);
 }
-void DynamicsSimulator_TRL_penalty::addWorldTorqueToBone(int ichara, VRMLTransform* b, ::vector3 const& world_torque)
+void OpenHRP::DynamicsSimulator_TRL_penalty::addWorldTorqueToBone(int ichara, VRMLTransform* b, ::vector3 const& world_torque)
 {
 	TRL::BodyPtr cinfo=world.body(ichara);
 	TRL::Link* link=getTRLlink(cinfo,b->HRPjointIndex(b->numHRPjoints()-1));
@@ -277,7 +267,7 @@ static void _addForceToLink(TRL::WorldBase& world, int ichara, VRMLTransform* b,
 }
 
 
-bool DynamicsSimulator_TRL_penalty::stepSimulation()
+bool OpenHRP::DynamicsSimulator_TRL_penalty::stepSimulation()
 {
 
 	// set external forces
@@ -291,7 +281,7 @@ bool DynamicsSimulator_TRL_penalty::stepSimulation()
 
 		// TRL uses inertial frame for external forces.
 
-		::vector3 gtau=getWorldState(c.chara)._global(*c.bone).toGlobalDir(c.tau);
+		vector3 gtau=getWorldState(c.chara)._global(*c.bone).toGlobalDir(c.tau);
 		link->tauext+=gtau;
 	}
 	world.calcNextState();	
@@ -310,7 +300,7 @@ bool DynamicsSimulator_TRL_penalty::stepSimulation()
 
 
 
-void DynamicsSimulator_TRL_penalty::setGVector
+void OpenHRP::DynamicsSimulator_TRL_penalty::setGVector
 (
  const ::vector3& wdata
  )
@@ -327,7 +317,7 @@ void DynamicsSimulator_TRL_penalty::setGVector
 }
 
 
-void DynamicsSimulator_TRL_penalty::getGVector
+void OpenHRP::DynamicsSimulator_TRL_penalty::getGVector
 (
  ::vector3& g
  )
@@ -336,7 +326,7 @@ void DynamicsSimulator_TRL_penalty::getGVector
 
 }
 
-void DynamicsSimulator_TRL_penalty::calcBodyJacobianAt(int ichar, int ibone, matrixn& J, vector3 const& localpos)
+void OpenHRP::DynamicsSimulator_TRL_penalty::calcBodyJacobianAt(int ichar, int ibone, matrixn& J, vector3 const& localpos)
 {
 	vector3 targetPos= getWorldState(ichar).global(ibone)*localpos;
 	TRL::BodyPtr cinfo = world.body(ichar);
@@ -389,7 +379,7 @@ void DynamicsSimulator_TRL_penalty::calcBodyJacobianAt(int ichar, int ibone, mat
 	}
 }
 
-void DynamicsSimulator_TRL_penalty::calcDotBodyJacobianAt(int ichar, int ibone, matrixn& J, matrixn& DJ, vector3 const& localpos)
+void OpenHRP::DynamicsSimulator_TRL_penalty::calcDotBodyJacobianAt(int ichar, int ibone, matrixn& J, matrixn& DJ, vector3 const& localpos)
 {
 	calcBodyJacobianAt(ichar, ibone, J, localpos);
 
@@ -456,7 +446,7 @@ void DynamicsSimulator_TRL_penalty::calcDotBodyJacobianAt(int ichar, int ibone, 
 	}
 }
 
-void DynamicsSimulator_TRL_penalty::calcJacobianAt
+void OpenHRP::DynamicsSimulator_TRL_penalty::calcJacobianAt
 (
  int ichar, 
  int ibone,
@@ -467,7 +457,7 @@ void DynamicsSimulator_TRL_penalty::calcJacobianAt
 	vector3 targetPos= getWorldState(ichar).global(ibone)*localpos;
 	_calcJacobianAt(ichar, ibone, J, targetPos);
 }
-void DynamicsSimulator_TRL_penalty::_calcJacobianAt(int ichar, int ibone, matrixn& J, vector3 const& targetPos)
+void OpenHRP::DynamicsSimulator_TRL_penalty::_calcJacobianAt(int ichar, int ibone, matrixn& J, vector3 const& targetPos)
 {
 	//vector3 targetPos== targetLink->p+targetLink->R*localpos;
 	TRL::BodyPtr cinfo = world.body(ichar);
@@ -521,7 +511,7 @@ void DynamicsSimulator_TRL_penalty::_calcJacobianAt(int ichar, int ibone, matrix
 		J.column(path.joint(i)->dqIndex).assign(subj.column(i));
 	}
 }
-void DynamicsSimulator_TRL_penalty::calcDotJacobianAt
+void OpenHRP::DynamicsSimulator_TRL_penalty::calcDotJacobianAt
 (
  int ichar, 
  int ibone,
@@ -532,7 +522,7 @@ void DynamicsSimulator_TRL_penalty::calcDotJacobianAt
 	vector3 targetPos= getWorldState(ichar).global(ibone)*localpos;
 	_calcDotJacobianAt(ichar, ibone, DJ, targetPos);
 }
-void DynamicsSimulator_TRL_penalty::_calcDotJacobianAt(int ichar, int ibone, matrixn& DJ, vector3 const& targetPos)
+void OpenHRP::DynamicsSimulator_TRL_penalty::_calcDotJacobianAt(int ichar, int ibone, matrixn& DJ, vector3 const& targetPos)
 {
 	TRL::BodyPtr cinfo = world.body(ichar);
 	assert(cinfo);
@@ -590,7 +580,7 @@ void DynamicsSimulator_TRL_penalty::_calcDotJacobianAt(int ichar, int ibone, mat
 }
 
 // output is compatible to MotionDOF class.
-void DynamicsSimulator_TRL_penalty::getLinkData(int ichara, LinkDataType t, vectorn& out)
+void OpenHRP::DynamicsSimulator_TRL_penalty::getLinkData(int ichara, LinkDataType t, vectorn& out)
 {
 	VRMLloader const& l=*_characters[ichara]->skeleton;
 
@@ -657,7 +647,10 @@ void DynamicsSimulator_TRL_penalty::getLinkData(int ichara, LinkDataType t, vect
 
 		}
 		else if (b.mJoint->jointType==HRP_JOINT::BALL){
+			ASSERT(false);
+			/*
 			TRL::Link* j=getTRLlink(cinfo,b.mJoint->jointStartId);
+			TRL::Link3* j3=(TRL::Link3*)j;
 
 			ASSERT(l.dofInfo.hasQuaternion(i));
 			int sRDOF=l.dofInfo.startR(i);
@@ -666,17 +659,19 @@ void DynamicsSimulator_TRL_penalty::getLinkData(int ichara, LinkDataType t, vect
 			{
 			case OpenHRP::DynamicsSimulator::JOINT_VALUE:
 				{
-					quater q=toBase(j->attitude());
+					quater q=toBase(j3->rel_R);
 					imag=q.w;
 					v.x=q.x;v.y=q.y;v.z=q.z;
 				}
 				break;
 			case OpenHRP::DynamicsSimulator::JOINT_VELOCITY:
-				v=j->w;
+				//v=j3->rel_R.multT(j3->p_ang_vel);
+				v=j3->rel_ang_vel;
 				imag=0.0;
 				break;
 			case OpenHRP::DynamicsSimulator::JOINT_ACCELERATION:
-				v=j->dw;
+				//v=j3->rel_R.multT(j3->p_ang_acc);
+				v=j3->rel_ang_acc;
 				imag=0.0;
 				break;
 			case OpenHRP::DynamicsSimulator::JOINT_TORQUE:
@@ -689,6 +684,7 @@ void DynamicsSimulator_TRL_penalty::getLinkData(int ichara, LinkDataType t, vect
 			
 			out[sRDOF]=imag;
 			out.setVec3(sRDOF+1, v);
+			*/
 		}
 		else			
 		{
@@ -723,7 +719,7 @@ void DynamicsSimulator_TRL_penalty::getLinkData(int ichara, LinkDataType t, vect
 }
 
 // output is compatible to MotionDOF class.
-void DynamicsSimulator_TRL_penalty::setLinkData(int ichara, LinkDataType t, vectorn const& in)
+void OpenHRP::DynamicsSimulator_TRL_penalty::setLinkData(int ichara, LinkDataType t, vectorn const& in)
 {
 	VRMLloader const& l=*this->_characters[ichara]->skeleton;
 
@@ -764,7 +760,17 @@ void DynamicsSimulator_TRL_penalty::setLinkData(int ichara, LinkDataType t, vect
 				}
 				else if(b.mJoint->jointType==HRP_JOINT::BALL)
 				{
-					ASSERT(FALSE);
+					/*
+					TRL::Link* j=getTRLlink(cinfo,b.mJoint->jointStartId);
+					TRL::Link3* j3=(TRL::Link3*)j;
+					int sRDOF=l.dofInfo.startR(i);
+					imag=in[sRDOF];
+					v=in.toVector3(sRDOF+1); 
+					quater q(imag,v.x, v.y, v.z);
+					q.normalize();
+					j3->rel_R=toOpenHRP(q);
+					*/
+					ASSERT(false);
 				}
 				else
 				{
@@ -807,7 +813,17 @@ void DynamicsSimulator_TRL_penalty::setLinkData(int ichara, LinkDataType t, vect
 				}
 				else if(b.mJoint->jointType==HRP_JOINT::BALL)
 				{
-					ASSERT(FALSE);
+					/* 
+					TRL::Link* j=getTRLlink(cinfo,b.mJoint->jointStartId);
+					TRL::Link3* j3=(TRL::Link3*)j;
+					int sRDOF=l.dofInfo.startR(i);
+					//j3->p_ang_vel=j3->rel_R*in.toVector3(sRDOF+1); // omega
+					j3->rel_ang_vel=in.toVector3(sRDOF+1); // omega
+#ifdef RBDL_ENABLE_LOGGING
+					LOG <<" omega "<< j3->rel_ang_vel<<endl;
+#endif
+*/
+					ASSERT(false);
 				}
 				else
 				{
@@ -902,11 +918,11 @@ void DynamicsSimulator_TRL_penalty::setLinkData(int ichara, LinkDataType t, vect
 	}
 }
 
-double DynamicsSimulator_TRL_penalty::currentTime()
+double OpenHRP::DynamicsSimulator_TRL_penalty::currentTime() const
 {
 	return world.currentTime();
 }
-void DynamicsSimulator_TRL_penalty::calcMassMatrix(int ichara, matrixn& M, vectorn & b)
+void OpenHRP::DynamicsSimulator_TRL_penalty::calcMassMatrix(int ichara, matrixn& M, vectorn & b)
 {
 	TRL::BodyPtr cinfo=((DynamicsSimulator_TRL_penalty*)this)->world.body(ichara);
 	unsigned int nJ = cinfo->numJoints();
@@ -935,7 +951,7 @@ void DynamicsSimulator_TRL_penalty::calcMassMatrix(int ichara, matrixn& M, vecto
 
 */
 }
-void DynamicsSimulator_TRL_penalty::getU(int ichara, double  out[]) const
+void OpenHRP::DynamicsSimulator_TRL_penalty::_getU(int ichara, double  out[]) const
 {
 	VRMLloader const& l=*_characters[ichara]->skeleton;
 
@@ -961,7 +977,7 @@ void DynamicsSimulator_TRL_penalty::getU(int ichara, double  out[]) const
 	}
 }
 
-void DynamicsSimulator_TRL_penalty::setU(int ichara, const vectorn& in)
+void OpenHRP::DynamicsSimulator_TRL_penalty::setU(int ichara, const vectorn& in)
 {
 	VRMLloader const& l=*_characters[ichara]->skeleton;
 
@@ -985,16 +1001,15 @@ void DynamicsSimulator_TRL_penalty::setU(int ichara, const vectorn& in)
 }
 
 
-#include "../../BaseLib/motion/IK_sdls/NodeWrap.h"
-void DynamicsSimulator_TRL_penalty::poseToQ(vectorn const& v, vectorn& out) 
+void OpenHRP::DynamicsSimulator_TRL_penalty::poseToQ(vectorn const& v, vectorn& out) 
 { 
 	IK_sdls::LoaderToTree::poseToQ(v, out);
 }
-void DynamicsSimulator_TRL_penalty::dposeToDQ(quater const& rootOri, vectorn const& v, vectorn& out) 
+void OpenHRP::DynamicsSimulator_TRL_penalty::dposeToDQ(quater const& rootOri, vectorn const& v, vectorn& out) 
 { 
 	IK_sdls::LoaderToTree::dposeToDQ(rootOri, v, out);
 }
-void DynamicsSimulator_TRL_penalty::torqueToU(const vectorn& v, vectorn& U)  
+void OpenHRP::DynamicsSimulator_TRL_penalty::torqueToU(const vectorn& v, vectorn& U)  
 { 
 	int rdof=v.size(); U.setSize(rdof-1); 
 	U.setVec3(0, v.toVector3(0)); 
@@ -1002,7 +1017,68 @@ void DynamicsSimulator_TRL_penalty::torqueToU(const vectorn& v, vectorn& U)
 	U.range(6, rdof-1).assign(v.range(7,rdof)); 
 }
 
-void DynamicsSimulator_TRL_penalty::setQ(int ichara, const double v[])
+
+void OpenHRP::DynamicsSimulator_TRL_penalty::setNonStatePoseDOF(int ichara, vectorn const& v)
+{
+	TRL::BodyPtr cinfo=world.body(ichara);
+	TRL::Link* j;
+	j=cinfo->rootLink();
+	if(j->jointType==TRL::Link::FIXED_JOINT)
+	{
+		j->p=v.toVector3(0);
+		j->setAttitude(toOpenHRP(v.toQuater(3)));
+	}
+ 	else
+		Msg::error("setNonStateQ???");
+}
+void OpenHRP::DynamicsSimulator_TRL_penalty::setNonStateDQ(int ichara, vectorn const& dq)
+{
+	TRL::BodyPtr cinfo=world.body(ichara);
+	TRL::Link* j;
+	j=cinfo->rootLink();
+	if(j->jointType==TRL::Link::FIXED_JOINT)
+	{
+		j->w=dq.toVector3(0);
+		j->v=dq.toVector3(3);
+		// this line is important because j->v is calculated from j->vo.
+		j->vo= j->v - cross(j->w,j->p);
+	}
+ 	else
+		Msg::error("setNonStateDQ???");
+}
+void OpenHRP::DynamicsSimulator_TRL_penalty::setNonStateDDQ(int ichara, vectorn const& ddq)
+{
+	TRL::BodyPtr cinfo=world.body(ichara);
+	TRL::Link* j;
+	j=cinfo->rootLink();
+	if(j->jointType==TRL::Link::FIXED_JOINT)
+	{
+		j->dw=ddq.toVector3(0);
+		j->dv=ddq.toVector3(3);
+		
+		// this line is important as j->dv is calculated form j->dvo.
+		j->dvo = j->dv - cross(j->dw, j->p) - cross(j->w, j->v);
+	}
+ 	else
+		Msg::error("setNonStateDDQ???");
+}
+transf OpenHRP::DynamicsSimulator_TRL_penalty::getNonStateRootQ(int ichara)
+{
+
+	transf tf;
+	TRL::BodyPtr cinfo=world.body(ichara);
+	TRL::Link* j;
+	j=cinfo->rootLink();
+	if(j->jointType==TRL::Link::FIXED_JOINT)
+	{
+		tf.translation=j->p;
+		tf.rotation.setRotation(j->attitude());
+	}
+ 	else
+		Msg::error("setNonStateQ???");
+	return tf;
+}
+void OpenHRP::DynamicsSimulator_TRL_penalty::_setQ(int ichara, const double v[])
 {
 	VRMLloader const& l=*_characters[ichara]->skeleton;
 
@@ -1026,7 +1102,7 @@ void DynamicsSimulator_TRL_penalty::setQ(int ichara, const double v[])
 		}
 	}
 }
-void DynamicsSimulator_TRL_penalty::getQ(int ichara, double v[]) const
+void OpenHRP::DynamicsSimulator_TRL_penalty::_getQ(int ichara, double v[]) const
 {
 	VRMLloader const& l=*_characters[ichara]->skeleton;
 
@@ -1055,35 +1131,44 @@ void DynamicsSimulator_TRL_penalty::getQ(int ichara, double v[]) const
 		}
 	}
 }
-void DynamicsSimulator_TRL_penalty::_updateCharacterPose()
+void OpenHRP::DynamicsSimulator_TRL_penalty::_updateCharacterPose()
 {
 	int n = _characters.size();
 
 	vectorn v;
 	for(int i=n-1; i>=0; i--)
 	{
-		vectorn& _tempPose=_getLastSimulatedPose(i);
-		int ndof=dof(i);
-		if (ndof==0) continue;
-		if(rdof(i)==ndof)
-			getQ(i, _tempPose);
+		TRL::BodyPtr cinfo=world.body(i);
+		TRL::Link* j=cinfo->rootLink();
+		if(j->jointType==TRL::Link::FIXED_JOINT)
+		{
+			auto& chain=_characters[i]->chain;
+			VRMLTransform* b;
+			VRMLloader& skel=skeleton(i);
+			int numBone=skel.numBone();
+			// this can be changed now.
+			for(int ti=1; ti<numBone;ti++)
+			{
+				VRMLTransform* b=&skel.VRMLbone(ti);
+				TRL::Link* j=getTRLlink(cinfo,b->HRPjointIndex(b->numHRPjoints()-1));
+				transf& T=chain->_global(ti);
+				T.rotation.setRotation(j->R);
+				T.translation=j->p;
+			}
+
+			chain->inverseKinematicsExact();
+		}
 		else
 		{
-			getQ(i,v);
-			QToPose(v, _tempPose);
+			auto& chain=_characters[i]->chain;
+			vectorn& _tempPose=_getLastSimulatedPose(i);
+			getLinkData(i, OpenHRP::DynamicsSimulator::JOINT_VALUE, _tempPose);
+			chain->setPoseDOF(_tempPose);
 		}
-		/*Posture pose;
-		VRMLloader* loader=_characters[i]->skeleton;
-		pose.Init(loader->numRotJoint(), loader->numTransJoint());
-		_characters[i]->skeleton->dofInfo.setDOF(_tempPose, pose);
-		_characters[i]->chain->setPose(pose);
-		*/
-		if(ndof)
-			_characters[i]->chain->setPoseDOF(_tempPose);
 	}
 }
 
-void DynamicsSimulator_TRL_penalty::getDQ(int ichara, double out[]) const
+void OpenHRP::DynamicsSimulator_TRL_penalty::_getDQ(int ichara, double out[]) const
 {
 	VRMLloader const& l=*_characters[ichara]->skeleton;
 
@@ -1119,7 +1204,7 @@ void DynamicsSimulator_TRL_penalty::getDQ(int ichara, double out[]) const
 		}
 	}
 }
-void DynamicsSimulator_TRL_penalty::setDQ(int ichara, const double in[])
+void OpenHRP::DynamicsSimulator_TRL_penalty::_setDQ(int ichara, const double in[])
 {
 	VRMLloader const& l=*_characters[ichara]->skeleton;
 
@@ -1159,7 +1244,7 @@ void DynamicsSimulator_TRL_penalty::setDQ(int ichara, const double in[])
 		}
 	}
 }
-void DynamicsSimulator_TRL_penalty::setDDQ(int ichara, vectorn const& in)
+void OpenHRP::DynamicsSimulator_TRL_penalty::setDDQ(int ichara, vectorn const& in)
 {
 	VRMLloader const& l=*_characters[ichara]->skeleton;
 
@@ -1195,7 +1280,7 @@ void DynamicsSimulator_TRL_penalty::setDDQ(int ichara, vectorn const& in)
 		}
 	}
 }
-TRL::Link* DynamicsSimulator_TRL_penalty::getLink(int ichara, int ibone, int jj)
+TRL::Link* OpenHRP::DynamicsSimulator_TRL_penalty::getLink(int ichara, int ibone, int jj)
 {
 	TRL::BodyPtr cinfo=((DynamicsSimulator_TRL_penalty*)this)->world.body(ichara);
 	VRMLTransform* b;
@@ -1205,7 +1290,7 @@ TRL::Link* DynamicsSimulator_TRL_penalty::getLink(int ichara, int ibone, int jj)
 	TRL::Link* j=getTRLlink(cinfo,jj+sj);
 	return j;
 }
-int DynamicsSimulator_TRL_penalty::calcS(int ichara, int ibone, matrixn& S)
+int OpenHRP::DynamicsSimulator_TRL_penalty::calcS(int ichara, int ibone, matrixn& S)
 {
 	TRL::BodyPtr cinfo = world.body(ichara);
 	VRMLTransform* b;
@@ -1219,7 +1304,7 @@ int DynamicsSimulator_TRL_penalty::calcS(int ichara, int ibone, matrixn& S)
 	path.calcAngularJacobian(S);
 	return targetLink->dqIndex-S.cols()+1;
 }
-int DynamicsSimulator_TRL_penalty::getDQindex(int ichara, int ibone, int idof)
+int OpenHRP::DynamicsSimulator_TRL_penalty::getDQindex(int ichara, int ibone, int idof)
 { 
 	return getLink(ichara, ibone, idof)->dqIndex;
 }
@@ -1248,7 +1333,7 @@ static inline Liegroup::dse3 mult(matrixn const& in, Liegroup::dse3 const& in2)
 }
 
 
-void DynamicsSimulator_TRL_penalty::calcMomentumDotJacobian(int ichar, matrixn& jacobian, matrixn& dotjacobian)
+void OpenHRP::DynamicsSimulator_TRL_penalty::calcMomentumDotJacobian(int ichar, matrixn& jacobian, matrixn& dotjacobian)
 {
 	VRMLloader const& l=*_characters[ichar]->skeleton;
 	VRMLTransform* b;
@@ -1422,9 +1507,9 @@ inline vector3 getDotEuler(double eulerZYX[], vector3 const& ang)
 	// reorder to ZYX
 	return vector3(eulerRate.z, eulerRate.y, eulerRate.x);
 }
-void DynamicsSimulator_TRL_penalty::stateToEulerZYX(vectorn const& q, vectorn const& dq, vectorn& eulerState) const
+void OpenHRP::DynamicsSimulator_TRL_penalty::stateToEulerZYX(vectorn const& q, vectorn const& dq, vectorn& eulerState) const
 {
-	DynamicsSimulator_TRL_penalty const& robot=*this;
+	OpenHRP::DynamicsSimulator_TRL_penalty const& robot=*this;
 
 	int NDOF=robot.dof();
 
@@ -1457,9 +1542,9 @@ void DynamicsSimulator_TRL_penalty::stateToEulerZYX(vectorn const& q, vectorn co
 	VCOPYN(&state[6], &temp[6], NDOF-6);
 	VCOPYN(&state[NDOF+6], &temp2[6], NDOF-6);
 }
-void DynamicsSimulator_TRL_penalty::stateToEulerYXZ(vectorn const& q, vectorn const& dq, vectorn& eulerState) const
+void OpenHRP::DynamicsSimulator_TRL_penalty::stateToEulerYXZ(vectorn const& q, vectorn const& dq, vectorn& eulerState) const
 {
-	DynamicsSimulator_TRL_penalty const& robot=*this;
+	OpenHRP::DynamicsSimulator_TRL_penalty const& robot=*this;
 
 	int NDOF=robot.dof();
 
@@ -1497,7 +1582,7 @@ void DynamicsSimulator_TRL_penalty::stateToEulerYXZ(vectorn const& q, vectorn co
 	VCOPYN(&state[6], &temp[6], NDOF-6);
 	VCOPYN(&state[NDOF+6], &temp2[6], NDOF-6);
 }
-void DynamicsSimulator_TRL_penalty::eulerYXZtoState(vectorn const& eulerState, vectorn& _state) const
+void OpenHRP::DynamicsSimulator_TRL_penalty::eulerYXZtoState(vectorn const& eulerState, vectorn& _state) const
 {
 	int NDOF=dof();
 	_state.resize(NDOF*2+1);
@@ -1530,7 +1615,7 @@ void DynamicsSimulator_TRL_penalty::eulerYXZtoState(vectorn const& eulerState, v
 	// fillDQ
 	VCOPYN(&temp[NDOF+1+6], &state[NDOF+6], NDOF-6);
 }
-void DynamicsSimulator_TRL_penalty::inverseDynamics(vectorn const& q, vectorn const& dq, vectorn const& ddq, vectorn& u)
+void OpenHRP::DynamicsSimulator_TRL_penalty::inverseDynamics(vectorn const& q, vectorn const& dq, vectorn const& ddq, vectorn& u)
 {
 	int ichara= 0;
 	TRL::BodyPtr cinfo=((DynamicsSimulator_TRL_penalty*)this)->world.body(ichara);
@@ -1553,7 +1638,7 @@ void DynamicsSimulator_TRL_penalty::inverseDynamics(vectorn const& q, vectorn co
 
 }
 
-void DynamicsSimulator_TRL_penalty::eulerZYXtoState(vectorn const& eulerState, vectorn& _state) const
+void OpenHRP::DynamicsSimulator_TRL_penalty::eulerZYXtoState(vectorn const& eulerState, vectorn& _state) const
 {
 	int NDOF=dof();
 	_state.resize(NDOF*2+1);
@@ -1585,4 +1670,147 @@ void DynamicsSimulator_TRL_penalty::eulerZYXtoState(vectorn const& eulerState, v
 
 	// fillDQ
 	VCOPYN(&temp[NDOF+1+6], &state[NDOF+6], NDOF-6);
+}
+
+
+void OpenHRP::DynamicsSimulator_TRL_penalty::getSphericalState(int ichara, vectorn & q, vectorn& dq)
+{
+	// packing is different from setLinkData or setQ/setD
+	VRMLloader& l=skeleton(ichara);
+	int nquat=l.dofInfo.numSphericalJoint();
+	int ndof=l.dofInfo.numDOF();
+	int qindex=0;
+	int qsindex=ndof-nquat*4;
+	int dqsindex=qsindex;
+
+	q.setSize(ndof);
+	dq.setSize(qsindex+nquat*3);
+
+	TRL::Body* cinfo=world.body(ichara);
+	TRL::Link* j;
+	for(int i=-1, ni=cinfo->numJoints(); i<ni; i++)
+	{
+		j=cinfo->joint(i);
+		//printf("joint %d : %f %f %f %f %s %d %d %d %d\n", i, j->m, j->I._11, j->I._22, j->I._33, j->c.output().ptr(),  j->dqIndex, qindex, qsindex, dqsindex);
+		
+		if(j->jointType==TRL::Link::FREE_JOINT)
+		{
+			quater rq=toBase(j->attitude());
+			ASSERT(qindex==0);
+			q[0]=j->p.x;
+			q[1]=j->p.y;
+			q[2]=j->p.z;
+
+			q.setQuater(qsindex, rq);
+
+			vector3 v=j->v;
+			vector3 w=j->w;
+			v.rotate(rq.inverse());
+			w.rotate(rq.inverse());
+
+			dq.setVec3(0, v);
+			dq.setVec3(dqsindex, w);
+
+			qindex+=3;
+			qsindex+=4;
+			dqsindex+=3;
+		}
+		else if(j->dqIndex!=-1)
+		{
+			q[qindex]=j->q;
+			dq[qindex]=j->dq;
+			qindex++;
+		}
+	}
+	ASSERT(qindex==ndof-nquat*4);
+	ASSERT(qsindex==q.size());
+	ASSERT(dqsindex==dq.size());
+}
+void OpenHRP::DynamicsSimulator_TRL_penalty::setSphericalState(int ichara, const vectorn& q, const vectorn& dq) // packing is different from setLinkData or setQ/setDQ
+{
+	// packing is different from setLinkData or setQ/setD
+	VRMLloader& l=skeleton(ichara);
+	int nquat=l.dofInfo.numSphericalJoint();
+	int ndof=l.dofInfo.numDOF();
+	int qindex=0;
+	int qsindex=ndof-nquat*4;
+	int dqsindex=qsindex;
+
+
+
+	TRL::Body* cinfo=world.body(ichara);
+	TRL::Link* j;
+	for(int i=-1, ni=cinfo->numJoints(); i<ni; i++)
+	{
+		j=cinfo->joint(i);
+		
+		if(j->jointType==TRL::Link::FREE_JOINT)
+		{
+			ASSERT(qindex==0);
+			j->p=q.toVector3(0);
+			quater rq=q.toQuater(qsindex);
+			j->setAttitude(toOpenHRP(rq));
+
+			vector3 v=dq.toVector3(0);
+			vector3 w=dq.toVector3(dqsindex);
+			// body to world
+			v.rotate(rq);
+			w.rotate(rq);
+
+			j->w=w;
+
+			// this line is important because j->v is calculated from j->vo.
+			j->vo= v - cross(j->w,j->p);
+			j->v= v;
+
+			qindex+=3;
+			qsindex+=4;
+			dqsindex+=3;
+		}
+		else if(j->dqIndex!=-1)
+		{
+			j->q=q[qindex];
+			j->dq=dq[qindex];
+			qindex++;
+		}
+	}
+	ASSERT(qindex==ndof-nquat*4);
+	ASSERT(qsindex==q.size());
+	ASSERT(dqsindex==dq.size());
+}
+void OpenHRP::DynamicsSimulator_TRL_penalty::setTau(int ichara, const vectorn& tau) // packing is different from setLinkData or setU
+{
+	// packing is different from setLinkData or setQ/setD
+	VRMLloader& l=skeleton(ichara);
+	int nquat=l.dofInfo.numSphericalJoint();
+	int ndof=l.dofInfo.numDOF();
+	int qindex=0;
+	int dqsindex=ndof-nquat*4;
+
+	ASSERT(tau.size()==dqsindex+nquat*3);
+
+	TRL::Body* cinfo=world.body(ichara);
+	TRL::Link* j;
+	for(int i=-1, ni=cinfo->numJoints(); i<ni; i++)
+	{
+		j=cinfo->joint(i);
+		
+		if(j->jointType==TRL::Link::FREE_JOINT)
+		{
+			vector3 f=tau.toVector3(0);
+			vector3 t=tau.toVector3(dqsindex);
+			j->fext=f;
+			j->tauext=t;
+
+			qindex+=3;
+			dqsindex+=3;
+		}
+		else if(j->dqIndex!=-1)
+		{
+			j->u=tau[qindex];
+			qindex++;
+		}
+	}
+	ASSERT(qindex==ndof-nquat*4);
+	ASSERT(dqsindex==tau.size());
 }

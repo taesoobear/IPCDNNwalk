@@ -30,10 +30,12 @@
 PLDPrimSkin::PLDPrimSkin()
 :AnimationObject()
 {
+	mChain=NULL;
 	mDrawCallback=NULL;
 	mBeforeDrawCallback=NULL;
 	mType="PLDPrimSkin";
 }
+
 void PLDPrimSkin::scale(double x, double y, double z)
 {
 #ifndef NO_OGRE
@@ -90,6 +92,7 @@ void PLDPrimSkin_impl::setDrawOrientation(int ijoint)
 
 PLDPrimSkin::~PLDPrimSkin()
 {
+	delete mChain;
 }
 PLDPrimSkin_impl::PLDPrimSkin_impl()
 {
@@ -224,7 +227,6 @@ PLDPrimSkel::PLDPrimSkel(MotionLoader* pBVHL)
 
 PLDPrimSkel::~PLDPrimSkel()
 {
-	delete mChain;
 }
 
 int PLDPrimSkel::UpdateBone()

@@ -56,7 +56,7 @@ public:
 	virtual void decomposeRot() const;
 
 
-	BitArray constraint;
+	BaseLib::BitArray constraint;
 
 	///////////////////////////////////////////////
 	// Inter-frame difference관련 시작

@@ -46,13 +46,26 @@ class se3
 		double squaredLen() const { return _m[0] * _m[0] + _m[1] * _m[1] + _m[2] * _m[2] + _m[3] * _m[3] + _m[4] * _m[4] + _m[5] * _m[5]; }
 
 		// angular velocity
-		vector3 & W() const { return *((vector3*)(&_m[0]));}
+		inline vector3 & W() const { return *((vector3*)(&_m[0]));}
 		// velocity
-		vector3 & V() const { return *((vector3*)(&_m[3]));}
+		inline vector3 & V() const { return *((vector3*)(&_m[3]));}
 		friend se3 operator * (double d, const se3 &t) { return se3(d * t._m[0], d * t._m[1], d * t._m[2], d * t._m[3], d * t._m[4], d * t._m[5]); }
 		transf exp() const;
 		void log(transf const& o);
 		void Ad(transf const& T, se3 const& o);
+		void Ad(vector3 const& trans, se3 const& o);
+		void Ad(quater const& rot, se3 const& o);
+
+		// skew
+		inline matrix4 M() const { matrix4 m; m.setSkew(W()); m.setTranslation(V(), true); m._41=0.0; m._42=0.0; m._43=0.0; m._44=0.0; return m;}
+
+		inline se3 Ad(transf const& T) const { se3 out; out.Ad(T,*this); return out;}
+		inline se3 Ad(vector3 const& T) const { se3 out; out.Ad(T,*this); return out;}
+		inline se3 Ad(quater const& T) const { se3 out; out.Ad(T,*this); return out;}
+		
+		inline vector3 Ad_v(transf const& T) const { return Ad(T).V();}
+		inline vector3 Ad_v(vector3 const& T) const { return V()+T.cross(W());}
+
 		inline vectornView vec() const { return vectornView((m_real*)&_m[0], 6, 1);}
 };
 
@@ -63,6 +76,8 @@ inline vector3 position(matrix4 const& m) 		{ vector3 v; v.x=m._14; v.y=m._24; v
 inline matrix3 skew(vector3 const& w) 				{ matrix3 m; m.setTilde(w.x, w.y, w.z); return m;}
 inline se3 mult(matrix3 const& r, se3 const& in) 	{ return se3(r*in.W(), r*in.V()); }
 se3 twist(transf const& tf1, transf const& tf2, double timestep);
+se3 twist_nonlinear(transf const& tf1, transf const& tf2, double timestep);
+
 
 class dse3
 {
@@ -183,6 +198,7 @@ inline void dAd(::matrixn& a, transf const& b)
 	a.range(0,3,3,6).mult(a.range(0,3,0,3),skew_b_T);
 	skew_b_T.setAllValue(0);
 }
+
 inline matrix4 calcDotT(transf const& b, se3 const& V)// V=inv_b*dot_b
 {
 	// b= (R p) 

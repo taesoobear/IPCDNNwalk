@@ -2,6 +2,7 @@
 #define __boolN_H_
 #pragma once
 
+namespace BaseLib {
 //! BitArray의 Fast Version
 /*! 다른 종류의 BitArray는 BitProxy class를 사용하여 a[10]=0 처럼 lvalue로 사용되는 것이 가능하지만,
 이 BitArray는 lvalue로 사용되는 경우 Assign 또는 SetAt, ClearAt을 사용하여야 한다.
@@ -38,6 +39,7 @@ public:
 	unsigned int m_Bits;
 	
 };
+}
 
 // boolN (range operation is possible)
 class _boolN_worker; // only for internal use.

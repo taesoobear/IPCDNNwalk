@@ -89,6 +89,11 @@ void transf::operator=(matrix4 const& a)
 	rotation.setRotation(a); 
 	translation.translation(a);
 }
+void transf::operator=(transf const& a)
+{
+	rotation=a.rotation;
+	translation=a.translation;
+}
 
 void transf::mult(transf const& a, transf const& b )
 {

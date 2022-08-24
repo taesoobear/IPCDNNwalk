@@ -436,11 +436,6 @@ void matrix4::transpose(const matrix4& a)
 #endif
 }
 
-void matrix4::transpose()
-{
-	matrix4 temp(*this);
-	transpose(temp);
-}
 
 void matrix4::setAxisRotation( const vector3& vecAxis, const vector3& front, const vector3& vecTarget)
 {

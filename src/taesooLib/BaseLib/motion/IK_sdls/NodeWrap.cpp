@@ -11,6 +11,7 @@
 #include <memory.h>
 #include "../../BaseLib/motion/intersectionTest.h"
 #include "../../BaseLib/motion/Liegroup.h"
+#include "../../BaseLib/math/Operator_NR.h"
 void IK_sdls::LoaderToTree::getTheta(double *m_x)
 {
 	int c=0;
@@ -234,7 +235,6 @@ void IK_sdls::LoaderToTree::calcCOMjacobianTranspose(const VRMLloader& loader, m
 	JT*=1.0/totalmass;
 }
 
-Liegroup::se3 transf_twist_nonlinear(transf const& tf1, transf const& tf2, double timestep);
 Liegroup::dse3 IK_sdls::LoaderToTree::calcMomentumCOMfromPose(const VRMLloader& loader, double delta_t, BoneForwardKinematics &chain1)
 {
 	::vector3 com(0,0,0);
@@ -250,7 +250,7 @@ Liegroup::dse3 IK_sdls::LoaderToTree::calcMomentumCOMfromPose(const VRMLloader& 
 		totalMass+=mass;
 		Node* n = getLastNode(ibone);
 		//Liegroup::se3 V=transf_twist(chain1.global(bone), chain2.global(bone),delta_t);
-		Liegroup::se3 V=transf_twist_nonlinear(chain1.global(bone), n->globalFrame(),delta_t);
+		Liegroup::se3 V=Liegroup::twist_nonlinear(chain1.global(bone), n->globalFrame(),delta_t);
 		//printf("%d : %s, %f %f %f\n", ibone, V.W().output().ptr(), body->V[0], body->V[1], body->V[2]);
 		//printf("%d : %s, %f %f %f\n", ibone, V.V().output().ptr(), body->V[3], body->V[4], body->V[5]);
 
@@ -266,6 +266,32 @@ Liegroup::dse3 IK_sdls::LoaderToTree::calcMomentumCOMfromPose(const VRMLloader& 
 	v.dAd(transf(quater(1,0,0,0), com), H);
 	return v;
 }
+Liegroup::se3 IK_sdls::LoaderToTree::calcInverseInertiaTimesMomentumCOM(const VRMLloader& loader)
+{
+	vectorn I;
+	double m=calcInertia(loader, I);
+	vector3 r(I(7), I(8), I(9));
+	matrixn I6;
+	I6.setValues(6,6, 
+			I(0),I(3), I(4), 0.0, -r.z, r.y,
+			I(3),I(1), I(5), r.z, 0.0,  -r.x,
+			I(4),I(5), I(2), -r.y, r.x, 0.0 ,
+			0.0, r.z, -r.y, m,   0.0 , 0.0,
+			-r.z,0.0,  r.x, 0.0,  m,  0.0,
+			r.y, -r.x, 0.0, 0.0,  0.0,  m);
+
+	matrixn invI;
+	m::LUinvert(invI,I6);
+	vectorn Hcom(6);
+	vectorn deltaS(6);
+	Liegroup::dse3 hcom=calcMomentumCOM(loader);
+	memcpy(&Hcom(0), &hcom._m[0], sizeof(double)*6);
+	deltaS.column().mult(invI, Hcom.column());
+	Liegroup::se3 ds;
+	ds.W()=deltaS.toVector3(0);
+	ds.V()=deltaS.toVector3(3);
+	return ds;
+}
 Liegroup::dse3 IK_sdls::LoaderToTree::calcMomentumCOMtoPose(const VRMLloader& loader, double delta_t, BoneForwardKinematics &chain2)
 {
 	::vector3 com(0,0,0);
@@ -280,7 +306,7 @@ Liegroup::dse3 IK_sdls::LoaderToTree::calcMomentumCOMtoPose(const VRMLloader& lo
 		Node* n = getLastNode(ibone);
 		com+=n->globalFrame().toGlobalPos(bone.localCOM())*mass;
 		totalMass+=mass;
-		Liegroup::se3 V=transf_twist_nonlinear(n->globalFrame(), chain2.global(bone),delta_t);
+		Liegroup::se3 V=Liegroup::twist_nonlinear(n->globalFrame(), chain2.global(bone),delta_t);
 		//printf("%d : %s, %f %f %f\n", ibone, V.W().output().ptr(), body->V[0], body->V[1], body->V[2]);
 		//printf("%d : %s, %f %f %f\n", ibone, V.V().output().ptr(), body->V[3], body->V[4], body->V[5]);
 
@@ -595,13 +621,20 @@ void IK_sdls::LoaderToTree::setPoseDOF(IK_sdls::Tree & mTree, MotionDOFinfo cons
 
 				if(mDofInfo.hasQuaternion(treeIndex))
 				{
-					m_real euler[3];
-					TString channels=bone->getRotationalChannels();
-					//printf("channels %s\n", channels.ptr());
-					pose.toQuater(mDofInfo.startR(treeIndex)).getRotation(channels, euler);
+					if(mNode[i].node[0]->IsBallJoint())
+					{
+						mNode[i].node[0]->_local.rotation=pose.toQuater(mDofInfo.startR(treeIndex));
+					}
+					else
+					{
+						m_real euler[3];
+						TString channels=bone->getRotationalChannels();
+						//printf("channels %s\n", channels.ptr());
+						pose.toQuater(mDofInfo.startR(treeIndex)).getRotation(channels, euler);
 
-					for(int c=0; c<channels.length(); c++)
-						mNode[i].node[rotStartIndex+c]->SetTheta(euler[c]);
+						for(int c=0; c<channels.length(); c++)
+							mNode[i].node[rotStartIndex+c]->SetTheta(euler[c]);
+					}
 				}
 				else
 				{
@@ -907,7 +940,8 @@ void IK_sdls::LoaderToTree::integrate(MotionDOFinfo const& mDofInfo, vectorn con
 			}
 			if(mDofInfo.hasQuaternion(treeIndex))
 			{
-				Msg::error("not implemented yet");
+				auto* n=((IK_sdls::BallJoint*)mNode[i].node[0]);
+				n->Integrate(dtheta.toVector3(mDofInfo.startR(treeIndex)+1), timeStep);
 			}
 			else
 			{
@@ -921,6 +955,66 @@ void IK_sdls::LoaderToTree::integrate(MotionDOFinfo const& mDofInfo, vectorn con
 		else if(mNode[i].node[0]->IsFreeJoint())
 		{
 			((IK_sdls::FreeJoint*)mNode[i].node[0])->Integrate(dtheta, timeStep);
+		}
+	}
+	
+	// Update the positions and rotation axes of all joints/effectors
+	mTree.Compute(); 
+}
+
+void IK_sdls::LoaderToTree::integrate(MotionDOFinfo const& mDofInfo, double timeStep)
+{
+	// this function does not call setVelocity. If global velocities are necessary, call it yourself.
+	for(int i=0; i<mNode.size(); i++)
+	{
+		Bone* bone=mNode[i].bone;
+		int treeIndex=bone->GetIndex();
+
+		if(mNode[i].node[0]->IsJoint())
+		{
+			int rotStartIndex=0;
+			if (mNode[i].node[0]->IsSlideJoint())
+			{
+				TString channels=bone->getTranslationalChannels();
+
+				for(int c=0; c<channels.length(); c++)
+				{
+					auto* n=((SlideJoint*)mNode[i].node[c]);
+					n->AddToTheta(n->GetDTheta()*timeStep);
+				}
+
+				rotStartIndex+=channels.length();
+			}
+			if(mDofInfo.hasQuaternion(treeIndex))
+			{
+				ASSERT(getNode(treeIndex).node[0]->IsBallJoint());
+				auto* n=((IK_sdls::BallJoint*)mNode[i].node[0]);
+
+				//cout << "before" <<n->_local.rotation<<endl;
+				n->Integrate(n->GetJointVel3DOF(), timeStep);
+				//cout << "after" <<n->_local.rotation<<endl;
+			}
+			else
+			{
+				TString channels=bone->getRotationalChannels();
+
+				for(int c=0; c<channels.length(); c++)
+				{
+					auto* n=((HingeJoint*)mNode[i].node[rotStartIndex+c]);
+					n->AddToTheta(n->GetDTheta()*timeStep);
+				}
+			}
+		}
+		else if(mNode[i].node[0]->IsFreeJoint())
+		{
+			vectorn dtheta(7);
+			vector3 lin_vel, ang_vel;
+			auto* n=((IK_sdls::FreeJoint*)mNode[i].node[0]);
+
+			n->GetJointVel(lin_vel, ang_vel);
+			dtheta.setVec3(0, lin_vel);
+			dtheta.setVec3(4, ang_vel);
+			n->Integrate(dtheta, timeStep);
 		}
 	}
 	
@@ -1151,13 +1245,20 @@ void IK_sdls::LoaderToTree::getPoseDOF(MotionDOFinfo const& mDofInfo, vectorn& o
 
 				if(mDofInfo.hasQuaternion(treeIndex))
 				{
-					quater q;
-					m_real euler[3];
-					for(int c=0; c<channels.length(); c++)
-						euler[c]=mNode[i].node[c+rotStartIndex]->GetTheta();
-					q.setRotation(channels, euler);
-					output.range(mDofInfo.startR(treeIndex),
-							mDofInfo.endR(treeIndex)).assign(q);
+					if(mNode[i].node[0]->IsBallJoint())
+					{
+						output.range(mDofInfo.startR(treeIndex), mDofInfo.endR(treeIndex)).assign(mNode[i].node[0]->_local.rotation);
+					}
+					else
+					{
+						quater q;
+						m_real euler[3];
+						for(int c=0; c<channels.length(); c++)
+							euler[c]=mNode[i].node[c+rotStartIndex]->GetTheta();
+						q.setRotation(channels, euler);
+						output.range(mDofInfo.startR(treeIndex),
+								mDofInfo.endR(treeIndex)).assign(q);
+					}
 				}
 				else
 				{
@@ -1351,10 +1452,20 @@ void IK_sdls::LoaderToTree::_init(MotionLoader& skeleton, std::vector<MotionUtil
 			}
 			else {
 				int sq=skeleton.dofInfo.startDQ(bi);
-				for(int j=0; j< n.axes.length();j++)
+
+				if(n.node[0]->IsBallJoint())
 				{
-					mDQindex[n.node[j]->GetJointNum()]=sq+j;
-					mNodeTraverse[n.node[j]->GetJointNum()]=n.node[j];
+					for(int j=0; j< 3; j++)
+						mDQindex[n.node[0]->GetJointNum()+j]=sq+j;
+					mNodeTraverse[n.node[0]->GetJointNum()]=n.node[0];
+				}
+				else
+				{
+					for(int j=0; j< n.axes.length();j++)
+					{
+						mDQindex[n.node[j]->GetJointNum()]=sq+j;
+						mNodeTraverse[n.node[j]->GetJointNum()]=n.node[j];
+					}
 				}
 			}
 		}
@@ -1404,7 +1515,7 @@ void IK_sdls ::LoaderToTree:: _init_part2(MotionLoader const& skeleton, std::vec
 		}
 	}
 }
-void IK_sdls ::LoaderToTree:: copyTree(Bone* bone, 
+void IK_sdls ::LoaderToTree::copyTree(Bone* bone, 
 		IK_sdls::Node* parent)
 {
 	if(bone->numChannels()==0)
@@ -1447,14 +1558,22 @@ void IK_sdls ::LoaderToTree:: copyTree(Bone* bone,
 		else
 		{
 			mNode.push_back(IK_sdls::NodeWrap());
-			TString channels1=bone->getRotationalChannels();
-			TString channels2=bone->getTranslationalChannels();
-			TString channels=channels2+channels1;
-			mNode.back().createNodes(bone, channels2, channels1);
+			if(bone->getSkeleton().dofInfo.hasQuaternion(bone->treeIndex()))
+			{
+				mNode.back().createBallJoint(bone);
+				mTree.InsertChild_automatic(parent, mNode.back().node[0]);
+			}
+			else
+			{
+				TString channels1=bone->getRotationalChannels();
+				TString channels2=bone->getTranslationalChannels();
+				TString channels=channels2+channels1;
+				mNode.back().createNodes(bone, channels2, channels1);
+				mTree.InsertChild_automatic(parent, mNode.back().node[0]);
+				for(int c=1; c<channels.length(); c++)
+					mTree.InsertLeftChild(mNode.back().node[c-1], mNode.back().node[c]);
+			}
 
-			mTree.InsertChild_automatic(parent, mNode.back().node[0]);
-			for(int c=1; c<channels.length(); c++)
-				mTree.InsertLeftChild(mNode.back().node[c-1], mNode.back().node[c]);
 			mBoneToNode[bone->GetIndex()]=mNode.size()-1;
 		}
 
@@ -1580,7 +1699,7 @@ void IK_sdls::LoaderToTree_selected::_init_part2(MotionLoader& skeleton, std::ve
 	mTree.Compute();
 //#define _DEBUG
 #ifdef _DEBUG
-	printf("%d %d\n", mNode.size(), skeleton.numBone());
+	printf("%d %d\n", (int)mNode.size(), skeleton.dofInfo.numBone());
 	mTree.Print();
 	for(int i=0; i<mTree.GetNumJoint() ; i++)
 	{
@@ -1707,12 +1826,19 @@ void IK_sdls::LoaderToTree_selected::setPoseDOF(MotionDOFinfo const& mDofInfo, v
 			{
 				if(mDofInfo.hasQuaternion(treeIndex))
 				{
-					m_real euler[3];
-					TString channels=bone->getRotationalChannels();
-					pose.toQuater(mDofInfo.startR(treeIndex)).getRotation(channels, euler);
+					if (mNode[i].node[0]->IsBallJoint())
+					{
+						mNode[i].node[0]->_local.rotation=pose.toQuater(mDofInfo.startR(treeIndex));
+					}
+					else
+					{
+						m_real euler[3];
+						TString channels=bone->getRotationalChannels();
+						pose.toQuater(mDofInfo.startR(treeIndex)).getRotation(channels, euler);
 
-					for(int c=0; c<channels.length(); c++)
-						mNode[i].node[rotStartIndex+c]->SetTheta(euler[c]);
+						for(int c=0; c<channels.length(); c++)
+							mNode[i].node[rotStartIndex+c]->SetTheta(euler[c]);
+					}
 				}
 				else
 				{
@@ -1764,13 +1890,20 @@ void IK_sdls::LoaderToTree_selected::getPoseDOF(MotionDOFinfo const& mDofInfo, v
 
 				if(mDofInfo.hasQuaternion(treeIndex))
 				{
-					quater q;
-					m_real euler[3];
-					for(int c=0; c<channels.length(); c++)
-						euler[c]=mNode[i].node[c+rotStartIndex]->GetTheta();
-					q.setRotation(channels, euler);
-					output.range(mDofInfo.startR(treeIndex),
-							mDofInfo.endR(treeIndex)).assign(q);
+					if(mNode[i].node[0]->IsBallJoint())
+					{
+						output.range(mDofInfo.startR(treeIndex), mDofInfo.endR(treeIndex)).assign(mNode[i].node[0]->_local.rotation);
+					}
+					else
+					{
+						quater q;
+						m_real euler[3];
+						for(int c=0; c<channels.length(); c++)
+							euler[c]=mNode[i].node[c+rotStartIndex]->GetTheta();
+						q.setRotation(channels, euler);
+						output.range(mDofInfo.startR(treeIndex),
+								mDofInfo.endR(treeIndex)).assign(q);
+					}
 				}
 				else
 				{
@@ -1786,4 +1919,240 @@ void IK_sdls::LoaderToTree_selected::getPoseDOF(MotionDOFinfo const& mDofInfo, v
 			MotionDOF::setRootTransformation(output, theta);
 		}
 	}
+}
+
+void IK_sdls::LoaderToTree::getSphericalState(MotionDOFinfo const& dofInfo, vectorn& q, vectorn& dq) const
+{
+	int nquat=dofInfo.numSphericalJoint();
+	int ndof=dofInfo.numDOF();
+	int qindex=0;
+	int qsindex=ndof-nquat*4;
+	int dqsindex=qsindex;
+
+	q.setSize(ndof);
+	dq.setSize(ndof-nquat);
+
+	for(int ibone=1; ibone<dofInfo.numBone(); ibone++)
+	{
+		int ndof=dofInfo.numDOF(ibone);
+		if(getNode(ibone).node[0]->IsFreeJoint())
+		{
+			IK_sdls::FreeJoint* fj= ((IK_sdls::FreeJoint*)getNode(ibone).node[0]);
+			vector3 v, w;
+			fj->GetJointVel(v, w);
+
+			auto& T=getLastNode(ibone)->globalFrame();
+			// translation
+			q.setVec3(qindex, T.translation);
+			dq.setVec3(qindex, v);
+			qindex+=3;
+
+			// rotational
+			q.setQuater(qsindex, T.rotation);
+			dq.setVec3(dqsindex,w);
+			dqsindex+=3;
+			qsindex+=4;
+		}
+		else if(ndof==4)
+		{
+			const auto* node=getLastNode(ibone);
+			const auto* pnode=getLastNode(dofInfo.parentIndex(ibone));
+			const auto& T=node->globalFrame();
+			const auto& pT=pnode->globalFrame();
+
+			//cout <<"node"<<node<<pnode<<endl;
+			//cout << ibone<<T<<endl<<dofInfo.parentIndex(ibone)<<pT<<endl;
+
+			const auto& loc_ang_vel=node->bodyAngVel();
+			const auto& ploc_ang_vel=pnode->bodyAngVel();
+
+			// pT*_local=T
+			transf _local=pT.inverse()*T;
+
+			quater t_rel_att;
+			vector3 rel_ang_vel;
+
+			t_rel_att.inverse(_local.rotation);
+
+			// loc_ang_vel= B+rel_ang_vel
+			// -> rel_ang_vel= -B+loc_ang_vel
+			rel_ang_vel.rotate(t_rel_att, ploc_ang_vel);
+			rel_ang_vel *=-1; // -B
+			rel_ang_vel += loc_ang_vel ;
+			//printf("%s %s\n", loc_ang_vel.output().ptr(), rel_ang_vel.output().ptr());
+			q.setQuater(qsindex, _local.rotation);
+			dq.setVec3(dqsindex, rel_ang_vel);
+			dqsindex+=3;
+			qsindex+=4;
+		}
+		else
+		{
+			ASSERT(ndof>0); // 
+			for(int j=0; j<ndof; j++)
+			{
+				q[qindex]=getNode(ibone).node[j]->GetTheta();
+				dq[qindex]=getNode(ibone).node[j]->GetDTheta();
+				qindex++;
+			}
+		}
+	}
+	ASSERT(qindex==dofInfo.numDOF()-nquat*4);
+	ASSERT(dqsindex==dq.size());
+	ASSERT(qsindex==q.size());
+}
+
+void IK_sdls::LoaderToTree::getSphericalQ(MotionDOFinfo const& dofInfo, vectorn& q) const
+{
+	int nquat=dofInfo.numSphericalJoint();
+	int ndof=dofInfo.numDOF();
+	int qindex=0;
+	int qsindex=ndof-nquat*4;
+
+	q.setSize(ndof);
+
+	for(int ibone=1; ibone<dofInfo.numBone(); ibone++)
+	{
+		int ndof=dofInfo.numDOF(ibone);
+		if(getNode(ibone).node[0]->IsFreeJoint())
+		{
+			IK_sdls::FreeJoint* fj= ((IK_sdls::FreeJoint*)getNode(ibone).node[0]);
+
+			auto& T=getLastNode(ibone)->globalFrame();
+			// translation
+			q.setVec3(qindex, T.translation);
+			qindex+=3;
+
+			// rotational
+			q.setQuater(qsindex, T.rotation);
+			qsindex+=4;
+		}
+		else if(ndof==4)
+		{
+			const auto* node=getLastNode(ibone);
+			const auto* pnode=getLastNode(dofInfo.parentIndex(ibone));
+			const auto& T=node->globalFrame();
+			const auto& pT=pnode->globalFrame();
+
+			// pT*_local=T
+			quater _local=pT.rotation.inverse()*T.rotation;
+
+			q.setQuater(qsindex, _local);
+			qsindex+=4;
+		}
+		else
+		{
+			ASSERT(ndof>0); // 
+			for(int j=0; j<ndof; j++)
+			{
+				q[qindex]=getNode(ibone).node[j]->GetTheta();
+				qindex++;
+			}
+		}
+	}
+	ASSERT(qindex==dofInfo.numDOF()-nquat*4);
+	ASSERT(qsindex==q.size());
+}
+
+void IK_sdls::LoaderToTree::setSphericalState(MotionDOFinfo const& dofInfo, const vectorn& q, const vectorn& dq) 
+{
+	int nquat=dofInfo.numSphericalJoint();
+	int ndof=dofInfo.numDOF();
+	int qindex=0;
+	int qsindex=ndof-nquat*4;
+	int dqsindex=qsindex;
+
+	ASSERT(q.size()==ndof);
+	ASSERT(dq.size()==ndof-nquat);
+
+	for(int ibone=1; ibone<dofInfo.numBone(); ibone++)
+	{
+		int ndof=dofInfo.numDOF(ibone);
+		if(getNode(ibone).node[0]->IsFreeJoint())
+		{
+			IK_sdls::FreeJoint* fj= ((IK_sdls::FreeJoint*)getNode(ibone).node[0]);
+			vector3 v, w;
+
+			// translation
+			fj->_local.translation=q.toVector3(qindex);
+			v=dq.toVector3(qindex);
+			qindex+=3;
+
+			// rotational
+			fj->_local.rotation=q.toQuater(qsindex);
+			w=dq.toVector3(dqsindex);
+			dqsindex+=3;
+			qsindex+=4;
+
+			fj->SetJointVel(v, w);
+		}
+		else if(ndof==4)
+		{
+			ASSERT(getNode(ibone).node[0]->IsBallJoint());
+			IK_sdls::BallJoint* bj=((IK_sdls::BallJoint*)getNode(ibone).node[0]);
+			bj->_local.rotation= q.toQuater(qsindex);
+			bj->SetJointVel3DOF(dq.toVector3(dqsindex));
+			dqsindex+=3;
+			qsindex+=4;
+		}
+		else
+		{
+			ASSERT(ndof>0); // 
+			for(int j=0; j<ndof; j++)
+			{
+				getNode(ibone).node[j]->SetTheta(q[qindex]);
+				getNode(ibone).node[j]->SetDTheta(dq[qindex]);
+				qindex++;
+			}
+		}
+	}
+	ASSERT(qindex==dofInfo.numDOF()-nquat*4);
+	ASSERT(dqsindex==dq.size());
+	ASSERT(qsindex==q.size());
+	mTree.Compute();
+}
+
+void IK_sdls::LoaderToTree::setSphericalQ(MotionDOFinfo const& dofInfo, const vectorn& q) 
+{
+	int nquat=dofInfo.numSphericalJoint();
+	int ndof=dofInfo.numDOF();
+	int qindex=0;
+	int qsindex=ndof-nquat*4;
+
+	ASSERT(q.size()==ndof);
+
+	for(int ibone=1; ibone<dofInfo.numBone(); ibone++)
+	{
+		int ndof=dofInfo.numDOF(ibone);
+		if(getNode(ibone).node[0]->IsFreeJoint())
+		{
+			IK_sdls::FreeJoint* fj= ((IK_sdls::FreeJoint*)getNode(ibone).node[0]);
+
+			// translation
+			fj->_local.translation=q.toVector3(qindex);
+			qindex+=3;
+
+			// rotational
+			fj->_local.rotation=q.toQuater(qsindex);
+			qsindex+=4;
+		}
+		else if(ndof==4)
+		{
+			ASSERT(getNode(ibone).node[0]->IsBallJoint());
+			IK_sdls::BallJoint* bj=((IK_sdls::BallJoint*)getNode(ibone).node[0]);
+			bj->_local.rotation= q.toQuater(qsindex);
+			qsindex+=4;
+		}
+		else
+		{
+			ASSERT(ndof>0); // 
+			for(int j=0; j<ndof; j++)
+			{
+				getNode(ibone).node[j]->SetTheta(q[qindex]);
+				qindex++;
+			}
+		}
+	}
+	ASSERT(qindex==dofInfo.numDOF()-nquat*4);
+	ASSERT(qsindex==q.size());
+	mTree.Compute();
 }

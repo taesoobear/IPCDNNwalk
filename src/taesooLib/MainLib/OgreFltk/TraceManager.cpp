@@ -169,11 +169,12 @@ void TraceManager::draw()
 
 #endif
 #ifndef NO_OGRE
-#if OGRE_VERSION_MINOR>=9
+#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
 #include <Overlay/OgreOverlayManager.h>
 #include <Overlay/OgreOverlayContainer.h>
 #include <Overlay/OgreOverlayElement.h>
-#if OGRE_VERSION_MINOR>=12
+#if OGRE_VERSION_MINOR>=12 || OGRE_VERSION_MAJOR>=13
+
 #include <Overlay/OgreOverlay.h>
 #endif
 #else
@@ -265,8 +266,8 @@ OgreTraceManager::OgreTraceManager(int x, int y, int w, int h)
 	mProfileGui = Ogre::createContainer(x,y,w*2+15,h, RE::generateUniqueName());
 	//mProfileGui ->setMaterialName("Core/StatsBlockCenter");
 
-	mElementID=Ogre::createTextArea(std::string(TString("id")+c), w-4,h-4, 100, 2, 12*mfScaleFactor, "",true);
-	mElementContent=Ogre::createTextArea(std::string(TString("content")+c), w-4,h-4, 100, w/4, 12*mfScaleFactor, "",true);
+	mElementID=Ogre::createTextArea(std::string(TString("id")+c), w-4,h-4, 100, 2, 14*mfScaleFactor, "",true);
+	mElementContent=Ogre::createTextArea(std::string(TString("content")+c), w-4,h-4, 100, w/4, 14*mfScaleFactor, "",true);
 
 	mProfileGui->addChild(mElementID);
 	mProfileGui->addChild(mElementContent);

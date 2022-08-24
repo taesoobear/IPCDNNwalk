@@ -10,6 +10,10 @@
 -- }
 
 --function VRMLexporter.exportWRL(bones, filename, robotname)
+--or 
+-- function VRMLexporter.generateWRLstring(bones, robotname)
+-- or
+--function VRMLexporter.createVRMLloader(bones, robotname)
 require('moduleIK')
 
 local function space(level)
@@ -27,6 +31,18 @@ local function boxInertia(mass, size)
 	local 	Ix=	mass*1.0/12.0*(size.y*size.y+size.z*size.z)
 	local 	Iy=	mass*1.0/12.0*(size.x*size.x+size.z*size.z)
 	local 	Iz=	mass*1.0/12.0*(size.y*size.y+size.x*size.x)
+	return vector3(Ix, Iy, Iz)
+end
+local function cylinderInertia(mass, radius, height)
+	local 	Ix=	mass*1.0/12.0*(3*radius*radius+height*height)
+	local 	Iy=	mass*1.0/2.0*radius*radius
+	return vector3(Ix, Iy, Ix)
+end
+
+local function sphereInertia(mass, size)
+	local 	Ix=	mass*1.0/5.0*(size.y*size.y+size.z*size.z)
+	local 	Iy=	mass*1.0/5.0*(size.x*size.x+size.z*size.z)
+	local 	Iz=	mass*1.0/5.0*(size.y*size.y+size.x*size.x)
 	return vector3(Ix, Iy, Iz)
 end
 
@@ -102,27 +118,84 @@ local function  packShapeRobot(bone,file, level, pLoader)
 	local offset
 
 	local vinertia, mass, com, children_shape
-	if bone.shape then
-		assert(bone.localCOM)
-		mass=bone.shape.mass
-		assert(mass)
-		com=bone.localCOM
+	if bone.shape or bone.shapes then
 
-		if bone.shape[1]=='Box' then
-			local boxsize=bone.shape.size
-			assert(boxsize)
-			assert(bone.shape[1]=="Box")
-			vinertia=boxInertia(mass, boxsize)
-			children_shape= "  children [\n  " ..
-			geometryNode(quater(1,0,0,0), com, string.format("geometry Box { size %f %f %f}", boxsize.x, boxsize.y, boxsize.z))
-			.."  ]\n"
-		elseif bone.shape[1]=='OBJ' then
-			assert(bone.shape.inertia)
-			vinertia=bone.shape.inertia 
-			children_shape= "  children [\n  " ..
-			geometryNode(quater(1,0,0,0), vector3(0,0,0), string.format('geometry OBJ "%s"', bone.shape[2]))
-			.."  ]\n"
+		if not bone.shapes then
+			assert(bone.shape)
+			bone.shapes={bone.shape}
+		else
+			assert(not bone.shape)
 		end
+
+		children_shape=" children [\n"
+
+		mass=0
+		com=vector3(0,0,0)
+		vinertia=vector3(0,0,0) --회전이 있으면 제대로 다시 구현해야함.
+		for ishape, shape in ipairs(bone.shapes) do
+			local smass=shape.mass
+			local scom=shape.translation
+			local ori=shape.rotation
+
+			if not scom then
+				scom=bone.localCOM or vector3(0,0,0)
+			end
+			if not ori then
+				ori=quater(1,0,0,0)
+			end
+			if not smass then
+				assert(bone.mass)
+				smass=bone.mass/#bones.shapes
+			end
+			local colorStr=''
+			if shape.color then
+				local color=shape.color
+				colorStr=string.format(" color %f %f %f %f", color.x, color.y, color.z, color.w)
+			end
+			if shape[1]=='Box' then
+				local boxsize=shape.size
+				assert(boxsize)
+				assert(shape[1]=="Box")
+				vinertia=vinertia+boxInertia(smass, boxsize)
+				children_shape= children_shape..
+				geometryNode(ori, scom, string.format("geometry Box { size %f %f %f %s}\n", boxsize.x, boxsize.y, boxsize.z, colorStr))
+			elseif shape[1]=='Sphere' or shape[1]=='Ellipsoid' then
+				local boxsize=shape.size
+				assert(boxsize)
+				vinertia=vinertia+sphereInertia(smass, boxsize)
+				children_shape= children_shape..
+				geometryNode(ori, scom, string.format("geometry Ellipsoid { size %f %f %f %s}\n", boxsize.x, boxsize.y, boxsize.z, colorStr))
+			elseif shape[1]=='Capsule' or shape[1]=='Cylinder' then
+				local boxsize=shape.size
+				local radius, height
+				if not boxsize then
+					assert(shape.radius and shape.height)
+					radius=shape.radius
+					height=shape.height
+				else
+					radius=shape.size.x*0.5
+					height=shape.size.y
+				end
+				vinertia=vinertia+cylinderInertia(smass, radius, height)
+				if shape[1]=='Cylinder' and shape.numDivision then
+					colorStr=colorStr..' numDivision '..shape.numDivision
+				end
+				children_shape= children_shape..
+				geometryNode(ori, scom, string.format("geometry %s { radius %f height %f %s}\n", shape[1], radius, height, colorStr))
+			elseif shape[1]=='OBJ' then
+				assert(shape.inertia)
+				vinertia=vinertia+shape.inertia 
+				children_shape= children_shape..
+				geometryNode(ori, scom, string.format('geometry OBJ "%s"\n', shape[2]))
+			else
+				print('not implemented yet!')
+				assert(false)
+			end
+			mass=mass+smass
+			com=com+scom*smass
+		end
+		com=com/mass
+		children_shape=children_shape.."  ]\n"
 	else
 		mass, com, vinertia, children_shape=calcDefaultShape(bone)
 	end
@@ -136,6 +209,8 @@ local function  packShapeRobot(bone,file, level, pLoader)
 	else
 		shape=string.format("    Segment { \n  centerOfMass %f %f %f\n  mass %f momentsOfInertia [%f 0 0 0 %f 0 0 0 %f]\n", com.x, com.y, com.z, mass, vinertia.x, vinertia.y, vinertia.z);
 	end
+
+	shape=shape..'  material "use_vertexcolor"\n'
 	shape=shape..children_shape.."}"
 	shape=string.gsub(shape, "\n", space(level))..'\n';
 	file:write(shape)
@@ -175,7 +250,6 @@ local function packTransformRobot(bone, file, level, skel)
 	end
 	--print(level, nameId(bone), bone.bone:getScale())
 	transform=transform..string.format("  translation %f %f %f\n", offset.x, offset.y, offset.z);
-
 	transform=transform..string.format("  children [\n");
 	transform=string.gsub(transform, "\n", space(level));
 	file:write(transform)
@@ -322,6 +396,44 @@ function VRMLexporter.exportWRL(bones, filename, robotname)
 	end
 	return (scaleFactor or 1), offset
 end
+function VRMLexporter.generateWRLstring(bones, robotname, url)
+	for i=2,#bones do -- bone 1 is the root.
+		local bone=bones[i]
+		local pid=bone.pid
+		if not bones[pid].children then
+			bones[pid].children={}
+		end
+		table.insert(bones[pid].children, bone)
+	end
+
+	local file={}
+	function file:write(str)
+		table.insert(self, str)
+	end
+	local scaleFactor, offset
+	do
+		file:write(string.format( "DEF SampleRobot Humanoid { name \"%s\" ", robotname));
+		if url then
+			file:write(string.format( " url \"%s\" ", url));
+		end
+		file:write( "humanoidBody [\n");
+		local root=bones[1]
+		scaleFactor,offset=packTransformRobot(root, file,0);
+		file:write( "] } # Humanoid\n");
+	end
+	return table.concat(file,'\n'), (scaleFactor or 1), offset
+end
+function VRMLexporter.createVRMLloader(bones, robotname, printDebugInfo)
+	local str=VRMLexporter.generateWRLstring(bones, robotname)
+	if printDebugInfo then
+		print(str)
+	end
+	local file=CTextFile()
+	file:OpenMemory(str)
+	local loader=MainLib.VRMLloader(file)
+	return loader
+end
+
 
 
 function VRMLexporter.exportOgreEntityToWRL(entity, filename, robotname, cylinder_radius)

@@ -100,7 +100,11 @@ namespace Ogre {
 		SkinSubEntityList mSkinSubEntityList;
 
 		// taesoo
+#if OGRE_VERSION_MAJOR<13
 		void softwareVertexBlend(Matrix4 *boneMatrices, Ogre::Mesh::IndexMap& indexMap, VertexData* vertexData, VertexData* skelAnimVertexData, bool blendNormals);
+#else
+		void softwareVertexBlend(Affine3 *boneMatrices, Ogre::Mesh::IndexMap& indexMap, VertexData* vertexData, VertexData* skelAnimVertexData, bool blendNormals);
+#endif
 
 		/// State of animation for animable meshes
 		AnimationStateSet* mAnimationState;
@@ -153,10 +157,16 @@ namespace Ogre {
 		void bindMissingHardwarePoseBuffers(const VertexData* srcData, 
 			VertexData* destData);
 
+#if OGRE_VERSION_MAJOR<13
 		/// Cached bone matrices, including any world transform
         Matrix4 *mBoneWorldMatrices;
         /// Cached bone matrices in skeleton local space, might shares with other SkinEntity instances.
 		Matrix4 *mBoneMatrices;
+#else
+        Affine3 *mBoneWorldMatrices;
+        /// Cached bone matrices in skeleton local space, might shares with other entity instances.
+        Affine3 *mBoneMatrices;
+#endif
 		unsigned short mNumBoneMatrices;
 
 		std::vector<dualQuaternion> _cachedDualQuaternions;
@@ -230,8 +240,6 @@ namespace Ogre {
 		/// Has this SkinEntity been initialised yet?
 		bool mInitialised;
 
-		/// Last parent xform
-		Matrix4 mLastParentXform;
 
 		/// Mesh state count, used to detect differences
 		size_t mMeshStateCount;
@@ -518,7 +526,15 @@ namespace Ogre {
             bool extrudeVertices, Real extrusionDistance, unsigned long flags = 0 );
 
 		/** Internal method for retrieving bone matrix information. */
+#if OGRE_VERSION_MAJOR<13
 		const Matrix4* _getBoneMatrices(void) const { return mBoneMatrices;}
+		/// Last parent xform
+		Matrix4 mLastParentXform;
+#else
+		const Affine3* _getBoneMatrices(void) const { return mBoneMatrices;}
+        /// Last parent transform.
+        Affine3 mLastParentXform;
+#endif
 		/** Internal method for retrieving bone matrix information. */
 		unsigned short _getNumBoneMatrices(void) const { return mNumBoneMatrices; }
 		/** Returns whether or not this entity is skeletally animated. */
