@@ -34,7 +34,9 @@ class se3
 		se3 &operator *= (double d) { _m[0] *= d; _m[1] *= d; _m[2] *= d; _m[3] *= d; _m[4] *= d; _m[5] *= d; return *this; }
 		se3 &operator /= (double d) { d = 1.0 / d; _m[0] *= d; _m[1] *= d; _m[2] *= d; _m[3] *= d; _m[4] *= d; _m[5] *= d; return *this; }
 		se3 operator + (const se3 &t) const { return se3(_m[0] + t._m[0], _m[1] + t._m[1], _m[2] + t._m[2], _m[3] + t._m[3], _m[4] + t._m[4], _m[5] + t._m[5]); }	
+		se3 operator + (const vectorn &d) const { se3 out; for(int i=0; i<6; i++) out[i] = _m[i]+d[i]; return out;}
 		se3 operator - (const se3 &t) const { return se3(_m[0] - t._m[0], _m[1] - t._m[1], _m[2] - t._m[2], _m[3] - t._m[3], _m[4] - t._m[4], _m[5] - t._m[5]); }	
+		se3 operator - (const vectorn &d) const { se3 out; for(int i=0; i<6; i++) out[i] = _m[i]-d[i]; return out;}
 		se3 operator * (double d) const { return se3(d * _m[0], d * _m[1], d * _m[2], d * _m[3], d * _m[4], d * _m[5]); }
 		double &operator [] (int i) { return _m[i]; }
 		double operator [] (int i) const { return _m[i]; }

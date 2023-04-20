@@ -24,6 +24,9 @@
 #endif
 #endif
 
+#if defined(NO_GUI) || defined(_MSC_VER)
+#define NO_OIS
+#endif
 
 /**
  * FltkRenderer는 위쪽에 Renderer화면이 있고 아래쪽에 필요한 버튼이 있는 window이다. Callback 메시지 처리를 위해 FltkCallee도 상속했다.
@@ -49,11 +52,15 @@ class FltkRenderer : public Fl_Window, public FlCallee, public FrameMoveObject, 
 {
 #else
 
+#ifndef NO_OIS
  #include <OISMouse.h>
  #include <OISKeyboard.h>
  #include <OISJoyStick.h>
  #include <OISInputManager.h>
 class FltkRenderer : public OIS::KeyListener, public OIS::MouseListener, public Fl_Window, public FlCallee, public FrameMoveObject, public Ogre::FrameListener
+#else
+class FltkRenderer : public Fl_Window, public FlCallee, public FrameMoveObject, public Ogre::FrameListener
+#endif
 {
 #endif
 public:
@@ -113,7 +120,7 @@ public:
 
 	void* m_hWnd;              // The main app window
 
-#ifndef NO_GUI
+#ifndef NO_OIS
 	bool keyPressed( const OIS::KeyEvent &e );
 	bool keyReleased( const OIS::KeyEvent &e );
 	bool mouseMoved( const OIS::MouseEvent &e );

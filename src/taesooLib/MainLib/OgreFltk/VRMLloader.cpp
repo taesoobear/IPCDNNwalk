@@ -126,6 +126,11 @@ void PLDPrimVRML::setPoseDOF(const vectorn& poseDOF)
   SetPose(mVRMLL->dofInfo.setDOF(poseDOF), *mVRMLL);
 }
 
+void PLDPrimVRML::setSphericalQ(const vectorn & in)
+{
+	mChain->setSphericalQ(in);
+	_updateEntities(*mChain);
+}
 void PLDPrimVRML::setPose(BoneForwardKinematics const& in)
 {
 	*mChain=in;
@@ -179,9 +184,16 @@ void PLDPrimVRML::_updateEntities(BoneForwardKinematics & fk)
 		{
 			auto* ptr=mSceneNodes[i];
 			if (ptr){
-				ptr->resetToInitialState();
-				ptr->rotate(ToOgre(fk.global(i).rotation));
-				ptr->translate(ToOgre(fk.global(i).translation));
+				auto q=fk.global(i).rotation;
+				auto p=fk.global(i).translation;
+				if(q.x==q.x && p.x==p.x)
+				{
+					ptr->resetToInitialState();
+					ptr->rotate(ToOgre(q));
+					ptr->translate(ToOgre(p));
+				}
+				else
+					Msg::print("PLDPrimVRML nan pose\n");
 			}
 		}
 	}

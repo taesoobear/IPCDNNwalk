@@ -79,18 +79,34 @@ m_real OBJloader::Terrain::height(vector2 x, vector3& normal) const
 	{
 		j=0; dx=0;
 	}
-	if(i<0)
-	{
-		i=0; dz=0;
-	}
 	if(j>=numSegX)
 	{
 		j=numSegX-1; dx=1;
 	}
 
-	if(i>=numSegZ)
+	if(_tileAlongZ) {
+		if (i<0){
+			while(i<0)
+				i+=numSegZ;
+		}
+		else
+		{
+			while(i>=numSegZ)
+				i-=numSegZ;
+		}
+		nz=double(i)+dz;
+		x(1)=nz/double(numSegZ)*(double)mSize.z;
+	}
+	else
 	{
-		i=numSegZ-1; dz=1;
+		if(i<0)
+		{
+			i=0; dz=0;
+		}
+		if(i>=numSegZ)
+		{
+			i=numSegZ-1; dz=1;
+		}
 	}
 
 
@@ -143,6 +159,114 @@ m_real OBJloader::Terrain::height(vector2 x, vector3& normal) const
 	ASSERT(res.first);
 	normal=p.normal;
 	return r.getPoint(res.second).y;
+}
+bool OBJloader::Terrain::findClosestSurfacePoint(vector3 const& x3, vector3& normal, vector3& surfacePoint) const
+{
+	vector2 x(x3.x, x3.z);
+
+	int numSegX=mHeight.cols()-1;
+	int numSegZ=mHeight.rows()-1;
+	
+	double nx=(x(0)/mSize.x)*double(numSegX);
+	double nz=(x(1)/mSize.z)*double(numSegZ);
+
+	int j=int(floor(nx));   // x coord (left)
+							// y coord (vertical)
+	int i=int(floor(nz));	// z coord (down)
+
+	double dx=nx-floor(nx);
+	double dz=nz-floor(nz);
+
+	if(j<0) 
+	{
+		j=0; dx=0;
+	}
+	if(j>=numSegX)
+	{
+		j=numSegX-1; dx=1;
+	}
+
+	if(_tileAlongZ) {
+		if (i<0){
+			while(i<0)
+				i+=numSegZ;
+		}
+		else
+		{
+			while(i>=numSegZ)
+				i-=numSegZ;
+		}
+		nz=double(i)+dz;
+		x(1)=nz/double(numSegZ)*(double)mSize.z;
+	}
+	else
+	{
+		if(i<0)
+		{
+			i=0; dz=0;
+		}
+		if(i>=numSegZ)
+		{
+			i=numSegZ-1; dz=1;
+		}
+	}
+
+
+	int faceIndex;
+	vector3 v0, v1, v2;
+
+	/*printf("%f, %f : %f %f %f\n", x(0), x(1), 
+			i*m_real(mSize.z)/m_real(numSegZ), 
+			mHeight(i,j),
+			j*m_real(mSize.x)/m_real(numSegX)); 
+			*/
+	if(dx>dz)
+	{
+		// upper triangle ( (j,i), (j+1, i+1), (j+1, i) )
+		faceIndex=i*numSegX+j;
+		v0.x=m_real(j)*m_real(mSize.x)/m_real(numSegX);
+		v0.z=m_real(i)*m_real(mSize.z)/m_real(numSegZ);
+		v0.y=mHeight(i, j);
+		v1.x=m_real(j+1)*m_real(mSize.x)/m_real(numSegX);
+		v1.z=m_real(i+1)*m_real(mSize.z)/m_real(numSegZ);
+		v1.y=mHeight(i+1, j+1);
+		v2.x=v1.x;
+		v2.z=v0.z;
+		v2.y=mHeight(i, j+1);
+	}
+	else
+	{
+		// lower triangle ( (j,i), (j, i+1), (j+1, i+1) )
+		faceIndex=i*numSegX+j+numSegX*numSegZ;
+		v0.x=m_real(j)*m_real(mSize.x)/m_real(numSegX);
+		v0.z=m_real(i)*m_real(mSize.z)/m_real(numSegZ);
+		v0.y=mHeight(i,j);
+		v2.x=m_real(j+1)*m_real(mSize.x)/m_real(numSegX);
+		v2.z=m_real(i+1)*m_real(mSize.z)/m_real(numSegZ);
+		v2.y=mHeight(i+1, j+1);
+		v1.x=v0.x;
+		v1.z=v2.z;
+		v1.y=mHeight(i+1,j);
+	}
+
+	//const Face& f=getFace(faceIndex);
+
+	//Plane p(getVertex(f.vi(0)), getVertex(f.vi(1)), getVertex(f.vi(2)));
+	//return v0.y;
+	Plane p(v0, v1, v2);
+
+	Ray r(vector3(x(0), 1000, x(1)), vector3(0,-1,0));
+	std::pair<bool, m_real> res=r.intersects(p);
+
+	ASSERT(res.first);
+	normal=p.normal;
+
+	Ray r2(vector3(x(0), x3.y, x(1)), normal);
+	std::pair<bool, m_real> res2=r2.intersects(p);
+	surfacePoint=r2.getPoint(res2.second);
+	surfacePoint+=vector3(x3.x-x(0), 0, x3.z-x(1));
+	
+	return r.getPoint(res.second).y> x3.y;
 }
 bool OBJloader::Terrain::isInsideTerrain(vector2 x) const
 {
@@ -197,20 +321,30 @@ m_real OBJloader::Terrain::height(vector2 x) const
 	{
 		return 0.0;
 	}
-	if(i<0)
-	{
-		return 0.0;
-	}
 	if(j>=numSegX)
 	{
 		return 0.0;
 	}
-
-	if(i>=numSegZ)
-	{
-		return 0.0;
+	if(_tileAlongZ) {
+		while(i<0)
+			i+=numSegZ;
+		while(i>=numSegZ)
+			i-=numSegZ;
+		nz=double(i)+dz;
+		x(1)=nz/double(numSegZ)*(double)mSize.z;
 	}
+	else
+	{
+		if(i<0)
+		{
+			return 0.0;
+		}
 
+		if(i>=numSegZ)
+		{
+			return 0.0;
+		}
+	}
 
 	vector3 v0, v1, v2;
 
@@ -260,6 +394,7 @@ m_real OBJloader::Terrain::height(vector2 x) const
 
 void OBJloader::Terrain::_init(Raw2Bytes& image, int sizeX, int sizeY, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ)
 {
+	_tileAlongZ=tileAlongZ;
 	if(tileAlongZ)
 	{
 		matrixn signals1, signals2, signals; 

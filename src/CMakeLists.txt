@@ -9,39 +9,43 @@ get_filename_component(CAR_SAMPLE_DIR ${CMAKE_SOURCE_DIR} PATH)
 get_filename_component(PROJ_ROOT_DIR ${CAR_SAMPLE_DIR} PATH)
 set(TAESOOLIB_DIR "${CMAKE_SOURCE_DIR}/taesooLib")
 
-if (APPLE)
-	include(FindPkgConfig)
-	pkg_search_module(PYTHON3 REQUIRED python3)
-#	pkg_search_module(IPOPT REQUIRED ipopt)
-	message(${PYTHON3_LIBDIR})
-	message(${PYTHON3_INCLUDE_DIRS})
-endif()
+#include(FindPkgConfig)
+#pkg_search_module(PYTHON3 REQUIRED python3)
+#pkg_search_module(IPOPT REQUIRED ipopt)
+#message(${PYTHON3_LIBDIR})
+#message(${PYTHON3_INCLUDE_DIRS})
 
-if (WIN32)
-	message(${TAESOOLIB_DIR})
-	include(Common_fast) 
+execute_process(
+	COMMAND "python3" -c "from sysconfig import get_paths as gp; print(gp()['include'])"
+	OUTPUT_VARIABLE PYTHON3_INCLUDE_DIRS
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+execute_process(
+	COMMAND "python3" -c "import numpy; print(numpy.get_include())"
+	OUTPUT_VARIABLE NUMPY_INCLUDE_DIR
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+message(${NUMPY_INCLUDE_DIR})
 
-	set(LUNA_GEN "${TAESOOLIB_DIR}/MainLib/WrapperLua/luna_gen.lua")
-else()
-	set(useShared TRUE)
-	set(NoDevil TRUE)
-	set(NoFreeImage FALSE)
-	set(NoLapack TRUE)
-	set(NoUMFpack TRUE)
 
-	include(Common_baselib) 
-	add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/BaseLib "${CMAKE_SOURCE_DIR}/taesooLib/BaseLib/build_shared_${CMAKE_BUILD_TYPE}" )
-	add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/MainLib "${CMAKE_SOURCE_DIR}/taesooLib/MainLib/build_shared_${CMAKE_BUILD_TYPE}" )
-	include(Common_mainlib) 
+set(useShared TRUE)
+set(NoDevil TRUE)
+set(NoFreeImage FALSE)
+set(NoLapack TRUE)
+set(NoUMFpack TRUE)
 
-	# PhysicsLib settings
-	set(NoAISTsim TRUE) # use TRL_LCP instead!
-	set(NoGMBSsim TRUE) # use TRL_LCP instead!
-	set(NoUTsim TRUE) # use TRL_LCP instead!
-	set(NoBulletSim TRUE) # use TRL_LCP instead!
-	add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/PhysicsLib "${CMAKE_SOURCE_DIR}/taesooLib/PhysicsLib/build_shared_${CMAKE_BUILD_TYPE}" )
-	add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/ClassificationLib "${CMAKE_SOURCE_DIR}/taesooLib/ClassificationLib/build_shared_${CMAKE_BUILD_TYPE}" )
-endif()
+include(Common_baselib) 
+add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/BaseLib "${CMAKE_SOURCE_DIR}/taesooLib/BaseLib/build_shared_${CMAKE_BUILD_TYPE}" )
+add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/MainLib "${CMAKE_SOURCE_DIR}/taesooLib/MainLib/build_shared_${CMAKE_BUILD_TYPE}" )
+include(Common_mainlib) 
+
+# PhysicsLib settings
+set(NoAISTsim TRUE) # use TRL_LCP instead!
+set(NoGMBSsim TRUE) # use TRL_LCP instead!
+set(NoUTsim TRUE) # use TRL_LCP instead!
+set(NoBulletSim TRUE) # use TRL_LCP instead!
+add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/PhysicsLib "${CMAKE_SOURCE_DIR}/taesooLib/PhysicsLib/build_shared_${CMAKE_BUILD_TYPE}" )
+add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/ClassificationLib "${CMAKE_SOURCE_DIR}/taesooLib/ClassificationLib/build_shared_${CMAKE_BUILD_TYPE}" )
 
 
 add_definitions(-D_USRDLL)
@@ -51,13 +55,14 @@ add_definitions(-DML_LIBRARY)
 
 include_directories (	
 	${PYTHON3_INCLUDE_DIRS}
-	"/usr/include/python3.6"
-	"/usr/include/python3.7m"
-	"/usr/include/python3.8"
-	"/opt/homebrew/lib/python3.10/site-packages/numpy/core/include" #numpy headers
-	"/usr/local/lib/python3.10/dist-packages/numpy/core/include" #numpy headers
-	"/usr/local/lib/python3.8/site-packages/numpy/core/include"
-	"/usr/local/lib/python3.6/dist-packages/numpy/core/include" #numpy headers
+	${NUMPY_INCLUDE_DIR}
+	#"/usr/include/python3.6"
+	#"/usr/include/python3.7m"
+	#"/usr/include/python3.8"
+	#"/opt/homebrew/lib/python3.10/site-packages/numpy/core/include" #numpy headers
+	#"/usr/local/lib/python3.10/dist-packages/numpy/core/include" #numpy headers
+	#"/usr/local/lib/python3.8/site-packages/numpy/core/include"
+	#"/usr/local/lib/python3.6/dist-packages/numpy/core/include" #numpy headers
 	.
 	../../taesooLib/Samples/QP_controller/qpOASES-3.0beta/include
 	../../taesooLib/Samples/scripts
@@ -134,13 +139,8 @@ endif()
 		pthread
 		)
 
-	if(APPLE)
-	else()
-		target_link_libraries(libmainlib PUBLIC dl)
-	endif()
-
-if(WIN32)
-  add_custom_command(TARGET OgreFltk
-                       POST_BUILD
-                       COMMAND lua "${CMAKE_CURRENT_SOURCE_DIR}/build.lua" install)
+if(APPLE)
+else()
+	target_link_libraries(libmainlib PUBLIC dl)
 endif()
+

@@ -1812,7 +1812,11 @@ EdgeConnectivity::EdgeConnectivity(Mesh const& mesh)
 			nodeT t=mMeshGraph.findNode(v2);
 			edgeT e=mMeshGraph.findEdge(s, t);
 			if(!e)
+			{
+				if(v1==v2) 
+					throw std::runtime_error("strange triangle 1");
 				e=mMeshGraph.newEdge(s,t);
+			}
 
 			int nfe=e.data().numFaceEdge;
 
@@ -1831,8 +1835,11 @@ EdgeConnectivity::EdgeConnectivity(Mesh const& mesh)
 		}
 	}
 	if(error)
+	{
 		//Msg::msgBox("Warning! total %d edges have more than 2 face edges",error);
-		Msg::print("Warning! total %d edges have more than 2 face edges\n",error);
+		Msg::print("Error! total %d edges have more than 2 face edges\n",error);
+		throw std::exception();
+	}
 }
 
 int EdgeConnectivity::numEdges() const	{return mMeshGraph.numEdges();}

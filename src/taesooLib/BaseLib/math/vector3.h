@@ -10,9 +10,6 @@ class matrix4;
 class vectorn;
 class matrixn;
 /// never make virtual functions.
-/** 이유: 이것의 주소는 direct하게 D3DXVECTOR3의 주소로 바뀔수 있다. virtual function을 만들면 VTable때문에 이것이 안된다.
-	\ingroup group_math
-*/
 
 #if _MSC_VER > 1000
 //#pragma message("Compiling vector.h - this should happen just once per project.\n")

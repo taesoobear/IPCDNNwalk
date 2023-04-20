@@ -12,6 +12,7 @@
 #endif
 #ifdef NO_GUI
 #include "../MainLib/console/traceManager.h"
+#include "../../BaseLib/motion/viewpoint.h"
 
 #else
 #include <FL/Fl_Color_Chooser.H>
@@ -75,17 +76,36 @@ namespace RE
 static bool shift=false;
 static bool __control=false;
 static bool __alt=false;
+bool useSeperateOgreWindow();
 bool OIS_event_ctrl()
 {
+#ifdef NO_OIS
+	return Fl::event_ctrl() || __control;
+#else
 	return Fl::event_ctrl() || __control || (RE::renderer().mKeyboard&&RE::renderer().mKeyboard->isModifierDown(OIS::Keyboard::Ctrl));
+#endif
 }
 bool OIS_event_shift()
 {
+#ifdef NO_OIS
+	return (Fl::event_state() & FL_SHIFT || shift);
+#else
 	return (Fl::event_state()&FL_SHIFT || shift ||(RE::renderer().mKeyboard&&RE::renderer().mKeyboard->isModifierDown(OIS::Keyboard::Shift)));
+#endif
 }
 bool OIS_event_alt()
 {
+#ifdef __APPLE__
+	if(useSeperateOgreWindow())
+		return Fl::event_alt() || __alt ||(RE::renderer().mKeyboard&&RE::renderer().mKeyboard->isModifierDown(OIS::Keyboard::Alt));
+	return Fl::event_command() || __alt ||(RE::renderer().mKeyboard&&RE::renderer().mKeyboard->isModifierDown(OIS::Keyboard::Alt));
+#else
+#ifdef NO_OIS
+	return Fl::event_alt() || __alt;
+#else
 	return Fl::event_alt() || __alt ||(RE::renderer().mKeyboard&&RE::renderer().mKeyboard->isModifierDown(OIS::Keyboard::Alt));
+#endif
+#endif
 }
 
 int queryMouseX();
@@ -118,6 +138,8 @@ void mouseXY(int& win_x, int& win_y)
 	}
 }
 #endif
+
+#ifndef NO_OIS
 static int mouseX(const OIS::MouseEvent& e)
 {
 #ifdef __APPLE__
@@ -161,6 +183,7 @@ static int mouseY(const OIS::MouseEvent& e)
 #endif
 #endif
 }
+#endif
 #else
 bool OIS_event_ctrl() { return false;}
 bool OIS_event_shift() { return false;}
@@ -246,7 +269,6 @@ vector3 FltkRenderer::screenToWorldXZPlane(float x, float y, float height)
 	return ray.getPoint(out.second);
 }
 
-bool useSeperateOgreWindow();
 #ifndef NO_GUI
 int FltkRenderer::renderWindowWidth() const 
 {
@@ -414,6 +436,10 @@ void FltkRenderer::screenToWorldLine(float x, float y, vector3& lineStart, vecto
 #endif
 }
 
+#ifndef NO_GUI
+static bool resizeNecessary=false; // apple only
+static void resizeOgreWin(OgreRenderer* mOgreRenderer, int ww, int hh);
+#endif
 void FltkRenderer::firstInit(Fl_Window* topmostwin)
 {
 #ifndef NO_GUI
@@ -426,12 +452,13 @@ void FltkRenderer::firstInit(Fl_Window* topmostwin)
 
 	m_hWnd=(void*)handle;
 	mOgreRenderer->firstInit(handle, m_RenderView->w(), m_RenderView->h());
-#elif defined(__APPLE__)
+/*#elif defined(__APPLE__)
 	make_current();
 	mOgreRenderer->firstInit((void*)(Fl_Window*)this, w(), h());
 #elif defined(USE_FL_GL_WINDOW)
 	make_current();
 	mOgreRenderer->firstInit((void*)(Fl_Window*)this, w(), h());
+	*/
 #else
 	while(!topmostwin->visible())
 			Fl::wait();
@@ -470,10 +497,21 @@ void FltkRenderer::firstInit(Fl_Window* topmostwin)
 	{
 		// ASSERT(useSeperateOgreWindow()== true);
 		Ogre::LogManager::getSingleton().logMessage("GTH_log_1");
+#ifndef NO_OIS
 		mOgreRenderer->mKeyboard->setEventCallback( this );
 		mOgreRenderer->mMouse->setEventCallback( this );
+#else
+		Ogre::LogManager::getSingleton().logMessage("OIS disabled!!!");
+		printf("OIS disabled!!!");
+#endif
 		Ogre::LogManager::getSingleton().logMessage("GTH_log_2");
 	//onCallback(NULL, Hash("TgCs"));
+	}
+	else
+	{
+#ifdef __APPLE__
+		resizeNecessary=true; // I don't know why this is necessary.
+#endif
 	}
 //#endif
 #endif
@@ -684,6 +722,11 @@ void FltkRenderer::loop(Fl_Window& win)
 		{
 			if (!Fl::wait()) break;	// waits until something happens
 		}
+		if(resizeNecessary)
+		{
+			resizeOgreWin(mOgreRenderer, w(), h());
+			resizeNecessary=false;
+		}
 #endif
 
   		// idle time
@@ -770,7 +813,17 @@ void FltkRenderer::onCallback(Fl_Widget * pWidget, int userData)
 		if(!otm)
 		{
 			otm=new OgreTraceManager(0, 0, 640, 240);
+#ifdef __APPLE__
+
+			int _w=w()/2;
+#ifndef NO_OGRE
+			_w=mOgreRenderer ->viewport().m_pViewpoint->m_iWidth/2;
+#endif
+			otm=new OgreTraceManager(_w, 240*2, _w, 480);
+#else
 			otm=new OgreTraceManager(w()/2, 240, w()/2, 480);
+#endif
+
 			printf("TraceManager created\n");
 		}
 #endif
@@ -997,7 +1050,7 @@ int FltkRenderer::handle(int ev)
 	}
 	if(m_pHandler && m_pHandler->handleRendererEvent(ev) ) return 1;
 
-	if(Fl::event_alt())//  && !mbViewLock)
+	if(OIS_event_alt())//  && !mbViewLock)
 	{
 		if(ev== FL_KEYBOARD)
 		{
@@ -1157,13 +1210,30 @@ void FltkRenderer::changeViewNoAnim(int curView)
 {
 	*mOgreRenderer->viewport().m_pViewpoint=mSavedView[curView];
 }
-  #ifndef NO_GUI
+
+#ifndef NO_GUI
+
+static void resizeOgreWin(OgreRenderer* mOgreRenderer, int ww, int hh)
+{
+	mOgreRenderer->mWnd->resize(ww,hh);
+	mOgreRenderer->mWnd->windowMovedOrResized();
+
+
+	double aspRatio=(double)ww/(double)hh;
+	Ogre::Camera* cam=mOgreRenderer->viewport().mCam;
+	cam->setAspectRatio(Ogre::Real(aspRatio));
+	if(aspRatio>1.8) // wider than wide display
+					 // use vertical FOV
+		cam->setFOVy(Ogre::Radian(Ogre::Degree(45)/aspRatio*1.8));
+	else
+		cam->setFOVy(Ogre::Radian(Ogre::Degree(45)));
+}
 
 void FltkRenderer::resize(int x,int y,int w,int h)
 {
 	FltkRenderer_Super::resize(x,y,w,h);
-
-	if(mOgreRenderer->isActive() &&!useSeperateOgreWindow())
+	if(useSeperateOgreWindow()) return;
+	if(mOgreRenderer->isActive() )
 	{
 #ifdef _MSC_VER
 		int ww=m_RenderView->w();
@@ -1172,19 +1242,10 @@ void FltkRenderer::resize(int x,int y,int w,int h)
 		int ww=w;
 		int hh=h;
 #endif
-		mOgreRenderer->mWnd->resize(ww,hh);
-		mOgreRenderer->mWnd->windowMovedOrResized();
-
-
-		double aspRatio=(double)ww/(double)hh;
-		Ogre::Camera* cam=mOgreRenderer->viewport().mCam;
-		cam->setAspectRatio(Ogre::Real(aspRatio));
-		if(aspRatio>1.8) // wider than wide display
-			// use vertical FOV
-			cam->setFOVy(Ogre::Radian(Ogre::Degree(45)/aspRatio*1.8));
-		else
-			cam->setFOVy(Ogre::Radian(Ogre::Degree(45)));
+		resizeOgreWin(mOgreRenderer, ww, hh);
 	}
+	else
+		resizeNecessary=true;
 	//mOgreRenderer->mView->getActualWidth()) / Ogre::Real(mOgreRenderer->mView->getActualHeight()));
 }
 #endif
@@ -1276,7 +1337,7 @@ void FltkToolkitRenderer::onCallback(Fl_Widget * pWidget, int userData)
 
 #ifndef NO_GUI
 //#ifdef __APPLE__
-#ifndef NO_GUI
+#ifndef NO_OIS
 static int OISkeycodetoFLTK(int ekey)
 {
 	int key;
@@ -1471,10 +1532,11 @@ int FltkRenderer::handle_mouse(int ev, int x, int y, int button)
 				}
 
 				// M-button emulation mode.
-				if(OIS_event_ctrl() && ev!=FL_DRAG)
+				//if(OIS_event_ctrl() && ev!=FL_DRAG)
+				if(!OIS_event_shift() &&((OIS_event_alt()||OIS_event_ctrl()) && ev!=FL_DRAG))
 				{
 					msg=(ev==FL_PUSH)?Viewpoint::RBUTTONDOWN:Viewpoint::RBUTTONUP;
-					if(OIS_event_alt() && !useSeperateOgreWindow()) // seperate ogre window 사용시 alt키 event 잘못 들어옴.
+					if(OIS_event_alt() ) // seperate ogre window 사용시 alt키 event 잘못 들어옴. -> use c key instead.
 					{
 						//printf("alt pressed %d %d\n", Fl::event_alt() , (RE::renderer().mKeyboard&&RE::renderer().mKeyboard->isModifierDown(OIS::Keyboard::Alt)));
 						msg=(ev==FL_PUSH)?Viewpoint::MBUTTONDOWN:Viewpoint::MBUTTONUP;

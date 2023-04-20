@@ -1,5 +1,12 @@
 
 #import <Cocoa/Cocoa.h>
+
+#include <Fl/Fl_Window.H>
+#include <Fl/Fl_Gl_Window.H>
+static void* getOpenGLContext(Fl_Window* win)
+{
+return ((Fl_Gl_Window*) win)->context();
+}
 #import <Ogre.h>
 #import <OgreOSXCocoaView.h> // located in ogre-13.4.3 -> copy to /usr/local/include/OGRE/
 #define __glew_h__
@@ -131,4 +138,23 @@ int queryFrameWidth()
     return  myFrame.size.width;
 */
 	return _frameWidth;
+}
+
+#include <Fl/x.H>
+
+void setMacRenderConfig( void* handle, Ogre::NameValuePairList &misc)
+{
+	misc["macAPI"] = Ogre::String("cocoa");
+	
+	
+	// expose NSGL stuff for ogre
+	misc["macAPICocoaUseNSView"] = Ogre::String("true");
+	Fl_Window* win=(Fl_Window*)(handle);
+	NSWindow* nsWindow = (NSWindow*)fl_xid(win);
+	NSView* view = nsWindow.contentView;
+	misc["externalWindowHandle"] = Ogre::StringConverter::toString((unsigned long)view);
+	//((Fl_Window*)(handle))->make_current();
+
+	//misc["currentGLContext"]=Ogre::String("True");  
+	misc["externalGLContext"] = Ogre::StringConverter::toString((unsigned long)getOpenGLContext(win));
 }

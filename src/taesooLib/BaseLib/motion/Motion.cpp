@@ -186,7 +186,7 @@ void Motion::Concat(const Motion* pAdd, int startFrame, int endFrame, bool bType
 int Motion::Parent(int jointIndex) const			{ return dep_GetParentJoint(*mInfo.m_pSkeleton, jointIndex);}
 Posture& Motion::pose(int iframe) const
 {
-	ASSERT(iframe>=0 && iframe<numFrames());
+	RANGE_ASSERT(iframe>=0 && iframe<numFrames());
 	return value(iframe);
 }
 
@@ -1262,7 +1262,7 @@ void Motion::setConstraint(int fr, int con, bool bSet)
 
 bool Motion::isConstraint(int fr, int con) const
 {
-	ASSERT(fr >= 0 && fr<numFrames());
+	RANGE_ASSERT(fr >= 0 && fr<numFrames());
 
 	return pose(fr).constraint[con];
 }

@@ -260,7 +260,7 @@ public:
 			minTime=MIN(milli, minTime);
 			maxTime=MAX(milli, maxTime);
 			
-			printf("%s: %6.2f msec per call (%d calls took %d msec, global min %d max %d)\n", _msg.c_str(), float(milli)/float(m_gran), m_gran, milli, minTime, maxTime);
+			Msg::print("%s: %6.2f msec per call (%d calls took %d msec, global min %d max %d)\n", _msg.c_str(), float(milli)/float(m_gran), m_gran, milli, minTime, maxTime);
             
 			m_count=0;
 			m_Sum.QuadPart=0;

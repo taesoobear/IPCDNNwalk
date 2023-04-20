@@ -103,11 +103,13 @@ static bool ReadFromFile(FILE*& file, char* buff, const char* seps)
 		}
 	}
 }
+
+#ifdef _MSC_VER
 FILE *fmemopen(void *buf, size_t size, const char *opentype)
 {
 	FILE *f;
 
-	assert(strcmp(opentype, "r") == 0);
+	assert(strcmp(opentype, "r") == 0 || strcmp(opentype,"rt")==0);
 
 	f = tmpfile();
 	fwrite(buf, 1, size, f);
@@ -115,10 +117,10 @@ FILE *fmemopen(void *buf, size_t size, const char *opentype)
 
 	return f;
 }
+#endif
 
 bool CTextFile::OpenMemory(const char *text)
 {
-
 	Init();
 	ASSERT(m_pFile==NULL);
 	void* buf=(void*)text;
@@ -128,7 +130,6 @@ bool CTextFile::OpenMemory(const char *text)
 	}
 	//if(!m_pFile) return false;
 	ReadOneLine();
-
 	return true;
 }
 bool CTextFile::OpenReadFile(const char *fileName)

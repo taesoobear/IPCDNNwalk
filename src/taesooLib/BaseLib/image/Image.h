@@ -178,4 +178,6 @@ public:
 
 };
 
+vector3 rgb2hsv(vector3 const& in); // r,g,b : a fraction between 0 and 1
+vector3 hsv2rgb(vector3 const& in); // h : angle in degrees, s,v : a fraction between 0 and 1
 #endif

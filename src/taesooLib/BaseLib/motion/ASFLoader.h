@@ -52,6 +52,8 @@ public:
 	virtual ~ASFTransform();
 	quater c;
 	quater c_inv;
+	TString orig_rot_channels;
+	
 };
 //! ASF를 읽고 tree hierarchy와 PostureIP를 만든다.
 /*! \ingroup group_motion */

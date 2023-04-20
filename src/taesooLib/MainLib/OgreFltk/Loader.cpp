@@ -43,10 +43,10 @@ class Loader_wrap: public Fl_Group, public FlCallee
 		ls.set<Loader>("loader", _L);
 		Fl_Button* o;
 		if(x==0)
-			o=new Fl_Button(x+120*mScaleFactor,y,w-120*mScaleFactor,20*mScaleFactor,"&Load");
+			o=new Fl_Button(x+120*mScaleFactor,y,w-120*mScaleFactor,20*mScaleFactor,"Load");
 		else
-			o=new Fl_Button(x+120*mScaleFactor,y,60*mScaleFactor,20*mScaleFactor,"&Load");
-		o->tooltip("alt+L");
+			o=new Fl_Button(x+120*mScaleFactor,y,60*mScaleFactor,20*mScaleFactor,"Load");
+		//o->tooltip("alt+L");
 		o->labelsize(11);
 		connect(o, Hash("LOAD"));
 		mText = new Fl_Output(x+0,y+20*mScaleFactor,80*mScaleFactor,20*mScaleFactor);

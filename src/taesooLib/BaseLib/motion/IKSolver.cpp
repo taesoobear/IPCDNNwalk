@@ -14,7 +14,11 @@ std::pair<m_real,bool> angle(m_real l1, m_real l2, m_real l3)
 	//printf("l: %f %f %f\n", l1, l2, l3);
 	m_real cos_theta=(l1*l1+l2*l2-l3*l3)/(2*l1*l2);
 	if( cos_theta>1 || cos_theta<-1 )
+	{
+		if(cos_theta>0)
+			return std::pair<m_real, bool>(	0, false);
 		return std::pair<m_real, bool>(	M_PI, false);
+	}
 
 	return std::pair<m_real, bool>(acos(cos_theta), true);
 }
@@ -99,7 +103,7 @@ Bone&  MotionUtil::conToBone(int con, MotionLoader const& skeleton)
 // ii is the importance value
 // axis is the elbow rotation axis
 //
-int MotionUtil::limbIK( const vector3& goal, const vector3& sh, const vector3& v1, const vector3& v2, const vector3& v3, const vector3& v4,
+double MotionUtil::limbIK( const vector3& goal, const vector3& sh, const vector3& v1, const vector3& v2, const vector3& v3, const vector3& v4,
 			quater& qq1, quater& qq2, m_real ii, bool kneeDamping)
 {
 	// 1은 shoulder, 2는 elbow, 3은 wrist
@@ -154,13 +158,17 @@ int MotionUtil::limbIK( const vector3& goal, const vector3& sh, const vector3& v
 	qq1=q_delta1*qq1;
 	qq2=q_delta1*q_delta2*qq2;
 
-	return 0;
+	return d13_after.length();
 }
 
 
 void MotionUtil::setKneeDampingCoef_RO(double ro)
 {
 	_RO=ro;
+}
+double MotionUtil::getKneeDampingCoef_RO()
+{
+	return _RO;
 }
 
 #ifndef NO_DEBUG_GUI

@@ -309,12 +309,12 @@ void quater::axisToAxis( const vector3& vFrom, const vector3& vTo)
 	vector3 vA, vB, vHalf;
 	vA.normalize(vFrom);
 	vB.normalize(vTo);
-	//두개가 180각이 되면 singular가 되서 90도가 되는 축을 임의로 계산해 줘야됨
+	//singular
 	if(vA%vB<-0.999){
 		vB*=-1;
 		quater q;
 		q.axisToAxis(vA, vB);
-		//임의로 z축으로 180도 돌림.
+		// arbitrarily chosen axis (z-axis)
 		mult(quater(TO_RADIAN(180), vector3(0,0,1)), q);
 		return;
 	}else{
@@ -935,7 +935,7 @@ TString quater::output(bool bRotationVector)
 	}
 
 	TString temp;
-	temp.format("%f %f %f %f", w, x, y, z);
+	temp.format("(%.10f %.10f %.10f %.10f)", w, x, y, z);
 	return temp;
 }
 std::ostream &operator << (std::ostream &os, const quater &v)
@@ -950,4 +950,29 @@ std::ostream &operator << (std::ostream &os, const quater &v)
 	}
 	os << "];" << std::endl;
     return os;
+}
+
+vector3 quater::getFrameAxis(int icolumn) const
+{
+	vector3 v(0.0, 0.0, 0.0);
+	v[icolumn]=1.0;
+	return (*this)*v;
+}
+
+void quater::setFrameAxesYZ(vector3 const& _y, vector3 const& _z)
+{
+	vector3 nx, ny, nz;
+	nx.cross(_y,_z);
+	nx.normalize();
+	ny.cross(_z,nx);
+	ny.normalize();
+	nz.cross(nx,ny);
+
+
+	matrix3 m;
+	m.setValue(
+			nx.x, ny.x, nz.x,
+			nx.y, ny.y, nz.y,
+			nx.z, ny.z, nz.z);
+	setRotation(m);
 }

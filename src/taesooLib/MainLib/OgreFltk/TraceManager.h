@@ -4,7 +4,7 @@
 #pragma once
 
 
-#include "../BaseLib/utility/namedmapsupport.h"
+#include "../../BaseLib/utility/namedmapsupport.h"
 #if (defined(_MSC_VER)&& _MSC_VER<1700) || (!defined(_MSC_VER) &&__cplusplus < 201103L)
 #define OLD_COMPILERS
 #endif
@@ -95,6 +95,7 @@ public:
 namespace Ogre
 {
 	class OverlayElement;
+	class OverlayContainer;
 }
 
 class OgreTraceManager: public TraceBase, public FrameMoveObject
@@ -110,6 +111,18 @@ public:
 	virtual void eraseAll();
 	Ogre::OverlayElement* mElementID;
 	Ogre::OverlayElement* mElementContent;
+
+	void hideOutputs();
+	void showOutputs();
+
+	// returns iElement
+	int createTextArea(double width, double height, double top, double left, int fontSize, const char* caption);
+	void setCaption(int iElement, const char* caption);
+	void setVisible(int iElement, bool visible);
+private:
+	Ogre::OverlayContainer* mProfileGui;
+	double _w; double _h;
+	std::vector<Ogre::OverlayElement*> _otherElements;
 };
 
 #endif

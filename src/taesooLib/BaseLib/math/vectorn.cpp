@@ -720,8 +720,14 @@ TString vectorn::output(const char* formatString, int start, int end) const
 	id+="[";
 	for(int i=start; i<end; i++)
 	{
-		id.add(formatString, (*this)[i]);
-		id+=",";
+		double d=(*this)[i];
+		if(d<1e-10 && d>-1e-10)
+			id+="0,";
+		else
+		{
+			id.add(formatString, (*this)[i]);
+			id+=",";
+		}
 	}
 	id+="]";
 
@@ -779,9 +785,10 @@ void vectorn::aggregateEachRow(CAggregate::aggregateOP eOP, matrixn const& mat)
 intvectorn operator+( intvectorn const& a, int b)			{ intvectorn c; c.add(a,b); return c;};
 intvectorn operator-( intvectorn const& a, int b)			{ intvectorn c; c.add(a,-b); return c;};
 
-vectorn operator+( vectorn const& a, vectorn const& b)	{ vectorn c; c.add(a,b); return c;};
-vectorn operator-( vectorn const& a, vectorn const& b)	{ vectorn c; c.sub(a,b); return c;};
-vectorn operator*( vectorn const& a, vectorn const& b )	{ vectorn c; c.mult(a,b); return c;};
+vectorn operator+( vectorn const& a, vectorn const& b)	{ vectorn c; c.add(a,b); return c;}
+vectorn operator-( vectorn const& a, vectorn const& b)	{ vectorn c; c.sub(a,b); return c;}
+vectorn operator*( vectorn const& a, vectorn const& b )	{ vectorn c; c.mult(a,b); return c;}
+vectorn operator/( vectorn const& a, vectorn const& b )	{ vectorn c; c.div(a,b); return c;}
 vectorn operator+( vectorn const& a, m_real b)			{ vectorn c; c.add(a,b); return c;};
 vectorn operator-( vectorn const& a, m_real b)			{ vectorn c; c.sub(a,b); return c;};
 vectorn  operator/( vectorn const& a, m_real b)			{ vectorn c; c.div(a,b); return c;};

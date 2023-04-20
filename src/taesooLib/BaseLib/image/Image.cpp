@@ -81,14 +81,20 @@ CImage::CImage()
 
 CImage::~CImage()
 {
-    #ifndef NO_DEVIL
+#ifndef NO_DEVIL
 	if(_dataPtr)
 	{
 		ILuint images[1];
 		images[0]=_id;
 		ilDeleteImages(1, images);
 	}
-	#endif
+#else
+	if(_dataPtr)
+	{
+		delete [] _dataPtr;
+		_dataPtr=NULL;
+	}
+#endif
 }
 
 int CImage::GetWidth() const
@@ -129,12 +135,17 @@ void CImage::SetData(int width, int height, uchar* dataPtr, int stride)
 // assumes RGB8 format.
 bool CImage::Create(int width, int height)
 {
-    #ifndef NO_DEVIL
+#ifndef NO_DEVIL
 	_size.x=width;
 	_size.y=height;
 	ilBindImage(_id);
 	ilTexImage(width, height, 1, 3, IL_RGB, IL_UNSIGNED_BYTE, NULL);
 	_dataPtr=ilGetData();
+	_stride=GetWidth()*3;
+#else
+	_size.x=width;
+	_size.y=height;
+	_dataPtr=new uchar[width*height*3];
 	_stride=GetWidth()*3;
 #endif
 	return true;
@@ -173,7 +184,7 @@ bool CImage::Load(const char* filename)
 	_dataPtr=ilGetData();
 	_stride=GetWidth()*3;
 	#endif
-	if (TString(filename).right(3).toUpper()=="JPG")
+	if (TString(filename).right(3).toUpper()=="JPG" ||TString(filename).right(3).toUpper()=="PNG")
 	{
 		CImage_flipY(*this);
 		_flipped=true;

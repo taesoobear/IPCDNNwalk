@@ -458,6 +458,7 @@ void IK_sdls::LoaderToTree::setQuaterQ(const double* q)
 	else
 	{
 		// not implmented yet
+		Msg::error("not implemented yet");
 		assert(false);
 	}
 }

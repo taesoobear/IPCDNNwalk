@@ -190,7 +190,12 @@ void packShapeRobot(Bone& bone,FILE* file, int level, const MotionLoader* pLoade
 	vector3 com(0,0,0);
 	com=v::for_each(child_offsets, s0::avg<vector3>(vector3(0,0,0))).result();
 	com/=2.0;
-
+	if (com.x!=com.x )
+	{
+		com.x=0;
+		com.y=0;
+		com.z=0;
+	}
 	m_real mass=0.01;	// actually just the sum of child-link-lengths.
 	for(int i=0; i<child_offsets.size(); i++)
 		mass+=child_offsets[i].length();
@@ -203,6 +208,7 @@ void packShapeRobot(Bone& bone,FILE* file, int level, const MotionLoader* pLoade
 	m_real inertia=1.0;
 	
 	inertia*=mass*2.0/5.0*SQR(radius);	// spherical inertia.
+
 
 	shape.add("Segment { \n centerOfMass %f %f %f\n mass %f momentsOfInertia [%f 0 0 0 %f 0 0 0 %f]\n", com.x, com.y, com.z, mass, inertia, inertia, inertia);
 	if(child_offsets.size())

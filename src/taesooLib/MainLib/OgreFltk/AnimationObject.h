@@ -21,7 +21,7 @@ public:
 	TimeSensor* m_pTimer;
 	vector3 m_vTrans;
 
-	virtual void SetTranslation(float x, float y, float z);
+	virtual void setTranslation(float x, float y, float z);
 	vector3 const& getTranslation() const { return m_vTrans;}
 
 	const TString& getType() const	{return mType;}

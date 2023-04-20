@@ -26,6 +26,7 @@ class Posture
 public:
 	Posture();
 	Posture(const Posture& other);
+	Posture(const MotionLoader& skel); // init current pose
 	virtual ~Posture();
 
 	virtual void Init(int numRotJoint, int numTransJoint);
@@ -38,6 +39,8 @@ public:
 
 
 	Posture& operator=(const Posture& other)	{ Clone(&other); return *this;}
+	void assignConstraintOnly(const Posture& other)	{ constraint=other.constraint;}
+
 
 	virtual Posture* clone() const;
 	virtual void Blend(const Posture& a, const Posture& b, m_real t);	//!< a*(1-t)+b*(t)
@@ -94,8 +97,7 @@ public:
 	// type checking. (derived class에서 type checking 구현)
 	virtual void Clone(const Posture* pPosture)	{_clone(pPosture);}
 
-	//////////////////
-	// 필요한대로 쓸 것.
+	// constraint marking.cpp 
 	vector3 m_conToeL;
 	vector3 m_conToeR;
 	vector3& conPosition(int constraint){return (constraint==CONSTRAINT_LEFT_TOE)?m_conToeL:m_conToeR;}

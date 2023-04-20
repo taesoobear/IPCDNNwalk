@@ -97,12 +97,19 @@ void BoneForwardKinematics::setPose(const Posture& pose)
 
 void BoneForwardKinematics::setPoseDOF(const vectorn& dof)
 {
+	MotionDOFinfo const& dofInfo=m_skeleton->dofInfo;
+	setPoseDOFusingCompatibleDOFinfo(dofInfo,  dof);
+
+}
+void BoneForwardKinematics::setPoseDOFusingCompatibleDOFinfo(MotionDOFinfo const& dofInfo, const vectorn& dof)
+{
 	// thread unsafe equivalent: setPose(m_skeleton->dofInfo.setDOF(poseDOF));	
+	MotionLoader* skeleton=&dofInfo.skeleton();
+	
 	int start=0;
-	MotionDOFinfo& dofInfo=m_skeleton->dofInfo;
-	for(int i=1; i<m_skeleton->numBone(); i++)
+	for(int i=1; i<skeleton->numBone(); i++)
 	{
-		Bone& bone=m_skeleton->bone(i);
+		Bone& bone=skeleton->bone(i);
 		if(bone.transJointIndex()!=-1)
 		{
 			vector3& trans=m_local[bone.treeIndex()].translation;
@@ -127,6 +134,59 @@ void BoneForwardKinematics::setPoseDOF(const vectorn& dof)
 		}
 	}
 	assert(start==dof.size());
+	forwardKinematics();
+}
+
+void BoneForwardKinematics::setSphericalQ(const vectorn& q)
+{
+	MotionDOFinfo& dofInfo=m_skeleton->dofInfo;
+	int nquat=dofInfo.numSphericalJoint();
+	int ndof=dofInfo.numDOF();
+	int qindex=0;
+	int qsindex=ndof-nquat*4;
+
+	ASSERT(q.size()==ndof);
+
+	for(int ibone=1; ibone<dofInfo.numBone(); ibone++)
+	{
+		Bone& bone=m_skeleton->bone(ibone);
+		int ndof=dofInfo.numDOF(ibone);
+		transf& _local=m_local[ibone];
+
+		bool hasTrans=(bone.transJointIndex()!=-1);
+		bool hasQuat=dofInfo.hasQuaternion(ibone);
+		if(ibone==1 && hasTrans && hasQuat)
+		{
+			// free joint
+			// translation
+			_local.translation=q.toVector3(qindex);
+			qindex+=3;
+
+			// rotational
+			_local.rotation=q.toQuater(qsindex);
+			qsindex+=4;
+		}
+		else if(hasQuat)
+		{
+			_local.rotation= q.toQuater(qsindex);
+			qsindex+=4;
+		}
+		else if(hasTrans)
+		{
+			ASSERT(ndof>0); // 
+			vector3& trans=_local.translation;
+			int nc=bone.getLocalTrans(trans, &q(qindex));
+			qindex+=nc;
+		}
+		else if(dofInfo.hasAngles(ibone))
+		{
+			quater& rotation=_local.rotation;
+			int nc=bone.getLocalOri(rotation, &q(qindex));
+			qindex+=nc;
+		}
+	}
+	ASSERT(qindex==dofInfo.numDOF()-nquat*4);
+	ASSERT(qsindex==q.size());
 	forwardKinematics();
 }
 

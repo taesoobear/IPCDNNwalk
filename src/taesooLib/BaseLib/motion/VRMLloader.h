@@ -9,6 +9,10 @@
 #include "../math/tvector.h"
 #include "../math/matrix3.h"
 class CTextFile;
+namespace OBJloader
+{
+	class Terrain;
+}
 
 namespace HRP_JOINT
 {
@@ -52,6 +56,7 @@ public:
 	bool hasShape() const;
 	OBJloader::Geometry& getMesh() const;
 	void createNewShape() ; // replacing the existing one if any.
+	void removeShape() ; 
 	int numHRPjoints() const;
 	int HRPjointIndex(int i) const;
 	int DOFindex(int i) const;
@@ -98,12 +103,15 @@ class VRMLloader: public MotionLoader
 {
 	double _frameRate;
 
+	OBJloader::Terrain* _terrain;// reference
 public:
 	TString url;
 	TString name;
 	TString version;
 	TStrings info;
 
+	TString getURL() const {return url;}
+	void setURL(const char* u) { url=u;}
 	
 	virtual TString getName() { return name;}
 	VRMLloader(OBJloader::Geometry const& mesh, bool useFixedJoint=false);

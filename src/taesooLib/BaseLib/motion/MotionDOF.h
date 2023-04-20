@@ -20,6 +20,7 @@ public:
 	MotionDOFinfo mInfo;	
 	
 	MotionDOF(const MotionDOFinfo& info):matrixn(), mInfo(info) {}
+	MotionDOF(const MotionDOFinfo& info,const Motion & mot):matrixn(), mInfo(info) { set(mot);}
 	
 	// DEFAULT COPY CONSTRUCTOR.	
 	MotionDOF(const MotionDOF& other);

@@ -65,7 +65,8 @@ install_dependencies:
 	sudo apt install python3-numpy
 
 install_dependencies_mac:
-	brew install python@3.8
-	python3 -m pip install numpy
+	#brew install python@3.8
+	#python3 -m pip install numpy
+	echo "First install any version of python3 and numpy. System python3 also works."
 	echo "Important!!!! Now open a finder and manually copy all frameworks in /Applications/OgreSDK/lib/macosx/Release/ to ~/Library/Frameworks/!!!"
 

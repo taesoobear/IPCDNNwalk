@@ -14,7 +14,7 @@ class LineSegment;
 class Circle;
 class LineStrip;
 #endif
-
+class OgreTraceManager;
 class FrameSensor;
 class FltkRenderer;
 class OgreRenderer;
@@ -64,6 +64,7 @@ namespace RE
 	void setGlobalMousePos(int x, int y);
 	int getGlobalMouseX();
 	int getGlobalMouseY();
+	bool useSeperateOgreWindow();
 
 	// do not delete the returned MotionLoader instance.
 	MotionLoader* motionLoader(const char* name);
@@ -72,6 +73,10 @@ namespace RE
 	Ogre::SceneManager* ogreSceneManager();
 	Ogre::SceneNode* ogreRootSceneNode();
 	
+	// use only in main.cpp or main_standalone.cpp. 
+	OgreRenderer* _createRenderer(int& w, int &rw);
+	OgreTraceManager* createTraceManager();
+
 	OgreRenderer& renderer();
 	FltkRenderer& FltkRenderer();
 	MotionManager& motionManager();

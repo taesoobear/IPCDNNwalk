@@ -19,6 +19,9 @@ struct _HRP_JOINT
 	HRP_JOINT::jointType_T jointType;
 	int jointStartId;
 	int jointEndId;
+	double jointRangeMin;
+	double jointRangeMax;
+	bool _jointRangeIsLimited();
 	
 private:
 	friend class VRMLloader;

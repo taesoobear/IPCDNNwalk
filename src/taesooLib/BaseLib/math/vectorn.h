@@ -217,6 +217,7 @@ public:
 	friend vectorn operator+( vectorn const& a, vectorn const& b);
 	friend vectorn operator-( vectorn const& a, vectorn const& b);
 	friend vectorn operator*( vectorn const& a, vectorn const& b );
+	friend vectorn operator/( vectorn const& a, vectorn const& b );
 	friend vectorn operator+( vectorn const& a, m_real b);
 	friend vectorn operator-( vectorn const& a, m_real b);
 	friend vectorn operator*( vectorn const& a, m_real b);
@@ -312,7 +313,7 @@ public:
 	// Utility functions
 	//////////////////////////////////////////////////////////////////////
 
-	TString output(const char* formatString="%f", int start=0, int end=INT_MAX) const;
+	TString output(const char* formatString="%.10g", int start=0, int end=INT_MAX) const;
 
 	vectorn& fromMatrix(matrixn const& mat);
 

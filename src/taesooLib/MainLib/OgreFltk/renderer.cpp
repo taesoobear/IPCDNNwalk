@@ -18,7 +18,7 @@
 #include "RE.h"
 #ifndef NO_OGRE
 #include <Ogre.h>
-#ifndef NO_GUI
+#ifndef NO_OIS
  #include <OISMouse.h>
  #include <OISKeyboard.h>
  #include <OISJoyStick.h>
@@ -117,6 +117,15 @@ static bool mbUseRTTcapture=false;
 static bool mbUseOGREcapture=false;
 #endif
 
+void OgreRenderer::setBackgroundColour(float r, float g, float b)
+{
+#ifndef NO_OGRE
+	viewport().mView->setBackgroundColour(Ogre::ColourValue(r,g,b,1.f));
+	if(mbUseRTTcapture){
+		renderTexture->getViewport(0)->setBackgroundColour(Ogre::ColourValue(r,g, b, 1.f));
+	}
+#endif
+}
 void OgreRenderer::Viewport::setupRTT(OgreRenderer& renderer, int width, int height)
 {
 #ifndef NO_OGRE
@@ -154,7 +163,8 @@ void OgreRenderer::Viewport::setupRTT(OgreRenderer& renderer, int width, int hei
 
 		renderTexture->addViewport(mCam);
 		renderTexture->getViewport(0)->setClearEveryFrame(true);
-		renderTexture->getViewport(0)->setBackgroundColour(Ogre::ColourValue::White);
+		//renderTexture->getViewport(0)->setBackgroundColour(Ogre::ColourValue::White);
+		renderTexture->getViewport(0)->setBackgroundColour(Ogre::ColourValue(0.f, 0.6f, 0.8f, 0.9f));
 		renderTexture->getViewport(0)->setOverlaysEnabled(true);
 		renderTexture->setAutoUpdated(true);
 	}
@@ -360,12 +370,14 @@ void OgreRenderer::Viewport::init(OgreRenderer& renderer, OgreRenderer::Viewport
 OgreRenderer::OgreRenderer()
 	:
 
-#ifndef NO_OGRE
+#if !defined( NO_OGRE) 
 		mRoot(NULL),
 		mWnd(NULL),
+#if !defined(NO_OIS)
 		mMouse(NULL),
 		mKeyboard(NULL),
 		mInputSystem(NULL),
+#endif
 #endif
 		mStatsOn(true),
 		mbPause(false), 
@@ -396,12 +408,14 @@ OgreRenderer::OgreRenderer()
 OgreRenderer::OgreRenderer(const char* fallback_configFileName, const char* configFileName, const char* plugins_file, const char* ogre_config)
 	:
 
-#ifndef NO_OGRE
-		mRoot(NULL),
-		mWnd(NULL),
+#if !defined( NO_OGRE)
+	mRoot(NULL),
+	mWnd(NULL),
+#if !defined(NO_OIS)
 		mMouse(NULL),
 		mKeyboard(NULL),
 		mInputSystem(NULL),
+#endif
 #endif
 		mStatsOn(true),
 		mbPause(false), 
@@ -438,24 +452,28 @@ void OgreRenderer::_constructor(const char* fallback_configFileName, const char*
 #endif
 	// Make the root
 
+	printf("starting ogre"); fflush(stdout);
 	Ogre::Log* log=NULL;
 
-
-	if(config.GetInt("enagleLog")!=1)	 {
+	if(config.GetInt("enagleLog")==0)	 {
 		Ogre::LogManager* logMgr=new Ogre::LogManager();
 		log=Ogre::LogManager::getSingleton().createLog("", true, false, false);
 	}
+	printf("."); fflush(stdout);
 
 
 	mRoot = new Ogre::Root(plugins_file, ogre_config, (log)?"":"Ogre.log");
+	printf("."); fflush(stdout);
 
 #if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
 	mOverlaySystem=new Ogre::OverlaySystem();
 #endif
+	printf("."); fflush(stdout);
 
 #ifdef INCLUDE_OGRESKINENTITY
 	mRoot->addMovableObjectFactory(new Ogre::SkinEntityFactory ());
 #endif
+	printf("."); fflush(stdout);
 
 #endif	
 	// now OgreRenderer can do non-ogre stuff.
@@ -1021,6 +1039,7 @@ void OgreRenderer::renderOneFrame()
 		CGDisplayShowCursor(kCGDirectMainDisplay);
 		CGAssociateMouseAndMouseCursorPosition(TRUE);
 #endif
+#ifndef NO_OIS
 		if( mMouse ) {
 			mMouse->capture();
 		}
@@ -1028,6 +1047,7 @@ void OgreRenderer::renderOneFrame()
 		if( mKeyboard ) {
 			mKeyboard->capture();
 		}
+#endif
 		}
 		mRoot->renderOneFrame();
 		if(mbScreenshot && renderTexture) {
@@ -1250,7 +1270,7 @@ void OgreRenderer::cloneMaterial(const char* mat, const char* newMat)
 
 void OgreRenderer::createInputSystems(size_t hWnd)
 {
-#ifndef NO_OGRE
+#ifndef NO_OIS
 				//mInputSystem = OIS::InputManager::createInputSystem(hWnd);
 
 				std::ostringstream windowHndStr;
@@ -1311,6 +1331,10 @@ void OgreRenderer::createInputSystems(size_t hWnd)
 
 
 
+
+#if defined(__APPLE__) && !defined(NO_GUI)
+void setMacRenderConfig( void* handle, Ogre::NameValuePairList &misc);
+#endif
 void OgreRenderer::createRenderWindow(void* handle, int width, int height)
 {
 #ifndef NO_OGRE
@@ -1320,7 +1344,11 @@ void OgreRenderer::createRenderWindow(void* handle, int width, int height)
 	mWnd = mRoot->createRenderWindow("My sub render window", width, height, false, &misc); 
 #else
 #if !defined(GLX_EXTERNAL) && defined(__APPLE__)
-	misc["currentGLContext"]=Ogre::String("True");  
+	//misc["currentGLContext"]=Ogre::String("True");  
+#ifndef NO_GUI
+	setMacRenderConfig(handle, misc);
+#endif
+	
 #else
 	{
 		Ogre::StringVector paramVector;

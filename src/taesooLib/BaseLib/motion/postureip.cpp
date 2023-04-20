@@ -33,6 +33,16 @@ Posture::Posture(const Posture& other)
 {
 	Clone(&other);
 }
+Posture::Posture(const MotionLoader& other)
+:m_dv(0.f,0.f,0.f)
+,m_dq(1.f,0.f,0.f,0.f)
+,m_offset_y(0.f)
+,m_offset_q(1.f,0.f,0.f,0.f)
+,m_rotAxis_y(1.f,0.f,0.f,0.f)
+{
+	Init(other.numRotJoint(), other.numTransJoint());
+	other.getPose(*this);
+}
 
 vector3 Posture::front()
 {

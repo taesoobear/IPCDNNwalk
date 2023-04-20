@@ -145,7 +145,9 @@ public:
 	void setPose(const Posture& pose) const;
 	void getPose(Posture& pose) const;
 	void setPoseDOF(const vectorn& poseDOF) const;
+	void setSphericalQ(const vectorn& q) const {fkSolver().setSphericalQ(q);}
 	void getPoseDOF(vectorn& poseDOF) const;
+	inline vectorn getPoseDOF() const { vectorn v; getPoseDOF(v); return v;}
 
 	// 모든 트리를 update하지 않고, 한개의 chain만 update한다.
 	void setChain(const Posture& pose, int ijoint) const;
@@ -368,7 +370,7 @@ class PoseTransfer2
 	quaterN rAtoB, rAtoB_missing, rAtoB_additional;
 	Posture bindPoseA, bindPoseB;
 	double posScaleFactor;
-	transf rootAtoB;
+	vector3 rootAtoB;
 };
 
 

@@ -30,6 +30,7 @@ public:
 	virtual void setPoseDOF(const vectorn& poseDOF, MotionDOFinfo const& info);
 
 	virtual void updateBoneLength(MotionLoader const& loader){}
+	void setSamePose(BoneForwardKinematics  const& in);
 	virtual void setPose(int iframe);
 	virtual void setPose(const Motion& mot, int iframe);
 	virtual void ApplyAnim(const Motion& mot);
@@ -37,10 +38,15 @@ public:
 	virtual void detachAnim();
 	virtual void setThickness(float thick){}
 
+	// only for backward compatibility!
+	void SetTranslation(double x , double y, double z) { setTranslation(x,y,z);}
+
 	virtual void setDrawConstraint(int con, float radius, RE::Color c){}
 	virtual void setDrawOrientation(int ijoint){}
 	void scale(double x, double y, double z);
 	virtual void setScale(double x, double y, double z);
+	void setScale(vector3 const& v) { setScale(v.x, v.y, v.z);}
+	void setScale(double v) { setScale(v, v, v);}
 
 	struct DrawCallback
 	{

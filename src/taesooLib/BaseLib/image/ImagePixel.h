@@ -3,7 +3,9 @@
 #pragma once
 
 #include "Image.h"
-
+#ifdef DrawText
+#undef DrawText
+#endif
 class CImagePixel
 {
 public:

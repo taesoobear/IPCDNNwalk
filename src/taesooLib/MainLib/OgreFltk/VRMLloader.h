@@ -31,6 +31,7 @@ public:
 	BoneForwardKinematics& _getChain() { return *mChain;}
 	void _updateEntities(BoneForwardKinematics&fk);
 	void setPoseDOF(const vectorn& poseDOF);
+	void setSphericalQ(const vectorn& q);
 	void setPose(BoneForwardKinematics const& in);
 	void setPose(IK_sdls::LoaderToTree const& in);
 	void applyAnim(const MotionDOF& motion);

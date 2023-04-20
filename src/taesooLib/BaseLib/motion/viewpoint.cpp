@@ -25,6 +25,17 @@ inline vector3 defaultViewDir(vector3 const& vup)
 //-----------------------------------------------------------------------------
 
 
+void Viewpoint::setDefaultView()
+{
+	m_vecVPos=vector3(0,200,300);
+	m_vecVAt=vector3(0,0,0);
+	m_vecVUp=vector3(0,1,0);
+	m_fDesiredZoom= 100;
+
+	CalcHAngle();
+	CalcVAngle();
+	CalcDepth();
+}
 void Viewpoint::ReadViewPoint(FILE *fpFile)
 {
 	char *token;

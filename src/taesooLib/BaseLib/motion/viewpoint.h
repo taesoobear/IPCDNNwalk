@@ -15,6 +15,7 @@ public:
 	Viewpoint() { m_bTurnAround=TRUE; m_fMinAngle=0; m_scale=300; m_zoom=1; bOrthographicMode=0;};
 	virtual ~Viewpoint() {};
 
+	void setDefaultView();
 	int TurnDown(m_real radian);
 	int TurnUp(m_real radian);
 	int TurnRight(m_real radian);

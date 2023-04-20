@@ -13,10 +13,11 @@ namespace MotionUtil
 	Bone& conToBone(int con, MotionLoader const& skeleton);
 	void IKSolveAnalytic(const MotionLoader& input_pose, Bone& bone, vector3 goal, intvectorn& index, quaterN& delta_rot, bool bKneeDamping=true, bool bToeCorrection=false);
 
-	int limbIK( const vector3& goal, const vector3& sh, const vector3& v1, const vector3& v2, const vector3& v3, const vector3& v4,
+	double limbIK( const vector3& goal, const vector3& sh, const vector3& v1, const vector3& v2, const vector3& v3, const vector3& v4,
 			quater& qq1, quater& qq2, m_real ii, bool kneeDamping=true);
 
 	void setKneeDampingCoef_RO(double ro);
+	double getKneeDampingCoef_RO();
 	int limbIK_1DOFknee( const vector3& goal, const vector3& sh, const vector3& v1, const vector3& v2, const vector3& v3, const vector3& v4,
 			quater& qq1, quater& qq2, vector3 const& axis, bool kneeDamping, m_real* lengthAdjust=NULL, double kneeDampingConstant=1.0);
 

@@ -567,7 +567,8 @@ m_nCurrShow(-1)
 		m_menuWin.item(0, "MainMenu", 0, -1);
 
 #ifdef __APPLE__
-	m_pMenuWin=new Fl_Window(0, 0*mfScaleFactor, w, h-0*mfScaleFactor);
+	//m_pMenuWin=new Fl_Window(0, 0*mfScaleFactor, w, h-0*mfScaleFactor);
+	m_pMenuWin=new Fl_Group(x+0, y+40*mfScaleFactor, w, h-40*mfScaleFactor);
 #else
 	m_pMenuWin=new Fl_Group(x+0, y+40*mfScaleFactor, w, h-40*mfScaleFactor);
 #endif
@@ -713,6 +714,9 @@ public:
 
     virtual int handle(int);
 };
+#ifndef NO_GUI
+bool OIS_event_alt();
+#endif
 int Fl_Fast_Value_Slider ::handle(int ev)
 {
 #ifndef NO_GUI
@@ -733,7 +737,7 @@ int Fl_Fast_Value_Slider ::handle(int ev)
 		printf("key up %c\r", Fl::event_key());
 		if(Fl::event_ctrl())
 			inc=10;
-		else if(Fl::event_alt())
+		else if(OIS_event_alt())
 			inc=100;
 		else inc=1;
 

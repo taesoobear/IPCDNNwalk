@@ -145,6 +145,7 @@ bool MotionDOFcontainer::isConstraint(int iframe, int con) const
 		return conL(iframe);
 	else if(con==CONSTRAINT_RIGHT_FOOT)
 		return conR(iframe);
+	return false;
 }
 void MotionDOFcontainer::setConstraint(int iframe, int con, bool bSet)
 {

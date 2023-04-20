@@ -144,7 +144,11 @@ ASFTransform::ASFTransform(const ASFRoot& root)
 		for(int i=0; i<c.m_numChannel; i++)
 			c.m_aeChannels[i]=root.order[i];
 
-		setChannels(c.makeTransChannels(), c.makeRotChannels());
+		orig_rot_channels=c.makeRotChannels();
+		if(orig_rot_channels.length()==0 || orig_rot_channels.length()==3 ) 
+			setChannels(c.makeTransChannels(), orig_rot_channels);
+		else
+			setChannels(c.makeTransChannels(), "YZX");
 	}
 
 	ASSERT((root.orientation-vector3(0,0,0)).length()<0.00001);	// 이외의 경우 귀찮아서 고려 안함. 
@@ -173,7 +177,11 @@ ASFTransform::ASFTransform(const ASFBoneData& bone)
 			for(int i=0; i<c.m_numChannel; i++)
 				c.m_aeChannels[i]=bone.dof[i];
 		}
-		setChannels(c.makeTransChannels(), c.makeRotChannels());
+		orig_rot_channels=c.makeRotChannels();
+		if(orig_rot_channels.length()==0 || orig_rot_channels.length()==3 ) 
+			setChannels(c.makeTransChannels(), orig_rot_channels);
+		else
+			setChannels(c.makeTransChannels(), "YZX");
 	}
 
 	quater qc;
@@ -211,7 +219,7 @@ ASFLoader::ASFLoader(const char* filename)
 
 	TString file_name=filename;
 	file_name=file_name.left(file_name.length()-3);
-	file_name+="AMC";
+	file_name+="amc";
 	if(IsFileExist(file_name))
 		LoadAMC(file_name, m_cPostureIP);
 	_initDOFinfo();
@@ -450,12 +458,12 @@ void ASFLoader::LoadAMC(const char* filename, Motion& motionData) const
 
 
 
-		int numRotChannel=pBone->getRotationalChannels().length();
+		int numRotChannel=pBone->orig_rot_channels.length();
 		for(int channel=0; channel<numRotChannel; channel++)
 			aValue[channel]=TO_RADIAN(atof(file.GetToken()));
 
 		curPosture.m_aRotations[0].setRotation(
-			pBone->getRotationalChannels(),
+			pBone->orig_rot_channels,
 			aValue, true);
 
 		for(int i=1; i<numRotJoint(); i++)
@@ -473,12 +481,12 @@ void ASFLoader::LoadAMC(const char* filename, Motion& motionData) const
 				curPosture.m_aTranslations[pBone->transJointIndex()].setValue(aValue);
 				curPosture.m_aTranslations[pBone->transJointIndex()]+=pBone->_getOffsetTransform().translation;
 			}
-			int numRotChannel=pBone->getRotationalChannels().length();
+			int numRotChannel=pBone->orig_rot_channels.length();
 			for(int channel=0; channel<numRotChannel; channel++)
 				aValue[channel]=TO_RADIAN(atof(file.GetToken()));
 			
 			quater q;
-			q.setRotation(pBone->getRotationalChannels(), aValue, true);
+			q.setRotation(pBone->orig_rot_channels, aValue, true);
 			curPosture.m_aRotations[ijoint]=pBone->c*q*pBone->c_inv;
 		}
 		cur_posture++;

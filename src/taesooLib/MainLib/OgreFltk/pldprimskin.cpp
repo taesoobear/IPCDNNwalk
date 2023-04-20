@@ -20,6 +20,7 @@
 #include <OgreSkeleton.h>
 #include <OgreBone.h>
 #include <OgreSkeletonInstance.h>
+#include "Line3D.h"
 #endif
 #include "../BaseLib/utility/operatorString.h"
 #include "../BaseLib/motion/ConstraintMarking.h"
@@ -35,7 +36,12 @@ PLDPrimSkin::PLDPrimSkin()
 	mBeforeDrawCallback=NULL;
 	mType="PLDPrimSkin";
 }
-
+void PLDPrimSkin::setSamePose(BoneForwardKinematics  const& in)
+{
+	Posture pose;
+	in.getPoseFromLocal(pose);
+	SetPose(pose, in.getSkeleton());
+}
 void PLDPrimSkin::scale(double x, double y, double z)
 {
 #ifndef NO_OGRE
@@ -1475,4 +1481,100 @@ void PLDPrimPreciseOgreSkin::ApplyAnim(const Motion& mot)
 	m_pTimer->AttachInterpolator(node);
 	m_pTimer->StartAnim();
 
+}
+
+
+PLDPrimThickLine::PLDPrimThickLine(MotionLoader* pBVHL, const OgreRenderer& renderer)
+:PLDPrimSkel(pBVHL)
+{
+#ifndef NO_OGRE
+	m_pSceneNode=renderer.viewport().mScene->getRootSceneNode()->createChildSceneNode();
+
+	_thickness=3; // 3cm
+	_materialName="solidblue";
+	_lines=new BillboardLineList (RE::generateUniqueName(), mSkel->numBone()-2, _thickness);
+	for (int i=2; i<mSkel->numBone() ; i++)
+	{
+		vector3 start=mSkel->bone(i).getFrame().translation;
+		vector3 end=mSkel->bone(i).parent()->getFrame().translation;
+		_lines->line(i-2, start, end); 
+	}
+
+	_lines->setMaterialName(_materialName);
+	m_pSceneNode->attachObject(_lines);
+#endif
+	UpdateBone();
+
+	if(m_pTimer) m_pTimer->StartAnim();
+}
+
+PLDPrimThickLine::~PLDPrimThickLine()
+{
+#ifndef NO_OGRE
+#endif
+}
+int PLDPrimThickLine::FrameMove(float fElapsedTime)
+{
+#ifndef NO_OGRE
+	UpdateBone();
+#endif
+	return PLDPrimSkel::FrameMove(fElapsedTime);
+}
+
+void PLDPrimThickLine::SetVisible(bool bVisible)
+{
+  #ifndef NO_OGRE
+	mSceneNode->setVisible(bVisible);
+#endif
+}
+void PLDPrimThickLine::setMaterial(const char* mat)
+{
+	_materialName=mat;
+#ifndef NO_OGRE
+	_lines->setMaterialName(_materialName);
+#endif
+}
+
+void PLDPrimThickLine::setScale(double x, double y, double z)
+{
+#ifndef NO_OGRE
+	this->m_pSceneNode->setScale(x,y,z);
+	UpdateBone();
+#endif
+}
+int PLDPrimThickLine::UpdateBone()
+{
+	PLDPrimSkel::UpdateBone();
+#ifndef NO_OGRE
+	double tu1=0.0;
+	double tu2=1.0;
+	double thickness=_thickness/m_pSceneNode->getScale().x;
+	for(int i=2; i<mSkel->numBone(); i++)
+	{
+		vector3 from, to;
+		from=mChain->global(*mSkel->bone(i).parent()).translation;
+		to=mChain->global(i).translation;
+
+		vector3 dir=to-from;
+		dir.normalize();
+		dir*=(thickness*0.25);
+		from-=dir;
+		to+=dir;
+
+#if OGRE_VERSION_MINOR >= 8||OGRE_VERSION_MAJOR>=13 
+		_lines->updateChainElement(i-2,0, Ogre::BillboardChain::Element(
+					ToOgre(from), thickness, tu1, Ogre::ColourValue(1,1,1,1), Ogre::Quaternion(1,0,0,0)));
+		_lines->updateChainElement(i-2,1, Ogre::BillboardChain::Element(
+					ToOgre(to), thickness, tu2, Ogre::ColourValue(1,1,1,1), Ogre::Quaternion(1,0,0,0)));
+#else
+		_lines->updateChainElement(i-2,0, Ogre::BillboardChain::Element(
+					ToOgre(from), thickness, tu1, Ogre::ColourValue(1,1,1,1)));
+		_lines->updateChainElement(i-2,1, Ogre::BillboardChain::Element(
+					ToOgre(to), thickness, tu2, Ogre::ColourValue(1,1,1,1)));
+#endif
+
+
+	}
+#endif
+	return 1;
 }

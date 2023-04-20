@@ -110,8 +110,8 @@ struct 	InertiaCalculator_data
 		m_real count=(m_real)mbInside.count();
 		// bound.volume() is actually 1-grid smaller than total sampling space.
 		volume=bound.volume()*(count/(m_real)((mPrecision-1)*(mPrecision-1)*(mPrecision-1)));
-		printf("bounding box volume %f\n", bound.volume());
-		printf("volume %f\n", volume);
+		Msg::print("bounding box volume %f\n", bound.volume());
+		Msg::print("volume %f\n", volume);
 
 		m_real mass=volume;
 
@@ -146,7 +146,7 @@ struct 	InertiaCalculator_data
 		m_real dy=(bound.getMaximum().y-bound.getMinimum().y)/mPrecision;
 		m_real dz=(bound.getMaximum().z-bound.getMinimum().z)/mPrecision;
 		m_real dv=dx*dy*dz;
-		printf("dx %f %f %f dv %f\n", dx, dy, dz, dv);
+		Msg::print("dx %f %f %f dv %f\n", dx, dy, dz, dv);
 
 		vector3 cp;
 		for(int i=0; i<mPrecision; i++)
@@ -177,10 +177,10 @@ struct 	InertiaCalculator_data
 		inertia._31=inertia._13;
 		inertia._32=inertia._23;
 
-		printf("COM %s\n", centerOfMass.output().ptr());
-		printf("inertia %f %f %f\n", inertia._11, inertia._12, inertia._13);
-		printf("		%f %f %f\n", inertia._21, inertia._22, inertia._23);
-		printf("		%f %f %f\n", inertia._31, inertia._32, inertia._33);
+		Msg::print("COM %s\n", centerOfMass.output().ptr());
+		Msg::print("inertia %f %f %f\n", inertia._11, inertia._12, inertia._13);
+		Msg::print("		%f %f %f\n", inertia._21, inertia._22, inertia._23);
+		Msg::print("		%f %f %f\n", inertia._31, inertia._32, inertia._33);
 	}
 	void drawSamplingGrid(m_real radius, vector3 const& translate)
 	{
@@ -282,12 +282,12 @@ void InertiaCalculator::calculateFromCylinder(m_real radius, m_real height)
 	OBJloader::createCylinder(d.mesh, radius, height, 16);
 
 	m_real M=radius*radius*M_PI*height;
-	printf("\ncylinder: exact volume=%f\n", M);
+	Msg::print("\ncylinder: exact volume=%f\n", M);
 	d._calculate();
 
 	m_real ix=M*height*height/12.0+M*radius*radius/4.0;
 	m_real iy=0.5*M*radius*radius;
-	printf("exact tensor=%f %f %f\n", ix, iy, ix);
+	Msg::print("exact tensor=%f %f %f\n", ix, iy, ix);
 	
 }
 
@@ -356,10 +356,10 @@ struct 	InertiaCalculator_dataA
 		inertia._22=ii.y;
 		inertia._33=ii.z;
 
-		printf("COM %s\n", centerOfMass.output().ptr());
-		printf("inertia %f %f %f\n", inertia._11, inertia._12, inertia._13);
-		printf("		%f %f %f\n", inertia._21, inertia._22, inertia._23);
-		printf("		%f %f %f\n", inertia._31, inertia._32, inertia._33);
+		Msg::print("COM %s\n", centerOfMass.output().ptr());
+		Msg::print("inertia %f %f %f\n", inertia._11, inertia._12, inertia._13);
+		Msg::print("		%f %f %f\n", inertia._21, inertia._22, inertia._23);
+		Msg::print("		%f %f %f\n", inertia._31, inertia._32, inertia._33);
 	}
 };
 
@@ -477,12 +477,12 @@ void InertiaCalculatorAnalytic::calculateFromCylinder(m_real radius, m_real heig
 	OBJloader::createCylinder(d.mesh, radius, height, 16);
 
 	m_real M=radius*radius*M_PI*height;
-	printf("\ncylinder: exact volume=%f\n", M);
+	Msg::print("\ncylinder: exact volume=%f\n", M);
 	d._calculate();
 
 	m_real ix=M*height*height/12.0+M*radius*radius/4.0;
 	m_real iy=0.5*M*radius*radius;
-	printf("exact tensor=%f %f %f\n", ix, iy, ix);
+	Msg::print("exact tensor=%f %f %f\n", ix, iy, ix);
 	
 }
 

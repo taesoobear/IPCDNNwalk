@@ -37,6 +37,7 @@
 
 void Imp::blit(CImage& out, CImage const& in, TRect const& rect_in, int x, int y)
 {
+	out.Create(rect_in.right-rect_in.left, rect_in.bottom-rect_in.top);
 	ASSERT(&out != &in);
 	ASSERT(rect_in.left>=0);
 	ASSERT(rect_in.right<=in.GetWidth());

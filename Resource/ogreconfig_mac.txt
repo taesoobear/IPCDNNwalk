@@ -1,13 +1,15 @@
+# config file for ogre 1.12+ (built/installed from ogre-1.12.5.git)
+
 # Please do not change this default setting. 
 # if this setting is not good for you,
 # copy this file to ogreconfig_personal.txt and edit it.
-renderer_width 10
-renderer_height 400
-right_panel_width 220
+renderer_width 960
+renderer_height 540
+right_panel_width 200
 UI_scale_factor 1
 useRTTcapture 1
 showConfigDlg 0
-useSeperateOgreWindow 1
+useSeperateOgreWindow 0
 #  SHADOWTYPE_NONE = 0x00,
 #  SHADOWTYPE_STENCIL_MODULATIVE = 0x12=18,
 #  SHADOWTYPE_STENCIL_ADDITIVE = 0x11=17,
@@ -23,10 +25,10 @@ shadowTechnique 18
 shadowFarDistance 2000
 # must be power of 2
 #shadowResolution 4096 
-shadowResolution 256
+shadowResolution 512
+shadowmapCount 10
+shadowColor 0.8
 
-# depthShadow only works with shadowTechnique 33
-# if you change depthShadow to 1, you should also modify ogreConfig.lua file.
 depthShadow 0
 enagleLog 0
 

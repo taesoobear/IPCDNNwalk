@@ -873,7 +873,7 @@ void MotionLoader::insertSiteBones()
 		for (int i=1; i<numBone(); i++){
 			Bone& b=bone(i);
 			if ( b.child()==NULL && b.numChannels()!=0){
-				printf("adding %s's children: SITE\n", b.name().ptr());
+				Msg::print("adding %s's children: SITE\n", b.name().ptr());
 				insertChildBone(b, "SITE");
 				count++;
 				break;
@@ -1020,11 +1020,12 @@ void MotionLoader::removeBone(Bone& target)
 			break;
 		}
 	}
+	//printf("need to rearrange %d\n", (int)bNeedToRearrange);
 
 	if(bNeedToRearrange)
 	{
 		Posture temp;
-		for(int i=0; i<_rotJoint2bone.size(); i++)
+		//for(int i=0; i<_rotJoint2bone.size(); i++)
 		{
 			for(int j=0; j<m_cPostureIP.numFrames(); j++)
 			{
@@ -1034,6 +1035,7 @@ void MotionLoader::removeBone(Bone& target)
 				{
 					m_cPostureIP.pose(j).m_aRotations[_rotJoint2bone[k]->rotJointIndex()]=
 						temp.m_aRotations[k];
+					//if (j==0) printf("%d\n", k);
 				}
 
 				for(int k=0; k<numTransJoint(); k++)
@@ -1060,7 +1062,7 @@ void MotionLoader::removeAllRedundantBones()
 				&& target.getTranslationalChannels()==0
 				&& target.numChildren())
 			{
-				printf("Removing redundant bone %s\n", target.NameId);
+				Msg::print("Removing redundant bone %s\n", target.NameId);
 				removeBone(target);
 				bChanged=true;
 				break;
@@ -1227,7 +1229,7 @@ void MotionLoader::setNewRoot(Bone& newRoot)
 	insertChildBone(pparent, name.c_str());
 	bone(1).setChannels(tc.ptr(), rc.ptr());
 	ASSERT(numBone()==3);
-	//printf("children %d\n", children.size());
+	//Msg::print("children %d\n", children.size());
 	bone(1).addChildren(children);
 	
 	// Update indexes
@@ -1366,8 +1368,8 @@ void MotionLoader::setPose(const Posture& pose) const
 
 void MotionLoader::setPoseDOF(const vectorn& poseDOF) const
 {
-	
-	setPose(dofInfo.setDOF(poseDOF));
+	m_defaultFK.setPoseDOF(poseDOF);
+	//setPose(dofInfo.setDOF(poseDOF));
 }
 
 void MotionLoader::getPose(Posture& pose) const
@@ -2202,7 +2204,13 @@ void PoseTransfer2::_ctor(MotionLoader* _loaderA, MotionLoader* _loaderB, TStrin
 	self.posScaleFactor=_posScaleFactor ;
 	transf Aroot=self.loaderA->bone(1).getFrame();
 	Aroot.translation*=(1/self.posScaleFactor);
-	self.rootAtoB=Aroot.inverse()*self.loaderB->bone(1).getFrame();
+
+	if( Aroot.translation.length()<1e-3)
+		// map identity pose
+		self.rootAtoB=-self.loaderB->bone(AtoB(1)).getFrame().translation;
+	else
+		// map world position
+		self.rootAtoB=self.loaderB->bone(1).getFrame().translation - Aroot.translation;
 }
 
 void PoseTransfer2::_setTargetSkeleton()
@@ -2240,13 +2248,12 @@ void PoseTransfer2::_setTargetSkeleton()
 		loaderB->bone(iB)._getFrame().rotation=(loaderA->bone(iA).getFrame().rotation*self.rAtoB_additional(i));
 	}
 
-	// set root
-	loaderB->bone(1)._getFrame()=(loaderA->bone(1).getFrame()*self.rootAtoB);
+	// set root translation
+	loaderB->bone(1)._getFrame().translation=(loaderA->bone(1).getFrame().translation/self.posScaleFactor+self.rootAtoB);
 
 	// an inverse kinematics followed by a forward kinematics. (to recalculate all joint positions)
 	Posture pose;
 	loaderB->fkSolver().getPoseFromGlobal(pose);
-	pose.m_aTranslations(0)*=(1/self.posScaleFactor);
 	for (int i=0;i< pose.m_aRotations.size();i++){
 		pose.m_aRotations(i).normalize();
 	}

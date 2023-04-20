@@ -247,11 +247,13 @@ namespace Ogre
 OgreTraceManager::OgreTraceManager(int x, int y, int w, int h)
 {
 	eraseRequested=false;
+
+	_w=(double)w;
+	_h=(double)h;
 	/// The overlay which contains our profiler results display
 	Ogre::Overlay* mOverlay;
 
 	/// The window that displays the profiler results
-	Ogre::OverlayContainer* mProfileGui;
 
 	static int count=0;
 	count++;
@@ -263,11 +265,25 @@ OgreTraceManager::OgreTraceManager(int x, int y, int w, int h)
 	mOverlay->setZOrder(500);
 
 	// this panel will be the main container for our profile bars
-	mProfileGui = Ogre::createContainer(x,y,w*2+15,h, RE::generateUniqueName());
+	mProfileGui = Ogre::createContainer(x,y,w,h, RE::generateUniqueName());
 	//mProfileGui ->setMaterialName("Core/StatsBlockCenter");
 
+#ifdef __APPLE__
+	if(RE::useSeperateOgreWindow())
+	{
+		// retina
+		mElementID=Ogre::createTextArea(std::string(TString("id")+c), w-4,h-4, 100, 2, 14*mfScaleFactor*2, "",true);
+		mElementContent=Ogre::createTextArea(std::string(TString("content")+c), w-4,h-4, 100, w/4, 14*mfScaleFactor*2, "",true);
+	}
+	else
+	{
+		mElementID=Ogre::createTextArea(std::string(TString("id")+c), w-4,h-4, 100, 2, 14*mfScaleFactor, "",true);
+		mElementContent=Ogre::createTextArea(std::string(TString("content")+c), w-4,h-4, 100, w/4, 14*mfScaleFactor, "",true);
+	}
+#else
 	mElementID=Ogre::createTextArea(std::string(TString("id")+c), w-4,h-4, 100, 2, 14*mfScaleFactor, "",true);
 	mElementContent=Ogre::createTextArea(std::string(TString("content")+c), w-4,h-4, 100, w/4, 14*mfScaleFactor, "",true);
+#endif
 
 	mProfileGui->addChild(mElementID);
 	mProfileGui->addChild(mElementContent);
@@ -313,6 +329,7 @@ int OgreTraceManager::FrameMove(float fElapsedTime)
 			tid+="\n";
 			temp=j->second->mMessage;
 			temp.replace('\n', ' ');
+			temp.replace('\t', ' ');
 			tc+=temp+"\n";
 		}
 	}
@@ -342,6 +359,39 @@ int OgreTraceManager::FrameMove(float fElapsedTime)
 	return 1;
 }
 
+void OgreTraceManager::hideOutputs()
+{
+	mElementID->hide();
+	mElementContent->hide();
+
+}
+void OgreTraceManager::showOutputs()
+{
+	mElementID->show();
+	mElementContent->show();
+}
+int OgreTraceManager::createTextArea(double width, double height, double top, double left, int fontSize, const char* caption)
+{
+	auto* ptr=Ogre::createTextArea(std::string(RE::generateUniqueName().ptr()), _w*width, _h*height, _h*top, _w*left, fontSize, caption, true);
+
+	mProfileGui->addChild(ptr);
+	_otherElements.push_back(ptr);
+	return _otherElements.size()-1;
+}
+
+void OgreTraceManager::setCaption(int iElement, const char* caption)
+{
+	_otherElements[iElement]->setCaption(caption);
+}
+
+void OgreTraceManager::setVisible(int iElement, bool visible)
+{
+	if(visible){
+		_otherElements[iElement]->show();
+	}
+	else
+		_otherElements[iElement]->hide();
+}
 void OgreTraceManager::message(const char* id, const char* content)
 {
 	TraceBase::message(id, content);

@@ -24,6 +24,7 @@ public:
 	void forwardKinematics();
 	// calc local from global. Bone lengths are fixed.
 	void inverseKinematics();
+	int numBone() const { return m_local.size();}
 
 	// calc local from global. Bone lengths can change.
 	void inverseKinematicsExact();
@@ -33,6 +34,19 @@ public:
 	void operator=(BoneForwardKinematics const& other);
 	void setPose(const Posture& pose);
 	void setPoseDOF(const vectorn& poseDOF);
+	void setPoseDOFusingCompatibleDOFinfo(MotionDOFinfo const& dofInfo, const vectorn& poseDOF);
+
+	// for skeletons with spherical joints, get/setSphericalQ is often more convenient than getPoseDOF/setPoseDOF.
+	/* 
+	 * our spherical state packing is different!!!
+	 *
+	 *  in our case, linear parts appear first, and then 3 DOF ball joints (YUP).
+	 *         root                                     |     3           3         ...   
+	 q_linear= [x, y, z, hinge1, hinge2, hinge3, hinge4]
+	 q_quat  =                                          [qw,qx,qy,qz, qw2,qx2,qy2,qz2, qw3,qx3,qy3,qz3, ....]
+	 q= [q_linear, q_quat]
+	 */
+	void setSphericalQ(const vectorn& q);
 
 	void setChain(const Posture& pose, const Bone& bone);
 	void setChain(const Bone& bone);

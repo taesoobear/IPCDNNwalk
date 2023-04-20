@@ -149,8 +149,8 @@ class LoaderToTree
 		void copyTree(Bone* bone, IK_sdls::Node* parent);
 		void compareTrees(vector3 trans);
 	public:
-		inline int nDOF() { return _nDOF;}
-		inline int nJoints() { return mTree.GetNumJoint();}
+		inline int nDOF() const { return _nDOF;}
+		inline int nJoints()const  { return mTree.GetNumJoint();}
 		// set useEulerRoot to false, if you do not know what to do.
 		// set useFixedRootPos to false, if you do not know what to do.
 		LoaderToTree(MotionLoader& skeleton, bool useEulerRoot, bool useFixedRootPos);
@@ -265,7 +265,8 @@ class LoaderToTree
 		
 		IK_sdls::Tree mTree;
 
-		inline int numJoint() { return mNodeTraverse.size();}
+		inline int numJoint() const { return mNodeTraverse.size();}
+		inline int numBone() const { return mBoneToNode.size();}
 		// faster than mTree.GetJoint(jointindex)
 		inline IK_sdls::Node* getJoint(int jointindex) { return mNodeTraverse[jointindex];}
 		inline NodeWrap& getNode(int treeIndex) { return mNode[mBoneToNode[treeIndex]]; }
@@ -275,7 +276,8 @@ class LoaderToTree
 		const IK_sdls::Node* getLastNode(int treeIndex) const { return getNode(treeIndex).back();}
 		IK_sdls::Node* getNode(int treeIndex, int dofIndex) { return mNode[mBoneToNode[treeIndex]].node[dofIndex]; }
 		const IK_sdls::Node* getNode(int treeIndex, int dofIndex) const { return mNode[mBoneToNode[treeIndex]].node[dofIndex]; }
-		int getVarIndex(int treeIndex, int dofIndex)const { return mNode[mBoneToNode[treeIndex]].node[dofIndex]->GetJointNum(); }
+		int getVarIndex(int treeIndex, int dofIndex=0)const { return mNode[mBoneToNode[treeIndex]].node[dofIndex]->GetJointNum(); }
+		int getVarEndIndex(int treeIndex)const { if(treeIndex==mBoneToNode.size()-1) return nDOF(); return mNode[mBoneToNode[treeIndex+1]].node[0]->GetJointNum(); }
 		int getVarIndexByAxis(int treeIndex, const char *axis);
 
 		// compute the transpose of the effector jacobian matrix.

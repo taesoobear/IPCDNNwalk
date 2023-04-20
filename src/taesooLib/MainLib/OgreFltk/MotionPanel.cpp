@@ -212,7 +212,7 @@ public:
 		if(w.mId=="x" || w.mId=="y" ||w.mId=="z" )
 		{
 			for(int i=0; i<mMP->motionWin()->getNumSkin(); i++)
-				mMP->motionWin()->getSkin(i)->SetTranslation(slider(-2)->value(), slider(-1)->value(), slider(0)->value());
+				mMP->motionWin()->getSkin(i)->setTranslation(slider(-2)->value(), slider(-1)->value(), slider(0)->value());
 		}
 	}
 };

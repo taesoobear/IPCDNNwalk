@@ -1073,6 +1073,7 @@ void InterframeDifference::reconstruct(matrixn& output, m_real frameRate)
 	quater q,dqq;
 	vector3 p,gdv;
 	q.mult(startRotY,offset_q[0]);
+	q.normalize();
 	setQ(output, 0, q);
 
 	vector3 prevP=startP;
@@ -1086,6 +1087,7 @@ void InterframeDifference::reconstruct(matrixn& output, m_real frameRate)
 		dqq.setRotation(dq[i]*dt);
 		rotY.mult(dqq, prevRotY);
 		q.mult(rotY, offset_q[i]);
+		q.normalize();
 		setQ(output, i, q);
 
 		midRotY.interpolate(0.5, prevRotY, rotY);

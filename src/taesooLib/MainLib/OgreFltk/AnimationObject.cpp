@@ -29,7 +29,7 @@ AnimationObject::~AnimationObject()
 	}
 }
 
-void AnimationObject::SetTranslation(float x, float y, float z)
+void AnimationObject::setTranslation(float x, float y, float z)
 {
 	m_vTrans.setValue(x,y,z);
 #ifndef NO_OGRE

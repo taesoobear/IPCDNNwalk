@@ -3,6 +3,7 @@
 #include "renderer.h"
 #include "../BaseLib/motion/Motion.h"
 #include "../BaseLib/motion/MotionWrap.h"
+#include "../BaseLib/motion/viewpoint.h"
 #include "MotionManager.h"
 #include "Circle.h"
 #include "timesensor.h"
@@ -20,6 +21,11 @@ namespace RE
 	Globals* g_pGlobals=NULL;
 }
 
+bool useSeperateOgreWindow();
+bool RE::useSeperateOgreWindow()
+{
+	return ::useSeperateOgreWindow();
+}
 MotionLoader* RE::motionLoader(const char* name)
 {
 	return RE::renderer().m_pMotionManager->GetMotionLoaderPtr((char*)name);
@@ -97,7 +103,8 @@ PLDPrimSkin* RE::createSkin(const MotionLoader& skel,PLDPrimSkinType  t)
 		return pSkin;
 		break;
 	case PLDPRIM_LINE:
-		pSkin=new PLDPrimLine((MotionLoader*)(&skel), RE::renderer());
+		//pSkin=new PLDPrimLine((MotionLoader*)(&skel), RE::renderer());
+		pSkin=new PLDPrimThickLine((MotionLoader*)(&skel), RE::renderer());
 		RE::renderer().addFrameMoveObject(pSkin);
 		return pSkin;
 		break;
@@ -170,7 +177,9 @@ PLDPrimSkin* RE::createSkin(const MotionLoader& skel)
 		pSkin=createSkin(*reinterpret_cast<PLDPrimOgreSkin*>(RE::g_pGlobals->defaultSkins[skel.getHandle()]));
 	else
 	{
-		pSkin=new PLDPrimCyl((MotionLoader*)(&skel), RE::renderer());
+		//pSkin=new PLDPrimCyl((MotionLoader*)(&skel), RE::renderer());
+		//pSkin=new PLDPrimLine((MotionLoader*)(&skel), RE::renderer());
+		pSkin=new PLDPrimThickLine((MotionLoader*)(&skel), RE::renderer());
 		RE::renderer().addFrameMoveObject(pSkin);
 	}
 	return pSkin;
@@ -983,6 +992,22 @@ int RE::numOutputManager()
 {
 	return g_traceManagers.size();
 }
+#ifndef NO_OGRE
+#include "TraceManager.h"
+#endif
+OgreTraceManager* RE::createTraceManager()
+{
+#ifndef NO_OGRE
+	OgreTraceManager* otm=NULL;
+	int _w=RE::renderer().viewport().m_pViewpoint->m_iWidth;
+	int _h=RE::renderer().viewport().m_pViewpoint->m_iHeight;
+
+	otm=new OgreTraceManager(0, 0, _w, _h);
+	return otm;
+#else
+	return NULL;
+#endif
+}
 
 #ifdef _MSC_VER
 #include <windows.h>
@@ -1004,4 +1029,17 @@ void RE::usleep(int usec)
 #else
 	::usleep(usec);
 #endif
+}
+extern ConfigTable config;
+OgreRenderer* RE::_createRenderer(int& w, int &rw)
+{
+	auto* renderer=new OgreRenderer();
+	int DEFAULT_RENDERER_WIDTH=config.GetInt("renderer_width");
+	int DEFAULT_WIDTH=DEFAULT_RENDERER_WIDTH+config.GetInt("right_panel_width");
+	if (DEFAULT_RENDERER_WIDTH<20)
+	{
+		rw=DEFAULT_RENDERER_WIDTH; // seperate win
+		w=DEFAULT_WIDTH;
+	}
+	return renderer;
 }

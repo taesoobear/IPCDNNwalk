@@ -129,7 +129,7 @@ void BinaryFile::unpackStr(char *str)
 
 void BinaryFile::close()
 {
-	ASSERT(m_pFile || m_pBuffer);
+	//ASSERT(m_pFile || m_pBuffer);
 	if(m_pFile)
 	{
 		fclose(m_pFile);

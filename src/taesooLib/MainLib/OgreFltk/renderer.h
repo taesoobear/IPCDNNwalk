@@ -12,6 +12,10 @@ class CImage;
 #include "../console/dummies.h"
 #endif
 
+#if defined(NO_GUI) || defined(_MSC_VER)
+#define NO_OIS
+#endif
+
 #ifndef _MSC_VER
  #if FL_MAJOR_VERSION == 2
  
@@ -28,7 +32,7 @@ class CImage;
  
  #endif
 #endif
-#ifndef NO_GUI
+#ifndef NO_OIS
  namespace OIS { class Mouse; class Keyboard; class InputManager;}
 #endif
 
@@ -111,9 +115,11 @@ public:
 	Ogre::Root *mRoot;
 	Ogre::RenderWindow *mWnd;
 	Ogre::RenderSystem *mRSys;
+#ifndef NO_OIS
     OIS::Mouse        *mMouse;
     OIS::Keyboard     *mKeyboard;
     OIS::InputManager *mInputSystem;
+#endif
 #if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
 	Ogre::OverlaySystem*  mOverlaySystem;
 #endif
@@ -123,6 +129,7 @@ public:
 	void createRenderWindow(void* handle, int width, int height);
 	bool mbScreenshot;	//screenshot enable disable. almost private.
 	void renderOneFrame();
+	void setBackgroundColour(float r, float g, float b);
 protected:
 	std::vector<Viewport*> mViewports;
 	int mCurrViewports;

@@ -146,7 +146,7 @@ void boolN::findZeroCrossing(const vectorn& vec, zeroCrossingMode mode)
 				{
 					if(!value(i-1) && !value(i))
 					{
-						printf("%d\n", i);
+						Msg::print("%d\n", i);
 						setAt(i);
 					}
 				}
@@ -322,25 +322,42 @@ void boolN::centers(int start, int end, const intvectorn& jumpIndex, const boolN
 void _boolN_worker::output(TString& id, int start, int end) const
 {
 	if(end>size()) end=size();
+	/*
 	id+="[";
 	for(int i=start; i<end; i++)
 	{
 		id.add("%1d", (*this)[i]);
 	}
 	id+="]";
-
+	*/
+	id.reserve(end-start+3);
+	id[0]='[';
+	for(int i=start; i<end; i++)
+		id[i-start+1]=(*this)[i]?'1':'0';
+	id[end-start+1]=']';
+	id[end-start+2]=0;
+	id.updateLength();
 }
 
 TString _boolN_worker::output(int start, int end) const
 {
 	if(end>size()) end=size();
 	TString id;
+	/*
 	id+="[";
 	for(int i=start; i<end; i++)
 	{
 		id.add("%1d",(int)(*this)[i]);
 	}
 	id+="]";
+	*/
+	id.reserve(end-start+3);
+	id[0]='[';
+	for(int i=start; i<end; i++)
+		id[i-start+1]=(*this)[i]?'1':'0';
+	id[end-start+1]=']';
+	id[end-start+2]=0;
+	id.updateLength();
 	return id;
 }
 
@@ -407,7 +424,7 @@ void boolN::load(int numFrame, const char* filename)
 	if(stopMarking.OpenReadFile(filename))
 	{
 		char* token;
-		while(token=stopMarking.GetToken())
+		while((token=stopMarking.GetToken()))
 		{
 			int index=atoi(token);
 			if(index>size())

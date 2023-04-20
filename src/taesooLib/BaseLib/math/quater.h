@@ -109,6 +109,8 @@ public:
 	void setRotation(const char* aChannel, double *aValue, bool bRightToLeft=false);	//!< from euler angle. aChannel="YXZ" or something like that.
 	void getRotation(const char* aChannel, double *aValue, bool bRightToLeft=false) const;	//!< to euler angle. aChannel="YXZ" or something like that.
 	void setRotation(const vector3& axis, double angle);
+	vector3 getFrameAxis(int icolumn) const;
+	void setFrameAxesYZ(vector3 const& y, vector3 const& z);
 	inline void setRotation(const vector3& rotationVector)	{ exp(rotationVector/2.0); }
 	// vecAxis should be a unit vector.
 	void setAxisRotation(const vector3& vecAxis, const vector3& front, const vector3& vecTarget);

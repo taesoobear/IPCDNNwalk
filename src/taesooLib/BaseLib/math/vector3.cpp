@@ -6,12 +6,6 @@
 
 static m_real eps = 0.0001f;
 
-#ifdef DIRECT3D_VERSION
-#ifdef MATH_SINGLE_PRECISION
-#define USE_D3DFUNC
-#endif
-#endif
-
 void vector3::interpolate( m_real t, vector3 const& a, vector3 const& b )
 {
 	add((1.0-t)*a , t*b);
@@ -420,7 +414,7 @@ quater vector3::quaternion() const
 TString vector3::output() const
 {
 	TString temp;
-	temp.format("%g %g %g", x, y,z);
+	temp.format("%.10g %.10g %.10g", x, y,z);
 	return temp;
 }
 

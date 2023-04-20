@@ -630,10 +630,9 @@ void SetSignal::transJoint(int ijoint, const vector3N& in, int start)
 }
 
 
-m_real MotionUtil::transitionCost(const Motion& mMotion, int from, int to)
+m_real MotionUtil::transitionCost(const Motion& mMotion, int from, int to, int interval)
 {
 	//!<  from까지 play하고 to+1부터 play하는 경우 transition cost
-	const int interval=3;
 	
 	// find valid left range 
 	int i, left_i, right_i;
@@ -896,9 +895,13 @@ void MotionUtil::mirrorMotion(Motion& out, const Motion& in, intvectorn const& L
 		{
 			quater& global_rot=globalpose.m_aRotations[j];
 
+			/*
 			global_rot.decomposeNoTwistTimesTwist(vector3(1,0,0), offset_q, rotAxisX);
 			//y축으로 거꾸로 돌려 대칭 시킨다. 
 			global_rot=offset_q.inverse()*rotAxisX;
+			*/
+			quater q=global_rot;
+			global_rot=quater(q.w, q.x, -q.y, -q.z);
 		}
 		// convert to local pose.
 		for(int j=1; j<in.NumJoints(); j++)

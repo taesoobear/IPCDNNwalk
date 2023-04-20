@@ -449,6 +449,13 @@ void OutputToFile(const char* filename, const char* string)
 	fprintf(pFile,"%s\n",string);
 	fclose(pFile);
 }
+void OutputToFile2(const char* filename, const char* string)
+{
+	FILE* pFile;
+	pFile = fopen(filename,"a");
+	fprintf(pFile,"%s",string);
+	fclose(pFile);
+}
 
 bool IsFileExist(const char* filename)
 {
@@ -563,7 +570,7 @@ bool createDirectory(const char *PathToCreate)
 
 void deleteFile( const char* filename)
 {
-#ifdef _MSC_VER
+#ifdef _WIN32
 	::DeleteFile(filename);
 #else
 	remove(filename);

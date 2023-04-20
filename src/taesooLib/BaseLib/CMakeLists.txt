@@ -19,7 +19,7 @@ if(WIN32)
 		message("nodevil?okay. many functionalities won't work.")
 	else()
 	include_directories (
-		${BaseLib_SOURCE_DIR}/../../dependencies/DevIL-SDK-x86-1.7.8/include
+		${TAESOOLIB_DIR}/../windows_dependencies/eigen-3.4.0/
 		${BaseLib_SOURCE_DIR}/../dependencies/libxml2-2.7.3.win32/include
 		${BaseLib_SOURCE_DIR}/image/FreeImage/Dist
 		)
@@ -28,7 +28,6 @@ if(WIN32)
 		${BaseLib_SOURCE_DIR}/../../dependencies/DevIL-SDK-x86-1.7.8/lib
 		)
 	endif()
-		
 else()
    	if(NoDevil)
 		add_definitions(-DNO_DEVIL)

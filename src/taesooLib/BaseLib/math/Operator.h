@@ -13,6 +13,9 @@ namespace v
 	void transition(vectorn & out, m_real start, m_real end, int nSize);
 	m_real sample(vectorn const& in, m_real criticalTime);
 	void hermite(vectorn& out, double a, double b, int duration, double c, double d);
+	// preserves out.size()
+	void quintic(vectorn& out, double x0, double v0, double a0, double x1, double v1, double a1, double T);
+
 
 }
 
@@ -60,6 +63,7 @@ namespace sop
 	// if(t<min) return v1 elseif (t>max) return v2, otherwise, inbetween v1 and v2 linearly.
 	m_real clampMap(m_real t, m_real min, m_real max, m_real v1=0.0, m_real v2=1.0);
 	m_real map(m_real t, m_real min, m_real max, m_real v1=0.0, m_real v2=1.0);
+	m_real sigmoid(m_real t);
 }
 
 namespace v

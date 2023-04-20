@@ -136,7 +136,7 @@ public:
 	_tvectorn<T,T_base>& assign(const _tvectorn<T,T_base>& other);
 
 	// a.value(0)==a[0]==a(0)
-	inline T&   value(int i) const							{ ASSERT(i>=0 && i<n); return *((T*)(ptr+i*stride));}
+	inline T&   value(int i) const							{ RANGE_ASSERT(i>=0 && i<n); return *((T*)(ptr+i*stride));}
 	// value + error checking + python-like backward indexing. default in LUA.
 	inline T&   at(int i) const								{ 
 		if(i<0) i=size()+i;
@@ -296,7 +296,8 @@ void _tvectorn<T, T_base>::setSize( int x )
 	}
 #ifdef _DEBUG
 	_arrayDEBUG.resize(x*T_N);
-	ptr= &_arrayDEBUG[0];
+	if(x>0)
+		ptr= &_arrayDEBUG[0];
 #endif
 	n = x;
 }

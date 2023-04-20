@@ -135,7 +135,7 @@ namespace MotionUtil
 
 	intvectorn findChildren(MotionLoader& skeleton, int rootTreeIndex);
 
-	m_real transitionCost(const Motion& in, int from, int to);	//!<  from까지 play하고 to+1부터 play하는 경우 transition cost, Kovar metric
+	m_real transitionCost(const Motion& in, int from, int to, int interval=3);	//!<  from까지 play하고 to+1부터 play하는 경우 transition cost, Kovar metric
 	void scale(Motion& inout, float ratio);				//!< root translation을 scale한다.
 	
 	void translate(Motion& inout, const vector3& trans, int start=0, int end=INT_MAX);	//!< Motion 전체를 Translate한다. 즉 root position의 translation

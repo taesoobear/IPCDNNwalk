@@ -46,15 +46,21 @@ public:
 		int HEIGHT=h;
 		
 		m_motionPanel=new MotionPanel(0,RENDERER_HEIGHT,WIDTH, HEIGHT-RENDERER_HEIGHT);
-		m_Renderer=new FltkRenderer(0,0,RENDERER_WIDTH,RENDERER_HEIGHT,pOgreRenderer);
-		m_Renderer->end();
-		
+
 		int ww, hh;
 
 		ww=WIDTH-RENDERER_WIDTH;
 		hh=RENDERER_HEIGHT;
 
+#if 1
+		m_Renderer=new FltkRenderer(ww, 0, RENDERER_WIDTH, hh,pOgreRenderer);
+		m_Renderer->end();
+		m_pRightWin=new PythonExtendWin(0,0,ww,RENDERER_HEIGHT, *m_motionPanel, *m_Renderer);
+#else
+		m_Renderer=new FltkRenderer(0,0,RENDERER_WIDTH,RENDERER_HEIGHT,pOgreRenderer);
+		m_Renderer->end();
 		m_pRightWin=new PythonExtendWin(RENDERER_WIDTH, 0, ww, hh, *m_motionPanel, *m_Renderer);
+#endif
 
 #ifndef NO_GUI
 		m_tile->end();
@@ -80,14 +86,15 @@ public:
 
 static OgreRenderer* g_pRenderer=NULL;
 static MainWin* g_pMainWin=NULL;
-extern ConfigTable config;
 void _createMainWin(int w, int h, int rw, int rh, float UIscaleFactor, OgreRenderer* _renderer);
 void createMainWin(int w, int h, int rw, int rh, float UIscaleFactor)
 {
 	if(g_pRenderer) { printf("mainwin already created\n"); return;}
 	FlLayout::setUIscaleFactor(UIscaleFactor);
 	srand((unsigned)time( NULL ));
-	_createMainWin(w, h, rw, rh, UIscaleFactor, new OgreRenderer());
+
+	auto* renderer=RE::_createRenderer(w, rw); // w, rw can be changed by the renderer.
+	_createMainWin(w, h, rw, rh, UIscaleFactor, renderer);
 }
 
 void createMainWin(int w, int h, int rw, int rh, float UIscaleFactor, const char* configFileName, const char* plugins_file, const char* ogre_config)

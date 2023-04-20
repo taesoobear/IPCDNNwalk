@@ -37,6 +37,11 @@ namespace sop
 
 	m_real smoothTransition(m_real a)
 	{ return ((m_real)-2.0)*a*a*a+((m_real)3.0)*a*a;} // y=-2x^3+3x^2
+													  //
+	m_real sigmoid(m_real x)
+	{
+        return 1.0 / (1.0 + exp(-x));
+	}
 }
 
 void  m::distanceMat(matrixn& out, matrixn const& a, Metric* pMetric)
@@ -117,6 +122,94 @@ void  v::hermite(vectorn& out, double a, double b, int duration, double c, doubl
 		out(i)=_hermite(a, vel1, d, vel2, (double)(i+1)/totalTime);
 	}
 }
+#include <Eigen/Dense>
+#include <Eigen/LU>
+
+class QuinticPolynomial
+{
+	double _a0,_a1,_a2,_a3,_a4,_a5;
+	public:
+
+	QuinticPolynomial(double x0, double v0, double a0, double x1, double v1, double a1, double T)
+	{
+		Eigen::Matrix<double, 3, 3> A;
+		double T2=T*T;
+		double T3=T2*T;
+		double T4=T3*T;
+		A<< T3,  T3*T, T3*T2,
+			3.0 * T2, 4.0 * T3, 5.0 * T4,
+			6.0 * T, 12.0 * T2, 20.0 * T3;
+
+		Eigen::Matrix<double,3,1> b;
+		b<<x1 - x0 - v0 * T - a0 * T2 / 2.0,
+			v1 - v0 - a0 * T,
+			a1 - a0;
+
+		//Eigen::Vector3d x=A.fullPivLU().solve(b);
+		Eigen::PartialPivLU<Eigen::Ref<Eigen::MatrixXd> > lu(A);
+		Eigen::Vector3d x=lu.solve(b);
+
+		auto& self=*this;
+		self._a0 = x0;
+		self._a1 = v0;
+		self._a2 = a0 / 2.0;
+		self._a3 = x[0];
+		self._a4 = x[1];
+		self._a5 = x[2];
+
+
+	}
+    double calc_xt(double t){
+		double t2=t*t;
+		double t3=t2*t;
+		double t4=t2*t2;
+		double t5=t4*t;
+        double xt = _a0 + _a1 * t + _a2 * t2 + _a3 * t3 + _a4 * t4 + _a5 * t5;
+
+        return xt;
+	}
+
+    double calc_dxt(double t){
+		double t2=t*t;
+		double t3=t2*t;
+		double t4=t2*t2;
+        double dxt = _a1 + 2.0 * _a2 * t + 3.0 * _a3 * t2 + 4.0 * _a4 * t3 + 5.0 * _a5 * t4;
+
+        return dxt;
+	}
+
+    double calc_ddxt(double t){
+		double t2=t*t;
+		double t3=t2*t;
+        double ddxt = 2.0 * _a2 + 6.0 * _a3 * t + 12.0 * _a4 * t2 + 20.0 * _a5 * t3;
+
+        return ddxt;
+	}
+
+	/*
+    double calc_dddxt(double t){
+        dddxt = 6 * self.a3 + 24 * self.a4 * t + 60 * self.a5 * t ** 2;
+
+        return dddxt;
+	}
+	*/
+
+
+
+};
+
+void v::quintic(vectorn& out, double x0, double v0, double a0, double x1, double v1, double a1, double T)
+{
+	QuinticPolynomial q(x0, v0, a0, x1, v1, a1, T);
+	int n=out.size();
+	for(int i=0; i<n; i++)
+	{
+		double t=double(i)/double(n-1);
+		t*=T;
+		out[i]=q.calc_xt(t);
+	}
+}
+
 	  void v::interpolate(vectorn & out, m_real t, vectorn const& a, vectorn const& b)
 	  {
 		out.setSize(a.size());

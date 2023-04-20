@@ -40,6 +40,7 @@ namespace OBJloader
 		matrixn mHeight;
 		matrixn mMaxHeight;
 		vector3 mSize;
+		bool _tileAlongZ;
 		void _init(Raw2Bytes& image, int sizeX, int sizeY, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ);
 	public :
 		Terrain(const char* filename, int imageSizeX, int imageSizeY, m_real sizeX, m_real sizeZ, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ=false);
@@ -47,6 +48,8 @@ namespace OBJloader
 
 		~Terrain(){}
 
+		const matrixn & getHeightMap() const { return mHeight;}
+		vector3 getSize() const { return mSize;}
 		index2 _lowindex(vector2 x) const;
 		index2 _highindex(vector2 x) const;
 		m_real maxHeight(Region2D const & r) const;
@@ -54,6 +57,7 @@ namespace OBJloader
 		m_real height(vector2 x, vector3& normal) const;
 		m_real height(vector2 x) const;
 		bool isInsideTerrain(vector2 x) const;
+		bool findClosestSurfacePoint(vector3 const& x, vector3& normal, vector3& surfacePoint) const;
 
 		vector3 pick(Ray const& ray, vector3& normal) const;
 	};

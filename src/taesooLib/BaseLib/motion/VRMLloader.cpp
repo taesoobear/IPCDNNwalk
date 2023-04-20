@@ -18,7 +18,17 @@ _HRP_JOINT::_HRP_JOINT()
 		jointStartId=-1;
 		jointEndId=-1;
 		jointAxis2 = NULL;
+		jointRangeMin=-180.f;
+		jointRangeMax=180.f;
 	}
+bool _HRP_JOINT::_jointRangeIsLimited()
+{
+	if (jointRangeMin!=-180.f)
+		return true;
+	if (jointRangeMax!=180.f)
+		return true;
+	return false;
+}
 HRP_SEGMENT::HRP_SEGMENT()
 {
 	centerOfMass=vector3(0,0,0);
@@ -167,6 +177,8 @@ void VRMLTransform::transformMeshLocal(matrix4 const& m)
 		bone->mShape->mesh.scaleAndRigidTransform(m);
 	bone->mSegment->centerOfMass.leftMult(m);
 }
+
+// without scaling mass
 void VRMLTransform::scaleMesh( vector3 const& scale)
 {
 	VRMLTransform& bone=*this;
@@ -176,9 +188,15 @@ void VRMLTransform::scaleMesh( vector3 const& scale)
 				bone.mSegment->momentsOfInertia.m[i][j]*=scale[i]*scale[j];
 			}
 		}
-		bone.mShape->mesh.scale(scale);
+		if(bone.mShape)
+			bone.mShape->mesh.scale(scale);
+		bone.mSegment->centerOfMass.x*=scale.x;
+		bone.mSegment->centerOfMass.y*=scale.y;
+		bone.mSegment->centerOfMass.z*=scale.z;
 	}
 }
+
+// without scaling volume
 void VRMLTransform::scaleMass( m_real scalef)
 {
 	VRMLTransform& bone=*this;
@@ -278,6 +296,13 @@ void VRMLTransform::pack(BinaryFile& bf)
 	else
 		bf.packInt(0);
 
+	if(mJoint->_jointRangeIsLimited())
+	{
+		bf.packInt(2); // field code.
+		bf.packFloat(mJoint->jointRangeMin);
+		bf.packFloat(mJoint->jointRangeMax);
+	}
+
 	if(version>=1)
 		bf.packInt(111);// seperating token for future addition of fields.
 
@@ -363,6 +388,11 @@ void VRMLTransform::pack(FILE* file, int level)
 		  fprintf(file," %f %f %f %f",mJoint->jointAxis2Angle[i],mJoint->jointAxis2[i].x,mJoint->jointAxis2[i].y,mJoint->jointAxis2[i].z);
 	  }
 	  fprintf(file,"%s",sp.ptr());
+  }
+
+  if(mJoint->_jointRangeIsLimited())
+  {
+	  fprintf(file,"  jointRange %f %f%s", mJoint->jointRangeMin, mJoint->jointRangeMax, sp.ptr());
   }
 
   vector3 const & translation=getOffsetTransform().translation;
@@ -665,7 +695,7 @@ void VRMLTransform::unpack(VRMLloader& l, BinaryFile & bf)
 	mJoint=new _HRP_JOINT();
 	mJoint->jointType=(HRP_JOINT::jointType_T)bf.unpackInt();
 	bf.unpack(mJoint->jointAxis);
-	if (bf.unpackInt())
+	if (bf.unpackInt()==1)
 	{
 		mJoint->AxisNum=bf.unpackInt();
 		mJoint->jointAxis2 = new vector3[mJoint->AxisNum];
@@ -678,7 +708,19 @@ void VRMLTransform::unpack(VRMLloader& l, BinaryFile & bf)
 	}
 
 	if(version>=1)
-		Msg::verify(bf.unpackInt()==111,"incorrect seperating token for future addition of fields.");
+	{
+		while(1){
+			int sep=bf.unpackInt();
+			if(sep==111)
+				break;
+
+			if(sep==2)
+			{
+				mJoint->jointRangeMin=bf.unpackFloat();
+				mJoint->jointRangeMax=bf.unpackFloat();
+			}
+		}
+	}
 
 	vector3 joint_translation;
 	bf.unpack(joint_translation);
@@ -768,6 +810,11 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
 		  vector3 joint_translation;
 	    getVec3(file,joint_translation);
 		_getOffsetTransform().translation=joint_translation;
+	  }
+	  else if (token=="jointRange" )
+	  {
+		  mJoint->jointRangeMin=atof(file.GetToken());
+		  mJoint->jointRangeMax=atof(file.GetToken());
 	  }
 	  else if(token=="jointType")
 	    mJoint->jointType=_stringToJointType(file.GetQuotedText());
@@ -991,7 +1038,7 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
 				  // try with relative path.
 				  TString wrlPath=sz1::parentDirectory(l.url);
 #ifdef _DEBUG
-				  printf("%s %s\n", wrlPath.ptr(), token.ptr());
+				  Msg::print("%s %s\n", wrlPath.ptr(), token.ptr());
 #endif
 				  try{
 					  mShape->mesh.loadObj(wrlPath+token);
@@ -1002,7 +1049,7 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
 					  TString fn=sz1::filename(token, dir);
 					  TString tryfn=l.url.left(-4)+"_sd/"+fn;
 #ifdef _DEBUG
-					  printf("%s\n", tryfn.ptr());
+					  Msg::print("%s\n", tryfn.ptr());
 #endif
 					  if(!mShape->mesh.loadObj(tryfn))
 						  Msg::error("%s not found", token.ptr());
@@ -1040,7 +1087,7 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
 	{
 	  token=file.GetToken();
 #ifdef _DEBUG
-  printf("humanoid token: %s\n", token.ptr());
+	  Msg::print("humanoid token: %s\n", token.ptr());
 #endif
 	  
 	  if(token=="name")
@@ -1050,7 +1097,7 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
 	  else if (token=="frameRate")
 	  {
 		  l._frameRate=atof(file.GetToken());
-		  //printf("frameRate::%f\n", l._frameRate);
+		  //Msg::print("frameRate::%f\n", l._frameRate);
 	  }
 	  else if(token=="version")
 	    l.version=file.GetQuotedText();
@@ -1064,7 +1111,7 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
 		  if(token=="]")
 		  {
 #ifdef _DEBUG
-  printf("info last line: %s\n", l.info.back().ptr());
+			  Msg::print("info last line: %s\n", l.info.back().ptr());
 #endif
 		    break;
 		  }
@@ -1073,7 +1120,7 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
 		      file.Undo();
 		      token=file.GetQuotedText();
 #ifdef _DEBUG
-  printf("info line: %s\n", token.ptr());
+			  Msg::print("info line: %s\n", token.ptr());
 #endif
 		      l.info.pushBack(token);
 		    }
@@ -1407,12 +1454,12 @@ static void mergeShapes(VRMLTransform* rootnode)
 
 static void printHierarchy(VRMLTransform* node, int depth)
 {
-  for(int ii=0; ii<depth; ii++) printf(" ");
+  for(int ii=0; ii<depth; ii++) Msg::print(" ");
 
   if(node->mShape)
-    printf("%s (%s)-shape %s\n", node->NameId, node->mVRMLtype.ptr(), node->mShape->name.ptr());
+    Msg::print("%s (%s)-shape %s jointid %d\n", node->NameId, node->mVRMLtype.ptr(), node->mShape->name.ptr(), node->HRPjointIndex(0));
   else
-    printf("%s (%s)\n", node->NameId, node->mVRMLtype.ptr());
+    Msg::print("%s (%s) jointid %d\n", node->NameId, node->mVRMLtype.ptr(), node->HRPjointIndex(0));
 
   for(Node *i=node->m_pChildHead; i!=NULL; i=i->m_pSibling)
     printHierarchy((VRMLTransform*)i,depth+1);
@@ -1456,6 +1503,11 @@ void VRMLTransform::createNewShape()
 {
 	delete mShape;
 	mShape=new HRP_SHAPE();
+}
+void VRMLTransform::removeShape()
+{
+	delete mShape;
+	mShape=NULL;
 }
 void VRMLTransform::UnpackChildren(VRMLloader& l, CTextFile& file)
 {
@@ -1621,6 +1673,7 @@ VRMLloader::VRMLloader(VRMLloader const& other)
 	:MotionLoader()
 {
 	_frameRate=30;
+	_terrain=NULL;
 	MemoryFile m;
 	other._exportBinary(m);
 	_importBinary(m);
@@ -1630,6 +1683,7 @@ VRMLloader::VRMLloader()
  :MotionLoader()
 {
 	_frameRate=30;
+	_terrain=NULL;
 	m_pTreeRoot=new VRMLTransform();
 	m_pTreeRoot->SetNameId("HumanoidBody");
 	VRMLTransform* root=new VRMLTransform();
@@ -1657,6 +1711,7 @@ VRMLloader::VRMLloader()
 VRMLloader::VRMLloader(MotionLoader const& skel, double cylinder_radius)
 	:MotionLoader()
 {
+	_terrain=NULL;
 	// TODO: remove file IO.
 	MotionUtil::exportVRMLforRobotSimulation(skel, "__temp.wrl",RE::generateUniqueName().ptr(), cylinder_radius);
 	CTextFile file;
@@ -1667,6 +1722,7 @@ VRMLloader::VRMLloader(MotionLoader const& skel, double cylinder_radius)
 }
 void VRMLloader::_clear()
 {
+	_terrain=NULL;
 	if(m_pTreeRoot) delete m_pTreeRoot;
 	m_pTreeRoot=NULL;
 	delete dofInfo._sharedinfo;
@@ -1676,6 +1732,7 @@ VRMLloader::VRMLloader(OBJloader::Geometry const& mesh, bool useFixedJoint)
 	:MotionLoader()
 {
 	_frameRate=30;
+	_terrain=NULL;
 
 	m_pTreeRoot=new VRMLTransform();
 	m_pTreeRoot->SetNameId("floor");
@@ -1716,6 +1773,7 @@ VRMLloader::VRMLloader(const char* filename)
  :MotionLoader()
 {
   _frameRate=30;
+	_terrain=NULL;
 #ifdef TEST_MEMORYLEAK
   Msg::msgBox("loader%s", filename);
 #endif 
@@ -1735,6 +1793,7 @@ VRMLloader::VRMLloader(const char* filename)
 VRMLloader::VRMLloader(CTextFile& vrmlFile)
 {
 	_frameRate=30;
+	_terrain=NULL;
 	url="CTextFile";
 	_importVRML(vrmlFile);
 }
@@ -1853,19 +1912,24 @@ void VRMLloader::setCurPoseAsInitialPose()
 	}
 }
 
+// does not scale mass
 void VRMLloader::scale(float fScale, Motion& mot)
 {
   MotionLoader::scale(fScale, mot);
+  TString temp;
+  temp.format("%s:scale%.2f", url.ptr(), fScale);
+  url=temp;
+
   m_real totalMass=0;
   for(int i=1; i<numBone(); i++)
     {
       VRMLTransform* bone=&VRMLbone(i);
       Msg::verify(bone->mJoint, "scaling unsupported for this mesh");
-      if(bone->mShape)
-	bone->mShape->mesh.scale(fScale);
+	  bone->scaleMesh(vector3(fScale, fScale, fScale));
       totalMass+=(bone->mSegment)?bone->mSegment->mass:0;
     }
-  setTotalMass( totalMass);
+  //setTotalMass( totalMass);   
+  _checkMass();
 
   for (int i=0; i<constraints.size(); i++)
 	{
@@ -1960,12 +2024,12 @@ void VRMLloader::printDebugInfo()
 	{
 		if(l.VRMLbone(i).mShape)
 		{
-			printf("%s\n", l.VRMLbone(i).name().ptr());
+			Msg::print("%s\n", l.VRMLbone(i).name().ptr());
 			OBJloader::Geometry& mesh=l.VRMLbone(i).mShape->mesh;
 
 			for(int j=0; j<mesh.numVertex(); j++)
 			{
-				printf("%d: %s\n", j,mesh.getVertex(i).output().ptr());
+				Msg::print("%d: %s\n", j,mesh.getVertex(i).output().ptr());
 			}
 		}
 	}
@@ -2046,7 +2110,7 @@ void VRMLloader::removeAllRedundantBones()
 				&& target.getTranslationalChannels()==0 
 				&& target.numChildren()==0) // remove Nubs too
 			{
-				printf("Removing redundant bone %s\n", target.NameId);
+				Msg::print("Removing redundant bone %s\n", target.NameId);
 				removeBone(target);
 				bChanged=true;
 				break;
@@ -2065,7 +2129,7 @@ void VRMLloader::removeBone(Bone& target)
 	// v.mJoint->translation == v.getOffsetTransform().translation
 	if (v.mSegment)
 	{
-		printf("ignoring mass and inertia of %s\n", v.NameId);
+		Msg::print("ignoring mass and inertia of %s\n", v.NameId);
 	}
 	VRMLTransform* parent=(VRMLTransform*)v.m_pParent;
 	Msg::verify(parent, "???");
@@ -2092,8 +2156,8 @@ void VRMLloader::removeBone(Bone& target)
 void VRMLloader::exportVRML(const char* filename)
 {
 	TString url_old=url;
-	printf("%s\n", url.ptr());
-	printf("%s\n", filename);
+	Msg::print("%s\n", url.ptr());
+	Msg::print("%s\n", filename);
 	url=filename;
 	createDirectory(url.left(-4)+"_sd/");
   FILE* file=fopen(filename, "wt");
@@ -2147,7 +2211,7 @@ void VRMLloader::_importVRML(CTextFile& file)
       token=file.GetToken();
 
 #ifdef _DEBUG
-      printf("loader token: %s\n", token.ptr());
+	  Msg::print("loader token: %s\n", token.ptr());
 #endif
       if(token=="PROTO")
 	{
@@ -2291,7 +2355,7 @@ VRMLloader_subtree* VRMLloader::makesubtree(int treeIndex) const
 	}
   else
   {
-	printf("\nWarning : You don't need extractSubtree! (Same VRMLloader)\n");		
+	  Msg::print("\nWarning : You don't need extractSubtree! (Same VRMLloader)\n");		
 	return NULL;
   }
   extra_VRMLloader->fullbody = this;
@@ -2368,3 +2432,4 @@ int VRMLloader_subtree::subTreeindex(int fulltreeindex) const
 		return -1;
 	return ii;
 }
+

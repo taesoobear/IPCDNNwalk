@@ -145,6 +145,26 @@ protected:
 #endif
 };
 
+class PLDPrimThickLine : public PLDPrimSkel
+{
+public:
+	PLDPrimThickLine(MotionLoader* pBVHL, const OgreRenderer& renderer);
+	virtual ~PLDPrimThickLine();
+
+	virtual void SetVisible(bool bVisible);
+	virtual void setMaterial(const char* mat);
+	virtual void setScale(double x, double y, double z);
+	virtual int FrameMove(float fElapsedTime);
+protected:
+	virtual int UpdateBone();
+	std::string _materialName;
+#ifndef NO_OGRE
+	double _thickness;
+	BillboardLineList * _lines;
+	Ogre::SceneNode* mSceneNode;
+#endif
+};
+
 class PLDPrimOgreSkin : public PLDPrimSkin_impl
 {
 public:
