@@ -35,8 +35,8 @@ set(NoLapack TRUE)
 set(NoUMFpack TRUE)
 
 include(Common_baselib) 
-add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/BaseLib "${CMAKE_SOURCE_DIR}/taesooLib/BaseLib/build_shared_${CMAKE_BUILD_TYPE}" )
-add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/MainLib "${CMAKE_SOURCE_DIR}/taesooLib/MainLib/build_shared_${CMAKE_BUILD_TYPE}" )
+add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/BaseLib "./BaseLib/build_shared_${CMAKE_BUILD_TYPE}" )
+add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/MainLib "./MainLib/build_shared_${CMAKE_BUILD_TYPE}" )
 include(Common_mainlib) 
 
 # PhysicsLib settings
@@ -44,8 +44,8 @@ set(NoAISTsim TRUE) # use TRL_LCP instead!
 set(NoGMBSsim TRUE) # use TRL_LCP instead!
 set(NoUTsim TRUE) # use TRL_LCP instead!
 set(NoBulletSim TRUE) # use TRL_LCP instead!
-add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/PhysicsLib "${CMAKE_SOURCE_DIR}/taesooLib/PhysicsLib/build_shared_${CMAKE_BUILD_TYPE}" )
-add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/ClassificationLib "${CMAKE_SOURCE_DIR}/taesooLib/ClassificationLib/build_shared_${CMAKE_BUILD_TYPE}" )
+add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/PhysicsLib "./PhysicsLib/build_shared_${CMAKE_BUILD_TYPE}" )
+add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/ClassificationLib "./ClassificationLib/build_shared_${CMAKE_BUILD_TYPE}" )
 
 
 add_definitions(-D_USRDLL)
