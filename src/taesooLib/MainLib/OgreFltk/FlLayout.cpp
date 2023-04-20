@@ -572,6 +572,8 @@ void FlLayout::updateLayout()
 	{
 		guidelines.setSize(mWidgets[i].mState.mGuideLines.size());
 
+		//printf("cury %d %d %d\n",i, cury, guidelines.size());
+
 		for(int j=0; j<guidelines.size(); j++)
 			guidelines[j]=sop::interpolateInt(mWidgets[i].mState.mGuideLines[j], 3, w()-SCROLLW*mfScaleFactor-2);
 

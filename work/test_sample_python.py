@@ -30,26 +30,28 @@ def main():
     elif len(sys.argv)==3:
         option=sys.argv[1]
         scriptFile=sys.argv[2]
-    uiscale=1.5
-    if platform.system()=='Darwin':
-        m.createMainWin(int((10+220)*uiscale),int((400+100)*uiscale), int(10*uiscale), int(400*uiscale),uiscale, "../Resource/ogreconfig_mac.txt", "plugins_mac.cfg", "ogre_mac.cfg")
-    else:
-        if option=='--sep':
-            m.createMainWin(int((10+220)*uiscale),int((400+100)*uiscale), int(10*uiscale), int(400*uiscale),uiscale, "../Resource/ogreconfig_linux_sepwin.txt", "plugins_linux.cfg", "ogre_linux.cfg")
+    uiscale=1
+    if option=='--sep':
+        if platform.system()=='Darwin':
+            m.createMainWin(int((10+220)*uiscale),int((400+100)*uiscale), int(10*uiscale), int(400*uiscale),uiscale, "../Resource/ogreconfig_linux_sepwin.txt", "plugins_mac.cfg", "ogre_mac.cfg")
         else:
-            m.createMainWin(int((1024+180)*uiscale),int((600+100)*uiscale), int(1024*uiscale), int(600*uiscale),uiscale)
+            m.createMainWin(int((10+220)*uiscale),int((400+100)*uiscale), int(10*uiscale), int(400*uiscale),uiscale, "../Resource/ogreconfig_linux_sepwin.txt", "plugins_linux.cfg", "ogre_linux.cfg")
+    else:
+        m.createMainWin(int((1024+180)*uiscale),int((600+100)*uiscale), int(1024*uiscale), int(600*uiscale),uiscale)
     m.showMainWin()
     if scriptFile[0:1]!='.':
         scriptFile=os.path.relpath(scriptFile, os.getcwd())
     if scriptFile[-3:]!='lua':
         scriptFile=scriptFile+'.lua'
     print('loading', scriptFile)
-    m.getPythonWin().loadScript(scriptFile)
 
-    # you can use the following three lines instead of the above line.
-    # m.getPythonWin().loadEmptyScript()
-    # m.getPythonWin().dofile(scriptFile)
-    # m.getPythonWin().dostring('ctor()')
+    #m.getPythonWin().loadScript(scriptFile)
+    # you can use the following lines instead of the above line (loadScript).
+    m.getPythonWin().loadEmptyScript()
+    if option[0:10]=='--dostring':
+        m.getPythonWin().dostring(option[11:])
+    m.getPythonWin().dofile(scriptFile)
+    m.getPythonWin().dostring('ctor()')
 
     print("ctor finished")
 

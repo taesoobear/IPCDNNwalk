@@ -5,7 +5,6 @@ import sys
 import platform
 import pdb # use pdb.set_trace() for debugging
 sys.path.append(os.getcwd())
-sys.path.append(os.getcwd())
 import libmainlib as m   
 import luamodule as lua  # see luamodule.py
 import numpy as np 
@@ -77,18 +76,14 @@ def main():
     elif len(sys.argv)==3:
         option=sys.argv[1]
         scriptFile=sys.argv[2]
-    uiscale=1.5
-    if platform.system()=='Darwin':
-        uiscale=1.0
-        m.createMainWin(int((10+220)*uiscale),int((400+100)*uiscale), int(10*uiscale), int(400*uiscale),uiscale, "../Resource/ogreconfig_mac.txt", "plugins_mac.cfg", "ogre_mac.cfg")
-    else:
-        if option=='--sep':
-            if m.getOgreVersionMinor()>=12:
-                m.createMainWin(int((10+220)*uiscale),int((400+100)*uiscale), int(10*uiscale), int(400*uiscale),uiscale, "../Resource/ogreconfig_linux_sepwin.txt", "plugins_linux12.cfg", "ogre_linux12.cfg")
-            else:
-                m.createMainWin(int((10+220)*uiscale),int((400+100)*uiscale), int(10*uiscale), int(400*uiscale),uiscale, "../Resource/ogreconfig_linux_sepwin.txt", "plugins_linux.cfg", "ogre_linux.cfg")
+    uiscale=1
+    if option=='--sep':
+        if platform.system()=='Darwin':
+            m.createMainWin(int((10+220)*uiscale),int((400+100)*uiscale), int(10*uiscale), int(400*uiscale),uiscale, "../Resource/ogreconfig_linux_sepwin.txt", "plugins_mac.cfg", "ogre_mac.cfg")
         else:
-            m.createMainWin(int((1024+180)*uiscale),int((600+100)*uiscale), int(1024*uiscale), int(600*uiscale),uiscale)
+            m.createMainWin(int((10+220)*uiscale),int((400+100)*uiscale), int(10*uiscale), int(400*uiscale),uiscale, "../Resource/ogreconfig_linux_sepwin.txt", "plugins_linux.cfg", "ogre_linux.cfg")
+    else:
+        m.createMainWin(int((1024+180)*uiscale),int((600+100)*uiscale), int(1024*uiscale), int(600*uiscale),uiscale)
     m.showMainWin()
     m.getPythonWin().loadEmptyScript()
     m.getPythonWin().dofile(scriptFile)

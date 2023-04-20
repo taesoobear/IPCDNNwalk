@@ -49,10 +49,6 @@ static SPythonEnv* g_pythonEnv=NULL;
 //////////////////////////////////////////////////////////////////////////////
 // extend
 
-void PythonExtendWin::__loadScript(const char* script) {
-	releaseScript();
-	loadScript(script, NULL);
-}
 PythonExtendWin::PythonExtendWin(int x, int y, int w, int h, MotionPanel& mp,FltkRenderer& renderer)
 //:FlLayout(x,y,w,h),m_motionPanel(mp),mRenderer(renderer)
 :ScriptBaseWin(x,y,w,h,mp, renderer,  "WRLviewer.lua",  "../Samples/scripts/RigidBodyWin/")
@@ -252,18 +248,6 @@ void PythonExtendWin::initLuaEnvironment()
 	Register_QP(L);
 }
 
-void PythonExtendWin::dostring(const char* script)
-{
-	LUAwrapper l(L);
-	l.registerErrorFunc();
-	l.dostring(script);
-}
-void PythonExtendWin::dofile(const char* script)
-{
-	LUAwrapper l(L);
-	l.registerErrorFunc();
-	l.dofile(script);
-}
 #include <MainLib/WrapperLua/luna_baselib.h>
 #include <MainLib/WrapperLua/luna_mainlib.h>
 int PythonExtendWin::work(TString const& workname, lunaStack& L)

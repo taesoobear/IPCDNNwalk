@@ -16,6 +16,45 @@ ScriptBaseWin::ScriptBaseWin(int x, int y, int w, int h, MotionPanel& mp,FltkRen
 {
 }
 
+void ScriptBaseWin::__loadScript(const char* script) {
+	releaseScript();
+	
+	if(script)
+	{
+		setLabel(findButton("scriptfn"), script);
+		redraw();
+	}
+	else
+	{
+		setLabel(findButton("scriptfn"), "");
+	}
+
+	loadScript(script, NULL);
+}
+
+void ScriptBaseWin::dostring(const char* script)
+{
+	LUAwrapper l(L);
+	l.registerErrorFunc();
+	l.dostring(script);
+}
+void ScriptBaseWin::dofile(const char* _script)
+{
+	TString script=_script;
+	if (script[script.length() - 1] == '\n')
+		script = script.left(-1);
+		
+#ifndef NO_GUI
+	if(TString(findButton("scriptfn")->label())=="")
+	{
+		setLabel(findButton("scriptfn"), script.ptr());
+		redraw();
+	}
+#endif
+	LUAwrapper l(L);
+	l.registerErrorFunc();
+	l.dofile(script.ptr());
+}
 void ScriptBaseWin::createMenu()
 {
 	resetToDefault();
@@ -48,6 +87,7 @@ void ScriptBaseWin::createMenu()
 
 		}
 	}
+	resetToDefault();
 }
 ScriptBaseWin::ScriptBaseWin(int x, int y, int w, int h, MotionPanel& mp,FltkRenderer& renderer, TStrings const& _scripts)
 	:ScriptWin(x,y,w,h,mp,renderer, _scripts[0], "")

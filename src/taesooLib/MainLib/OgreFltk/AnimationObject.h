@@ -22,6 +22,7 @@ public:
 	vector3 m_vTrans;
 
 	virtual void setTranslation(float x, float y, float z);
+	void setTranslation(vector3 const& x) {  setTranslation(x.x, x.y, x.z);}
 	vector3 const& getTranslation() const { return m_vTrans;}
 
 	const TString& getType() const	{return mType;}

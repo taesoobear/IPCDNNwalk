@@ -25,11 +25,6 @@ public:
 	~PythonExtendWin (void);
 
 
-	// LUA interfacing.
-	void __loadScript(const char* script);
-	void __loadEmptyScript() { __loadScript(NULL);}
-	void dostring(const char* script);
-	void dofile(const char* pFilename );
 
 	// layout callback
 	virtual void onCallback(FlLayout::Widget const& w, Fl_Widget * pWidget, int userData);

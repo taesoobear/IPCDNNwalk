@@ -9,16 +9,14 @@ BIN_FOLDER=../build_$(EXE)
 BIN_TO_SRC=../../src
 SRC_TO_WORK=../work
 SRC_TO_EXE=../work/$(EXE)
-NUM_CORES=$(shell if test -f /proc/cpuinfo; then cat /proc/cpuinfo | grep processor | wc -l;	else echo 4;fi)
+#NUM_CORES=$(shell if test -f /proc/cpuinfo; then cat /proc/cpuinfo | grep processor | wc -l;	else echo 4;fi)
+NUM_CORES=$(shell if test -f /proc/cpuinfo; then grep ^cpu\\scores /proc/cpuinfo | uniq | awk '{print $$4}';	else echo 4;fi)
 
 # all depends on init_finished.txt
 all: init_finished.txt
 	if ! test -d $(BIN_FOLDER) ; then rm init_finished.txt; exit 1;fi
 	cd $(BIN_FOLDER)/build_linux;make --no-print-directory -j $(NUM_CORES)
 
-mac: init_finished.txt
-	if ! test -d $(BIN_FOLDER) ; then rm init_finished.txt; exit 1;fi
-	cd $(BIN_FOLDER)/build_linux;make --no-print-directory -j 4
 
 # debug depends on init_finished.txt
 debug: init_finished.txt
@@ -65,8 +63,10 @@ install_dependencies:
 	sudo apt install python3-numpy
 
 install_dependencies_mac:
-	#brew install python@3.8
-	#python3 -m pip install numpy
-	echo "First install any version of python3 and numpy. System python3 also works."
+	cd ../../taesooLib;make build_dependencies_mac
+	make build_dependencies
+	python3 -m pip install --only-binary=:all: numpy
+	#python3 -m pip install --only-binary=:all: tensorflow
+	python3 -m pip install torch
 	echo "Important!!!! Now open a finder and manually copy all frameworks in /Applications/OgreSDK/lib/macosx/Release/ to ~/Library/Frameworks/!!!"
 

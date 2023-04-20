@@ -223,6 +223,7 @@ namespace Ogre
 			textArea->setLeft(left);
 			//textArea->setParameter("font_name", "TrebuchetMSBold");
 			textArea->setParameter("font_name", "BlueHighway");
+			//textArea->setParameter("font_name", "SdkTrays/Value");
 			textArea->setParameter("char_height", StringConverter::toString(fontSize));
 			textArea->setCaption(caption);
 			textArea->setParameter("colour_top", "0 0.5 0");
