@@ -1998,7 +1998,7 @@ bindTargetBaseLib={
 				},
 		{
 			ifdef='INCLUDE_VOXELGRAPH',
-			decl='#include "../../BaseLib/utility/VoxelGraph.h"',
+			--decl='#include "../../BaseLib/utility/VoxelGraph.h"',
 			luaname='shortvector3', --necessary
 			cppname='VoxelGraph::shortvector3',
 			ctors=  -- constructors 
