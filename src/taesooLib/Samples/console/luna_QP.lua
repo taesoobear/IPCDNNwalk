@@ -28,7 +28,7 @@ bindTargetClassification={
 			functions={[[
 			double solve_quadprog( HessianQuadratic & problem, const matrixn & CE, const vectorn & ce0, const matrixn & CI, const vectorn & ci0, vectorn & x) @ solveQuadprog
 			double solve_quadprog( HessianQuadratic & problem, const matrixn & CE, const vectorn & ce0, const matrixn & CI, const vectorn & ci0, vectorn & x, bool) @ solveQuadprog
-			void solveLCP(const matrixn&  N, const vectorn& r, vectorn& g, vectorn & a);
+			//void solveLCP(const matrixn&  N, const vectorn& r, vectorn& g, vectorn & a);
 			]]}
 		}, 
 									{

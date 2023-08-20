@@ -5,6 +5,8 @@ project (console)
 
 
 set (CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/..")
+get_filename_component(SAMPLE_DIR ${CMAKE_SOURCE_DIR} PATH)
+get_filename_component(TAESOOLIB_DIR ${SAMPLE_DIR} PATH)
 
 if (UseMPI)
 	include(Common_console_mpi) 
@@ -19,6 +21,7 @@ include_directories (
 	.
 	../QP_controller/qpOASES-3.0beta/include
 	../QP_controller/
+	/usr/include/eigen3
 	)
 
 set(src
@@ -52,7 +55,6 @@ add_executable(OgreFltk
   set(QPOASES_LIB
 	  # build using cd qp<TAB>;cmake  . ;make
 	  "${CMAKE_SOURCE_DIR}/../QP_controller/qpOASES-3.0beta/libs/libqpOASES.a"
-	  "${CMAKE_SOURCE_DIR}/../QP_controller/qpOASES-3.0beta/libs/libqpOASESextras.a"
 	  )
   target_link_libraries(OgreFltk 
 	  BaseLib 

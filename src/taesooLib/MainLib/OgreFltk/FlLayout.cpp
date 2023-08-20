@@ -7,6 +7,7 @@
 #include "FL/Fl_Select_Browser.H"
 #include "FL/Fl_Multiline_Input.H"
 #include "FL/Fl_Box.H"
+#include "FL/Fl_Progress.H"
 #endif
 #include "FlChoice.h"
 
@@ -484,6 +485,16 @@ Fl_Widget* FlLayout::create(const char* type, const char* id, const char* title)
 	    o=new Fl_Valuator ();
 #endif
 	}
+	else if(tid=="Progress")
+	{
+#ifndef NO_GUI
+		Fl_Progress* a;
+		a=new Fl_Progress(0,0,80,20);
+		o=a;
+#else
+	    o=new Fl_Valuator ();
+#endif
+	}
 	else if(tid=="Frame_Adjuster")
 	{
 #ifndef NO_GUI
@@ -845,6 +856,20 @@ FlLayout::Widget& FlLayout::_findWidget(Fl_Widget* id)
 	return mWidgets[mWidgets.size()-1];
 }
 
+float FlLayout::Widget::progressValue() const
+{
+#ifndef NO_GUI
+	return dynamic_cast<Fl_Progress*>(mWidget)->value();
+#else
+	return 0;
+#endif
+}
+void FlLayout::Widget::progressValue(float v) 
+{
+#ifndef NO_GUI
+	dynamic_cast<Fl_Progress*>(mWidget)->value(v);
+#endif
+}
 Fl_Slider* FlLayout::Widget::slider()const
 {
 	return dynamic_cast<Fl_Slider*>(mWidget);

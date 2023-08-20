@@ -367,7 +367,7 @@ void BinaryFile::unpack(hypermatrixn& mat3d)
 	mat3d.setSize(p, q, r);
 
 	for(int i=0; i<mat3d.page(); i++)
-		unpack(mat3d.page(i));
+		unpack(mat3d.page(i).lval());
 }
 
 void BinaryFile::pack(const vector3N& vec)
@@ -510,6 +510,13 @@ void BinaryFile::pack(const intmatrixn& mat)
 			_packInt(mat[i][j]);
 }
 
+void BinaryFile::pack(const TArray<TString>& aSz)
+{
+	_packInt(TYPE_STRINGN);
+	_packInt(aSz.size());
+	for(int i=0; i<aSz.size(); i++)
+		pack((const char*)aSz[i]);
+}
 
 void BinaryFile::pack(const TStrings& aSz)
 {
@@ -733,6 +740,13 @@ void BinaryFile::unpack(intmatrixn& mat)
 			_unpackInt(mat[i][j]);
 }
 
+void BinaryFile::unpack(TArray<TString>& aSz)
+{
+	Msg::verify(_unpackInt()==TYPE_STRINGN,"unpackTArray<TString> failed");
+	aSz.init(_unpackInt());
+	for(int i=0; i<aSz.size(); i++)
+		unpack(aSz[i]);
+}
 
 void BinaryFile::unpack(TStrings& aSz)
 {

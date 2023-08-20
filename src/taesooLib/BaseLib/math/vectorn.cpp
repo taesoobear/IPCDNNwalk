@@ -45,8 +45,8 @@ intvectorn::intvectorn(const intvectornView& other)
 }
 
 
-intvectornView ::intvectornView (int* ptrr, int size, int str)
-:intvectorn(ptrr,size,str)
+intvectornView ::intvectornView (const int* ptrr, int size, int str)
+:intvectorn((int*)ptrr,size,str)
 {
 }
 
@@ -380,8 +380,8 @@ void intvectorn::runLengthDecode(boolN& out, int size)
 }
 
 
-vectornView ::vectornView (m_real* ptrr, int size, int str)
-:vectorn(ptrr,size,str)
+vectornView ::vectornView (const m_real* ptrr, int size, int str)
+:vectorn((m_real*)ptrr,size,str)
 {
 }
 
@@ -1345,8 +1345,26 @@ vectorn vectorn::Each(void (*cOP)(m_real&,m_real)) const					{ vectorn c; c.assi
 vectorn vectorn::Each(m_real (*cOP)(m_real,m_real), vectorn const& b)	const { vectorn c; c.each2(cOP, *this,b); return c;}
 void vectorn::setVec3( int start, const vector3& src)	{RANGE_ASSERT(start+3<=size()); for(int i=start; i<start+3; i++) (*this)[i]=src.getValue(i-start);}
 void vectorn::setQuater( int start, const quater& src)	{RANGE_ASSERT(start+4<=size());for(int i=start; i<start+4; i++) (*this)[i]=src.getValue(i-start);}
+void vectorn::setTransf( int start, const transf& src)	{
+	RANGE_ASSERT(start+7<=size());
+	for(int i=start; i<start+3; i++) (*this)[i]=src.translation.getValue(i-start);
+	start+=3;
+	for(int i=start; i<start+4; i++) (*this)[i]=src.rotation.getValue(i-start);
+}
 vector3 vectorn::toVector3(int startIndex)	const	{RANGE_ASSERT(startIndex+3<=size());vector3 out; for(int i=0; i<3; i++) out[i]=getValue(i+startIndex); return out;};
 quater vectorn::toQuater(int startIndex) const		{RANGE_ASSERT(startIndex+4<=size()); quater out; for(int i=0; i<4; i++) out[i]=getValue(i+startIndex); return out;};
+transf vectorn::toTransf(int startIndex) const		{
+	RANGE_ASSERT(startIndex+7<=size()); 
+	transf t;
+	{
+		vector3& out=t.translation; for(int i=0; i<3; i++) out[i]=getValue(i+startIndex);
+	}
+	startIndex+=3;
+	{
+		quater &out=t.rotation; for(int i=0; i<4; i++) out[i]=getValue(i+startIndex); 
+	}
+	return t;
+};
 
 std::ostream& operator<< ( std::ostream& os, const vectorn& u )
 {

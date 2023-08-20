@@ -28,13 +28,6 @@ typedef int STATUS;
 #define SUCCESS 1
 #define FAILURE 0
 
-/*
-#ifndef EXCLUDE_BULLET_SIM
-#ifndef BT_USE_DOUBLE_PRECISION
-#define BT_USE_DOUBLE_PRECISION
-#endif
-#endif
-*/
 
 // MotionBlending클래스와 MotionInterpolation클래스는 인터페이스가 유사하다. 둘중 어느것을 사용할지 결정한다.
 //#define USE_MOTION_BLENDING

@@ -216,6 +216,10 @@ class LoaderToTree
 		
 		inline vector3 getWorldVelocity(int ibone){ IK_sdls::Node* n=getLastNode(ibone); return n->_global.rotation*n->bodyLinVel(); }
 		inline vector3 getWorldAngVel(int ibone) { IK_sdls::Node* n=getLastNode(ibone); return n->_global.rotation*n->bodyAngVel(); }
+		inline vector3 getWorldVelocity(int ibone, vector3 const& localpos)
+		{
+			return getWorldVelocity(ibone)+getWorldAngVel(ibone).cross(globalFrame(ibone).rotation*localpos); 
+		}
 
 		// this function does not update node velocities
 		// setPoseDOF, integrate(dtheta), getPoseDOF

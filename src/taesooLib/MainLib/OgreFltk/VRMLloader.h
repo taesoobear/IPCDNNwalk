@@ -13,7 +13,7 @@
 
 void VRMLloader_updateMeshEntity(VRMLloader& l);
 
-class PLDPrimCyl;
+class PLDPrimSkin;
 class OgreRenderer;
 namespace IK_sdls
 {
@@ -22,7 +22,7 @@ namespace IK_sdls
 class PLDPrimVRML: public PLDPrimSkel
 {
 	VRMLloader* mVRMLL;
-	PLDPrimCyl* mDrawSkel;
+	PLDPrimSkin* mDrawSkel;
 public:
 	PLDPrimVRML(VRMLloader* pVRMLL, bool bDrawSkeleton, const OgreRenderer& renderer);
 	virtual ~PLDPrimVRML();
@@ -40,6 +40,16 @@ public:
 
 	virtual void setThickness(float thick);
 
+	virtual void setTranslation(float x, float y, float z)
+	{
+		PLDPrimSkel::setTranslation(x,y,z);
+		if(mDrawSkel) mDrawSkel->setTranslation(x,y,z);
+	}
+	virtual void setScale(double x, double y, double z)
+	{
+		PLDPrimSkel::setScale(x,y,z);
+		if(mDrawSkel) mDrawSkel->setScale(x,y,z);
+	}
 	void setMaterial(const char* mat);
 	void setMaterial(int ibone, const char* mat);
 	std::vector<Ogre::SceneNode*> mSceneNodes;

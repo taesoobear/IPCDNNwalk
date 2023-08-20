@@ -7,7 +7,7 @@
  * National Institute of Advanced Industrial Science and Technology (AIST)
  * General Robotix Inc. 
  */
-#include <StdAfxColDet.h>
+#include "StdAfxColDet.h"
 #include <stdio.h>
 #include <iostream>
 #include<stdio.h>

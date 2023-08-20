@@ -45,11 +45,18 @@ namespace OpenHRP {
 	// setWorldTransformations of collision shapes
 	virtual void setWorldTransformations(int charIndex, BoneForwardKinematics const& fk)=0; 
     virtual bool testIntersectionsForDefinedPairs(CollisionSequence & collisions)=0;
+	// only libccd supports this.
+	virtual bool getLocalBoundingBoxSize(int charIndex, int ibone, vector3& localSize) { return false;}
 
 
+	// only bullet support this.
+	virtual bool isSignedDistanceSupported() { return false;}
+	virtual double calculateSignedDistance(int iloader, int ibody, vector3 const& position, vector3& normal) { return 0.0;}
 
-
-
+	// only libccd_merged support this for now.
+	virtual bool isSphereTestSupported() { return false;}
+	// returns penetration depth
+	virtual double testSphereIntersection(int iloader, int ibody, vector3 const& position, double radius, vector3& contactpos, vector3& normal) { return 0.0;}
 	struct RayTestResult
 	{
 		m_real m_closestHitFraction;

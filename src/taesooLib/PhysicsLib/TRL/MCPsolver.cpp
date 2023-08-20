@@ -6,17 +6,20 @@
 
 using namespace std;
 using namespace TRL;
+#if 0
 // precise setting
-//static const int DEFAULT_MAX_NUM_GAUSS_SEIDEL_ITERATION = 500;
-//static const int DEFAULT_NUM_GAUSS_SEIDEL_ITERATION_BLOCK = 10;
-//static const int DEFAULT_NUM_GAUSS_SEIDEL_INITIAL_ITERATION = 0;
-//static const double DEFAULT_GAUSS_SEIDEL_MAX_REL_ERROR = 1.0e-3;
+static const int DEFAULT_MAX_NUM_GAUSS_SEIDEL_ITERATION = 500;
+static const int DEFAULT_NUM_GAUSS_SEIDEL_ITERATION_BLOCK = 10;
+static const int DEFAULT_NUM_GAUSS_SEIDEL_INITIAL_ITERATION = 0;
+static const double DEFAULT_GAUSS_SEIDEL_MAX_REL_ERROR = 1.0e-3;
+#else
 //
 // fast setting
 static const int DEFAULT_MAX_NUM_GAUSS_SEIDEL_ITERATION = 20;
 static const int DEFAULT_NUM_GAUSS_SEIDEL_ITERATION_BLOCK = 2;
 static const int DEFAULT_NUM_GAUSS_SEIDEL_INITIAL_ITERATION = 0;
 static const double DEFAULT_GAUSS_SEIDEL_MAX_REL_ERROR = 1.0e-3;
+#endif
 #include "../../BaseLib/utility/QPerformanceTimer.h"
 MCPsolver::MCPsolver()
 {

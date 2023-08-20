@@ -60,7 +60,7 @@ void addChar(CdScene* scene_, const char* charName, CdModelCache* cachedModel)
 }
 
 
-void	CollisionDetector_impl_hidden::_addCollisionPair(const char* charName1, const char* charName2, const char* jointName1, const char* jointName2)
+void	CollisionDetector_impl_hidden::__addCollisionPair(const char* charName1, const char* charName2, const char* jointName1, const char* jointName2)
 {
 
     //#ifdef COLLISIONDETECTOR_DEBUG
@@ -74,34 +74,37 @@ void	CollisionDetector_impl_hidden::_addCollisionPair(const char* charName1, con
 
     CdChar* char1 = scene_->getChar(charName1);
     if (!char1){
-        cerr << "CollisionDetector_impl::addCollisionPair : Character not found("
+        cerr << "CollisionDetector_impl::addCollisionPair : Character 1 not found("
              << charName1 << ")" << endl;
 		ASSERT(0);
+		exit(0);
     } else {
 	    joint1 = char1->getJoint(jointName1);
     	if (!joint1){
-        	cerr << "CollisionDetector_impl::addCollisionPair : Joint not found("
+        	cerr << "CollisionDetector_impl::addCollisionPair : Joint 1 not found("
             	 << charName1 << ","
              	<< jointName1 << ")" << endl;
+			ASSERT(0);
+			exit(0);
 	    }
-		ASSERT(0);
-
     }
 
     CdChar* char2 = scene_->getChar(charName2);
     if (!char2){
-        cerr << "CollisionDetector_impl::addCollisionPair : Character not found("
+        cerr << "CollisionDetector_impl::addCollisionPair : Character 2 not found("
              << charName2 << ")" << endl;
 		ASSERT(0);
+		exit(0);
 
     } else {
     	joint2 = char2->getJoint(jointName2);
     	if (!joint2){
-        	cerr << "CollisionDetector_impl::addCollisionPair : Joint not found("
+        	cerr << "CollisionDetector_impl::addCollisionPair : Joint 2 not found("
             	 << charName2 << ","
              	<< jointName2 << ")" << endl;
+			ASSERT(0);
+			exit(0);
     	}
-		ASSERT(0);
 
     }
 

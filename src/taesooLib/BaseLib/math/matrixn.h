@@ -8,7 +8,6 @@
 #include "vectorn.h"
 #include <list>
 #include <vector>
-#include "../utility/TArray.h"
 #include "vector3N.h"
 #include "quaterN.h"
 class matrixn;

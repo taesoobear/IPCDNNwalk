@@ -357,13 +357,13 @@ void GetSignal::jointOri(const intvectorn& aJointIndex, hypermatrixn& aaPos, int
 		switch(eCoord)
 		{
 		case GLOBAL_COORD:
-			jointGlobal(aJointIndex[i], aaPos[i], start, end);
+			jointGlobal(aJointIndex[i], aaPos[i].lval(), start, end);
 			break;
 		case LOCAL_COORD:
-			joint(aJointIndex[i], aaPos[i], start, end);
+			joint(aJointIndex[i], aaPos[i].lval(), start, end);
 			break;
 		case FIXED_COORD:
-			jointFixed(aJointIndex[i], aaPos[i], start, end);
+			jointFixed(aJointIndex[i], aaPos[i].lval(), start, end);
 			break;
 		default:
 			ASSERT(0);
@@ -383,16 +383,16 @@ void GetSignal::jointPos(const intvectorn& aJointIndex, hypermatrixn& aaPos, int
 		switch(eCoord)
 		{
 		case GLOBAL_COORD:
-			jointPos(aJointIndex[i], aaPos[i], start, end);
+			jointPos(aJointIndex[i], aaPos[i].lval(), start, end);
 			break;
 		case LOCAL_COORD:
-			jointPosLocal(m_Motion.skeleton().getBoneByRotJointIndex(aJointIndex[i]), aaPos[i], start, end);
+			jointPosLocal(m_Motion.skeleton().getBoneByRotJointIndex(aJointIndex[i]), aaPos[i].lval(), start, end);
 			break;
 		case FIXED_COORD:
-			jointPosFixed(m_Motion.skeleton().getBoneByRotJointIndex(aJointIndex[i]), aaPos[i], start, end);
+			jointPosFixed(m_Motion.skeleton().getBoneByRotJointIndex(aJointIndex[i]), aaPos[i].lval(), start, end);
 			break;
 		case FIRST_FRAME_CENTERED_COORD:
-			jointPosFirstCentered(m_Motion.skeleton().getBoneByRotJointIndex(aJointIndex[i]), aaPos[i], start, end);
+			jointPosFirstCentered(m_Motion.skeleton().getBoneByRotJointIndex(aJointIndex[i]), aaPos[i].lval(), start, end);
 			break;
 		}
 	}
@@ -563,13 +563,13 @@ void GetSignals::jointPos(const intvectorn& aJointIndex, hypermatrixn& aaPos, in
 		switch(eCoord)
 		{
 		case GLOBAL_COORD:
-			sig.jointPos(aJointIndex[i], aaPos[i]);
+			sig.jointPos(aJointIndex[i], aaPos[i].lval());
 			break;
 		case LOCAL_COORD:
-			sig.jointPosLocal(m_Motion.skeleton().getBoneByRotJointIndex(aJointIndex[i]), aaPos[i]);
+			sig.jointPosLocal(m_Motion.skeleton().getBoneByRotJointIndex(aJointIndex[i]), aaPos[i].lval());
 			break;
 		case FIXED_COORD:
-			sig.jointPosFixed(m_Motion.skeleton().getBoneByRotJointIndex(aJointIndex[i]), aaPos[i]);
+			sig.jointPosFixed(m_Motion.skeleton().getBoneByRotJointIndex(aJointIndex[i]), aaPos[i].lval());
 			break;
 		}
 	}	
@@ -723,9 +723,9 @@ void MotionUtil::upsample(Motion& out, const Motion& in, int startFrame, int end
 
 	for(int ijoint=0; ijoint<in.NumJoints(); ijoint++)
 	{
-		signal.joint(ijoint, joint[ijoint], startFrame, endFrame);
-		m::alignQuater(joint[ijoint]);
-		m::superSampling(nSuperSample,jointOut[ijoint], joint[ijoint]);
+		signal.joint(ijoint, joint[ijoint].lval(), startFrame, endFrame);
+		m::alignQuater(joint[ijoint].lval());
+		m::superSampling(nSuperSample,jointOut[ijoint].lval(), joint[ijoint]);
 		for(int k=0; k<jointOut[ijoint].rows(); k++)
 			jointOut[ijoint].row(k).normalize();
 		signalOut.joint(ijoint, jointOut[ijoint]);
@@ -1314,6 +1314,7 @@ void MotionUtil::SetSignal::constraintPositions(matrixn const& in, int start, in
 
 void MotionUtil::exportBVH(Motion const& mot, const char* filename, int start, int end)
 {
+	Msg::verify(mot.isValid(),  "mot. mInfo.m_pSkeleton==NULL?");
 	if(start<0) start=0;
 	if(end>mot.numFrames()) end=mot.numFrames();
 

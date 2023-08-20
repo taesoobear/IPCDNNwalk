@@ -8,6 +8,7 @@
 
 #include "TextFile.h"
 #include "TypeString.h"
+#include "TArray.h"
 class vectorn;
 class intvectorn;
 class matrixn;
@@ -47,6 +48,7 @@ public:
 	void pack(const intmatrixn& mat);
 	void pack(const vector3N& mat);
 	void pack(const quaterN& mat);
+	void pack(const TArray<TString>& aSz);
 	void pack(const TStrings& aSz);
 	void pack(const boolN& vec);
 	void pack(const matrix4& mat);
@@ -71,6 +73,7 @@ public:
 	void unpack(intvectorn& vec);
 	void unpack(matrixn& mat);
 	void unpack(intmatrixn& mat);
+	void unpack(TArray<TString>& aSz);
 	void unpack(TStrings& aSz);
 	void unpack(boolN& vec);
 	void unpack(quaterN& mat);

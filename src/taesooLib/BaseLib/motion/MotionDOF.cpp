@@ -171,9 +171,9 @@ void MotionDOFinfo::getDOF(Posture const& p, vectorn& dof) const
 					for(int c=0;c<numChannels;c++)
 					{
 					//	printf("###%d %d###\n",start,c);
-					/*	axis = bone.getAxisValue()[c];
-						dof[start+c] = qRot.rotationAngle(axis);
-						printf("dof %d : %lf\n",start+c,dof[start+c]);	*/
+						axis = bone.getArbitraryAxis(c);
+						dof[start+c] = qRot.rotationAngleAboutAxis(axis);
+						//printf("dof %d : %lf\n",start+c,dof[start+c]);	
 					}
 				}
 			}
@@ -202,6 +202,7 @@ void MotionDOFinfo::getDOF(Posture const& p, vectorn& dof) const
 
 void MotionDOFinfo::setDOF(vectorn const& dof, Posture & p) const
 {
+	Msg::verify(_sharedinfo, "MotionDOFinfo::setDOF impossible!");
 	MotionLoader* mSkeleton=_sharedinfo->mSkeleton;
 	for(int i=1; i<mSkeleton->numBone(); i++)
 	{

@@ -394,6 +394,7 @@ void Motion::_Init(int nkey, int numJoint, int numTransJoint, float fFrameTime)
 
 void Motion::Resize(int Frames)
 {
+	Msg::verify(isValid(), "setSkeleton first!");
 	int numPosture = numFrames();
 	int numJoint = mInfo.m_pSkeleton->numRotJoint();
 	int numTransJoint= mInfo.m_pSkeleton->numTransJoint();
@@ -401,14 +402,11 @@ void Motion::Resize(int Frames)
 	resize(Frames);
 
 	for(int i=numPosture; i<Frames; i++)
-	{
-		for(int i=numPosture; i<Frames; i++)
-			pose(i).Init(numJoint, numTransJoint);
+		pose(i).Init(numJoint, numTransJoint);
 
-		for(int i=numPosture; i<Frames; i++)
-			setDiscontinuity(i, false);
-		setDiscontinuity(numPosture, true);
-	}
+	for(int i=numPosture; i<Frames; i++)
+		setDiscontinuity(i, false);
+	setDiscontinuity(numPosture, true);
 /*	if(numPosture<Frames)
 	{
 		keyvalue.resize(MIN(m_maxCapacity, Frames));
@@ -937,11 +935,31 @@ void Motion::exportMOT(const char* filename) const
 	bf.openWrite(filename, true);
 
 	skeleton().pack(bf, MOT_RECENT_VERSION);
-	_pack(bf, MOT_RECENT_VERSION);
+	_pack(bf, 5); // uses verion 5
 
 	bf.close();
 }
+void Motion::exportBinary(const char* filename) const
+{
+	BinaryFile bf;
+	bf.openWrite(filename, true);
+	bf.packInt(MOT_RECENT_VERSION); // version 6
+	_pack(bf, MOT_RECENT_VERSION);
+	bf.close();
+}
 
+void Motion::importBinary(const char* filename) 
+{
+	BinaryFile bf;
+	bf.openRead(filename);
+
+	int version=bf.unpackInt();
+	int type=bf.unpackInt();
+	Msg::verify(type==POSTUREIP,"%s is not a valid mot2 file\n", filename);
+	_unpack(bf, version);
+	bf.close();
+
+}
 /*
 void Motion::exportANIM( const char* filename) const
 {
@@ -1283,9 +1301,23 @@ void Motion::_pack(BinaryFile& bf, int version) const
 
 	bf.pack(getDiscontinuity());
 
-	for(int i=0; i<numFrames(); i++)
+	if(version<6)
 	{
-		pose(i).pack(bf, version);
+		for(int i=0; i<numFrames(); i++)
+			pose(i).pack(bf, version);
+	}
+	else
+	{
+		bf.packInt(numRotJoints());
+		bf.packInt(numTransJoints());
+		for(int i=0; i<numFrames(); i++)
+		{
+			bf.pack(pose(i).m_aTranslations);
+			bf.pack(pose(i).m_aRotations);
+			bf.pack(pose(i).constraint);
+			bf.pack(pose(i).m_additionalLinear);
+			bf.pack(pose(i).m_additionalQuater);
+		}
 	}
 
 	if(version<3)
@@ -1302,6 +1334,7 @@ void Motion::_unpack(BinaryFile& bf, int version)
 	TString temp;
 	bf.unpack(temp);
 
+
 	int nkey=bf.unpackInt();
 	int njoint=bf.unpackInt();
 	mInfo.m_fFrameTime=bf.unpackFloat();
@@ -1311,9 +1344,24 @@ void Motion::_unpack(BinaryFile& bf, int version)
 	bitvectorn discontinuity;
 	bf.unpack(discontinuity);
 
-	for(int i=0; i<numFrames(); i++)
+	if(version<6)
 	{
-		pose(i).unpack(bf, version);
+		for(int i=0; i<numFrames(); i++)
+			pose(i).unpack(bf, version);
+	}
+	else
+	{
+		int nRotJoint=bf.unpackInt();
+		int nTransJoint=bf.unpackInt();
+		for(int i=0; i<numFrames(); i++)
+		{
+			pose(i).Init(nRotJoint, nTransJoint);
+			bf.unpack(pose(i).m_aTranslations);
+			bf.unpack(pose(i).m_aRotations);
+			bf.unpack(pose(i).constraint);
+			bf.unpack(pose(i).m_additionalLinear);
+			bf.unpack(pose(i).m_additionalQuater);
+		}
 	}
 
 	setDiscontinuity(discontinuity);

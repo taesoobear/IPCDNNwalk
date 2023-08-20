@@ -3,6 +3,7 @@ if(WIN32)
 	include_directories(
 		${MainLib_SOURCE_DIR}/../../windows_dependencies/ogre-13.4.4/include/Ogre
 		${MainLib_SOURCE_DIR}/../../windows_dependencies/fltk-1.3.8
+		${MainLib_SOURCE_DIR}/../../windows_dependencies/fltk-1.3.8/build_win
 		${MainLib_SOURCE_DIR}/../../windows_dependencies/lua-5.1.5/src
 		)
 	set(FLTK_LIBS

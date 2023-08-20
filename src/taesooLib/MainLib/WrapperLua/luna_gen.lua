@@ -33,7 +33,7 @@ do -- user configurations : all these can be changed in input file or from comma
 		super='inheritsFrom',
 		parentClass='inheritsFrom',
 	}
-	gen_lua.number_types={'int', 'double', 'float','long', 'short'}
+	gen_lua.number_types={'int', 'double', 'float','long', 'short','unsigned int', 'unsigned char'}
 	gen_lua.enum_types={}
 	gen_lua.boolean_types={'bool'}
 	gen_lua.string_types={'const%s+char%s*%*', 'std%s*::%s*string', 'TString'} -- string types has to support static conversion  to const char*, and construction from const char*.
@@ -262,7 +262,10 @@ do -- utility functions
 		if not luaclass.isModule then
 			return 'LunaTraits<'..normalizedClassNameToClassName(luaclass.className)..' >'
 		else
-			return 'luna__interface_'..string.gsub(luaclass.uniqueLuaClassname,'@','_1_')
+			if not luaclass.uniqID then
+				luaclass.uniqID =string.format("%05d", Hash(source_file_name))
+			end
+			return 'luna__interface_'..luaclass.uniqID..string.gsub(luaclass.uniqueLuaClassname,'@','_1_')
 		end
 	end
 	function Hash(str)

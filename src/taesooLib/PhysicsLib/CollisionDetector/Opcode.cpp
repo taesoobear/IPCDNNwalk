@@ -35,22 +35,28 @@
 // Precompiled Header
 #include "StdAfxColDet.h"
 
-bool Opcode::InitOpcode()
+using namespace Opcode;
+
+
+static OPCODE_AbortHandler g_fnAbortHandler = NULL;
+
+
+bool Opcode::InitOpcode(OPCODE_AbortHandler fnAbortHandler/*=NULL*/)
 {
-	Log("// Initializing OPCODE\n\n");
+	//Log("// Initializing OPCODE\n\n");
 //	LogAPIInfo();
+
+	g_fnAbortHandler = fnAbortHandler;
 	return true;
 }
 
-void ReleasePruningSorters();
 bool Opcode::CloseOpcode()
 {
-	Log("// Closing OPCODE\n\n");
-
-	ReleasePruningSorters();
+	//Log("// Closing OPCODE\n\n");
 
 	return true;
 }
+
 
 #ifdef ICE_MAIN
 
@@ -63,3 +69,14 @@ void ModuleDetach()
 }
 
 #endif
+
+/*extern */
+void OPCODE_NORETURN IceAbort()
+{
+	if (g_fnAbortHandler != NULL)
+	{
+		g_fnAbortHandler();
+	}
+
+	abort();
+}

@@ -22,7 +22,10 @@ public:
 	static void gaussFilter(int kernelSize, vectorn& inout);
 	static void medianFilter(int kernelSize, matrixn& inout);
 	static void medianFilter(int kernelSize, vectorn& inout);
+	static void mitchellFilter(int kernelsize, matrixn& inout);
+	static void mitchellFilter(int kernelSize, vectorn& inout);
 
+	static matrixn deconvolution(int niter, vectorn const& kernel, const matrixn& in);
 
 	// implementations
 	static int CalcKernelSize(float time, float fFrameTime) { float half_frames=time/(2*fFrameTime); return (ROUND(half_frames))*2+1;};
@@ -32,6 +35,7 @@ public:
 	static void GetBlurFilter(int kernelsize, vectorn &kernel);
 	static void GetGaussFilter(int kernelsize, vectorn &kernel);
 	static void GetTransitionKernel(int kernelsize, vectorn& kernel);	//!< 0~1 smooth transition
+	static void GetMitchellFilter(int kernelsize, vectorn &kernel);
 
 	//! Varying kernel size
 	static void LTIFilter(int numIter, float fFrameTime, const vectorn& kernel_size, const vectorn& aInput, vectorn& aOutput);// second
@@ -47,6 +51,11 @@ public:
 	static void LTIFilterQuat(int numIter, const vectorn& kernel, const matrixn& in, matrixn& out);
 	static void LTIFilterQuat(int numIter, const vectorn& kernel, matrixn& inout)
 	{	matrixn sourceCopy;	sourceCopy.assign(inout); LTIFilterQuat(numIter, kernel, sourceCopy, inout);}
+
+	// FilterSingle assumes that in.size()== kernel.size()
+	static double FilterSingle(int numIter, const vectorn& kernel, int numFloat, double * in);
+	static void FilterSingle(int numIter, const vectorn& kernel, const matrixn& in, vectorn & out);
+	static void FilterQuatSingle(int numIter, const vectorn& kernel, const matrixn& in, vectorn & out);
 
 #ifdef DIRECT3D_VERSION
 	//! 모든 종류의 filtering을 하기전에 모든 quaternion은 반드시 align되어 있어야 한다

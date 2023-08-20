@@ -1,6 +1,65 @@
 
 require("module")
 
+if not Physics then return end
+function Physics.DynamicsSimulator:getPoseDPose(ichar)
+	local pose=vectorn()
+	local dpose=vectorn()
+	self:getLinkData(0, Physics.DynamicsSimulator.JOINT_VALUE, pose)
+	self:getLinkData(0, Physics.DynamicsSimulator.JOINT_VELOCITY, dpose)
+	return pose, dpose
+end
+function Physics.DynamicsSimulator:setPoseDPose(ichar, pose, dpose)
+	self:setLinkData(0, Physics.DynamicsSimulator.JOINT_VALUE, pose)
+	self:setLinkData(0, Physics.DynamicsSimulator.JOINT_VELOCITY, dpose)
+	self:initSimulation()
+end
+
+if true then
+
+	-- for compatibility with gmbs simulator
+	-- this version is deprecated.
+	-- use the functions in qpservo.lua 
+	-- (simply use "requre('qpservo')" to overwrite the deprecated definitions)
+	Physics.DynamicsSimulator_TRL_QP.calcMassMatrix3=Physics.DynamicsSimulator_TRL_QP.calcMassMatrix
+	function Physics.DynamicsSimulator_TRL_QP:calcBoneDotJacobian(ichar, ibone, localpos, J, DJ)
+		local jacobian=matrixn()
+		local dotjacobian=matrixn()
+		self:calcJacobianAt(ichar, ibone, jacobian, localpos);
+		J:assign(jacobian:sub(3,6,0,0))
+		self:calcDotJacobianAt(ichar, ibone, dotjacobian, localpos);
+		DJ:assign(dotjacobian:sub(3,6,0,0))
+	end
+	function Physics.DynamicsSimulator_TRL_QP:calcBoneDotJacobian2(ichar, ibone, localpos, jacobian, dotjacobian)
+		self:calcJacobianAt(ichar, ibone, jacobian, localpos);
+		self:calcDotJacobianAt(ichar, ibone, dotjacobian, localpos);
+	end
+	function Physics.DynamicsSimulator_TRL_QP:calcJacobian(ichar, ibone, J)
+		self:calcJacobianAt(ichar, ibone, J, vector3(0,0,0));
+	end
+	function Physics.DynamicsSimulator_TRL_QP:setCollisionMargin(i1,i2)
+		-- does nothing
+	end
+	function Physics.DynamicsSimulator_TRL_QP:calcDotJacobian(ichar, ibone, DJ)
+		self:calcDotJacobianAt(ichar, ibone, DJ, vector3(0,0,0));
+	end
+	function Physics.DynamicsSimulator_TRL_QP:stepKinematic(ddq, tau, integrate)
+		assert(integrate)
+		self:stepKinematic2(0, ddq)
+	end
+end
+defineDerived(Physics.DynamicsSimulator, 
+{
+	Physics.DynamicsSimulator_gmbs,
+	Physics.DynamicsSimulator_gmbs_penalty,
+	Physics.DynamicsSimulator_TRL_QP,
+	Physics.DynamicsSimulator_TRL_LCP,
+}, 
+{
+	"getPoseDPose", 
+	"setPoseDPose",
+}
+)
 
 if Physics and PLDPrimVRML then
 	PLDPrimVRML.setPose=Physics.DynamicsSimulator.setPose
@@ -11,7 +70,11 @@ end
 
 gFolder=package.resourcePath
 
-simulators={UT=0, AIST=1, SDFAST=2, VP=3, gmbs=4, gmbs_penalty=5, gmbs_QP=6, TRL=7, TRL_penalty=8}
+-- taesooLib supports many simulators.
+-- sample_bullet.git
+-- sample_mujoco.git
+-- sample_physX.git : nvidia physX
+simulators={UT=0, AIST=1, SDFAST=2, VP=3, gmbs=4, gmbs_penalty=5, gmbs_QP=6, TRL=7, TRL_penalty=8, bullet=9, mujoco=10, Trbdl_penalty=11,Trbdl_LCP=12, Trbdl_QP=13, PhysX=14, mujoco=15, TRL_gjk=16, Trbdl_impulse=17}
 
 model_files={}
 model_files.default={}
@@ -77,6 +140,15 @@ model_files.hyunwoo_allDOF1.bones.head="Head"
 model_files.hyunwoo_allDOF1.bones.left_collar="LeftCollar"
 model_files.hyunwoo_allDOF1.bones.right_collar="RightCollar"
 model_files.hyunwoo_allDOF1.initialHeight=1 -- meters
+
+model_files.hyunwoo_lowdof_T=deepCopyTable(model_files.hyunwoo_allDOF1)
+model_files.hyunwoo_lowdof_T.file_name=package.resourcePath.."locomotion_hyunwoo/hyunwoo_lowdof_T.wrl"
+model_files.hyunwoo_lowdof_T.mot_file=package.resourcePath.."locomotion_hyunwoo/hyunwoo_lowdof_T_locomotion_hl.dof"
+
+model_files.hanyang_lowdof_T=deepCopyTable(model_files.hyunwoo_lowdof_T)
+model_files.hanyang_lowdof_T.file_name=package.resourcePath.."MOB1/hanyang_lowdof_T.wrl"
+model_files.hanyang_lowdof_T.mot_file=package.resourcePath.."MOB1/hanyang_lowdof_T_MOB1_Run_F_Loop.fbx.dof"
+
 
 model_files.hyunwoo_fourDOF3=deepCopyTable(model_files.hyunwoo_allDOF1)
 model_files.hyunwoo_fourDOF3.file_name=package.resourcePath.."hyunwoo_fourDOF3.wrl"
@@ -391,6 +463,7 @@ function createSimulator(simulator)
 		   end
 		   if useCase then
 			   --assert(not useCase.useBulletColdet)
+			   --return Physics.DynamicsSimulator_gmbs(not useCase.useBulletColdet) 
 			   return Physics.DynamicsSimulator_gmbs(not useCase.useBulletColdet) 
 		   else
 			   return Physics.DynamicsSimulator_gmbs(true) -- use simple collision detector
@@ -403,7 +476,17 @@ function createSimulator(simulator)
    elseif simulator==simulators.TRL_penalty then
 	   return Physics.DynamicsSimulator_TRL_penalty("libccd")
    elseif simulator==simulators.TRL then
-	   return Physics.DynamicsSimulator_TRL_LCP("libccd")
+	   --return Physics.DynamicsSimulator_TRL_LCP("libccd")
+	   return Physics.DynamicsSimulator_TRL_QP("simple")
+	   --return Physics.DynamicsSimulator_TRL_QP('simple') -- use simple collision detector 
+	elseif simulator==simulators.Trbdl_penalty then
+	   return Physics.DynamicsSimulator_Trbdl_penalty("libccd")
+	elseif simulator==simulators.Trbdl_LCP then
+	   return Physics.DynamicsSimulator_Trbdl_LCP("libccd")
+	elseif simulator==simulators.Trbdl_QP then
+	   return Physics.DynamicsSimulator_Trbdl_QP("libccd")
+   elseif simulator==simulators.Trbdl_impulse then
+	   return Physics.DynamicsSimulator_Trbdl_impulse("libccd")
    else
       return Physics.DynamicsSimulator_SDFAST()
    end
@@ -412,12 +495,24 @@ end
 function registerContactPairAll(model, loader, floor, simulator, param)
 	if not param  then
 		param=vectorn ()
-		param:setValues(0.5,0.5, model.penaltyForceStiffness, model.penaltyForceDamp)
+		param:setValues(0.5,0.5, model.penaltyForceStiffness or 10000, model.penaltyForceDamp or 1000)
 	end
    for i=1,loader:numBone()-1 do
-
-      local bone_i=loader:VRMLbone(i)
-      simulator:registerCollisionCheckPair(loader:name(),bone_i.NameId, floor:name(), floor:bone(1):name(), param)
+	   for j=1, floor:numBone()-1 do
+		   local bone_i=loader:VRMLbone(i)
+		   simulator:registerCollisionCheckPair(loader:name(),bone_i.NameId, floor:name(), floor:bone(j):name(), param)
+	   end
+   end
+end
+function registerContactPairOnly(model, loader, floor, simulator, treeIndices, param)
+	if not param  then
+		param=vectorn ()
+		param:setValues(0.5,0.5, model.penaltyForceStiffness, model.penaltyForceDamp)
+	end
+	for ii=0, treeIndices:size()-1 do
+		local i=treeIndices(ii)
+		local bone_i=loader:VRMLbone(i)
+		simulator:registerCollisionCheckPair(loader:name(),bone_i.NameId, floor:name(), floor:bone(1):name(), param)
    end
 end
 
@@ -473,7 +568,7 @@ function calcDerivative_row(i, dmotionDOF, motionDOF)
    if model then frameRate=model.frame_rate end
    dmotionDOF_i:rmult(frameRate)
    
-   assert(motionDOF.dofInfo:numSphericalJoint()==1) 
+   assert(not motionDOF.dofInfo or motionDOF.dofInfo:numSphericalJoint()==1) 
    -- otherwise following code is incorrect
    local T=MotionDOF.rootTransformation(motionDOF:row(i))
    local V=T:twist( MotionDOF.rootTransformation(motionDOF:row(i+1)), 1/frameRate)
@@ -489,8 +584,8 @@ function calcDerivative_row_fd(i, dmotionDOF, motionDOF)
    MainLib.VRMLloader.projectAngles(dmotionDOF_i) -- align angles
    dmotionDOF_i:rmult(model.frame_rate)
 
-   local T=motionDOF:rootTransformation(i)
-   local twist=T:twist(motionDOF:rootTransformation(i+1),1/model.frame_rate)
+   local T=motionDOF:row(i):toTransf(0)
+   local twist=T:twist(motionDOF:row(i+1):toTransf(0),1/model.frame_rate)
    -- incorrect, but previous results were optimized using this.
    dmotionDOF_i:setVec3(0, twist.v)
    dmotionDOF_i:setVec3(4, twist.w)
@@ -782,15 +877,13 @@ function modelChooser:createMenu(title)
 	jump=true, jump2=true, jump3=true, jump4=true, jump5=true, 
 	justin_jump2=true, justin_run=true, justin_straight_run=false}
 	function ignorePattern(k,v)
-		if select(1,string.find(k, "hyunwoo") )then
-			return true
-		elseif select(1,string.find(k, "_cart") )then return true
+		if select(1,string.find(k, "_cart") )then return true
 		elseif select(1,string.find(k, "justin_run") )then return true
 		end
 		return false
 	end
 
-	local shortcuts={gymnist='FL_CTRL+g'}
+	local shortcuts={gymnist='FL_CTRL+g', hanyang_lowdof_T='FL_CTRL+h'}
 	local n=0
 	local function isIgnore(k,v)
 		if ignore[k]==true or type(v)=='function' then
@@ -1088,8 +1181,10 @@ end
 function _createEmptyMotion(loader, fn)
 	local motionDOFcontainer=MotionDOFcontainer(loader.dofInfo)
 	motionDOFcontainer:resize(10)
-	motionDOFcontainer.mot:matView():setAllValue(0)
-	motionDOFcontainer.mot:matView():column(3):setAllValue(1)
+	for i=0, 9 do
+		loader:getPoseDOF(motionDOFcontainer.mot:row(i))
+	end
+	motionDOFcontainer.mot:matView():column(1):setAllValue(0.95)
 	motionDOFcontainer:exportMot(fn)
 end
 
@@ -1377,6 +1472,7 @@ if MotionUtil then
 	function MotionUtil.calcSkeletonMesh(fn)
 		local objFolder=string.sub(fn, 1, -5).."_sd"
 
+		os.createDir(objFolder)
 		local tempFile=objFolder.."/temp.wrl"
 		local mot=Motion(mLoader)
 		mot:resize(1)

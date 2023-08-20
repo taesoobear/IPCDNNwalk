@@ -77,6 +77,7 @@ PLDPrimVRML::PLDPrimVRML(VRMLloader* pVRMLL, bool bDrawSkeleton, const OgreRende
 		VRMLloader_updateMeshEntity(*pVRMLL);
 	mVRMLL=pVRMLL;
   
+  mDrawSkel=NULL;
 #ifndef NO_OGRE
   m_pSceneNode=renderer.viewport().mScene->getRootSceneNode()->createChildSceneNode();
   mSceneNodes.resize(pVRMLL->numBone());
@@ -95,16 +96,17 @@ PLDPrimVRML::PLDPrimVRML(VRMLloader* pVRMLL, bool bDrawSkeleton, const OgreRende
 
     }
   _updateEntities(mVRMLL->fkSolver());
-  mDrawSkel=NULL;
 
   if(bDrawSkeleton)
     {
       //PLDPrimCyl(MotionLoader* pBVHL, const OgreRenderer& renderer, bool lowPoly=false);
 
-      mDrawSkel=new PLDPrimCyl(pVRMLL, renderer, true);
-	  mDrawSkel->setThickness(0.05);
-      renderer.viewport().mScene->getRootSceneNode()->removeChild(mDrawSkel->m_pSceneNode);
-      m_pSceneNode->addChild(mDrawSkel->m_pSceneNode);
+      //mDrawSkel=new PLDPrimCyl(pVRMLL, renderer, true);
+	  //mDrawSkel->setThickness(0.05);
+    //  renderer.viewport().mScene->getRootSceneNode()->removeChild(mDrawSkel->m_pSceneNode);
+     // m_pSceneNode->addChild(mDrawSkel->m_pSceneNode);
+
+	mDrawSkel=new PLDPrimThickLine((MotionLoader*)(pVRMLL), RE::renderer());
     }
 #endif
 }
@@ -272,14 +274,14 @@ void PhysicalProperties::segVelocity(hypermatrixn& aaSegVel, const hypermatrixn&
 {
   aaSegVel.setSameSize(aaSegPos);
   for(int page=0; page<aaSegVel.page(); page++)
-	  m::derivative(aaSegVel[page], aaSegPos[page]);
+	  m::derivative(aaSegVel[page].lval(), aaSegPos[page].lval());
   for(int page=0; page<aaSegVel.page(); page++)
     {
       double frameTime=1.0/mMotion->mInfo.frameRate();
       aaSegVel[page]/=frameTime;
 
       if(kernelSize!=0)
-		  m::filter( aaSegVel[page],Filter::CalcKernelSize( kernelSize, frameTime));
+		  m::filter( aaSegVel[page].lval(),Filter::CalcKernelSize( kernelSize, frameTime));
     }
 }
 

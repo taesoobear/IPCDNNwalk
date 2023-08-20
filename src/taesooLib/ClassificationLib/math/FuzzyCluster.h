@@ -2,10 +2,10 @@
 
 #include <deque>
 #include <vector>
-#include "../BaseLib/utility/TArray.h"
+#include "../../BaseLib/utility/TArray.h"
 typedef std::vector<int> intVector;
 
-#include "../BaseLib/math/mathclass.h"
+#include "../../BaseLib/math/mathclass.h"
 
 class CFuzzyCluster
 {
@@ -61,10 +61,14 @@ public:
 	static void CalcDTWDistanceMatrix(const matrixn& aInputVec, int numRow, int numColumn, matrixn& distMat);
 
 	// 클러스터 개수가 cluster_n으로 될때까지 수행
-	static void AggloCluster(const matrixn& distMat, int cluster_n, int* group_index);
+	// 마지막 parameter는 linkage 를 뜻한다 0:min, 1: average, 2: max linkage
+	static void AggloCluster(const matrixn& distMat, int cluster_n, int* group_index, int eLinkage=1);
+
 	// inner cluster distance가 inner_cluster_thr을 넘지 않는 최소 클러스터.
-	static void AggloCluster(const matrixn& distMat, m_real inner_cluster_thr, int& cluster_n, int* group_index);
-	static void AggloClusterCore(const matrixn& distMat, matrixn& interDist, vectorn& innerDist, m_real inner_cluster_thr, int& cluster_n, int* group_index, int eLinkage=0);
+	static void AggloCluster(const matrixn& distMat, m_real inner_cluster_thr, int& cluster_n, int* group_index, int eLinkage=1);
+
+	// 마지막 parameter는 linkage 를 뜻한다 0:min, 1: average, 2: max linkage
+	static void AggloClusterCore(const matrixn& distMat, matrixn& interDist, vectorn& innerDist, m_real inner_cluster_thr, int& cluster_n, int* group_index, int eLinkage=1);
 	
 	static void DTWAggloCluster(const matrixn &aInputVec, int numRow, int numColumn, m_real inner_cluster_thr, int& cluster_n, int* group_index, m_real *pfMaxInner=NULL, m_real* pfMinInter=NULL);
 	static void DTWKmeanCluster(const matrixn &aInputVec, int numRow, int numColumn, m_real inner_cluster_thr, int& cluster_n, int* group_index, matrixn& aCenter, matrixn& refPattern, m_real *pfMaxInner=NULL, m_real* pfMinInter=NULL);

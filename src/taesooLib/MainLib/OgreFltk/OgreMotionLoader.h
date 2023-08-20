@@ -8,35 +8,6 @@
 #include "Mesh.h"
 #include "pldprimskin.h"
 
-class SkinnedMeshFromVertexInfo
-{
-	public:
-	struct VertexInfo
-	{
-		intvectorn treeIndices;
-		vector3N localpos;
-		vectorn weights;
-	};
-	std::vector<VertexInfo> vertices;
-	int numVertex() const { return vertices.size();}
-		SkinnedMeshFromVertexInfo(){}
-		SkinnedMeshFromVertexInfo(const char* filename);
-
-		void exportSkinInfo(const char* filename) const;
-		vector3 calcSurfacePointPosition( MotionLoader const& loader, intvectorn const& treeIndices, vectorn const& weights, vector3N const& localpos);
-		void _calcVertexPosition( MotionLoader const& loader, int vertexIndex, vector3& out);
-		void _calcVertexPosition( BoneForwardKinematics const& loader, int vertexIndex, vector3& out);
-		inline vector3 calcVertexPosition( MotionLoader const& loader, int vertexIndex) { vector3 out; _calcVertexPosition(loader, vertexIndex, out); return out; }
-		inline vector3 calcVertexPosition( BoneForwardKinematics const& fkSolver, int vertexIndex) { vector3 out; _calcVertexPosition(fkSolver, vertexIndex, out); return out; }
-		void calcVertexPositions(MotionLoader const& loader, OBJloader::Mesh& mesh);
-
-		void resize(int numVertex) { vertices.resize(numVertex);}
-		inline intvectorn& treeIndices(int vertexIndex){ return vertices[vertexIndex].treeIndices;}
-		inline vector3N& localPos(int vertexIndex){ return vertices[vertexIndex].localpos;}
-		inline vectorn& weights(int vertexIndex){ return vertices[vertexIndex].weights;}
-		void getVertexInfo(int v1, int v2, int v3, vector3 const& baryCoeffs, intvectorn& treeIndices, vector3N& localpos, vectorn &weights);
-};
-
 #ifndef NO_OGRE
 /// OgreMesh파일의 skeleton구조의 한 본에 해당한다. 
 class MeshBone : public Bone

@@ -16,6 +16,7 @@ struct _HRP_JOINT
 {
 
 	_HRP_JOINT();
+	~_HRP_JOINT();
 	HRP_JOINT::jointType_T jointType;
 	int jointStartId;
 	int jointEndId;
@@ -29,7 +30,7 @@ private:
 	friend struct VRMLTransformView;
 	TString jointAxis;	// use Bone::getRotationalChannels() and getTranslationalChannels()
 	vector3* jointAxis2;//두개 중 하나를 사용 jointAxis jointAxis2 
-	m_real* jointAxis2Angle;
+	//m_real* jointAxis2Angle;
 	int AxisNum;
 };
 

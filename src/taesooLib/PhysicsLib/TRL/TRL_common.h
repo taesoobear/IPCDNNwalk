@@ -1,7 +1,7 @@
 #define SWAP_FORCE_AND_TORQUE
 
 
-inline TRL::Link* getTRLlink(TRL::BodyPtr& cinfo, int hrpjointindex)
+inline TRL::Link* getTRLlink(TRL::Body* cinfo, int hrpjointindex)
 {
 	return cinfo->link(hrpjointindex);
 }

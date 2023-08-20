@@ -51,6 +51,25 @@ LimbIKsolver::LimbIKsolver(MotionDOFinfo const& dofInfo, std::vector<Effector>& 
 	}
 
 }
+LimbIKsolver::LimbIKsolver(MotionDOFinfo const& dofInfo, std::vector<Effector>& effectors, intvectorn const& knee_bone_indexes, const vector3N & axes)
+		:FullbodyIK_MotionDOF3(dofInfo, effectors)
+{
+	mHipBones.resize(mEffectors.size());
+	mKneeBones.resize(mEffectors.size());
+	mAnkleBones.resize(mEffectors.size());
+	mAxis.setSize(mEffectors.size());
+	for(int i=0; i<mEffectors.size(); i++)
+	{
+		//Msg::verify(mEffectors[i].bone->getRotationalChannels().length()==3, "rotc");
+		Bone const& knee=mSkeleton.bone(knee_bone_indexes[i]);
+		mHipBones[i]=knee.parent();
+		Msg::verify(mHipBones[i]->getRotationalChannels().length()==3,"hip_rotc");
+		mKneeBones[i]=&knee;
+		mAnkleBones[i]=mEffectors[i].bone;
+		mbAdjustLen=false;
+		mAxis[i]=axes[i];
+	}
+}
 LimbIKsolver::LimbIKsolver(MotionDOFinfo const& dofInfo, std::vector<Effector>& effectors, intvectorn const& knee_bone_indexes, vectorn const& axis_sign)
 		:FullbodyIK_MotionDOF3(dofInfo, effectors)
 	{
@@ -84,7 +103,7 @@ LimbIKsolver::LimbIKsolver(MotionDOFinfo const& dofInfo, std::vector<Effector>& 
 				mbAdjustLen=true;
 			}
 			else	
-				Msg::error("LimbIKsolver error 1");
+				Msg::error("LimbIKsolver error 1: %s, %s", mEffectors[i].bone->NameId, knee.NameId);
 
 			switch(mKneeBones[i]->getRotationalChannels()[0])
 			{

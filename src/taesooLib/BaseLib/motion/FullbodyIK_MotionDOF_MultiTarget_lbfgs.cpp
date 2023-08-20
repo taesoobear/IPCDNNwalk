@@ -1,3 +1,5 @@
+/* implemented by Taesoo Kwon
+ */
 #include "stdafx.h"
 #include "../BaseLib/math/mathclass.h"
 #include "../BaseLib/math/optimize.h"
@@ -11,6 +13,7 @@
 #include "IKSolver.h"
 #include "LimbIKinfo.h"
 #include "intersectionTest.h"
+#include "../BaseLib/math/Operator.h"
 //#define DEBUG_DRAW
 #define OBJECTIVE_FUNCTION 4   // 1 or 2 or 3 or 4
 //#define DEBUG_DRAW
@@ -267,6 +270,227 @@ class ROTConstraintInfo: public MotionUtil::RelativeConstraint::ConstraintInfo
 			return fx;
 		}
 };
+//#define USE_SIMPLE_BUT_SLOW_CODE
+class SkinConstraintInfo: public MotionUtil::RelativeConstraint::ConstraintInfo
+{
+	public:
+		VRMLloader const& loader;
+		IK_sdls::LoaderToTree* solver;
+		Bone* bone1;
+		vector3 _gpos2;
+		vector3 _gpos;
+
+		intvectorn const&_treeIndex;
+		vector3N const& _localpos;
+		vectorn  const&_weights;
+
+		SkinConstraintInfo(VRMLloader const& l, IK_sdls::LoaderToTree* s, 
+				intvectorn const& treeIndices, vector3N const& localpos, vectorn  const&weights, vector3 const& desired_pos) 
+			:loader(l),solver(s),
+			_treeIndex(treeIndices),
+			_localpos(localpos),
+			_weights(weights)
+		
+		{
+			_gpos=desired_pos;
+		}
+		virtual double calcObjectiveAndGradient(int N, double* g, const double *x, double w){
+#ifdef USE_SIMPLE_BUT_SLOW_CODE
+			matrixn JT;
+#endif
+			double fx=0.0;
+			vector3 deltaS;
+
+			_gpos2.zero();
+
+			// for each marker i
+			//	 	g_i=sum_j w_ij*(R_j*l_ij+p_j)
+			//
+			//	 	(
+			//	 		j는 마커와 관련된 모든 본, 
+			//	 		(R_j,p_j)는 본j의 globalFrame
+			//	 		w_ij, l_ij 는 스키닝 파라미터
+			//	 	)
+			// 		for each bone j
+			// 			grad-=(2.0*w_ij)*(g'_i - g_i)'*J_j
+			//
+			for(int j=0; j<_weights.size(); j++)
+			{
+				const transf& tf=solver->getLastNode(_treeIndex(j))->globalFrame();
+				_gpos2+=(tf*_localpos(j))*_weights(j);
+			}
+
+			deltaS.sub(_gpos, _gpos2);
+			fx+=deltaS% deltaS*w;
+
+			for(int j=0; j<_weights.size(); j++)
+			{
+#ifdef USE_SIMPLE_BUT_SLOW_CODE
+				solver->calcJacobianTransposeAt(JT, _treeIndex(j), _localpos(j));
+
+				ASSERT(N==JT.rows());
+				for(int i=0; i<N; i++)
+					g[i]-= (2.0*w*_weights(j))*deltaS%(JT.row(i).toVector3(0));
+#else
+				solver->updateGrad_S_JT(g, -(2.0*w*_weights(j))*deltaS, _treeIndex(j), _localpos(j));
+#endif
+			}
+
+			return fx;
+		}
+};
+class FastSkinConstraintInfo: public MotionUtil::RelativeConstraint::ConstraintInfo
+{
+	public:
+		VRMLloader const& loader;
+		IK_sdls::LoaderToTree* solver;
+		vector3 _gpos2;
+
+		struct MarkerInfo {
+			MarkerInfo(){_pTreeIndex=NULL; _pLocalpos=NULL; _pArrayWeights=NULL;}
+			const intvectorn* _pTreeIndex;
+			const vector3N* _pLocalpos;
+			const vectorn* _pArrayWeights;
+			vector3 desired_position;
+		};
+		std::vector<MarkerInfo > _markerInfo;
+		vector3N _all_dS;
+		vector3N _all_dS_lpos;
+
+		FastSkinConstraintInfo(VRMLloader const& l, IK_sdls::LoaderToTree* s, int numMarkers) 
+			:loader(l),solver(s)
+		{
+			_markerInfo.resize(numMarkers);
+			_all_dS.setSize(l.numBone());
+			_all_dS_lpos.setSize(l.numBone());
+		}
+		virtual double calcObjectiveAndGradient(int N, double* g, const double *x, double w){
+			double fx=0.0;
+
+			_all_dS.range(1, _all_dS.size()).setAllValue(vector3(0,0,0));
+			_all_dS_lpos.range(1, _all_dS_lpos.size()).setAllValue(vector3(0,0,0));
+			for(int imarker=0; imarker<_markerInfo.size(); imarker++){
+				MarkerInfo& mi=_markerInfo[imarker];
+				ASSERT(mi._pTreeIndex);
+				const intvectorn& _treeIndex=*mi._pTreeIndex;
+				const vector3N& _localpos=*mi._pLocalpos;
+				const vectorn& _weights=*mi._pArrayWeights;
+				_gpos2.zero();
+
+				// for each marker i
+				//	 	g_i=sum_j w_ij*(R_j*l_ij+p_j)
+				//
+				//	 	(
+				//	 		j는 마커와 관련된 모든 본, 
+				//	 		(R_j,p_j)는 본j의 globalFrame
+				//	 		w_ij, l_ij 는 스키닝 파라미터
+				//	 	)
+				// 		for each bone j
+				// 			grad-=(2.0*w_ij)*(g'_i - g_i)'*J_j
+				//
+#ifdef _WIN32
+				IK_sdls::Node* lastNode[10];
+				ASSERT(_weights.size() < 10);
+#else
+				IK_sdls::Node* lastNode[_weights.size()];
+#endif
+				vector3 target;
+
+				for(int j=0; j<_weights.size(); j++)
+				{
+					lastNode[j]=solver->getLastNode(_treeIndex(j));
+					const transf& tf=lastNode[j]->globalFrame();
+					target=tf*_localpos(j);
+					_gpos2+=target*_weights(j);
+				}
+
+				vector3 deltaS;
+				deltaS.sub(mi.desired_position, _gpos2);
+				fx+=deltaS% deltaS*w;
+
+				int nJoint = solver->mTree.GetNumJoint();
+				// compute jacobian
+				IK_sdls::Node* m;
+
+				for(int j=0; j<_weights.size(); j++)
+				{
+					vector3 dS=-(2.0*w*_weights(j))*deltaS;
+					_all_dS(_treeIndex(j))+=dS;
+
+					// target = p + R*lpos
+					// lin= cross(GetW(), target-GetS()) (hinge)
+					//    = hat(GetW())*(target-GetS())
+					// then, its gradient contribution becomes: deltaS%lin
+					//
+					// deltaS%lin (scalar) = deltaS*hatW*(p-GetS()) + deltaS*hatW*(R*lpos)
+					// 			           = deltaS*hatW*(p-GetS()) + deltaS*hat(R*lpos) * (-w)
+					// 
+					//
+					// j 두개만 가지고 식 세워보면...
+					// deltaS1%lin1+deltaS2%lin2 
+					// 	 =    deltaS1*hatW*(p+R*l1-GetS()) + deltaS2*hatW*(p+R*l2-GetS())
+					// 	 =    (deltaS1+deltaS2)*hatW*(p-GetS())
+					// 	 	+ (deltaS1*hat(R*l1)+deltaS2*hat(R*l2))*(-w)
+					//
+					
+					const quater& R=lastNode[j]->globalFrame().rotation;
+					// deltaS*hat(R*lj)== deltaS.cross(R*lj)
+					_all_dS_lpos(_treeIndex(j))+=dS.cross(R*_localpos(j));
+
+					//solver->updateGrad_S_JT(g, dS, _treeIndex(j), _localpos(j)); // 이 줄 대신 아래 두줄(1, 2)을 써도 같은 뜻임.
+					//solver->updateGrad_S_JT(g, dS, _treeIndex(j), vector3(0,0,0)); // (1).      
+					//solver->updateGrad_S_JT_residual(g, dS.cross(R*_localpos(j)), _treeIndex(j)); // (2).         
+					// 그리고 (1,2) 대신 아래 (3,4) 쓰면 동일한 결과, 훨씬 빠른 속도 (nested for-loop 개수가 하나 줄음).
+
+
+#ifdef VERIFY_ZERO_DIFF
+					int nJoint = solver->mTree.GetNumJoint();
+					// compute jacobian
+					IK_sdls::Node* m;
+
+					int ibone=_treeIndex(j);
+					m = solver->getLastNode(ibone);
+					vector3 targetg=m->globalFrame()*_localpos(j);
+					vector3 target=m->globalFrame().translation;
+					while ( m ) {
+						int jj = m->GetJointNum();
+						if ( !m->IsFrozen() ) {
+
+							double backup=g[jj];
+							m->_updateGrad_S_JT(g, dS, targetg);
+
+							double res1=g[jj]-backup;
+
+							g[jj]=backup;
+							m->_updateGrad_S_JT(g, dS, target);
+							m->_updateGrad_S_JT_residual(g, dS.cross(R*_localpos(j)));
+
+							double res2=g[jj]-backup;
+
+							if(!isSimilar(res1,res2))
+							{
+								printf("error!!! %d: %f %f", jj, res1, res2);
+								exit(0);
+							}
+						}
+						m = m->realparent;
+					}
+#endif
+
+
+				}
+			}
+
+			for(int ibone=1, nb=loader.numBone(); ibone<nb; ibone++)
+			{
+				solver->updateGrad_S_JT(g, _all_dS(ibone), ibone, vector3(0,0,0)); //(3)
+				solver->updateGrad_S_JT_residual(g, _all_dS_lpos(ibone), ibone); //(4)
+			}
+			return fx;
+		}
+};
+
+
 class EEConstraintInfo: public MotionUtil::RelativeConstraint::ConstraintInfo
 {
 	public:
@@ -304,6 +528,175 @@ class EEConstraintInfo: public MotionUtil::RelativeConstraint::ConstraintInfo
 			return fx;
 		}
 };
+class DistanceConstraintInfo: public MotionUtil::RelativeConstraint::ConstraintInfo
+{
+	public:
+		VRMLloader const& loader;
+		IK_sdls::LoaderToTree* solver;
+		Bone* bone1;
+		vector3 _lpos;
+		vector3 _gpos;
+		double _targetDist;
+
+		DistanceConstraintInfo(VRMLloader const& l, IK_sdls::LoaderToTree* s, Bone* b, vector3 const& lpos, vector3 const& gpos, double targetDist):loader(l),solver(s) {
+			bone1=b;
+			_lpos=lpos;
+			_gpos=gpos;
+			_targetDist=targetDist;
+		}
+		virtual double calcObjectiveAndGradient(int N, double* g, const double *x, double w){
+			matrixn JT;
+			double fx=0.0;
+			const transf& tf=solver->getLastNode(bone1->treeIndex())->globalFrame();
+			vector3 deltaS;
+			deltaS.sub(_gpos, tf*_lpos);
+			double sqrD=_targetDist*_targetDist;
+
+			double v=deltaS%deltaS-sqrD;
+
+			ASSERT(N==JT.rows());
+			if(v>0)
+			{
+				//fx+=v*v*w;
+				double d=deltaS.length()-_targetDist;
+				fx+=w*SQR(d);
+				solver->calcJacobianTransposeAt(JT, bone1->treeIndex(), _lpos);
+				for(int i=0; i<N; i++) g[i]-= (2.0*w)*d*(deltaS.dir()%JT.row(i).toVector3(0));
+			}
+			return fx;
+		}
+};
+class RelativeConstraintInfo: public MotionUtil::RelativeConstraint::ConstraintInfo
+{
+	public:
+		VRMLloader const& loader;
+		IK_sdls::LoaderToTree* solver;
+		Bone* bone1;
+		vector3 _lpos1;
+		Bone* bone2;
+		vector3 _lpos2;
+		vector3 _gdelta;
+
+		RelativeConstraintInfo(VRMLloader const& l, IK_sdls::LoaderToTree* s, Bone* b, vector3 const& lpos1, 
+				Bone* b2, vector3 const& lpos2) 
+			:loader(l),solver(s),_gdelta(0,0,0)
+		{
+
+			bone1=b;
+			_lpos1=lpos1;
+			bone2=b2;
+			_lpos2=lpos2;
+		}
+		RelativeConstraintInfo(VRMLloader const& l, IK_sdls::LoaderToTree* s, Bone* b, vector3 const& lpos1, 
+				Bone* b2, vector3 const& lpos2,vector3 const& delta) 
+			:loader(l),solver(s)
+		{
+
+			_gdelta=delta;
+			bone1=b;
+			_lpos1=lpos1;
+			bone2=b2;
+			_lpos2=lpos2;
+		}
+		virtual double calcObjectiveAndGradient(int N, double* g, const double *x, double w){
+			double fx=0.0;
+
+			vector3 deltaS;
+
+			int ti1=bone1->treeIndex();
+			int ti2=bone2->treeIndex();
+			const transf& tf=solver->getLastNode(ti1)->globalFrame();
+			const transf& tf2=solver->getLastNode(ti2)->globalFrame();
+
+			deltaS.sub(tf2*_lpos2, tf*_lpos1);
+			deltaS-=_gdelta;
+			fx+=deltaS% deltaS*w;
+
+			solver->updateGrad_S_JT(g, -(2.0*w*1)*deltaS, ti1, _lpos1);
+			solver->updateGrad_S_JT(g, -(2.0*w*-1)*deltaS, ti2, _lpos2);
+			return fx;
+		}
+};
+class RelativeDistanceConstraintInfo: public MotionUtil::RelativeConstraint::ConstraintInfo
+{
+	public:
+		VRMLloader const& loader;
+		IK_sdls::LoaderToTree* solver;
+		Bone* bone1;
+		vector3 _lpos1;
+		Bone* bone2;
+		vector3 _lpos2;
+		double _targetDist;
+		vector3 _gdelta;
+
+		RelativeDistanceConstraintInfo(VRMLloader const& l, IK_sdls::LoaderToTree* s, Bone* b, vector3 const& lpos1, 
+Bone* b2, vector3 const& lpos2, double thr) 
+			:loader(l),solver(s), _targetDist(thr),_gdelta(0,0,0)
+		{
+
+			bone1=b;
+			_lpos1=lpos1;
+			bone2=b2;
+			_lpos2=lpos2;
+		}
+		RelativeDistanceConstraintInfo(VRMLloader const& l, IK_sdls::LoaderToTree* s, Bone* b, vector3 const& lpos1, 
+Bone* b2, vector3 const& lpos2, vector3 const& delta, double thr) 
+			:loader(l),solver(s), _targetDist(thr)
+		{
+			_gdelta=delta;
+			bone1=b;
+			_lpos1=lpos1;
+			bone2=b2;
+			_lpos2=lpos2;
+		}
+		virtual double calcObjectiveAndGradient(int N, double* g, const double *x, double w){
+			double fx=0.0;
+
+			vector3 deltaS;
+
+			int ti1=bone1->treeIndex();
+			int ti2=bone2->treeIndex();
+			const transf& tf=solver->getLastNode(ti1)->globalFrame();
+			const transf& tf2=solver->getLastNode(ti2)->globalFrame();
+
+			deltaS.sub(tf2*_lpos2, tf*_lpos1);
+			deltaS-=_gdelta;
+			double v=deltaS% deltaS;
+			if (v>_targetDist*_targetDist)
+			{
+				double d=sqrt(v)-_targetDist;
+				fx+=w*SQR(d);
+
+				solver->updateGrad_S_JT(g, -(2.0*w*d)*deltaS.dir(), ti1, _lpos1);
+				solver->updateGrad_S_JT(g, -(2.0*w*-d)*deltaS.dir(), ti2, _lpos2);
+			}
+			return fx;
+		}
+};
+class RelativeHSConstraintInfo: public MotionUtil::RelativeConstraint::ConstraintInfo
+{
+	public:
+		VRMLloader const& loader;
+		IK_sdls::LoaderToTree* solver;
+		Bone* bone1;
+		vector3 _lpos1;
+		Bone* bone2;
+		vector3 _lpos2;
+		vector3 _n;
+		double _idepth;
+
+		RelativeHSConstraintInfo(VRMLloader const& l, IK_sdls::LoaderToTree* s, Bone* b, vector3 const& lpos1, 
+Bone* b2, vector3 const& lpos2, vector3 const& normal, double depth) 
+			:loader(l),solver(s),_n(normal), _idepth(depth)
+		{
+
+			bone1=b;
+			_lpos1=lpos1;
+			bone2=b2;
+			_lpos2=lpos2;
+		}
+		virtual double calcObjectiveAndGradient(int N, double* g, const double *x, double w);
+};
 class FullbodyIK_MotionDOF_MultiTarget_lbfgs;
 class EEYConstraintInfo: public MotionUtil::RelativeConstraint::ConstraintInfo
 {
@@ -332,23 +725,62 @@ class FullbodyIK_MotionDOF_MultiTarget_lbfgs: public FullbodyIK_MotionDOF, publi
 	
 	LBFGS::lbfgsfloatval_t *m_x0;
 	vectorn mEffectorWeights;
-	double _w_root, _w_other;
+	double _w_root1, _w_root2, _w_other;
+	double _w_slide_p, _w_slide_n;
 	// workspace
 	VectorRn dS;			// delta s
 	MatrixRmn Jend;		// Jacobian matrix based on end effector positions
 	// workspace end
 public:
+	boolN mJacobianLock;
 
 	void setDampingWeight(double w_root, double w_other)
 	{
-		_w_root=w_root;
+		_w_root1=w_root;
+		_w_root2=w_root;
 		_w_other=w_other;
 	}
+	void setRootDampingWeight(double w_root1, double w_root2)
+	{
+		_w_root1=w_root1;
+		_w_root2=w_root2;
+	}
+	void setSlideDampingWeight(double w_positive, double w_negative)
+	{
+		_w_slide_p=w_positive;
+		_w_slide_n=w_negative;
+	}
 
+	virtual void setParam(const char* type, const vectorn& input) {
+		if(TString("jacobian_lock")==type)
+		{
+			int numbone=numBone();
+			mJacobianLock.resize(nDOF());
+			mJacobianLock.clearAll();
+			for(int i=0; i<input.size(); i++)
+			{
+				int ti=input[i];
+				Msg::verify(ti>=1 && ti<numbone, "setparam???");
+
+				int sj=getVarIndex(ti);
+				int ej=getVarEndIndex(ti);
+				mJacobianLock.range(sj,ej).setAllValue(true);
+			}
+		}
+		else
+			Msg::print("unknown param %s", type);
+
+	}
 	virtual void setParam(const char* type, double value, double value2)
 	{
 		if(TString("damping_weight")==type)
 			setDampingWeight(value, value2);
+		else if(TString("root_damping_weight")==type)
+			setRootDampingWeight(value, value2);
+		else if(TString("slide_damping_weight")==type)
+			setDampingWeight(value, value2);
+		else
+			Msg::print("unknown param %s", type);
 	}
 	virtual bool _changeNumEffectors(int n) { 
 		mEffectors.resize(n);
@@ -359,6 +791,9 @@ public:
 	virtual bool _changeNumConstraints(int n) { 
 		mConstraints.resize(n);
 		return true;
+	}
+	virtual int _numConstraints() const {
+		return mConstraints.size();
 	}
 	virtual bool _setEffector(int i, Bone* bone, vector3 const& lpos) { 
 		mEffectors[i].bone=bone;
@@ -435,6 +870,38 @@ public:
 		mConstraints[i].weight=1.0;
 		return true;
 	}
+
+	virtual bool _setSkinningConstraint(int i, intvectorn const& treeIndices, vector3N const& localpos, vectorn  const&weights, vector3 const& desired_pos) {
+		mConstraints[i].eType=MotionUtil::RelativeConstraint::OTHERS;
+		SkinConstraintInfo* pInfo=new SkinConstraintInfo((VRMLloader const&)mSkeleton,this, treeIndices, localpos, weights, desired_pos);
+		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].weight=1.0;
+		return true;
+	}
+
+	virtual bool _setConstraintWeight(int i, double w){ 
+		mConstraints[i].weight=w;
+		return true;
+	}
+#if 1
+	// testing a faster version of the above function
+	virtual bool _setFastSkinningConstraint(int i, int numMarkers){
+		mConstraints[i].eType=MotionUtil::RelativeConstraint::OTHERS;
+		FastSkinConstraintInfo* pInfo=new FastSkinConstraintInfo((VRMLloader const&)mSkeleton,this, numMarkers);
+		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].weight=1.0;
+		return true;
+	}
+	virtual void _setFastSkinningConstraintParam(int imarker, intvectorn const& treeIndices, vector3N const& localpos, vectorn  const&weights, vector3 const& desired_pos)
+	{
+		FastSkinConstraintInfo* pInfo=dynamic_cast<FastSkinConstraintInfo*> (mConstraints.back().pInfo);
+		FastSkinConstraintInfo::MarkerInfo& mi=pInfo->_markerInfo[imarker];
+		mi._pTreeIndex=&treeIndices;
+		mi._pLocalpos=&localpos;
+		mi._pArrayWeights=&weights;
+		mi.desired_position=desired_pos;
+	}
+#endif
 	virtual bool _setOrientationConstraint(int i, Bone* bone, quater const& desired_ori) { 
 		mConstraints[i].eType=MotionUtil::RelativeConstraint::ROT;
 		ROTConstraintInfo* pInfo=new ROTConstraintInfo((VRMLloader const&)mSkeleton,this, bone, desired_ori);
@@ -442,14 +909,51 @@ public:
 		mConstraints[i].weight=1.0;
 		return true;
 	}
+	virtual bool _setRelativeConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, double weight) 
+	{ 
+		mConstraints[i].eType=MotionUtil::RelativeConstraint::OTHERS;
+		RelativeConstraintInfo* pInfo=new RelativeConstraintInfo((VRMLloader const&)mSkeleton,this, bone1, lpos1, bone2, lpos2);
+		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].weight=weight;
+		return true;
+	}
+	virtual bool _setRelativeConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, vector3 const& gdelta, double weight) 
+	{ 
+		mConstraints[i].eType=MotionUtil::RelativeConstraint::OTHERS;
+		RelativeConstraintInfo* pInfo=new RelativeConstraintInfo((VRMLloader const&)mSkeleton,this, bone1, lpos1, bone2, lpos2, gdelta);
+		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].weight=weight;
+		return true;
+	}
+	virtual bool _setRelativeDistanceConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, double thr, double weight) 
+	{ 
+		mConstraints[i].eType=MotionUtil::RelativeConstraint::OTHERS;
+		RelativeDistanceConstraintInfo* pInfo=new RelativeDistanceConstraintInfo((VRMLloader const&)mSkeleton,this, bone1, lpos1, bone2, lpos2, thr);
+		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].weight=weight;
+		return true;
+	}
+	virtual bool _setRelativeDistanceConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, vector3 const& delta, double thr, double weight) 
+	{ 
+		mConstraints[i].eType=MotionUtil::RelativeConstraint::OTHERS;
+		RelativeDistanceConstraintInfo* pInfo=new RelativeDistanceConstraintInfo((VRMLloader const&)mSkeleton,this, bone1, lpos1, bone2, lpos2, delta, thr);
+		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].weight=weight;
+		return true;
+	}
+	virtual bool _setRelativeHalfSpaceConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, vector3 const& global_normal, float idepth, double weight) 
+	{ 
+		mConstraints[i].eType=MotionUtil::RelativeConstraint::OTHERS;
+		RelativeHSConstraintInfo* pInfo=new RelativeHSConstraintInfo((VRMLloader const&)mSkeleton,this, bone1, lpos1, bone2, lpos2,global_normal, idepth);
+		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].weight=weight;
+		return true;
+	}
+
 
 	//HERE
 	virtual bool _setRelativeConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2) { 
-		mConstraints[i].eType=MotionUtil::RelativeConstraint::RELATIVE_POSITION;
-		mConstraints[i].bone1=bone1;
-		mConstraints[i].localpos1=lpos1;
-		mConstraints[i].bone2=bone2;
-		return true;
+		return _setRelativeConstraint(i, bone1, lpos1, bone2, vector3(0,0,0), 1);
 	}
 	virtual bool _setPlaneDistanceConstraint(int i, Bone* bone, vector3 const& lpos, vector3 const& global_normal, float idepth) {
 		mConstraints[i].eType=MotionUtil::RelativeConstraint::PLANE_DISTANCE;
@@ -461,6 +965,13 @@ public:
 		mConstraints[i].idepth=idepth;
 		return true;
 	}	   
+	virtual bool _setDistanceConstraint(int i, Bone* bone, vector3 const& lpos, vector3 const& gpos, float targetDist) {
+		mConstraints[i].eType=MotionUtil::RelativeConstraint::OTHERS;
+		mConstraints[i].pInfo=new DistanceConstraintInfo((VRMLloader const&)mSkeleton,this, bone,lpos, gpos, targetDist );
+		mConstraints[i].weight=1.0;
+		return true;
+	}
+	
 	virtual bool _setHalfSpaceConstraint(int i, Bone* bone, vector3 const& lpos, vector3 const& global_normal, float idepth) {
 		mConstraints[i].eType=MotionUtil::RelativeConstraint::HALF_SPACE;
 		mConstraints[i].bone1=bone;
@@ -504,16 +1015,22 @@ public:
 		int n=effectors.size();
 		mEffectorWeights.resize(n);
 		mEffectorWeights.setAllValue(1.0);
-		_w_root=0.01;
+		_w_root1=0.01;
+		_w_root2=0.01;
 		_w_other=0.01;
+		_w_slide_p=0.1;
+		_w_slide_n=0.1;
 	}
 	FullbodyIK_MotionDOF_MultiTarget_lbfgs(MotionDOFinfo const& dofInfo)
 		:mDofInfo(dofInfo), mSkeleton(dofInfo.skeleton()),
 		 IK_sdls::LoaderToTree(dofInfo.skeleton(), true,false)
 	{
 		m_x0=NULL;
-		_w_root=0.01;
+		_w_root1=0.01;
+		_w_root2=0.01;
 		_w_other=0.01;
+		_w_slide_p=0.1;
+		_w_slide_n=0.1;
 	}
 
 	virtual bool _updateBoneLength(MotionLoader const& loader){
@@ -529,8 +1046,11 @@ public:
 		vector3* con;
 		int con_size;
 		{
-			con=&con2[0];
 			con_size=con2.size();
+			if (con_size==0)
+				con=NULL;
+			else
+				con=&con2[0];
 		}
 
 		ASSERT(mSkeleton.numTransJoint()==1);
@@ -641,7 +1161,7 @@ public:
 				vec_dist[ii]=d;
 				if (n->constraint->eType==MotionUtil::RelativeConstraint::PLANE_DISTANCE)
 					fx+=d*d;
-				else if(d>0)
+				else if(d>0) // MotionUtil::RelativeConstraint::HALF_SPACE; see NodeWrap.cpp also.
 					fx+=d*d;
 			}
 			else
@@ -709,7 +1229,10 @@ public:
 				= 2 (X1(Q)-X2(Q))'(dX1/dQ-dX2/dQ)          -- using proposition 2 of matrixCalculus.pdf.
 		*/
 
+		bool hasLock=(mJacobianLock.size()==N);
 		for(int i=0; i<N; i++){
+			if(hasLock && mJacobianLock[i]) continue;
+
 			for(int ii=0; ii<mTree.effectors.size(); ii++)
 			{
 				n=mTree.effectors[ii];
@@ -749,9 +1272,22 @@ public:
 		// damping terms
 		for (int i=0; i<N; i++)
 		{
+			if(hasLock && mJacobianLock[i]) g[i]=0.0;
+
 			double w;
-			if (i<6) w=_w_root;
-			else w=_w_other;
+			if (i<3) w=_w_root1;
+			else if(i<6) w=_w_root2;
+			else if(getJoint(i)->IsSlideJoint())
+			{
+				if(x[i]<0)
+					w=_w_slide_n;
+				else
+					w=_w_slide_p;
+			}
+			else
+			{
+				w=_w_other;
+			}
 			fx+=w*SQR(x[i]-m_x0[i]);
 			// matrixCalculus.pdf : proposition 14
 			// fx+=(x-x0)'W(x-x0)
@@ -822,5 +1358,43 @@ double EEYConstraintInfo::calcObjectiveAndGradient(int N, double* g, const doubl
 			}
 		}
 	}
+	return fx;
+}
+double RelativeHSConstraintInfo::calcObjectiveAndGradient(int N, double* g, const double *x, double w)
+{
+	double fx=0.0;
+
+	vector3 deltaS;
+
+	int ti1=bone1->treeIndex();
+	int ti2=bone2->treeIndex();
+	const transf& tf=solver->getLastNode(ti1)->globalFrame();
+	const transf& tf2=solver->getLastNode(ti2)->globalFrame();
+
+	deltaS.sub(tf2*_lpos2, tf*_lpos1);
+	double f=deltaS%_n-_idepth;
+	if(f>0)
+	{
+		fx+=f*f*w;
+
+		matrixn JT;
+		solver->calcJacobianTransposeAt(JT, bone1->treeIndex(), _lpos1);
+		matrixn JT2;
+		solver->calcJacobianTransposeAt(JT2, bone2->treeIndex(), _lpos2);
+
+		JT-=JT2;
+
+		//solver->updateGrad_S_JT(g, -(2.0*w*1)*_n, ti1, _lpos1);
+		//solver->updateGrad_S_JT(g, -(2.0*w*-1)*_n, ti2, _lpos2);
+		ASSERT(N==JT.rows());
+		auto& mJacobianLock=((FullbodyIK_MotionDOF_MultiTarget_lbfgs*)solver)->mJacobianLock;
+		bool hasLock=(mJacobianLock.size()==N);
+		for(int i=0; i<N; i++)
+		{
+			if(hasLock && mJacobianLock[i]) continue;
+			g[i]-= (2.0*w)*(deltaS%_n-_idepth)*(_n%JT.row(i).toVector3(0));
+		}
+	}
+
 	return fx;
 }

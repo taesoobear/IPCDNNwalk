@@ -5,6 +5,7 @@
 #include "../image/ImagePixel.h"
 #include <iostream>
 #include <fstream>
+#include "../motion/MotionLoader.h"
 using namespace OBJloader;
 static void initFaceGroups(Mesh& mesh)
 {
@@ -106,6 +107,28 @@ static void swapFace(OBJloader::Mesh& mesh, int f1, int f2)
 	mesh.getFace(f1)=mesh.getFace(f2);
 	mesh.getFace(f2)=t;
 }
+void OBJloader::Mesh::init(const vector3N& vertices, const intvectorn& triangles)
+{
+	int nT=int(triangles.size()/3);
+	resize(vertices.size(), nT);
+	for(int i=0; i<vertices.size(); i++)
+		getVertex(i)=vertices(i);
+	for(int i=0; i<nT; i++)
+		getFace(i).setIndex(triangles(i*3), triangles(i*3+1),triangles(i*3+2));
+}
+void OBJloader::Mesh::init(const vector3N& vertices, const vector3N& normals, const intvectorn& triangles)
+{
+	int nT=int(triangles.size()/3);
+	Msg::verify(normals.size()==vertices.size(),"#normals!=#vertices: cannot use shared indices");
+	resize(vertices.size(), vertices.size(), 0,0, nT);
+	for(int i=0; i<vertices.size(); i++)
+		getVertex(i)=vertices(i);
+	for(int i=0; i<normals.size(); i++)
+		getNormal(i)=normals(i);
+	for(int i=0; i<nT; i++)
+		getFace(i).setIndex(triangles(i*3), triangles(i*3+1),triangles(i*3+2));
+	copyIndex(Buffer::VERTEX, Buffer::NORMAL);
+}
 void OBJloader::Mesh::removeFaces(intvectorn const& _faceIndices)
 {
 	intvectorn faceIndices=_faceIndices;
@@ -139,7 +162,7 @@ void OBJloader::Mesh::addNormals(vector3N const& normals)
 
 void OBJloader::Mesh::addFaces(intmatrixn const& faces)
 {
-	Msg::verify(numFace()>0, "cannot add faces to an empty mesh yet.");
+	Msg::verify(numVertex()>0, "cannot add faces to an empty mesh yet.");
 	int startIndex=numFace();
 	resizeIndexBuffer(numFace()+faces.rows());
 	int c=faces.cols();
@@ -1648,6 +1671,8 @@ int Buffer::defaultNumElts(Type t)
 		return 2;
 	case COLOR:
 		return 4;
+	default:
+		return 0;
 	}
 	return 0;
 }
@@ -1931,4 +1956,165 @@ bool EdgeConnectivity::isConnected(int vertex1, int vertex2)
 }
 
 
+SkinnedMeshFromVertexInfo::SkinnedMeshFromVertexInfo(SkinnedMeshFromVertexInfo const& other)
+{
+	int nv=other.vertices.size();
+	vertices.resize(nv);
+	for(int vi=0; vi<vertices.size(); vi++)
+	{
+		vertices[vi].treeIndices=other.vertices[vi].treeIndices;
+		vertices[vi].localpos=other.vertices[vi].localpos;
+		vertices[vi].weights=other.vertices[vi].weights;
+	}
+}
+SkinnedMeshFromVertexInfo::SkinnedMeshFromVertexInfo( const char* filename)
+{
+	BinaryFile file;
+	Msg::verify(file.openRead(filename), filename);
+	int version=file.unpackInt(); // version
+	int nv=file.unpackInt();
+	vertices.resize(nv);
+	for(int vi=0; vi<vertices.size(); vi++)
+	{
+		file.unpack(vertices[vi].treeIndices);
+		file.unpack(vertices[vi].localpos);
+		file.unpack(vertices[vi].weights);
+	}
+	file.close();
+}
+void SkinnedMeshFromVertexInfo::exportSkinInfo(const char* filename) const
+{
+	BinaryFile file;
+	Msg::verify(file.openWrite(filename), filename);
+	file.packInt(0); // version
+	file.packInt(vertices.size());
+	for(int vi=0; vi<vertices.size(); vi++)
+	{
+		file.pack(vertices[vi].treeIndices);
+		file.pack(vertices[vi].localpos);
+		file.pack(vertices[vi].weights);
+	}
+	file.close();
 
+}
+void SkinnedMeshFromVertexInfo::getVertexInfo(int v1, int v2, int v3, vector3 const& baryCoeffs, intvectorn& treeIndices, vector3N& lpos, vectorn &weights)
+{
+	VertexInfo& info1=vertices[v1];
+	VertexInfo& info2=vertices[v2];
+	VertexInfo& info3=vertices[v3];
+
+	// now merge these three infos into one.
+	//
+	// basic idea
+	// (M*lpos+b)*w1+(M*lpos2+b)*w2
+	// = M*(lpos*w1+lpos2*w2)+b*(w1+w2)
+	// = (M*(lpos*w1+lpos2*w)/(w1+w2) + b)*(w1+w2)
+	treeIndices=info1.treeIndices;
+	lpos=info1.localpos;
+	weights=info1.weights*baryCoeffs.x;
+
+	for (int i=0;i< treeIndices.size(); i++)
+		lpos(i)*=weights(i); // lpos*w1
+
+	for(int ii=0; ii<2; ii++)
+	{
+		VertexInfo* oinfo;
+		double b;
+		if (ii==0)
+		{
+			oinfo=&vertices[v2];
+			b=baryCoeffs.y;
+		}
+		else
+		{
+			oinfo=&vertices[v3];
+			b=baryCoeffs.z;
+		}
+		intvectorn& tio=treeIndices;
+		intvectorn& ti=oinfo->treeIndices;
+		for (int i=0;i< ti.size(); i++)
+		{
+			int fi=tio.findFirstIndex(ti(i));
+			if (fi==-1 ){
+				treeIndices.pushBack(ti(i));
+				double w=oinfo->weights(i)*b;
+				lpos.pushBack(oinfo->localpos(i)*w);
+				weights.pushBack(w);
+			}
+			else{
+				double w=oinfo->weights(i)*b;
+				lpos(fi)+=oinfo->localpos(i)*w;
+				weights(fi)+=w;
+			}
+		}
+	}
+	intvectorn& ti=treeIndices;
+	for (int i=0;i< ti.size(); i++)
+		lpos(i)*=1.0/weights(i);//  (lpos*w1 +lpos2*w2)/(w1+w2)
+}
+void SkinnedMeshFromVertexInfo::_calcVertexPosition( MotionLoader const& loader, int vertexIndex, vector3& vpos)
+{
+	vpos.zero();
+	auto& vi=vertices[vertexIndex];
+	for (int j=0; j < vi.weights.size(); j++)
+		vpos+=(loader.bone(vi.treeIndices(j)).getFrame()*vi.localpos(j))*vi.weights(j);
+}
+void SkinnedMeshFromVertexInfo::_calcVertexPosition( BoneForwardKinematics const& fksolver, int vertexIndex, vector3& vpos)
+{
+	vpos.zero();
+	auto& vi=vertices[vertexIndex];
+	for (int j=0; j < vi.weights.size(); j++)
+		vpos+=(fksolver.global(vi.treeIndices(j))*vi.localpos(j))*vi.weights(j);
+}
+vector3 SkinnedMeshFromVertexInfo::calcSurfacePointPosition( MotionLoader const& loader, intvectorn const& treeIndices, vectorn const& weights, vector3N const& localpos)
+{
+	vector3 vpos(0,0,0);
+	for (int j=0; j < weights.size(); j++)
+		vpos+=(loader.bone(treeIndices(j)).getFrame()*localpos(j))*weights(j);
+	return vpos;
+}
+void SkinnedMeshFromVertexInfo::calcVertexPositions(MotionLoader const& loader, OBJloader::Mesh& mesh) const
+{
+	Msg::verify(mesh.numVertex()==vertices.size(), "#vertex does not match");
+	for (int i=0; i<mesh.numVertex(); i++)
+		((SkinnedMeshFromVertexInfo&)*this)._calcVertexPosition(loader, i, mesh.getVertex(i));
+
+}
+void SkinnedMeshFromVertexInfo::calcVertexNormals(MotionLoader const& loader,quaterN const& bindpose_global, vector3N const& localNormal, OBJloader::Mesh& mesh) const
+{
+	Msg::verify(mesh.numVertex()==vertices.size(), "#vertex does not match");
+	Msg::verify(mesh.numNormal()==mesh.numVertex(), "seperate normal indices are not supported!");
+	quaterN delta(bindpose_global.size());
+	for(int i=1; i<loader.numBone(); i++)
+	{
+		quater q;
+		q.inverse(bindpose_global(i));
+		delta(i)=loader.bone(i).getFrame().rotation*q;
+	}
+
+	for (int vertexIndex=0; vertexIndex<mesh.numVertex(); vertexIndex++)
+	{
+		auto& vi=vertices[vertexIndex];
+		auto& normal=mesh.getNormal(vertexIndex);
+		normal.zero();
+		for (int j=0; j < vi.weights.size(); j++)
+			normal+=(delta(vi.treeIndices(j))* (localNormal(vertexIndex))*vi.weights(j));
+		normal.normalize();
+	}
+
+}
+void SkinnedMeshFromVertexInfo::calcLocalVertexPositions(MotionLoader const& loader, OBJloader::Mesh const& mesh)
+{
+	Msg::verify(mesh.numVertex()==vertices.size(), "#vertex does not match");
+	for (int i=0; i<mesh.numVertex(); i++)
+	{
+		auto& indices=vertices[i].treeIndices;
+		auto& weights=vertices[i].weights;
+		auto& localpos=vertices[i].localpos;
+		localpos.resize(weights.size());
+		for (int j=0; j < weights.size(); j++)
+		{
+			localpos(j)=loader.bone(indices(j)).getFrame().toLocalPos(mesh.getVertex(i));
+		}
+	}
+}

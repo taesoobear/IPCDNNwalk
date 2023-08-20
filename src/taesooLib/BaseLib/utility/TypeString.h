@@ -5,6 +5,7 @@
 #include <typeinfo>
 #include <limits.h>
 #include <cstdarg>
+#include "checkError.h"
 class TString;
 namespace sz0
 {
@@ -153,13 +154,13 @@ public:
 	TStrings(int n){  init(n);}
 	virtual~TStrings(){}
 
-	TString& operator[](int i)				{ return mStrings[i];}
-	TString& data(int i)					{ return mStrings[i];}
-	TString& back()							{ return data(size()-1);}
+	TString& operator[](int i)				{ RANGE_ASSERT(i>=0 && i<size());return mStrings[i];}
+	TString& data(int i)					{ RANGE_ASSERT(i>=0 && i<size());return mStrings[i];}
+	TString& back()							{ RANGE_ASSERT(size()>0); return data(size()-1);}
 
-	TString const& operator[](int i)const	{ return mStrings[i];}
-	TString const& data(int i)const			{ return mStrings[i];}
-	TString const& back() const				{ return data(size()-1);}
+	TString const& operator[](int i)const	{ RANGE_ASSERT(i>=0 && i<size());return mStrings[i];}
+	TString const& data(int i)const			{ RANGE_ASSERT(i>=0 && i<size());return mStrings[i];}
+	TString const& back() const				{ RANGE_ASSERT(size()>0);return data(size()-1);}
 	void init(int n);
 	// eg) setStrings(3, "hihi", "hehe", "hohoho");
 	void setStrings( int n, const char* s1, ... );

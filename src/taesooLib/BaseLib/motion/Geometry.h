@@ -4,6 +4,7 @@
 #include "Mesh.h"
 namespace OBJloader
 {
+	class Terrain;
 	class Element
 	{
 	public:
@@ -13,10 +14,11 @@ namespace OBJloader
 			BOX=0,  // uses tf, size.x, y, z
 			CYLINDER,  // uses tf, size.x (2*radius), y (height)
 			CAPSULE, // uses tf, size.x (2*radius), y (height). total height=height+2*radius, so the height is just the height between the center of each 'sphere' of the capsule caps.
-			OBJ, // does not use tf, size currently.
+			OBJ, // does not use tf, size currently. (default: triangle mesh. but treated as a convex hull)
 			ELLIPSOID, // size.x, y, z is the radius.
 			PLANE, // size.x and z are used. the normal is (0,1,0)
 			SPHERE, // same as the ELLIPSOID except that size.x,y,and z are identical.
+			TRI, // does not use tf, size currently. (concave trianglar mesh. slow collision detection. experimental).
 		};
 
 		int elementType;
@@ -30,18 +32,22 @@ namespace OBJloader
 		std::vector<Element> elements;
 		inline int numElements() const {return elements.size();}
 		inline Element const& element(int i) const {return elements[i];}
+		double totalVolume(); // returns volume if all elementType!=OBJ, otherwise returns 0;
 
 		// each element corresponds to each faceGroup.
 		Geometry(void){}
 		Geometry(const Geometry& otherMesh){copyFrom(otherMesh);}
 
 		void convertToOBJ(); // remove geometry information.
+		void mergeAllElements(); // BOX, CAPSULE, etc all becomes an OBJ having only a single submesh.
 
 		void extractSubMesh(Geometry const& otherMesh, int isubMesh);
 		void copyFrom(Geometry const& otherMesh);
 		void operator=(Geometry const& otherMesh);
 		void operator=(Mesh const& otherMesh);
 		void assignMesh(OBJloader::Mesh const& otherMesh);
+		void assignTerrain(OBJloader::Terrain const& terrain, vector3 const & center);
+
 
 		void merge(Geometry const& a, Geometry const& b);
 		void rigidTransform(transf const& b);

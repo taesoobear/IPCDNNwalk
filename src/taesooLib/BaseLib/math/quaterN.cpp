@@ -3,6 +3,9 @@
 #include "quater.h"
 #include "quaterN.h"
 #include "conversion.h"
+#ifdef USE_NR
+#include "nr/nr.h"
+#endif
 #include "OperatorStitch.h"
 
 quaterNView ::quaterNView (m_real* ptrr, int size, int str)
@@ -427,9 +430,7 @@ void quaterN::linstitch(int discontinuity)
 
 	Augmented.range(wrow, wrow+4, wrow, wrow+4).setAllValue(0.0);
 
-
-	Msg::error("ludcmp");
-	/*
+#ifdef USE_NR
 #define USE_LUDCMP
 #ifdef USE_LUDCMP
 	DP p;
@@ -473,7 +474,6 @@ void quaterN::linstitch(int discontinuity)
 				d[i]-=2.0*c[i];
 		}
 
-#define USE_LUDCMP
 #ifdef USE_LUDCMP
 		x=d;
 		NR::lubksb(LU,indx,x);
@@ -491,7 +491,9 @@ void quaterN::linstitch(int discontinuity)
 		qq.exp(w.row(i));
 		row(i+1).mult(qq, row(i));
 	}
-	*/
+#else
+	Msg::error("ludcmp");
+#endif
 }
 void quaterN::c0stitchOnline(quaterN const& a, quaterN const& b)
 {
@@ -698,8 +700,7 @@ void quaterN::linstitch(quaterN const& a, quaterN const& b)
 	At.transpose(A);
 	Augmented.range(wrow, wrow+numCon, wrow, wrow+numCon).setAllValue(0.0);
 
-	Msg::error("ludcmp");
-	/*
+#ifdef USE_NR
 #define USE_LUDCMP
 #ifdef USE_LUDCMP
 	DP p;
@@ -759,7 +760,9 @@ void quaterN::linstitch(quaterN const& a, quaterN const& b)
 		qq.exp(w.row(i));
 		row(i+1).mult(qq, row(i));
 	}
-*/
+#else
+	Msg::error("ludcmp");
+#endif
 #endif
 }
 void quaterN::decomposeStitch(int discontinuity)

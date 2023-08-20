@@ -19,6 +19,7 @@ ScriptBaseWin::ScriptBaseWin(int x, int y, int w, int h, MotionPanel& mp,FltkRen
 void ScriptBaseWin::__loadScript(const char* script) {
 	releaseScript();
 	
+#ifndef NO_GUI
 	if(script)
 	{
 		setLabel(findButton("scriptfn"), script);
@@ -28,6 +29,7 @@ void ScriptBaseWin::__loadScript(const char* script) {
 	{
 		setLabel(findButton("scriptfn"), "");
 	}
+#endif
 
 	loadScript(script, NULL);
 }

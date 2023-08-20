@@ -3,21 +3,26 @@
 #include "Operator.h"
 #include "Operator_NR.h"
 #include "Filter.h"
-//#include "nr/nr.h"
+#ifdef USE_NR
+#include "nr/nr.h"
+#else
 #include "../PhysicsLib/TRL/eigenSupport.h"
+#endif
 
 namespace m
 {
 	void LUsolve(matrixn const & A, vectorn const& b, vectorn& x)
 	{
-		Msg::error("not implemented yet!");
-/*		DP p;
+#ifdef USE_NR
+		DP p;
 		matrixn LU(A);
 		Vec_INT indx(A.rows());
 		NR::ludcmp(LU,indx,p);
 		x=b;
 		NR::lubksb(LU,indx,x);
-		*/
+#else
+		Msg::error("not implemented yet!");
+#endif
 	}
 
 	void Diaginvert(vectorn& out, const vectorn& in, m_real& log_det)
@@ -33,17 +38,16 @@ namespace m
 
 		ASSERT(E.rows()==E.cols());
 		F.setSameSize(E);
-
+#ifndef USE_NR
 
 		eigenView(F)=eigenView(E).inverse();
-
-		/*
+#else
 		matrixn C_temp;
 		vectorn lu_col;
 		C_temp=E;
 		lu_col.setSize(E.rows());
 
-		// Use LU decomposition to invert E[][] and find det(E) 
+		/* Use LU decomposition to invert E[][] and find det(E) */
 		Vec_INT indx(E.rows());
 		m_real d;
 		NR::ludcmp(C_temp, indx, d);
@@ -56,7 +60,7 @@ namespace m
 			NR::lubksb(C_temp,indx,lu_col);
 			for(int i=0;i<n;i++) F[i][j] = lu_col[i];
 		}
-		*/
+#endif
 	}
 
 	void LUinvert(matrixn& F, const matrixn& E, m_real& log_det)
@@ -72,8 +76,8 @@ namespace m
 		lu_col.setSize(E.rows());
 		log_det = 0.0;
 
-		Msg::error("luinvert");
-		/*
+#ifdef USE_NR
+		/* Use LU decomposition to invert E[][] and find det(E) */
 		Vec_INT indx(E.rows());
 		m_real d;
 		NR::ludcmp(C_temp, indx, d);
@@ -93,7 +97,9 @@ namespace m
 			NR::lubksb(C_temp,indx,lu_col);
 			for(int i=0;i<n;i++) F[i][j] = lu_col[i];
 		}
-		*/
+#else
+		Msg::error("luinvert");
+#endif
 	}
 	void LUinvert(matrixn& F, const matrixn& E, m_real & d_man, int& d_exp)
 	{
@@ -108,9 +114,9 @@ namespace m
 
 		col.setSize(n);
 
+#ifdef USE_NR
 		
-		Msg::error("luinvert");
-		/*
+		/* Use LU decomposition to invert E[][] and find det(E) */
 		Vec_INT indx(n);
 		
 		
@@ -139,7 +145,9 @@ namespace m
 			NR::lubksb(C_temp, indx,col);
 			for(int i=0; i<n; i++) F[i][j] = col[i];
 		}
-		*/
+#else
+		Msg::error("luinvert");
+#endif
 	}
 
 	// covariance * numData: usually called the matrix S. 
@@ -211,9 +219,9 @@ namespace m
 		C_temp=E;
 		lu_col.setSize(E.rows());
 		m_real det=1.0;
+#ifdef USE_NR
 
-		Msg::error("LUinvert not implemented yet!");
-		/*
+		/* Use LU decomposition to invert E[][] and find det(E) */
 		Vec_INT indx(E.rows());
 		m_real d=DBL_MAX;
 		NR::ludcmp(C_temp, indx, d);
@@ -227,13 +235,14 @@ namespace m
 			det*= C_temp[i][i];
 		}
 		return det*d;
-		*/
+#else
+		Msg::error("luinvert");
 		return 0;
+#endif
 	}
 	void eigenDecomposition(matrixn const& cov, vectorn & d, matrixn & v, int method)
 	{
-		Msg::error("eigsrt");
-		/*
+#ifdef USE_NR
 		const bool sort=true;
 
 		switch(method)
@@ -258,7 +267,9 @@ namespace m
 		}
 		if(sort)
 			NR::eigsrt(d,v);
-			*/
+#else
+		Msg::error("eigsrt");
+#endif
 	}
 	void cofactor(matrixn& c, const matrixn& a) 
 	{
@@ -292,8 +303,7 @@ namespace m
 	}
 	void eigenVectors(matrixn& EVectors, const matrixn& mat, vectorn& eigenValues)
 	{
-		Msg::error("eigvec");
-		/*
+#ifdef USE_NR
 		matrixn symData(mat);
 		vectorn e;
 		eigenValues.setSize(mat.rows());
@@ -311,26 +321,28 @@ namespace m
 				EVectors[i][j] = symData[j][i];
 			}
 		}
-		*/
+#else
+		Msg::error("eigvec");
+#endif
 	}
 }
 void m::SVdecompose(matrixn& in_u, vectorn & s, matrixn &v)
 {
-	Msg::error("svdcmp");
-	/*
+#ifdef USE_NR
 	// in=u*diag(s)*v
 	int m = in_u.rows();
 	int n = in_u.cols();
 	s.setSize(n);
 	v.setSize(n,n);
 	NR::svdcmp(in_u, s, v);
-	*/
+#else
+	Msg::error("svdcmp");
+#endif
 }
 
 void m::SVinverse( matrixn& in_u, matrixn &mat )
 {
-	Msg::error("svdinv");
-	/*
+#ifdef USE_NR
 	int m = in_u.rows();
 	int n = in_u.cols();
 
@@ -353,6 +365,8 @@ void m::SVinverse( matrixn& in_u, matrixn &mat )
 		for( int i=0; i<n; i++ )
 			mat[i][j] = x[i];
 	}
-	*/
+#else
+	Msg::error("svdinv");
+#endif
 }
 

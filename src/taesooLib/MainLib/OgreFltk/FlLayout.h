@@ -115,6 +115,9 @@ public:
 		TString mId;
 		TString mType;
 
+		float progressValue() const;
+		void progressValue(float v) ;
+
 		Fl_Widget* widgetRaw() const {return mWidget;}
 		template <class Fl_Widget_Type> Fl_Widget_Type* widget() const {return dynamic_cast<Fl_Widget_Type*>(widgetRaw());}
 

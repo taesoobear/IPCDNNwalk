@@ -462,6 +462,15 @@ void resize(CImage& inout, int width, int height)
 			cOP.SetPixel(i,j,cIP.GetPixel(x*x_ratio,y*y_ratio, count));
 		}
 	}
+	/*
+	static int hist=0;
+	TString fn;
+	fn.format("src%d.png", hist);
+	pInput->Save(fn.ptr());
+	fn.format("dest%d.png", hist);
+	pOutput->Save(fn.ptr());
+	hist++;
+	*/
 }
 
 

@@ -183,7 +183,7 @@ void RE_::setBackgroundColour(m_real r, m_real g, m_real b)
 {
 #ifndef NO_OGRE
 
-  RE::renderer().viewport().mView->setBackgroundColour(Ogre::ColourValue(r,g,b,1.f));
+  RE::renderer().setBackgroundColour((float)r,(float)g,(float)b);
 #endif
 }
 void RE_::remove(PLDPrimSkin* p)

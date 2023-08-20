@@ -14,12 +14,14 @@ set(src
 ./math/KNearestInterpolationFast.cpp
 ./math/KNearestInterpolationFast.h
 ./math/Function.cpp
+./math/Function.h
 ./math/LCBInterploator.cpp
 ./math/BijectiveFunction.cpp
 ./math/svm/svm.cpp
 ./math/FuzzyCluster.cpp
 ./math/FuzzyCluster.h
 ./math/Interpolation.cpp
+./math/Interpolation.h
 ./math/clust/subcluster.h
 ./math/clust/clust_io.cpp
 ./math/clust/classify.cpp

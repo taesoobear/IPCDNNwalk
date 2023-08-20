@@ -54,6 +54,7 @@ private:
 
 // namespace 에서 static class로 디자인 변경.
 // 한번에 여러개의 plot을 그릴때 사용.
+class intervals;
 class gnuPlotQueue
 {
 public:
@@ -63,6 +64,7 @@ public:
 	~gnuPlotQueue();
 	// range
 	void setRange(const intervalN& range);
+	void setRange(const intervals& range);
 	
 	void plotSignal(const vectorn& data, const char* label);
 	/// 2D or 3D data plotting: data(n,2 or 3); when n==3 (x y z) where x,y,z are column vector.

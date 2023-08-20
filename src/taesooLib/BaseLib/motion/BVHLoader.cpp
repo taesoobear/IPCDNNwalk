@@ -240,7 +240,7 @@ void BVHIP::Unpack(Parser* file)
 BVHLoader::BVHLoader(const char* filename, const char* option)
 :MotionLoader()
 {
-	std::cout << "start of bvh: " << filename <<std::endl;
+	std::cout << "BVHLoader: loading  " << filename <<std::endl;
 	Parser file(filename);
 	
 	Msg::verify(file.getToken().toUpper()=="HIERARCHY", "BVH file error: %s", filename);

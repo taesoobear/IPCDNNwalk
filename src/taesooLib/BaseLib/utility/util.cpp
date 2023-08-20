@@ -502,7 +502,7 @@ char* CopyStr(const char* str)
 
 bool createDirectory(const char *PathToCreate)
 {
-#ifdef _MSC_VER
+#ifdef _WIN32
 	static char Path[1000];
 	strcpy(Path,PathToCreate);
 

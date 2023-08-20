@@ -686,7 +686,9 @@ void IK_sdls::LoaderToTree::setVelocity(MotionDOFinfo const& mDofInfo, vectorn c
 
 				if(mDofInfo.hasQuaternion(treeIndex))
 				{
-					Msg::error("not implemented yet");
+					ASSERT(mNode[i].node[0]->IsBallJoint());
+					IK_sdls::BallJoint* bj=((IK_sdls::BallJoint*)mNode[i].node[0]);
+					bj->SetJointVel3DOF(pose.toVector3(mDofInfo.startR(treeIndex)+1));
 				}
 				else
 				{
@@ -2109,7 +2111,11 @@ void IK_sdls::LoaderToTree::setSphericalState(MotionDOFinfo const& dofInfo, cons
 	ASSERT(qindex==dofInfo.numDOF()-nquat*4);
 	ASSERT(dqsindex==dq.size());
 	ASSERT(qsindex==q.size());
+	// update positions
 	mTree.Compute();
+	// update velocities
+	mTree.ComputeDS(mTree.GetRoot()); // update velocity
+
 }
 
 void IK_sdls::LoaderToTree::setSphericalQ(MotionDOFinfo const& dofInfo, const vectorn& q) 

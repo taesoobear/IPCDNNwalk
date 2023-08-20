@@ -30,6 +30,7 @@ namespace MotionUtil
 		// general purpose functions to provide some solver-specific parameters 
 		virtual void setParam(const char* type, double value){}
 		virtual void setParam(const char* type, double value, double value2){}
+		virtual void setParam(const char* type, vectorn const& ){}
 
 		// returns true if bonelength change after creation of IKsolver is supported.
 		// call this whenever bone-length changes.
@@ -46,17 +47,32 @@ namespace MotionUtil
 		// currently only the lbfgs solver has all the implementations.
 		virtual bool _changeNumEffectors(int n) { return false; }
 		virtual bool _changeNumConstraints(int n) { return false; }
+		virtual int _numConstraints() const {return 0;}
 		virtual bool _setEffector(int i, Bone* bone, vector3 const& lpos) { return false;}
 		virtual bool _setOrientationConstraint(int i, Bone* bone, quater const& desired_ori) { return false; }
 		virtual bool _setOrientationConstraint(int i, Bone* bone, quater const& desired_ori, double weight) { return false; }
 		virtual bool _setPositionConstraint(int i, Bone* bone, vector3 const&lpos, vector3 const& desired_pos, double wx, double wy, double wz) { return false; }
 		virtual bool _setRelativeConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2) { return false;}
+		virtual bool _setRelativeConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, double weight) { return false;}
+		virtual bool _setRelativeConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, vector3 const& gdelta, double weight) { return false;}
 		virtual bool _setPlaneDistanceConstraint(int i, Bone* bone, vector3 const& lpos, vector3 const& global_normal, float idepth) { return false;}
+		// set max dist
+		virtual bool _setDistanceConstraint(int i, Bone* bone, vector3 const& lpos, vector3 const& global_pos, float targetDist) { return false;}
+		virtual bool _setRelativeDistanceConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, double targetDist, double weight) { return false;}
+		virtual bool _setRelativeDistanceConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, vector3 const& offset, double targetDist, double weight) { return false;}
+
+		virtual bool _setRelativeHalfSpaceConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, vector3 const& global_normal, float idepth, double weight) { return false;}
 		virtual bool _setHalfSpaceConstraint(int i, Bone* bone, vector3 const& lpos, vector3 const& global_normal, float idepth) { return false;}
+		virtual bool _setSkinningConstraint(int i, intvectorn const& treeIndices, vector3N const& localpos, vectorn  const&weights, vector3 const& desired_pos) {return false;}
+#if 1
+		virtual bool _setFastSkinningConstraint(int i, int numMarkers){ return false;}
+		virtual void _setFastSkinningConstraintParam(int imarker, intvectorn const& treeIndices, vector3N const& localpos, vectorn  const&weights, vector3 const& desired_pos){ }
+#endif
 		virtual bool _setCOMConstraint(int i, vector3 const& com) { return false;}
 		virtual bool _setCOMConstraint(int i, vector3 const& com, double wx, double wy, double wz) { return false;}
 		virtual bool _setMomentumConstraint(int i, vector3 const& ang, vector3 const& lin, double weight=0.1){return false;}
 		virtual bool _setEffectorWeight(int i, double w=1.0) { return false;}
+		virtual bool _setConstraintWeight(int i, double w){ return false;}
 		virtual bool _setPoseConstraint(int i, vectorn const& pose, double weight, int startBoneIndex=1, int endBoneIndex=INT_MAX){return false;}
 		// Allows deviation only along the vertical upward direction. 
 		// Results are visible only when _setEffectorWeight(i,0.0) for all effectors so that this constraint is used instead.

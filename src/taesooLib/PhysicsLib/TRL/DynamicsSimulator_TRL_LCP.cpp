@@ -36,6 +36,8 @@
 #include "../../MainLib/OgreFltk/renderer.h"
 #endif
 
+//#include <rbdl/Logging.h>
+
 inline vectornView vec(const double* v, int size)
 {
 	return vectornView((double*)v, size, 1);
@@ -80,6 +82,10 @@ DynamicsSimulator_TRL_LCP::DynamicsSimulator_TRL_LCP(DynamicsSimulator_TRL_LCP c
 	setGVector(other.world.getGravityAcceleration());
 	setParam_Epsilon_Kappa(other._contactForceSolver->epsilon, other._contactForceSolver->kappa);
 	setParam_R_B_MA(other._contactForceSolver->_R, 0, other._MA);
+
+	_velocityDamping=false;
+	m_linearDamping=0.0;
+	m_angularDamping=0.0;
 	init(((DynamicsSimulator_TRL_LCP&)other).getTimestep(), OpenHRP::DynamicsSimulator::EULER);
 }
 
@@ -91,6 +97,9 @@ DynamicsSimulator_TRL_LCP::DynamicsSimulator_TRL_LCP(bool useSimpleColdet)
 	// k,  epsilon = 0.05, 0.10 -> recommended
 	// k,  epsilon = 0.10, 1.00 -> smooth
 	_MA=0;
+	_velocityDamping=false;
+	m_linearDamping=0.0;
+	m_angularDamping=0.0;
 	_contactForceSolver=new TRL::ContactForceSolver(world);
 }
 DynamicsSimulator_TRL_LCP::DynamicsSimulator_TRL_LCP(const char* coldet)
@@ -101,6 +110,9 @@ DynamicsSimulator_TRL_LCP::DynamicsSimulator_TRL_LCP(const char* coldet)
 	// k,  epsilon = 0.05, 0.10 -> recommended
 	// k,  epsilon = 0.10, 1.00 -> smooth
 	_MA=0;
+	_velocityDamping=false;
+	m_linearDamping=0.0;
+	m_angularDamping=0.0;
 	_contactForceSolver=new TRL::ContactForceSolver(world);
 }
 
@@ -255,7 +267,7 @@ Liegroup::dse3 DynamicsSimulator_TRL_LCP::getCOMbasedContactForce(int ichar, int
 	return out;
 }
 
-void DynamicsSimulator_TRL_LCP::drawLastContactForces(vector3 const& draw_offset)
+void DynamicsSimulator_TRL_LCP::drawLastContactForces(int ichara, vector3 const& draw_offset) const
 {
 	static ObjectList g_debugDraw;
 	int ichar=0;
@@ -346,6 +358,9 @@ void DynamicsSimulator_TRL_LCP::init(double timeStep,
 
 void DynamicsSimulator_TRL_LCP::initSimulation()
 {
+#ifdef RBDL_ENABLE_LOGGING
+	OutputToFile("output_trl.log", "::initSimulation");
+#endif
 #if 1
 	int n = world.numBodies();
 	for(int i=0; i < n; ++i){
@@ -510,6 +525,41 @@ bool DynamicsSimulator_TRL_LCP::stepSimulation()
 	*/
 	BEGIN_TIMER(contact);
 	collisionDetector->queryContactDeterminationForDefinedPairs(_characters, *collisions);
+	
+	// velocity damping
+    int n = collisions->getNumLinkPairs();
+	if(n>0 && _velocityDamping)
+	{
+		intvectorn nc_count(world.numBodies());
+		nc_count.setAllValue(0);
+		for(size_t i=0; i < n; ++i){
+			auto& col=(*collisions)[i];
+			int n=col.points.size();
+			nc_count[collisions->getCharacterIndex1(i)]+=n;
+			nc_count[collisions->getCharacterIndex2(i)]+=n;
+		}
+		vectorn dq;
+		double h=getTimestep();
+		double lw=CLAMP(1.0-h*m_linearDamping, 0.0, 1.0);
+		double aw=CLAMP(1.0-h*m_angularDamping, 0.0, 1.0);
+		int c=0;
+		for(int i=0; i<world.numBodies(); i++)
+		{
+			if(nc_count[i]>0)
+			{
+				c++;
+				auto& l=skeleton(i);
+				VRMLTransform& b=(VRMLTransform&)l.bone(1);
+				if(b.HRPjointType(0)!=HRP_JOINT::FREE) continue;
+
+				getDQ(i, dq);
+				dq.setVec3(0, dq.toVector3(0)*aw);
+				dq.setVec3(3, dq.toVector3(3)*lw);
+				setDQ(i, dq);
+			}
+		}
+		if(c>0) initSimulation();
+	}
 	END_TIMER2(contact);
 	BEGIN_TIMER(fd_abm);
 	TRL::Body* cinfo=world.body(0);
@@ -535,6 +585,14 @@ bool DynamicsSimulator_TRL_LCP::stepSimulation()
 		world.body(i)->clearExternalForces();
 	END_TIMER2(UPD);
 
+
+#ifdef RBDL_ENABLE_LOGGING
+	OutputToFile("output_trl.log", "::stepSimulation");
+	OutputToFile("output_trl.log", LogOutput.str().c_str());
+	ClearLogOutput();
+#endif
+
+
 	return true;
 }
 void DynamicsSimulator_TRL_LCP::stepKinematic(int ichar, vectorn const& dq)
@@ -551,9 +609,9 @@ void DynamicsSimulator_TRL_LCP::stepKinematic(int ichar, vectorn const& dq)
 
 
 
-void DynamicsSimulator_TRL_LCP::get_contact_pos(int ichar, vector3N & M, CollisionSequence& collisionSequence)
+void DynamicsSimulator_TRL_LCP::get_contact_pos(int ichar, vector3N & M, CollisionSequence& collisionSequence) const
 {
-	VRMLloader& skel=skeleton(ichar);
+	const VRMLloader& skel=skeleton(ichar);
 	int noc =0;
 
 	for(size_t i=0; i < collisionDetector->getCollisionPairs().size(); ++i)
@@ -739,3 +797,63 @@ void DynamicsSimulator_TRL_LCP::removeRelativeConstraint(int ichara, Bone& bone1
 	}
 	return;
 }
+
+
+/* todo: implement global damping
+ 
+
+   m_linearDamping=0.05
+   m_angularDamping=0.85
+
+m_additionalDampingFactor(btScalar(0.005))
+m_additionalAngularDampingThresholdSqr(btScalar(0.01)),
+m_additionalLinearDampingThresholdSqr(btScalar(0.01)),
+
+
+void			btRigidBody::applyDamping(btScalar timeStep)
+{
+	m_linearVelocity *= GEN_clamped((btScalar(1.) - timeStep * m_linearDamping), (btScalar)btScalar(0.0), (btScalar)btScalar(1.0));
+	m_angularVelocity *= GEN_clamped((btScalar(1.) - timeStep * m_angularDamping), (btScalar)btScalar(0.0), (btScalar)btScalar(1.0));
+
+	if (m_additionalDamping)
+	{
+		//Additional damping can help avoiding lowpass jitter motion, help stability for ragdolls etc.
+		//Such damping is undesirable, so once the overall simulation quality of the rigid body dynamics system has improved, this should become obsolete
+		if ((m_angularVelocity.length2() < m_additionalAngularDampingThresholdSqr) &&
+			(m_linearVelocity.length2() < m_additionalLinearDampingThresholdSqr))
+		{
+			m_angularVelocity *= m_additionalDampingFactor;
+			m_linearVelocity *= m_additionalDampingFactor;
+		}
+	
+
+		btScalar speed = m_linearVelocity.length();
+		if (speed < m_linearDamping)
+		{
+			btScalar dampVel = btScalar(0.005);
+			if (speed > dampVel)
+			{
+				btVector3 dir = m_linearVelocity.normalized();
+				m_linearVelocity -=  dir * dampVel;
+			} else
+			{
+				m_linearVelocity.setValue(btScalar(0.),btScalar(0.),btScalar(0.));
+			}
+		}
+
+		btScalar angSpeed = m_angularVelocity.length();
+		if (angSpeed < m_angularDamping)
+		{
+			btScalar angDampVel = btScalar(0.005);
+			if (angSpeed > angDampVel)
+			{
+				btVector3 dir = m_angularVelocity.normalized();
+				m_angularVelocity -=  dir * angDampVel;
+			} else
+			{
+				m_angularVelocity.setValue(btScalar(0.),btScalar(0.),btScalar(0.));
+			}
+		}
+	}
+}
+*/

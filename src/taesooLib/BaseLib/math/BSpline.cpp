@@ -144,7 +144,6 @@ NonuniformSpline::NonuniformSpline(vectorn const& keytime, const matrixn& contro
 {
 	__init(keytime, controlpoints, zeroAcc(), zeroAcc());
 }
-
 void NonuniformSpline::__init(vectorn const& pkeytime, const matrixn& points, const boundaryCondition &bc0, const boundaryCondition &bcn)
 {
 	//Adapting http://mathworld.wolfram.com/CubicSpline.html by taesoo

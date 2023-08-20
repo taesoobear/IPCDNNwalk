@@ -877,7 +877,13 @@ function string.trimSpaces(s)
   end
 function os.capture(cmd, raw)
   local f = assert(io.popen(cmd, 'r'))
-  local s = assert(f:read('*a'))
+  local o,e=f:read('*a')
+  if not o then
+	  print(e)
+	  os.execute(cmd..'>__out')
+	  o=util.readFile('__out')
+  end
+  local s = o
   f:close()
   if raw then return s end
   s = string.gsub(string.trimSpaces(s), '[\n\r]+', ' ') 
@@ -1341,6 +1347,26 @@ function string.isOneOf(str, ...)
 	end
 	return false
 end
+function table.keys(tbl)
+	local kset={}
+	local n=0
+
+	for k,v in pairs(tbl) do
+		n=n+1
+		kset[n]=k
+	end
+	return kset
+end
+function table.values(tbl)
+	local vset={}
+	local n=0
+
+	for k,v in pairs(tbl) do
+		n=n+1
+		vset[n]=v
+	end
+	return vset
+end
 
 -- similar to string.sub
 function table.isubset(tbl, first, last)
@@ -1492,6 +1518,16 @@ function printTable(t, bPrintUserData, maxLen)
 	print('}')
 end
 
+function printKeys(t)
+	print('{')
+	local out={'\t'}
+	for k,v in pairsByKeys(t) do
+		table.insert(out , tostring(k)..', ')
+	end
+	print(table.concat(out,''))
+	print('}')
+end
+
 function table.grep(t, pattern)
 	local tbl={}
 	for k,v in pairs(t) do
@@ -1503,8 +1539,15 @@ function table.grep(t, pattern)
 end
 
 
-function table.fromstring(t_str)
-	local fn=loadstring("return "..t_str)
+function table.fromstring(t_str, _do_not_add_return)
+
+	local fn
+
+	if _do_not_add_return then
+		fn=loadstring(t_str)
+	else
+		fn=loadstring("return "..t_str)
+	end
 	if fn then
 		local succ,msg=pcall(fn)
 		if succ then
@@ -1521,8 +1564,8 @@ end
 function table.tostring2(t)
 	return table.tostring(util.convertToLuaNativeTable(t))
 end
-function table.fromstring2(t)
-	return util.convertFromLuaNativeTable(table.fromstring(t))
+function table.fromstring2(t,_do_not_add_return)
+	return util.convertFromLuaNativeTable(table.fromstring(t, _do_not_add_return))
 end
 function table.toHumanReadableString(t, spc)
 	spc=spc or 4
@@ -1648,11 +1691,12 @@ function table.tostring(t)
 end
 
 function util.saveTableToLua(tbl, filename)
-	util.writeFile(filename, table.toHumanReadableString(tbl))
+	util.writeFile(filename, 'return '..table.toHumanReadableString(tbl))
 end
 -- this is slow and works only for a small subset of userdata,
 -- BUT, this produces human-readable/editable lua script.
 function table.toPrettyString(t, maxLen)
+	maxLen=maxLen or 80
 	if maxLen<0 then
 		return ' ...'
 	end
@@ -2544,4 +2588,9 @@ function os.open(t)
 	else
 		os.execute('start cmd/c '..t)
 	end
+end
+function util.getScriptPath(level)
+	if not level then level=2 end
+	local currentPath=select(2, os.processFileName(debug.getinfo(level,'S').source:sub(2)))
+	return currentPath
 end

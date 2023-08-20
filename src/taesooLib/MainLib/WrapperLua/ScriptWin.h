@@ -19,7 +19,13 @@ public:
 	int errorFunc;
 	void checkErrorFunc(lunaStack&l);
 	void luna_call(lunaStack& l,int numIn, int numOut);
+	TString lastFunc;
+protected:
+	void _initLuaEnvironment();
+	void _checkErrorFunc();
+	void _loadScript(const char* script, const char* scriptstring=NULL);
 
+	void getglobal(lunaStack& l, const char* func);
 public:
 
 	ScriptWin(int x, int y, int w, int h, MotionPanel& mp,FltkRenderer& renderer, const char* defaultScript, const char* _defaultScriptFolder);
@@ -30,6 +36,8 @@ public:
 	TString defaultScriptFolder;
 	virtual void initLuaEnvironment();
 	void loadScript(const char* script, const char* scriptstring=NULL);
+	void dostring(const char* str);
+	void dofile(const char* str);
 
 	void releaseScript();
 	FltkRenderer* m_renderer;

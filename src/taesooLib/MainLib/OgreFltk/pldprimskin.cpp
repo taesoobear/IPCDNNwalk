@@ -27,6 +27,7 @@
 #include "../BaseLib/motion/IKSolver.h"
 #include "../BaseLib/utility/QPerformanceTimer.h"
 
+using namespace std;
 #include "pldprimskin_impl.h"
 PLDPrimSkin::PLDPrimSkin()
 :AnimationObject()
@@ -1019,11 +1020,55 @@ void PLDPrimPoint::createLimb(const OgreRenderer& renderer, Ogre::SceneNode *pNo
 }
 
 
+void PLDPrimPoint::setScale(double x, double y, double z) 
+{
+	PLDPrimSkel::setScale(x,y,z);
+	_dist.resize(0);
+	UpdateBone();
+}
 
 int PLDPrimPoint::UpdateBone()
 {
 	PLDPrimSkel::UpdateBone();
 #ifndef NO_OGRE
+
+	const double DIST_THR=10.0;;
+	if(_dist.size()==0)
+	{
+		std::vector<double>_dist2;
+
+		_dist2.resize(mSkel->numBone());
+		_dist.resize(mSkel->numBone());
+		_dist2[1]=DIST_THR*10;
+		_dist[1]=DIST_THR*10;
+		// pass 1
+		for(int i=2; i<mSkel->numBone(); i++)
+		{
+			vector3 from, to;
+			quater q;
+			from=mChain->global(*mSkel->bone(i).parent()).translation;
+			to=mChain->global(i).translation;
+			auto* pbone=mSkel->bone(i).parent();
+			double dist=from.distance(to)*m_pSceneNode->getScale().x;
+			_dist2[i]=dist;
+		}
+		// pass2 (downward path)
+		for(int i=2; i<mSkel->numBone(); i++)
+		{
+			double dist=_dist2[i];
+			auto* pbone=mSkel->bone(i).parent();
+			dist=MIN(dist,_dist2[pbone->treeIndex()]);
+			_dist[pbone->treeIndex()]=MAX(dist, 2.0);
+		}
+		// pass3 (upward path)
+		for(int i=mSkel->numBone()-1; i>1; i--)
+		{
+			double dist=_dist[i];
+			auto* pbone=mSkel->bone(i).parent();
+			dist=MIN(dist,_dist[pbone->treeIndex()]);
+			_dist[i]=dist;
+		}
+	}
 	for(int i=2; i<mSkel->numBone(); i++)
 	{
 		vector3 from, to;
@@ -1031,11 +1076,16 @@ int PLDPrimPoint::UpdateBone()
 		from=mChain->global(*mSkel->bone(i).parent()).translation;
 		to=mChain->global(i).translation;
 		//q=mChain->global(i).rotation;
-		q=mChain->global(*mSkel->bone(i).parent()).rotation;
+		auto* pbone=mSkel->bone(i).parent();
+		q=mChain->global(*pbone).rotation;
 
 		Ogre::SceneNode* pNode=mSceneNodes[i];
 		Ogre::Vector3 p0=ToOgre((to+from)/2);
-		m_real scale=0.5/m_pSceneNode->getScale().x;
+		m_real scale=1.0/m_pSceneNode->getScale().x;
+		double dist=_dist[i];
+		if (dist<DIST_THR) 
+			scale*=dist/DIST_THR;
+															
 		pNode->resetToInitialState();
 		pNode->scale(scale,scale,scale);
 		pNode->rotate(ToOgre(q));
@@ -1044,7 +1094,7 @@ int PLDPrimPoint::UpdateBone()
 
 		Ogre::SceneNode* pNode2=mSceneNodes[i+mSkel->numBone()];
 		pNode2->resetToInitialState();
-		pNode2->scale(scale,scale,scale);
+		pNode2->scale(scale*2.0,scale*2.0,scale*2.0);
 		pNode2->translate(ToOgre(to));
 	}
 #endif

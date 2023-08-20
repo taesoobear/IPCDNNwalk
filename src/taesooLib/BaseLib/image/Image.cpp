@@ -29,6 +29,9 @@
 #include <IL/il.h>
 #include <IL/ilu.h>
 #endif
+#ifndef NO_FREEIMAGE
+#include "FreeImage.h"
+#endif
 CPixelsView CPixels::range(int start, int end, int step)
 {
 	return _range<CPixelsView >(start,end,step);
@@ -104,6 +107,8 @@ int CImage::GetHeight()const
 
 void CImage::CopyFrom(CImage const& other)
 {
+
+
 	_size.x=other.GetWidth();
 	_size.y=other.GetHeight();
 	#ifndef NO_DEVIL
@@ -111,6 +116,12 @@ void CImage::CopyFrom(CImage const& other)
 	ilCopyImage(other._id);
 	_dataPtr=ilGetData();
 	_stride=GetWidth()*3;
+#else
+	_dataPtr=new uchar[_size.x*_size.y*3];
+	_stride=GetWidth()*3;
+	for(int y=0; y<_size.y; y++)
+		memcpy(&_dataPtr[y*_stride], &other._dataPtr[y*other._stride], _stride);
+
 	#endif
 }
 
@@ -175,6 +186,29 @@ static void CImage_flipY(CImage& inout)
 }
 bool CImage::Load(const char* filename)
 {
+#ifndef NO_FREEIMAGE
+	FREE_IMAGE_FORMAT formato = FreeImage_GetFileType(filename,0);
+	FIBITMAP* imagen = FreeImage_Load(formato, filename);
+	FIBITMAP* temp = imagen;  
+	imagen = FreeImage_ConvertTo32Bits(imagen);
+	FreeImage_Unload(temp);
+
+	_size.x = FreeImage_GetWidth(imagen);
+	_size.y = FreeImage_GetHeight(imagen);
+	_dataPtr=new unsigned char[32*_size.x*_size.y];
+	_stride=GetWidth()*3;
+
+	char* pixeles = (char*)FreeImage_GetBits(imagen);
+
+	for(int j= 0; j<_size.x*_size.y; j++)
+	{
+		_dataPtr[j*3+0]= pixeles[j*4+2];
+		_dataPtr[j*3+1]= pixeles[j*4+1];
+		_dataPtr[j*3+2]= pixeles[j*4+0];
+		//_dataPtr[j*4+3]= pixeles[j*4+3];
+	}
+	FreeImage_Unload(imagen);
+#else
     #ifndef NO_DEVIL
 	ilBindImage(_id);
 	ilLoadImage(filename);
@@ -184,6 +218,7 @@ bool CImage::Load(const char* filename)
 	_dataPtr=ilGetData();
 	_stride=GetWidth()*3;
 	#endif
+#endif
 	if (TString(filename).right(3).toUpper()=="JPG" ||TString(filename).right(3).toUpper()=="PNG")
 	{
 		CImage_flipY(*this);
@@ -191,6 +226,9 @@ bool CImage::Load(const char* filename)
 	}
 	else
 		_flipped=false;
+
+
+	//Save("out.jpg");
 	return true;
 }
 
@@ -206,7 +244,6 @@ namespace Imp
 }
 
 #ifndef NO_FREEIMAGE
-#include "FreeImage.h"
 //#pragma comment(lib, "FreeImage/Dist/FreeImage.lib")
 
 /** Generic image writer
@@ -326,7 +363,7 @@ static void CImage_SaveFreeImage(CImage & image, const char* filename, int BPP=-
 }
 #endif
 
-bool CImage::Save(const char* filename)
+bool CImage::Save(const char* filename) const
 {
 	/*
 	if(Imp::IsFileExist(filename))
@@ -361,7 +398,7 @@ bool CImage::Save(const char* filename)
 	return 1;
 }
 
-bool CImage::save(const char* filename, int BPP)
+bool CImage::save(const char* filename, int BPP) const
 {
 	if(Imp::IsFileExist(filename))
 	{
@@ -371,7 +408,7 @@ bool CImage::save(const char* filename, int BPP)
 	}
 
 #ifndef NO_FREEIMAGE
-	CImage_SaveFreeImage(*this, filename, BPP);
+	CImage_SaveFreeImage((CImage&)(*this), filename, BPP);
 #endif
 	return true;
 }
@@ -579,4 +616,141 @@ void applyFloydSteinberg(CImage& _bitmapData, int _levels)
 			c.B=nb;
 		}
 	}
+}
+
+typedef struct {
+    double r;       // a fraction between 0 and 1
+    double g;       // a fraction between 0 and 1
+    double b;       // a fraction between 0 and 1
+} rgb;
+
+typedef struct {
+    double h;       // angle in degrees
+    double s;       // a fraction between 0 and 1
+    double v;       // a fraction between 0 and 1
+} hsv;
+
+static hsv   rgb2hsv(rgb in);
+static rgb   hsv2rgb(hsv in);
+
+vector3 rgb2hsv(vector3 const& _in)
+{
+	rgb in;
+	in.r=_in.x;
+	in.g=_in.y;
+	in.b=_in.z;
+	hsv out=rgb2hsv(in);
+	return vector3(out.h, out.s, out.v);
+}
+vector3 hsv2rgb(vector3 const& _in)
+{
+	hsv in;
+	in.h=_in.x;
+	in.s=_in.y;
+	in.v=_in.z;
+	rgb out=hsv2rgb(in);
+	return vector3(out.r, out.g, out.b);
+}
+
+hsv rgb2hsv(rgb in)
+{
+    hsv         out;
+    double      min, max, delta;
+
+    min = in.r < in.g ? in.r : in.g;
+    min = min  < in.b ? min  : in.b;
+
+    max = in.r > in.g ? in.r : in.g;
+    max = max  > in.b ? max  : in.b;
+
+    out.v = max;                                // v
+    delta = max - min;
+    if (delta < 0.00001)
+    {
+        out.s = 0;
+        out.h = 0; // undefined, maybe nan?
+        return out;
+    }
+    if( max > 0.0 ) { // NOTE: if Max is == 0, this divide would cause a crash
+        out.s = (delta / max);                  // s
+    } else {
+        // if max is 0, then r = g = b = 0              
+        // s = 0, h is undefined
+        out.s = 0.0;
+        out.h = NAN;                            // its now undefined
+        return out;
+    }
+    if( in.r >= max )                           // > is bogus, just keeps compilor happy
+        out.h = ( in.g - in.b ) / delta;        // between yellow & magenta
+    else
+    if( in.g >= max )
+        out.h = 2.0 + ( in.b - in.r ) / delta;  // between cyan & yellow
+    else
+        out.h = 4.0 + ( in.r - in.g ) / delta;  // between magenta & cyan
+
+    out.h *= 60.0;                              // degrees
+
+    if( out.h < 0.0 )
+        out.h += 360.0;
+
+    return out;
+}
+
+
+rgb hsv2rgb(hsv in)
+{
+    double      hh, p, q, t, ff;
+    long        i;
+    rgb         out;
+
+    if(in.s <= 0.0) {       // < is bogus, just shuts up warnings
+        out.r = in.v;
+        out.g = in.v;
+        out.b = in.v;
+        return out;
+    }
+    hh = in.h;
+    if(hh >= 360.0) hh = 0.0;
+    hh /= 60.0;
+    i = (long)hh;
+    ff = hh - i;
+    p = in.v * (1.0 - in.s);
+    q = in.v * (1.0 - (in.s * ff));
+    t = in.v * (1.0 - (in.s * (1.0 - ff)));
+
+    switch(i) {
+    case 0:
+        out.r = in.v;
+        out.g = t;
+        out.b = p;
+        break;
+    case 1:
+        out.r = q;
+        out.g = in.v;
+        out.b = p;
+        break;
+    case 2:
+        out.r = p;
+        out.g = in.v;
+        out.b = t;
+        break;
+
+    case 3:
+        out.r = p;
+        out.g = q;
+        out.b = in.v;
+        break;
+    case 4:
+        out.r = t;
+        out.g = p;
+        out.b = in.v;
+        break;
+    case 5:
+    default:
+        out.r = in.v;
+        out.g = p;
+        out.b = q;
+        break;
+    }
+    return out;     
 }

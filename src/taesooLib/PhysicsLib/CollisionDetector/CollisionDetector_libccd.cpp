@@ -640,6 +640,7 @@ void ccdSupportConvex(const void *_obj, const ccd_vec3_t *_dir, ccd_vec3_t *v)
     ccdQuatRotVec(v, &obj->quat);
     ccdVec3Add(v, &obj->pos);
 }
+
 /*
 danfis says:
 The ccdSupportConvex() function seems ok -- the support point is the vertex from the polyhedron that is furthest along the direction vector (dot product says you the length of projection on the direction vector)... But if you are unsure, try some literature.

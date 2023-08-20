@@ -84,6 +84,7 @@ namespace s1
 #include "transf.h"
 #include "traits.h"
 #include "vectorn.h"
+#include "floatvec.h"
 #include "bitVectorN.h"
 #include "matrixn.h"
 #endif

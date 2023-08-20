@@ -186,17 +186,36 @@ void printNewline(FILE* file, int level)
 		fprintf(file, "  ");
 }
 
+void packSite(FILE* file, int level, vector3 const& offset)
+{
+	printNewline(file, level);
+	fprintf(file, "End Site");
+	printNewline(file, level);
+	fprintf(file, "{");
+	printNewline(file, level+1);
+	fprintf(file, "OFFSET %f %f %f", offset.x, offset.y, offset.z);
+	printNewline(file, level);
+	fprintf(file, "}");
+}
+
 void Bone::packBVH(FILE* file, int level, MotionLoader* pLoader)
 {
+	bool addSite=false;
 	if(level==0)
 		fprintf(file, "HIERARCHY\nROOT ");
 	else
 	{
+		if(!m_pChildHead )
+		{
+			if(getRotationalChannels().length()==0)
+			{
+				packSite(file, level, getOffsetTransform().translation);
+				return;
+			}
+			addSite=true;
+		}
 		printNewline(file, level);
-		if(!m_pChildHead)
-			fprintf(file, "End ");
-		else
-			fprintf(file, "JOINT ");
+		fprintf(file, "JOINT ");
 	}
 
 /*
@@ -212,10 +231,7 @@ void Bone::packBVH(FILE* file, int level, MotionLoader* pLoader)
 			NameId=pLoader->m_translationTable[jointIndex];
 	}
 */
-	if(!m_pChildHead)
-		fprintf(file, "Site");
-	else
-		fprintf(file, "%s", NameId);
+	fprintf(file, "%s", NameId);
 
 	printNewline(file, level);
 
@@ -225,36 +241,89 @@ void Bone::packBVH(FILE* file, int level, MotionLoader* pLoader)
 	printNewline(file, level+1);
 	fprintf(file, "OFFSET %f %f %f", offset.x, offset.y, offset.z);
 
-	if(!m_pChildHead)
+	printNewline(file, level+1);
+
+	const bool bFullDOF=false;
+
+	if(bFullDOF)
 	{
-		printNewline(file, level);
-		fprintf(file, "}");
+		TString rc, tc;
+		tc=getTranslationalChannels();
+		rc=getRotationalChannels();
+
+		int numChannels=tc.length()?3:0;
+		numChannels+=rc.length()?3:0;
+		fprintf(file, "CHANNELS %d ", numChannels);
+
+		if(tc.length())
+		{
+			for(int i=0; i<tc.length(); i++)
+			{
+				switch(tc[i])
+				{
+					case 'X':
+						fprintf(file, "Xposition ");
+						break;
+					case 'Y':
+						fprintf(file, "Yposition ");
+						break;
+					case 'Z':
+						fprintf(file, "Zposition ");
+						break;
+				}
+			}
+		}
+
+		if(rc.length())
+		{
+			char aChannel[3];
+			for(int i=0; i<rc.length(); i++)
+				aChannel[i]=rc[i];
+
+			//길이가 3보다 작으면 나머지 채널을 채워준다.
+			for(int i=rc.length(); i<3; i++)
+			{
+				aChannel[i]='X';
+
+				for(int k=0; k<2; k++)
+				{
+					for(int j=0; j<i; j++)
+						if(aChannel[i]==aChannel[j]) aChannel[i]++;
+				}
+			}
+
+			for(int i=0; i<3; i++)
+			{
+				switch(aChannel[i])
+				{
+					case 'Z':
+						fprintf(file, "Zrotation ");
+						break;
+					case 'X':
+						fprintf(file, "Xrotation ");
+						break;
+					case 'Y':
+						fprintf(file, "Yrotation ");
+						break;
+				}
+			}
+		}
 	}
 	else
 	{
-		printNewline(file, level+1);
+		TString rc, tc;
+		tc=getTranslationalChannels();
+		rc=getRotationalChannels();
 
+		int numChannels=tc.length()+rc.length();
+		fprintf(file, "CHANNELS %d ", numChannels);
 
-		const bool bFullDOF=false;
-
-
-
-		if(bFullDOF)
+		if(tc.length())
 		{
-			TString rc, tc;
-			tc=getTranslationalChannels();
-			rc=getRotationalChannels();
-
-			int numChannels=tc.length()?3:0;
-			numChannels+=rc.length()?3:0;
-			fprintf(file, "CHANNELS %d ", numChannels);
-
-			if(tc.length())
+			for(int i=0; i<tc.length(); i++)
 			{
-				for(int i=0; i<tc.length(); i++)
+				switch(tc[i])
 				{
-					switch(tc[i])
-					{
 					case 'X':
 						fprintf(file, "Xposition ");
 						break;
@@ -264,101 +333,39 @@ void Bone::packBVH(FILE* file, int level, MotionLoader* pLoader)
 					case 'Z':
 						fprintf(file, "Zposition ");
 						break;
-					}
-				}
-			}
-
-			if(rc.length())
-			{
-				char aChannel[3];
-				for(int i=0; i<rc.length(); i++)
-					aChannel[i]=rc[i];
-
-				//길이가 3보다 작으면 나머지 채널을 채워준다.
-				for(int i=rc.length(); i<3; i++)
-				{
-					aChannel[i]='X';
-
-					for(int k=0; k<2; k++)
-					{
-						for(int j=0; j<i; j++)
-							if(aChannel[i]==aChannel[j]) aChannel[i]++;
-					}
-				}
-
-				for(int i=0; i<3; i++)
-				{
-					switch(aChannel[i])
-					{
-						case 'Z':
-						fprintf(file, "Zrotation ");
-						break;
-						case 'X':
-						fprintf(file, "Xrotation ");
-						break;
-						case 'Y':
-						fprintf(file, "Yrotation ");
-						break;
-					}
 				}
 			}
 		}
-		else
+
+		if(rc.length())
 		{
-			TString rc, tc;
-			tc=getTranslationalChannels();
-			rc=getRotationalChannels();
-
-			int numChannels=tc.length()+rc.length();
-			fprintf(file, "CHANNELS %d ", numChannels);
-
-			if(tc.length())
+			for(int i=0; i<rc.length(); i++)
 			{
-				for(int i=0; i<tc.length(); i++)
+				switch(rc[i])
 				{
-					switch(tc[i])
-					{
+					case 'Z':
+						fprintf(file, "Zrotation ");
+						break;
 					case 'X':
-						fprintf(file, "Xposition ");
+						fprintf(file, "Xrotation ");
 						break;
 					case 'Y':
-						fprintf(file, "Yposition ");
-						break;
-					case 'Z':
-						fprintf(file, "Zposition ");
-						break;
-					}
-				}
-			}
-
-			if(rc.length())
-			{
-				for(int i=0; i<rc.length(); i++)
-				{
-					switch(rc[i])
-					{
-						case 'Z':
-						fprintf(file, "Zrotation ");
-						break;
-						case 'X':
-						fprintf(file, "Xrotation ");
-						break;
-						case 'Y':
 						fprintf(file, "Yrotation ");
 						break;
-					}
 				}
 			}
 		}
-
-		for(Bone* node=(Bone*)m_pChildHead; node!=NULL; node=(Bone*)(node->m_pSibling))
-		{
-			node->packBVH(file, level+1, pLoader);
-		}
-
-		printNewline(file, level);
-		fprintf(file, "}");
 	}
+
+	for(Bone* node=(Bone*)m_pChildHead; node!=NULL; node=(Bone*)(node->m_pSibling))
+	{
+		node->packBVH(file, level+1, pLoader);
+	}
+
+	if(addSite)
+		packSite(file, level+1, vector3(0,0,0));
+	printNewline(file, level);
+	fprintf(file, "}");
 }
 
 
@@ -637,6 +644,7 @@ MotionLoader::~MotionLoader()
 {
 	delete dofInfo._sharedinfo;
 	dofInfo._sharedinfo=NULL;
+	delete m_pFactory;
 }
 
 int MotionLoader::getVocaByTreeIndex(int treeIndex) const
@@ -1097,9 +1105,9 @@ void MotionLoader::insertJoint(Bone& target, const char* type, std::vector<Motio
 		///////////////////////
 		// make channels
 		if(nchannel==6)
-			target.setChannels("XYZ", "ZXY");
+			target.setChannels("XYZ", "ZYX");
 		else
-			target.setChannels("","ZXY");
+			target.setChannels("","ZYX");
 
 		// Backup indexes
 		intvectorn prevTree2RotJointIndex;

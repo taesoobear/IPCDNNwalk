@@ -75,7 +75,7 @@ public:
 
 	static void createLimb(const OgreRenderer& renderer, Ogre::SceneNode *pNode) ;
 	static void setLimb(Ogre::SceneNode *pNode, vector3 const& p0, vector3 const& p1, float thick=7) ;
-	void setMaterial(const char* mat);
+	void setMaterial(const char* mat) override;
 protected:
 	virtual int UpdateBone();
 	std::vector<Ogre::SceneNode*> mSceneNodes;
@@ -90,10 +90,13 @@ public:
 
 	static void createLimb(const OgreRenderer& renderer, Ogre::SceneNode *pNode) ;
 	static void setLimb(Ogre::SceneNode *pNode, vector3 const& p0, vector3 const& p1, float thick=7) ;
-	void setMaterial(const char* mat);
+	void setMaterial(const char* mat) override;
+
+	virtual void setScale(double x, double y, double z) override;
 protected:
-	virtual int UpdateBone();
+	virtual int UpdateBone() override;
 	std::vector<Ogre::SceneNode*> mSceneNodes;
+	std::vector <double> _dist;
 };
 
 class PLDPrimBox : public PLDPrimSkel
@@ -104,10 +107,10 @@ public:
 
 
 	void createLimb(const OgreRenderer& renderer, Ogre::SceneNode *pNode, const char* nameId) ;
-	void setMaterial(const char* mat);
+	void setMaterial(const char* mat) override;
 	std::vector<Ogre::SceneNode*> mSceneNodes;
 protected:
-	virtual int UpdateBone();
+	virtual int UpdateBone() override;
 
 };
 
@@ -121,11 +124,11 @@ public:
 
 	static void createLimb(const OgreRenderer& renderer, Ogre::SceneNode *pNode) ;
 	static void setLimb(Ogre::SceneNode *pNode, vector3 const& p0, vector3 const& p1, float thick=7) ;
-	void setMaterial(const char* mat);
+	void setMaterial(const char* mat) override;
 	virtual void setThickness(float thick);
 protected:
 	m_real thick;
-	virtual int UpdateBone();
+	virtual int UpdateBone() override;
 	std::vector<Ogre::SceneNode*> mSceneNodes;
 	std::vector<Ogre::SceneNode*> mSceneNodesPoint;
 };
@@ -139,7 +142,7 @@ public:
 	virtual void SetVisible(bool bVisible);
 	void setColor(RE::Color c);
 protected:
-	virtual int UpdateBone();
+	virtual int UpdateBone() override;
 	#ifndef NO_OGRE
 	std::vector<LineStrip*> mLines;
 #endif
@@ -152,11 +155,11 @@ public:
 	virtual ~PLDPrimThickLine();
 
 	virtual void SetVisible(bool bVisible);
-	virtual void setMaterial(const char* mat);
+	virtual void setMaterial(const char* mat) override;
 	virtual void setScale(double x, double y, double z);
 	virtual int FrameMove(float fElapsedTime);
 protected:
-	virtual int UpdateBone();
+	virtual int UpdateBone() override;
 	std::string _materialName;
 #ifndef NO_OGRE
 	double _thickness;

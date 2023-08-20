@@ -11,19 +11,18 @@ if(SKELTRACK)
 	include(Common_skeltrack)
 endif()
 
+set(NoGSL TRUE)
 
 if(WIN32)
-include_directories(
-${MainLib_SOURCE_DIR}/../../dependencies/OgreSDK_vc10_v1-8-1/boost
-${MainLib_SOURCE_DIR}/../../dependencies/OgreSDK_vc10_v1-8-1/include/OGRE
-${MainLib_SOURCE_DIR}/../../dependencies/OgreSDK_vc10_v1-8-1/include/OIS
-${MainLib_SOURCE_DIR}/../../dependencies/fltk-1.1.10
-)
+	add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../windows_dependencies/lua-5.1.5/src ./build_lua)
 else()
-	include_directories(
-		/usr/local/include/OGRE
-		/usr/include/ois
-		)
+	if (BUILD_CONSOLE )
+	else()
+		include_directories(
+			/usr/local/include/OGRE
+			/usr/include/ois
+			)
+	endif()
 endif()
 include_directories (
   ${MainLib_SOURCE_DIR}
@@ -37,6 +36,8 @@ set(src
   "./OgreFltk/Joystick.cpp"
   "./MainLib.h"
   "./MainLib.cpp"
+  #"./Ogre/AssimpLoader.h" use ogre-assimp.git instead.
+  #"./Ogre/AssimpLoader.cpp"
   "./OgreFltk/AlzzaPostureIP.cpp"
   "./OgreFltk/AnimationObject.cpp"
   "./OgreFltk/fastCapture.cpp"
@@ -170,15 +171,21 @@ LIST(APPEND src
 	"./OgreFltk/Fl_Native_File_Chooser-0.84/Fl_Native_File_Chooser_WIN32.cxx"
 	)
 elseif(APPLE)
-LIST(APPEND src "./OgreFltk/mac/OgreFltk.mm")
+	if (BUILD_CONSOLE )
+	else()
+		LIST(APPEND src "./OgreFltk/mac/OgreFltk.mm")
+	endif()
 endif()
 
 if(useShared)
   add_library(MainLib SHARED ${src})
+  if (BUILD_CONSOLE )
+  else()
   target_link_libraries(MainLib
 	  ${OGRE_LIBS}
 	  ${FLTK_LIBS}
     )
+endif()
 else()
 	add_library(MainLib ${src})
 endif()
@@ -197,6 +204,12 @@ IF(UNIX)
 		gslcblas
 		)
 	endif()
+elseif(WIN32)
+	target_link_libraries(MainLib
+		BaseLib
+		#LuaBind
+		lua51
+		)
 
 ELSE()
   target_link_libraries(MainLib

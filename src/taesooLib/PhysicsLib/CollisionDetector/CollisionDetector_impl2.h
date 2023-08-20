@@ -17,7 +17,7 @@ class CollisionDetector_impl_hidden
 
 		// scene
 		CdScene* scene_;
-		void _addCollisionPair(const char* charName1, const char* charName2, const char* jointName1, const char* jointName2);
+		void __addCollisionPair(const char* charName1, const char* charName2, const char* jointName1, const char* jointName2);
 		CdChar* getChar(const char* name);
 		int _contactIntersection ( CdCheckPair* rPair);
 		virtual void clearCache(const char* url);

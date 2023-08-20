@@ -154,8 +154,8 @@ public:
 	bool IsDataNull()				{ return _dataPtr==NULL;}
 
 	bool Load(const char* filename);
-	bool Save(const char* filename);
-	bool save(const char* filename, int BPP);
+	bool Save(const char* filename) const;
+	bool save(const char* filename, int BPP) const;
 
 	CPixelsView GetHorizLine(int i)
 	{

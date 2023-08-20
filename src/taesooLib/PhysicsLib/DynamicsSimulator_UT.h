@@ -58,7 +58,7 @@ namespace OpenHRP {
 				double timeStep,
 				OpenHRP::DynamicsSimulator_UT::IntegrateMethod integrateOpt);
 
-		virtual double currentTime();
+		virtual double currentTime() const;
 		
 		virtual void getWorldVelocity(int ichara,VRMLTransform* b
 			, vector3 const& localpos

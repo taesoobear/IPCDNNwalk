@@ -43,23 +43,31 @@ class hypermatrixn
 {
 protected:
 	int npages, nrows, columns;
-	m_real* data;
-	std::vector<matrixnView*> m_pages;
+	matrixn data;
 public:
+	inline int _getStride1() const { return data._getStride();}
+	inline int _getStride2() const { return columns;}
+	inline int _getStride3() const { return 1;}
+
 	hypermatrixn(void);
 	hypermatrixn(int pages, int nrows, int columns);
 	hypermatrixn(const hypermatrixn& other);
 	~hypermatrixn(void);
 
-	int	page() const	{return npages; } // deprecated
-	int	pages() const	{return npages; }
-	int rows() const		{return nrows; }
-	int cols() const	{return columns; }
+	inline int	page() const	{return npages; } // deprecated
+	inline int	pages() const	{return npages; }
+	inline int rows() const		{return nrows; }
+	inline int cols() const	{return columns; }
 
 	void setSize( int, int, int);  //!< 원래 데이타 유지 보장 전혀 없음.
 	void setSameSize(hypermatrixn const& other)	{ setSize(other.page(), other.rows(), other.cols());};
-	matrixnView& page(int index) const				{ return *m_pages[index];}
-	matrixnView& operator[](int index) const		{ return page(index);}
+	void resize( int , int, int); // nrows, ncolumns만 안바뀌면 data 유지. 바뀐영역 0으로 초기화는 하지 않음.
+	void pushBack(const matrixn& mat);
+	inline matrixnView page(int index) const			{ 
+		RANGE_ASSERT(index>=0 && index<pages()); 
+		return  data.row(index).matView(rows(), cols());
+	}
+	matrixnView operator[](int index) const		{ return page(index);}
 
 	hypermatrixn&  assign(hypermatrixn const& other);
 	hypermatrixn&  operator=(hypermatrixn const& other)	{ return assign(other);};

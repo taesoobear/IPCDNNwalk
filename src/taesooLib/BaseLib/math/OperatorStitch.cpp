@@ -5,10 +5,17 @@
 #include "Operator_NR.h"
 #include "Filter.h"
 #include "BSpline.h"
+#ifdef USE_NR
+#include "nr/nr.h"
+#else
+#include "../../PhysicsLib/TRL/eigenSupport.h"
+#endif
 #include "conversion.h"
 #include "../utility/operatorString.h"
-#include "../../PhysicsLib/TRL/eigenSupport.h"
 
+#ifdef USE_NR
+#define USE_LUDCMP
+#endif
 
 HessianQuadratic::HessianQuadratic(int dim)
 {
@@ -1337,7 +1344,6 @@ void m::linstitch::calc(matrixn& c, const matrixn& a, const matrixn& b) const
 	At.transpose(A);
 
 	Augmented.range(c.rows(), c.rows()+numCon, c.rows(), c.rows()+numCon).setAllValue(0.0);
-//#define USE_LUDCMP
 #ifdef USE_LUDCMP
 	DP p;
 	matrixn LU(Augmented);
@@ -1558,7 +1564,6 @@ void m::linstitchForward::calc(matrixn& ddd, const matrixn& a, const matrixn& b)
 	At.transpose(A);
 
 	Augmented.range(c.rows(), c.rows()+numCon, c.rows(), c.rows()+numCon).setAllValue(0.0);
-//#define USE_LUDCMP
 #ifdef USE_LUDCMP
 	DP p;
 	matrixn LU(Augmented);
@@ -1676,7 +1681,6 @@ void m::linstitchOnline::calc(matrixn& ddd, const matrixn& a, const matrixn& b) 
 	At.transpose(A);
 
 	Augmented.range(c.rows(), c.rows()+numCon, c.rows(), c.rows()+numCon).setAllValue(0.0);
-//#define USE_LUDCMP
 #ifdef USE_LUDCMP
 	DP p;
 	matrixn LU(Augmented);
@@ -1787,18 +1791,13 @@ void m::linstitch2::calc(matrixn& c, const matrixn& a, const matrixn& b) const
 	At.transpose(A);
 
 	Augmented.range(c.rows(), c.rows()+numCon, c.rows(), c.rows()+numCon).setAllValue(0.0);
-Msg::error("ludcmp");
-/*
-#define USE_LUDCMP
-#ifdef USE_LUDCMP
+#ifdef USE_NR
 	DP p;
 	matrixn LU(Augmented);
 	Vec_INT indx(Augmented.rows());
 	NR::ludcmp(LU,indx,p);
-#else
-	matrixn invAugmented;
-	invAugmented.inverse(Augmented);
-#endif
+	//matrixn invAugmented;
+	//invAugmented.inverse(Augmented);
 	vectorn cc(c.rows()-2);
 
 	for(int dim=0; dim<a.cols(); dim++)
@@ -1832,17 +1831,15 @@ Msg::error("ludcmp");
 		d[c.rows()+3]=fb(b.rows()-1);
 		//NR::frprmn(p, 1.0e-6, iter, fret, linstitch::f, linstitch::df);
 
-#ifdef USE_LUDCMP
 		x=d;
 		NR::lubksb(LU,indx,x);
-#else
-		x.multmat(invAugmented, d);
-#endif
 		// save results.
 		for(int i=0; i<c.rows(); i++)
 			f(i)=x[i];
 	}
-	*/
+#else
+	Msg::error ("ludcmp");
+#endif
 }
 
 
@@ -1931,9 +1928,8 @@ void m::linstitchMulti::calc(matrixn& c, const matrixn& a, const matrixn& b) con
 	At.transpose(A);
 
 	Augmented.range(nvar, nvar+numCon, nvar, nvar+numCon).setAllValue(0.0);
+#ifdef USE_NR
 
-	Msg::error("ludcmp");
-	/*
 	//printf("%s\n", Augmented.output("%.0f").ptr());
 #define USE_LUDCMP
 #ifdef USE_LUDCMP
@@ -2001,7 +1997,9 @@ void m::linstitchMulti::calc(matrixn& c, const matrixn& a, const matrixn& b) con
 		for(int i=0; i<nsample; i++)
 			f(i)=x[i+offset];
 	}
-	*/
+#else
+	Msg::error("ludcmp");
+#endif
 }
 
 void quaterNN_linstitch(m::stitchOp const& op, matrixn& c, matrixn & a, matrixn & b)

@@ -72,9 +72,7 @@ namespace OpenHRP
 			friend class DynamicsSimulator;
 		};
 		std::vector<Character*> _characters;
-		virtual const vectorn & getLastSimulatedPose(int ichara=0) const { ASSERT(false); 
-			return _characters[ichara]->_tempPose;
-		}
+		virtual const vectorn & getLastSimulatedPose(int ichara=0) const;
 
 		DynamicsSimulator(bool useSimpleColdet=true);
 		DynamicsSimulator(const char* collisionDetectorType);
@@ -134,7 +132,10 @@ namespace OpenHRP
 		virtual void removeRelativeConstraint(int ichara, Bone& bone1, Bone& bone2) { Msg::msgBox("Error! removeRelativeConstraint not implemented.");}
 
 		// both the force and its position are local.
-		virtual void addForceToBone(int ichara, VRMLTransform* b, ::vector3 const& localpos, ::vector3 const& force);
+		virtual void addForceToBone(int ichara, VRMLTransform* b, ::vector3 const& localpos, ::vector3 const& localforce);
+		// default implementation uses the function above, but you can override this to speedup.
+		virtual void addGlobalForceToBone(int ichara, int treeindex, ::vector3 const& globalpos, ::vector3 const& globalforce);
+
 
 		virtual void _registerCharacter(
 				const char *name,
@@ -247,6 +248,8 @@ namespace OpenHRP
 		Liegroup::dse3 calcMomentumCOM(int ichara);
 		Liegroup::dse3 calcMomentumCOMfromPose(int ichara, double delta_t, vectorn const& poseFrom, vectorn const& poseTo);
 		void  calcInertia(int ichara,vectorn const& pose, vectorn& inertia) const;
+		virtual void drawLastContactForces(int ichara=0, vector3 const& draw_offset=::vector3(0,0,0)) const {}
+		virtual ::vector3 getContactForce(int ichar, int ibone) const {return vector3(-1,-1,-1);}
 	protected:
 		vectorn& _getLastSimulatedPose(int ichara=0) const { 
 			return _characters[ichara]->_tempPose;

@@ -7,6 +7,7 @@
 #include <math.h>
 #include "../math/Operator.h"
 #include "../motion/Motion.h"
+#include "../../PhysicsLib/TRL/eigenSupport.h"
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -36,8 +37,46 @@ void Filter::gaussFilter(int kernelSize, vectorn& inout)
 	GetGaussFilter(kernelSize, kernel);
 	LTIFilter(1,kernel,inout);
 }
+void Filter::mitchellFilter(int kernelSize, matrixn& inout)
+{
+	if(kernelSize%2==0) kernelSize=kernelSize/2*2+1;
+	vectorn kernel;
+	GetMitchellFilter(kernelSize, kernel);
+	LTIFilter(1,kernel,inout);
+}
+
+void Filter::mitchellFilter(int kernelSize, vectorn& inout)
+{
+	if(kernelSize%2==0) kernelSize=kernelSize/2*2+1;
+	vectorn kernel;
+	GetMitchellFilter(kernelSize, kernel);
+	LTIFilter(1,kernel,inout);
+}
 
 
+matrixn Filter::deconvolution(int niter, vectorn const& kernel, const matrixn& in)
+{
+	matrixn di=in;
+	matrixn ui=in;
+
+	for(int i=0; i<niter; i++){
+		matrixn ci=ui;
+		LTIFilter(1, kernel, ci);
+		matrixn d_c(ci.rows(), ci.cols());
+		eigenTView(d_c).noalias()=(eigenTView(di).array()/eigenTView(ci).array()).matrix();
+		for(int j; j<d_c.rows(); j++)
+			for(int k; k<d_c.cols(); k++)
+			{
+				if(d_c(j,k)!=d_c(j,k))
+					d_c(j,k)=1.0;
+			}
+		LTIFilter(1, kernel, d_c);
+		eigenTView(ui).noalias()=(eigenTView(ui).array()*eigenTView(d_c).array()).matrix();
+	}
+
+	return ui;
+
+}
 #ifdef DIRECT3D_VERSION
 void Filter::AlignUnitQuaternions( int numQuat, D3DXQUATERNION* aQuat)
 {
@@ -123,6 +162,37 @@ void Filter::GetBoxFilter(int kernelsize, vectorn &ai_array)
 	}
 
 	TRACE("coef sum %f \n",Sum(0, kernelsize-1, ai_array));
+
+}
+void Filter::GetMitchellFilter(int kernelsize, vectorn &ai_array)
+{
+	ai_array.setSize(kernelsize);
+	
+	double B=1.0/3.0;
+	double C=1.0/3.0;
+	for(int i=0; i<kernelsize; i++)
+	{
+		double x=sop::map(i, 0, kernelsize-1, -2.0, 2.0);
+
+		double x_bar=ABS(x);
+		double xx=x*x;
+		if(x_bar<1)
+		{
+			ai_array[i]=
+				(12.0-9.0*B-6.0*C)*xx*x_bar +
+				(-18.0+12.0*B+6.0*C)*xx+
+				(6.0-2.0*B);
+		}
+		else
+		{
+			ai_array[i]=
+				(-B-6.0*C)*xx*x_bar +
+				(6.0*B+30.0*C)*xx+
+				(-12.0*B-48.0*C)*x_bar+
+				(8.0*B+24*C);
+		}
+	}
+	ai_array/=ai_array.sum();
 
 }
 
@@ -658,3 +728,89 @@ void Filter::LTIFilterQuat(int numIter, const vectorn& ai_array, const matrixn& 
 	delete[] in;
 }
 
+double Filter::FilterSingle(int numIter, const vectorn& ai_array, int numFloat, m_real * aInput)
+{
+	Msg::verify(numFloat==ai_array.size(),"in.rows()!=kernel.size()");
+	int k=ai_array.size()/2;
+	double out;
+	for(int j=0; j<numIter; j++)
+	{
+		int i=int(numFloat/2);
+		out=0;
+
+		for(int m=-1*k; m<=k; m++)
+			out += ai_array[TO_ARRAY_INDEX(m)]*aInput[i+m];
+	}
+	return out;
+}
+void Filter::FilterSingle(int numIter, const vectorn& ai_array, const matrixn& source, vectorn & out)
+{
+	matrixn srcTranspose;
+	srcTranspose.transpose(source);
+
+	out.setSize(source.cols());
+
+	for(int i=0; i<source.cols(); i++)
+		out[i]=FilterSingle(numIter, ai_array, source.rows(), &srcTranspose(i,0));
+}
+
+void Filter::FilterQuatSingle(int numIter, const vectorn& ai_array, const matrixn& input, vectorn & out)
+{
+	Msg::verify(input.rows()==ai_array.size(),"in.rows()!=kernel.size()");
+
+	vectorn bi_array;
+	bi_array.setSize(ai_array.size()-1);
+
+	int k=ai_array.size()/2;
+
+	// calculate b_sub_i .. 제이형 논문 참고. bm=SUM a_sub_i 형태로 정의됨.
+	for(int m=-k; m<0; m++)
+		bi_array[TO_ARRAY_INDEX(m)]=-1*Sum(TO_ARRAY_INDEX(-k), TO_ARRAY_INDEX(m), ai_array);
+
+	for(int m=0; m<=k-1; m++)
+		bi_array[TO_ARRAY_INDEX(m)]=Sum(TO_ARRAY_INDEX(m+1), TO_ARRAY_INDEX(k), ai_array);
+
+	int numQuat=ai_array.size();
+
+	vector3* w;	// (0, theta*v)
+	w = new vector3[numQuat-1];
+	quater* in;
+	in = new quater[numQuat];
+	for(int i=0; i<numQuat; i++)
+		in[i]=input.row(i).toQuater();
+
+	// align quaternion
+
+    for( int i=1; i<numQuat; i++ )
+		if ( in[i-1]%in[i]<0 ) in[i].negate();
+
+	vector3 sum;
+	quater qc, temp;
+	quater qout;
+	for(int j=0;j<numIter;j++)
+	{
+
+		for(int i=0; i<numQuat-1; i++ )
+		{
+			qc.inverse(in[i]);
+			temp.mult(qc, in[i+1]);
+			w[i].ln(temp);
+		}
+
+		// 중간 부분은 마스크를 고대로 컨볼루션
+		{
+			int i=int(numQuat/2);
+			sum.x=0;	sum.y=0;	sum.z=0;
+
+			for(int m=-1*k; m<k; m++)
+				sum+=bi_array[TO_ARRAY_INDEX(m)]*w[i+m];
+
+			qc.exp(sum);
+			qout.mult(in[i], qc);
+			qout.normalize();
+			out.assign(qout);
+		}
+	}
+	delete[] w;
+	delete[] in;
+}

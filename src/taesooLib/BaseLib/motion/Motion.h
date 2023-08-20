@@ -84,6 +84,7 @@ public:
 	// Init
 	void empty();
 
+	bool isValid() const { return mInfo.m_pSkeleton;}
 	// skeleton만 초기화. 가지고 있는 MotionData가 skeleton과 incompatible한경우 MotionData는 release된다.
 	void InitSkeleton(MotionLoader* pSource);
 
@@ -108,6 +109,11 @@ public:
 
 	// skeleton과 모션을 모두 저장. ".mot"로 export. loading은 MotionLoader::loadAnimaion에서 가능하다.
 	void exportMOT(const char* filename) const;
+
+	// mimimal size. ".mot2" 으로 export. skeleton은 따로 저장할 것. loading 은 importBinary 사용.
+	void exportBinary(const char* filename) const;
+	void importBinary(const char* filename) ;
+
 
 	//! pose어레이의 크기를 바꾼다. 길이가 늘어나는 경우 빈 pose들이 뒤쪽에 생긴다.
 	void Resize(int frame);

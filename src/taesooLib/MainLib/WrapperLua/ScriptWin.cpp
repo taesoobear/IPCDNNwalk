@@ -38,12 +38,13 @@ static void handleLUAerror(lua_State* L)
 class GlobalUI;
 GlobalUI* getGlobalUI();
 
-inline void getglobal(lunaStack& l, const char* func)
+void ScriptWin::getglobal(lunaStack& l, const char* func)
 {
 	l.getglobal(func);
 	if(lua_isnil(l.L,-1)){
 		Msg::error("%s  is nil!!!\n", func);
 	}
+	lastFunc=func;
 }
 static void fastPrint(const char* out)
 {
@@ -141,13 +142,13 @@ m_renderer(&renderer)
 
 	create("Button", "load", "load", 7,9);
 #ifndef NO_GUI
-#ifdef __APPLE__
-	button(0)->shortcut('a');
-	button(0)->tooltip("a");
-#else
+//#ifdef __APPLE__
+//	button(0)->shortcut('a');
+//	button(0)->tooltip("a");
+//#else
 	button(0)->shortcut(FL_ALT+'l');
 	button(0)->tooltip("ALT+l");
-#endif
+//#endif
 #endif
 	create("Button", "X", "X", 9);
 	resetToDefault();
@@ -188,17 +189,39 @@ void ScriptWin::checkErrorFunc(lunaStack&l)
 }
 void ScriptWin::luna_call(lunaStack& l,int numIn, int numOut)
 {
+	try{
 #ifdef USE_LUNA_PCALL
 	checkErrorFunc(l);
 	if(lua_pcall(l.L,numIn,numOut,errorFunc))
 	{
-		Msg::print("Error in ScriptWin::luna_call.\n");
-		handleLUAerror(l.L);
+		//Msg::print("Error in ScriptWin::luna_call('%s')\n", lastFunc.ptr());
+		Msg::error("lua_pcall %s failed: %s\n", lastFunc.ptr(), lua_tostring(L, -1));
+		lua_pop(L, 1);
+		//handleLUAerror(l.L);
 	}
 #else
 	lua_call(l.L,numIn,numOut);
 #endif
 	l.setCheckFromTop();
+	}
+	catch (char * error)
+	{
+		Msg::msgBox("%s", error);
+	}
+	catch (const char* error)
+	{
+		Msg::msgBox("%s", error);
+	}
+	catch (std::exception& e)
+	{
+		Msg::msgBox("c++ error : %s", e.what());
+		ASSERT(0);
+	}
+	catch (...)
+	{
+		Msg::msgBox("some error");
+		ASSERT(0);
+	}
 }
 
 #include "../MainLib/WrapperLua/luna_baselib.h"
@@ -367,23 +390,30 @@ static lua_State* _initLuaEnvironment(FlLayout* win)
 
 static void _loadScript(lua_State* L, FlLayout* win, const char* script)
 {
+	Msg::print("loading %s", script);
 	if(script && luaL_dofile(L, script)==1)
 		handleLUAerror(L);
 }
 
-void ScriptWin::initLuaEnvironment()
+void ScriptWin::_initLuaEnvironment()
 {
-	L=_initLuaEnvironment(this);
-	_loadScript(L, this, "config.lua");
+	L=::_initLuaEnvironment(this);
+}
+void ScriptWin::_checkErrorFunc()
+{
 #ifdef USE_LUNA_PCALL
 	lunaStack l(this->L);
 	checkErrorFunc(l);
 #endif
 }
-void ScriptWin::loadScript(const char* script, const char* scriptstring)
+void ScriptWin::initLuaEnvironment()
 {
-	initLuaEnvironment();
-
+	_initLuaEnvironment();
+	::_loadScript(L, this, "config.lua");
+	_checkErrorFunc();
+}
+void ScriptWin::_loadScript(const char* script, const char* scriptstring)
+{
 	char luastring[2000];
 	sprintf(luastring, "g_luaScript='%s'", script);
 	luaL_dostring(L, luastring);
@@ -399,6 +429,11 @@ void ScriptWin::loadScript(const char* script, const char* scriptstring)
 		else
 			luna_call(l,0,0);
 	}
+}
+void ScriptWin::loadScript(const char* script, const char* scriptstring)
+{
+	initLuaEnvironment();
+	_loadScript(script, scriptstring);
 }
 
 
@@ -443,7 +478,7 @@ int ScriptWin::work(TString const& workname, lunaStack& L)
 	{
 		TString str;
 		L>>str;
-		printf("%s:work\n", str.ptr());
+		Msg::print("%s:work\n", str.ptr());
 		if(str.length())
 		{
 			setLabel(findButton("scriptfn"), str);
@@ -461,7 +496,7 @@ int ScriptWin::work(TString const& workname, lunaStack& L)
 	{
 		TString str;
 		L>>str;
-		printf("%s\n",str.ptr());
+		Msg::print("%s\n",str.ptr());
 		if(str.length())
 		{
 			setLabel(findButton("scriptfn"), str);
@@ -473,23 +508,67 @@ int ScriptWin::work(TString const& workname, lunaStack& L)
 	{
 		TString str;
 		L>>str;
-		printf("%s\n", str.ptr());
+		Msg::print("%s\n", str.ptr());
+		dostring(str.ptr());
+	}
+	else 
+		return FlLayout::work(workname, L);
+	return 0;
+}
+void ScriptWin::dostring(const char* str)
+{
 #ifdef USE_LUNA_PCALL
 		lunaStack l(this->L);
 		checkErrorFunc(l);
 		int func=luaL_loadstring(this->L, str);
-		if(func || lua_pcall(this->L, 0, LUA_MULTRET, errorFunc))
+		if(func )
+		{
+			TString errorMsg;
+			errorMsg.format("Lua Error - Script Load\nScript :%s\nError Message:%s\n", str, luaL_checkstring(L, -1));
+			Msg::error("%s\n", errorMsg.ptr());
+			return;
+		}
+		if( lua_pcall(this->L, 0, LUA_MULTRET, errorFunc))
+		{
+			Msg::error("dostring failed (see tlLog.txt for details): %s\n %s\n", str, lua_tostring(L, -1));
+			lua_pop(L,1);
+		}
 #else
 		if (luaL_dostring(this->L, str)==1)
-#endif
 
 		{
-			printf("dostring:\n");
+			Msg::print("dostring:\n");
 			handleLUAerror(this->L);
 		}
-	}
-	else 
-		return FlLayout::work(workname, L);
+#endif
+}
+void ScriptWin::dofile(const char* str)
+{
+#ifdef USE_LUNA_PCALL
+		lunaStack l(this->L);
+		checkErrorFunc(l);
+		int func=luaL_loadfile(this->L, str);
+		if(func )
+		{
+			TString errorMsg;
+			errorMsg.format("Lua Error - Script Load\nScript Name:%s\nError Message:%s\n", str, luaL_checkstring(L, -1));
+			Msg::error("%s\n", errorMsg.ptr());
+			return;
+		}
+		if( lua_pcall(this->L, 0, LUA_MULTRET, errorFunc))
+		{
+			TString errorMsg;
+			errorMsg.format("Lua Error - Script run\nScript Name:%s\nError Message:%s\n", str, luaL_checkstring(L, -1));
+			Msg::error("%s\n", errorMsg.ptr());
+		}
+#else
+		if (luaL_dostring(this->L, str)==1)
+
+		{
+			Msg::print("dostring:\n");
+			handleLUAerror(this->L);
+		}
+#endif
 }
 
 
@@ -522,7 +601,7 @@ int ScriptWin::handleRendererMouseEvent(int ev, int x, int y, int button)
 	}
 
 	lunaStack l(L);
-	l.getglobal("handleRendererEvent");
+	getglobal(l,"handleRendererEvent");
 	if(lua_isnil(l.L, -1))
 	{
 		return 0;
@@ -570,7 +649,7 @@ int	ScriptWin::handleRendererEvent(int ev)
 			int key;
 			lunaStack l(L);
 			key=Fl::event_key();
-			l.getglobal("handleRendererEvent");
+			getglobal(l,"handleRendererEvent");
 			if(lua_isnil(l.L, -1))
 			{
 				return 0;

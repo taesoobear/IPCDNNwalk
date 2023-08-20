@@ -55,6 +55,132 @@ bindTargetBaseLib={
 			]]}
 		},
 		{
+			decl='class SkinnedMeshFromVertexInfo;',
+			name='SkinnedMeshFromVertexInfo',
+			ctors={
+				"()", "(const char*)", "(SkinnedMeshFromVertexInfo const& other)",
+			},
+			memberFunctions=[[
+			void exportSkinInfo(const char* filename) const;
+			vector3 calcSurfacePointPosition( MotionLoader const& loader, intvectorn const& treeIndices, vectorn const& weights, vector3N const& localpos)
+			vector3 calcVertexPosition( MotionLoader const& loader, int vertexIndex);
+			void _calcVertexPosition( MotionLoader const& loader, int vertexIndex, vector3& out);
+			void calcVertexPositions(MotionLoader const& loader, OBJloader::Mesh& mesh) const;
+			void calcVertexNormals(MotionLoader const& loader,quaterN const& bindpose_global, vector3N const& localNormal, OBJloader::Mesh& mesh) const
+			void calcLocalVertexPositions(MotionLoader const& loader, OBJloader::Mesh const& mesh);
+			void resize(int numVertex) 
+			intvectorn& treeIndices(int vertexIndex)
+			vector3N& localPos(int vertexIndex)
+			vectorn& weights(int vertexIndex)
+			void getVertexInfo(int v1, int v2, int v3, vector3 const& baryCoeffs, intvectorn& treeIndices, vector3N& localpos, vectorn &weights);
+			int numVertex() const 
+			]] ,
+		},
+		{
+			luaname='util.FBXimporter',
+			cppname='FBXimporter',
+			decl=[[#include "../../BaseLib/utility/FBX/FBXimporter.h"]],
+			ctors=[[(const char*)]],
+			memberFunctions={[[
+			int getMeshCount();
+			std::string getMesh(int imesh, OBJloader::Mesh & mesh);
+			std::string getMeshName(int imesh);
+			void getSkinnedMesh(int imesh, SkinnedMeshFromVertexInfo & skinned_mesh);
+			matrix4 getMeshCurrPose(int imesh);
+			bool hasBindPose(int ilimb);
+			matrix4 getBindPose(int ilimb);
+			intvectornView parentIndices();
+			void getRestPose(matrixn& pose);
+			void getRestPose(vector3N& jointpos, quaterN& jointori);
+			void getDefaultPose(vector3N& jointpos, quaterN& jointori);
+			void getRestPoseScale(vectorn& scale); // only for checking purposes
+			void getBoneNames(TStrings& out);
+			void getLocalPose(matrixn& localpose);
+			void getAnim(int ilimb, vectorn& keytime, matrixn& traj);
+			void saveTextures(); // slow
+			int getMaterialCount(int imesh);
+			vector3 getDiffuseColor(int imesh, int imat);
+			vector3 getSpecularColor(int imesh, int imat);
+			std::string getDiffuseTexture(int imesh, int imat);
+			std::string getAllTextureNames(); // works after saveTextures
+			]]}
+		},
+		{
+			luaname='util.NPYarray',
+			cppname='NPYarray',
+			decl=[[
+			#include "../../BaseLib/utility/cnpy/cnpy.h"]],
+			ctors=[[
+			(const char* filename)
+			(const char* zipfile, const char* filename)
+			]],
+			memberFunctions=[[
+			int numBytes() const 
+			const intvectorn & shape() 
+			int wordSize() 
+			int numElts() 
+			floatvecView floatvec() 
+			vectornView doublevec() 
+			]],
+			staticMemberFunctions=[[
+			static void NPYarray::npz_save(std::string zipname, std::string fname, hypermatrixn const& mat);
+			static void NPYarray::npz_save(std::string zipname, std::string fname, matrixn const& mat);
+			static void NPYarray::npz_save(std::string zipname, std::string fname, vectorn const& mat);
+			]]
+		},
+		{
+			luaname='util.NPZfile',
+			cppname='NPZfile',
+			decl=[[
+			#include "../../BaseLib/utility/cnpy/cnpy.h"]],
+			ctors=[[
+			(const char* filename)
+			]],
+			memberFunctions=[[
+			NPYarray& operator[](int i)
+			NPYarray& find(const char* i)
+			]],
+			properties=[[
+			TStrings filenames
+			]],
+		},
+		{
+			luaname='util.MeshMerger',
+			cppname='MeshMerger',
+			ctors='(int nInputMesh)',
+			memberFunctions=[[
+			void setInputMesh(int i, const OBJloader::Mesh & inputmesh)
+			void mergeMeshes(OBJloader::Mesh& outputmesh);
+			int get_imesh(int mergedvertex) 
+			int get_ivert(int mergedvertex)
+			int get_mergedvertex(int imesh, int ivertex) 
+			]]
+		},
+		{
+			decl=[[
+			#include <random>
+			class math_normal_dist
+			{
+				public:
+				std::default_random_engine _generator;
+				std::normal_distribution<double> _dist;
+				math_normal_dist(int seed, double mean, double stddev)
+				:_generator((unsigned)seed), _dist(mean, stddev){}
+
+
+				double generate() { return _dist(_generator);}
+			};
+			]],
+			luaName='math.normal_distribution',
+			cppName='math_normal_dist',
+			ctors=[[
+			(int seed, double mean, double stddev)
+			]],
+			memberFunctions=[[
+				double generate() @ __call
+			]]
+		},
+		{
 			name='math.interval',
 			className='interval',
 			ctors={'()',
@@ -96,6 +222,22 @@ bindTargetBaseLib={
 				void adjustSafe(int time, m_real deltarot);
 				void adjust(int time, int time2, intvectorn& times);	
 			]]
+		},
+		{
+			name='math.c0stitch',
+			className='m::c0stitch',
+			inheritsFrom='m::stitchOp',
+			ctors={ [[
+			()
+			]]},
+		},
+		{
+			name='math.c0concat',
+			className='m::c0concat',
+			inheritsFrom='m::stitchOp',
+			ctors={ [[
+			()
+			]]},
 		},
 		{
 			name='math.linstitch',
@@ -181,8 +323,84 @@ bindTargetBaseLib={
 			void reset()
 			void start()
 			void pause()
-			long stop()
+			long stop() // milliseconds
 			]]}
+		},
+		{
+			name='util.Timer',
+			className='QPerformanceTimer2',
+			ctors={'()'},
+			memberFunctions={[[
+			void start()
+			long stop2() // microseconds
+			]]}
+		},
+		{
+			name='vecIntvectorn',
+			className='TGL::Graph::vecIntvectorn',
+			ctors={'()'},
+			memberFunctions=[[
+			int size() const 
+			void resize(int n) const 
+			intvectorn& operator[](int i) @ __call
+			]]
+
+		},
+		
+		{ 
+			name='util.Edge',
+			className='TGL::Graph::Edge',
+			decl=[[#include "../../BaseLib/utility/Graph.h"]],
+			memberFunctions=[[
+			int target() const 
+			float cost() const
+			]]
+		},
+		{
+			name='util.Edges',
+			className='TGL::Graph::Edges',
+			memberFunctions=[[
+			int size() const 
+			TGL::Graph::Edge& operator[](int i)  @ __call
+			]]
+		},
+		{
+			name='util.Graph',
+			className='TGL::Graph',
+			ctors={'(int)'},
+			memberFunctions=[[
+			void clear() 			
+			void clearEdges() 			
+
+			void reserveNodeArray(int numNodes) 
+			void reserveEdgeArray(int numEdges) 
+
+			void newNode() 			
+			void resize(int num)
+			void addEdge(int v, int w) 
+			void addEdge(int v, int w, float cost) 
+			int  numNodes() const   
+			int  numEdges() const   
+
+			int outdeg(int v) const 
+
+			bool hasEdge(int v, int w) const 
+			const TGL::Graph::Edges&  outEdges(int v) const	
+
+			void DRAW(const char* filename)
+			void DRAW(TStrings const& node_names, const char* filename)
+			void SCC(TGL::Graph::vecIntvectorn& components);
+			void BELLMAN_FORD(int startNode, vectorn& node_dist);
+			void BELLMAN_FORD(int startNode, vectorn const& edge_cost, vectorn& node_dist);
+			void Dijkstra(int startNode, vectorn& node_dist);
+			void Dijkstra(int startNode, vectorn& node_dist, intvectorn& pred);
+			void minimum_spanning_tree(intvectorn& sources, intvectorn& targets) const;
+
+			int source(int iEdge) const 
+			int target(int iEdge) const 
+			float cost(int iEdge) const 
+
+			]],
 		},
 		{
 			name='util.FractionTimer',
@@ -230,7 +448,9 @@ bindTargetBaseLib={
 				 void load(int size, const char* filename);	// text file에서 읽기.ex) a.txt = 1 3 6 12
 			 	 int findNearest(float i) const;
 			 	 int find(int i) const;
+			 	 int find(int i, bool bValue) const;
 			 	 int findPrev(int i) const;
+			 	 int findPrev(int i, bool bValue) const;
 				 void _or(const boolN& a, const boolN& b);
 				 void _and(const boolN& a, const boolN& b);
 			 ]]}
@@ -373,6 +593,8 @@ bindTargetBaseLib={
 			void Imp::rotateRight(CImage& other);
 			void Imp::rotateLeft(CImage& other);
 			void setData(CImage& a,int width,int height,intvectorn dataVec,int stride)
+			vector3 hsv2rgb(vector3 const& in);
+			vector3 rgb2hsv(vector3 const& in);
 			]]}
 		},
 		{
@@ -508,6 +730,7 @@ bindTargetBaseLib={
 					void pack(const TStrings& aSz);
 					void pack(const boolN& vec);
 					void pack(const matrix4& mat);
+					void pack(const hypermatrixn& mat);
 					int	unpackInt()	
 					double unpackFloat()	
 					TString unpackStr();
@@ -522,6 +745,7 @@ bindTargetBaseLib={
 					void unpack(quaterN& mat);
 					void unpack(vector3N& mat);
 					void unpack(matrix4& mat);
+					void unpack(hypermatrixn& mat);
 					int _unpackInt()	
 					double _unpackFloat()
 					TString _unpackStr();
@@ -555,6 +779,19 @@ bindTargetBaseLib={
 			inheritsFrom='BinaryFile',
 			ctors={'()'},
 			decl=[[class MemoryFile;]],
+		},
+		{
+			name='util.ZipFile',
+			className='ZipFile',
+			ctors={'()'},
+			decl=[[class ZipFile;]],
+			memberFunctions=[[
+			void openRead(const char* filename);
+			int getNumFiles() const;
+			std::string getFileName(int file_index) const;
+			unsigned int getFileSize(int file_index) const
+			std::string getFileContent(int file_index) const
+			]]
 		},
 		{
 			name='transf',
@@ -845,6 +1082,11 @@ bindTargetBaseLib={
 					a.setSize(b.size());
 					for(int i=0; i<a.size(); i++) a[i]=(double)b[i];
 				}
+				inline static void assign(vectorn & a, floatvec const& b)
+				{
+					a.setSize(b.size());
+					for(int i=0; i<a.size(); i++) a[i]=(double)b[i];
+				}
 				inline static void radd(vectorn & a, m_real b)	{a+=b;}
 				inline static void rsub(vectorn & a, m_real b)	{a-=b;}
 				inline static void rdiv(vectorn & a, m_real b) {a/=b;}
@@ -917,6 +1159,7 @@ bindTargetBaseLib={
 				{'void set(vectorn & a, int i, m_real d);'},
 				[[void radd(vectorn & a, m_real b);
 				void assign(vectorn & a, intvectorn const& d);
+				void assign(vectorn & a, floatvec const& b)
 				void rsub(vectorn & a, m_real b);
 				void rdiv(vectorn & a, m_real b);
 				void rmult(vectorn & a, m_real b);
@@ -935,9 +1178,11 @@ bindTargetBaseLib={
 				  void v::interpolate(vectorn & out, m_real t, vectorn const& a, vectorn const& b) @ interpolate
 				  void  v::hermite(vectorn& out, double a, double b, int duration, double c, double d) @ hermite
 				  void  v::hermite(vectorn& out, double t, double T, const vectorn& a, const vectorn va, const vectorn& b,  const vectorn& vb) @ hermite
+				  void v::quintic(vectorn& out, double x0, double v0, double a0, double x1, double v1, double a1, double T) @ quintic
 				vectorn operator+( vectorn const& a, vectorn const& b);
 				vectorn operator-( vectorn const& a, vectorn const& b);
 				vectorn operator*( vectorn const& a, vectorn const& b );
+				vectorn operator/( vectorn const& a, vectorn const& b );
 				vectorn operator+( vectorn const& a, m_real b);
 				vectorn operator-( vectorn const& a, m_real b);
 				vectorn operator*( vectorn const& a, m_real b);
@@ -967,8 +1212,11 @@ bindTargetBaseLib={
 				vector3 toVector3(int startIndex)	const	
 				quater toQuater() const	
 				quater toQuater(int startIndex) const	
+				transf toTransf() const	
+				transf toTransf(int startIndex) const	
 				void setVec3( int start, const vector3& src)
 				void setQuater( int start, const quater& src)
+				void setTransf( int start, const transf& src)
 				inline void pushBack(double x)
 				int size()
 				void setSize(int)
@@ -1008,6 +1256,89 @@ bindTargetBaseLib={
 		},
 		{
 			name='vectornView', inheritsFrom='vectorn',
+		},
+		{
+			name='floatvec', --necessary
+			ctors=  -- constructors 
+			{
+				'()',
+				'(int size)',
+			},
+			wrapperCode=
+			[[
+				inline static float get(floatvec const& a, int i)
+				{
+					return a[i];
+				}
+				inline static void set(floatvec & a, int i, float d)
+				{
+					a[i]=d;
+				}
+				inline static void assign(floatvec & a, intvectorn const& b)
+				{
+					a.setSize(b.size());
+					for(int i=0; i<a.size(); i++) a[i]=(float)b[i];
+				}
+				inline static void setAllValue(floatvec & a, float b) {a.setAllValue(b);}
+				static int setValues(lua_State* L)
+				{
+					floatvec& self=*luna_t::check(L,1);
+					int n=lua_gettop(L)-1;
+					self.setSize(n);
+					for (int i=0;i<n; i++)
+						self(i)=lua_tonumber(L,i+2);
+					return 0;
+				}
+				static int values(lua_State* L)
+				{
+					floatvec& self=*luna_t::check(L,1);
+					int n=self.size();
+					lua_createtable(L, n, 0);
+					for(int i=0; i<n; i++)
+					{
+						lua_pushnumber(L, self(i));
+						lua_rawseti(L, -2, i+1);
+					}
+
+					return 1;
+				}
+			]],
+			staticMemberFunctions=
+			{
+				{'float get(floatvec const& a, int i);'},
+				{'void set(floatvec & a, int i, float d);'},
+				[[
+				void assign(floatvec & a, intvectorn const& d);
+				]]
+			},
+			memberFunctions=
+				[[
+				float at(int i) @ __call
+				void assign(const vector3& other);
+				void assign(const quater& other);
+				void assign(const floatvec &other);
+				void assign(const vectorn &other);
+				void setAllValue(float b) ;
+				TString output() @ __tostring
+				vector3 toVector3()	const	
+				vector3 toVector3(int startIndex)	const	
+				quater toQuater() const	
+				quater toQuater(int startIndex) const	
+				void setVec3( int start, const vector3& src)
+				void setQuater( int start, const quater& src)
+				inline void pushBack(float x)
+				int size()
+				void setSize(int)
+				void resize(int)
+				void setValue(int i, float d) @ set	
+				floatvecView range(int start, int end, int step)
+				floatvecView range(int start, int end)
+				]],
+			customFunctionsToRegister ={'setValues', 'values'},
+
+		},
+		{
+			name='floatvecView', inheritsFrom='floatvec',
 		},
 		{
 			name='matrix3',
@@ -1127,6 +1458,9 @@ bindTargetBaseLib={
 				void leftMultTranslation(const vector3& vec);
 				void leftMultScaling(m_real sx, m_real sy, m_real sz);
 				void inverse(const matrix4& a);
+				void transpose() 
+				matrix4 T() const 
+				matrix4 inverse() const 
 				matrix4 operator*(matrix4 const& a) const
 				vector3 operator*(vector3 const& a) const;
 				vector3 rotate(vector3 const& a) const;
@@ -1134,6 +1468,7 @@ bindTargetBaseLib={
 				matrix4 operator-(matrix4 const& a) const
 				matrix4 operator=(matrix4 const& b) const
 				void operator*=(double b) 
+				void rightMult(matrix4 const& b) 
 				vector3 getColumn(int i) 
 				void setColumn(int i, vector3 const& v) 
 				]]
@@ -1243,8 +1578,8 @@ bindTargetBaseLib={
 			,staticMemberFunctions=
 			{
 				[[
-						matrixn operator-( matrixn const& a, matrixn const& b);
-						matrixn operator+( matrixn const& a, matrixn const& b);
+				matrixn operator-( matrixn const& a, matrixn const& b);
+				matrixn operator+( matrixn const& a, matrixn const& b);
 				static matrixn __mul(matrixn const& a, m_real b)
 				static matrixn __mul(m_real b, matrixn const& a)
 				static matrixn __mul(matrixn const& a, matrixn const& b)
@@ -1327,8 +1662,11 @@ bindTargetBaseLib={
 				int cols() const	
 				void setSize( int, int, int);  //!< 원래 데이타 유지 보장 전혀 없음.
 				void setSameSize(hypermatrixn const& other)	
-				matrixnView& page(int index) const		
+				void resize( int , int, int); // nrows, ncolumns만 안바뀌면 data 유지. 바뀐영역 0으로 초기화는 하지 않음.
+				void pushBack(const matrixn& mat);
+				matrixnView page(int index) const		
 				void operator=(hypermatrixn const& other)
+				int _getStride1() const 
 			]]
 		},
 		{
@@ -1470,7 +1808,6 @@ bindTargetBaseLib={
 			{
 				-- you can enter multiline texts that looks like a cleaned header file
 				[[
-				void ln( const quater& q);
 				void add(const vector3&, const vector3&);
 				void sub(const vector3&, const vector3&);
 				void zero();
@@ -1482,6 +1819,7 @@ bindTargetBaseLib={
 				m_real distance(const vector3& other) const;
 				void normalize();
 				vector3 dir() const; @ unitVector
+				vector3 dir() const; @ normalized
 				void multadd(const vector3&, m_real);	
 				m_real length() const;
 				void ln( const quater& q);
@@ -1614,6 +1952,8 @@ bindTargetBaseLib={
 					},
 					memberFunctions=
 					[[
+					vector3 getFrameAxis(int icolumn) const;
+					void setFrameAxesYZ(vector3 const& y, vector3 const& z);
 						void slerp( quater const&, quater const&, m_real );
 						void safeSlerp( quater const& a, quater const& b, m_real weight);// no alignment necessary.
 						void interpolate( m_real, quater const&, quater const& );
@@ -1656,6 +1996,108 @@ bindTargetBaseLib={
 					]]
 					,
 				},
+		{
+			ifdef='INCLUDE_VOXELGRAPH',
+			decl='#include "../../BaseLib/utility/VoxelGraph.h"',
+			luaname='shortvector3', --necessary
+			cppname='VoxelGraph::shortvector3',
+			ctors=  -- constructors 
+			{
+				'()',
+				'(int x, int y, int z)',
+			},
+			read_properties=
+			{
+				-- property name, lua function name
+				{'x', 'getX'},
+				{'y', 'getY'},
+				{'z', 'getZ'},
+			},
+			write_properties=
+			{
+				{'x', 'setX'},
+				{'y', 'setY'},
+				{'z', 'setZ'},
+			},
+			wrapperCode=
+			[[
+			inline static double getX(VoxelGraph::shortvector3 const& a) { return a.x();}
+			inline static double getY(VoxelGraph::shortvector3 const& a) { return a.y();}
+			inline static double getZ(VoxelGraph::shortvector3 const& a) { return a.z();}
+			inline static void setX(VoxelGraph::shortvector3 & a, int b) { a.x()=b;}
+			inline static void setY(VoxelGraph::shortvector3 & a, int b) { a.y()=b;}
+			inline static void setZ(VoxelGraph::shortvector3 & a, int b) { a.z()=b;}
+			]],
+			staticMemberFunctions=
+			[[
+			int getX(VoxelGraph::shortvector3 const& a);
+			int getY(VoxelGraph::shortvector3 const& a);
+			int getZ(VoxelGraph::shortvector3 const& a);
+			void setX(VoxelGraph::shortvector3 & a, int b);
+			void setY(VoxelGraph::shortvector3 & a, int b);
+			void setZ(VoxelGraph::shortvector3 & a, int b);
+			]],
+		},
+		{
+			ifdef='INCLUDE_VOXELGRAPH',
+			decl='class Image3D;',
+			luaname='Image3D', --necessary
+			cppname='VoxelGraph::Image3D',
+			ctors=  -- constructors 
+			{
+				'(int x, int y, int z, unsigned char t)',
+			},
+			memberFunctions=
+			[[
+			void setPixel(int x, int y, int z, unsigned char value) 
+			unsigned char getPixel(int x, int y, int z) const 
+			]],
+		},
+		{
+			ifdef='INCLUDE_VOXELGRAPH',
+			name='VoxelGraph::CoordinateToNodeIndex',
+			wrapperCode=[[
+			inline static int get(VoxelGraph::CoordinateToNodeIndex* self, VoxelGraph::shortvector3 const& v)
+			{
+				return self->getPixel(v.x(), v.y(), v.z());
+			}
+			inline static int get(VoxelGraph::CoordinateToNodeIndex* self, vector3 const& v)
+			{
+				return self->getPixel(v.x, v.y, v.z);
+			}
+			]],
+			staticMemberFunctions=[[
+			int get(VoxelGraph::CoordinateToNodeIndex* self, VoxelGraph::shortvector3 const& v) @ __call
+			int get(VoxelGraph::CoordinateToNodeIndex* self, vector3 const& v) @ __call
+			]],
+			memberFunctions=
+			[[
+			void setPixel(int x, int y, int z, int value) 
+			int getPixel(int x, int y, int z) const 
+			]],
+		},
+		{
+			ifdef='INCLUDE_VOXELGRAPH',
+			luaname='vec_shortvector3',
+			className='std::vector<VoxelGraph::shortvector3>',
+			ctors={'()'},
+			memberFunctions=[[
+			int size() const 
+			void resize(int n) const 
+			VoxelGraph::shortvector3& operator[](int i) @ __call
+			]]
+		},
+		{
+			ifdef='INCLUDE_VOXELGRAPH',
+			decl='class VoxelGraph;',
+			name='VoxelGraph',
+			ctors={'(int ndim_x, int ndim_y, int ndim_z, VoxelGraph::Image3D* filter)'},
+			properties={
+				'VoxelGraph::CoordinateToNodeIndex * nodeIndex',
+				'TGL::Graph* graph',
+				'std::vector<VoxelGraph::shortvector3> nodes',
+			}
+		},
 				{
 					name='MotionDOFinfo',
 					decl='class MotionDOFinfo;',
@@ -1870,7 +2312,9 @@ bindTargetBaseLib={
 					Liegroup::se3 &operator *= (double d) 
 					Liegroup::se3 &operator /= (double d) 
 					Liegroup::se3 operator + (const Liegroup::se3& t) const 	
+					Liegroup::se3 operator + (const vectorn& t) const 	
 					Liegroup::se3 operator - (const Liegroup::se3& t) const 	
+					Liegroup::se3 operator - (const vectorn& t) const 	
 					Liegroup::se3 operator * (double d) const 
 					double &operator [] (int i)  @ __call
 					void zero(void) 
@@ -2082,6 +2526,17 @@ bindTargetBaseLib={
 					]]}
 				},
 				{
+					namespace='np',
+					decl=[[#include "../../BaseLib/math/numpy_wrap.h"]],
+					functions={[[
+					double np::mean(const vectorn & in)
+					vectorn np::abs(const vectorn & in)
+					bool np::isnan(const vectorn & in)
+					vectorn np::clip(const vectorn& in, double minv, double maxv)
+					vectorn np::sqrt(const vectorn& in )
+					]]}
+				},
+				{
 					namespace='util',
 					decl=[[
 					#include <stdio.h>
@@ -2141,6 +2596,29 @@ bindTargetBaseLib={
 						vectorn kernel;
 						Filter::GetGaussFilter(kernelSize, kernel);
 						Filter::LTIFilterQuat(1,kernel, c); 
+					}
+
+					static vectorn filterQuatSingle(matrixn &c, int kernelSize, bool useMitchelFilter=false)
+					{
+						vectorn kernel;
+						if(useMitchelFilter)
+							Filter::GetMitchellFilter(kernelSize, kernel);
+						else
+							Filter::GetGaussFilter(kernelSize, kernel);
+						vectorn out;
+						Filter::FilterQuatSingle(1,kernel, c, out); 
+						return out;
+					}
+					static vectorn filterSingle(matrixn &c, int kernelSize, bool useMitchelFilter=false)
+					{
+						vectorn kernel;
+						if(useMitchelFilter)
+							Filter::GetMitchellFilter(kernelSize, kernel);
+						else
+							Filter::GetGaussFilter(kernelSize, kernel);
+						vectorn out;
+						Filter::FilterSingle(1,kernel, c, out); 
+						return out;
 					}
 
 					static void drawSignals(const char* filename, matrixn & in)
@@ -2206,9 +2684,17 @@ bindTargetBaseLib={
 						{'void Filter::medianFilter(int kernelsize, vectorn& inout);',rename='medianFilter'},
 						{'int Filter::CalcKernelSize(float time, float frameTime);',rename='calcKernelSize'},
 						[[
+						matrixn Filter::deconvolution(int niter, vectorn const& kernel, const matrixn& in)
+						void Filter::mitchellFilter(int kernelsize, matrixn& inout);
+						void Filter::mitchellFilter(int kernelsize, vectorn& inout);
+						void Filter::GetMitchellFilter(int kernelsize, vectorn &kernel);@ getMitchellFilter
 						void Filter::GetGaussFilter(int kernelSize, vectorn & kernel); @ getGaussFilter
 						static void filter(matrixn &c, int kernelSize)
 						static void filterQuat(matrixn &c, int kernelSize)
+						static vectorn filterSingle(matrixn &c, int kernelSize)
+						static vectorn filterSingle(matrixn &c, int kernelSize, bool useMitchellFilter)
+						static vectorn filterQuatSingle(matrixn &c, int kernelSize)
+						static vectorn filterQuatSingle(matrixn &c, int kernelSize, bool useMitchellFilter)
 						static void changeChartPrecision(int precision)
 						static void drawSignals(const char* filename, matrixn & in)
 						static void drawSignals(const char* filename, matrixn & in, double fmin, double fmax)
@@ -2509,7 +2995,10 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 			name='Mesh',
 			className='OBJloader::Mesh',
 			ctors={'()'},
-			properties={'boolN isBoundaryVertex'},
+			properties={
+				'boolN isBoundaryVertex',
+				'intIntervals faceGroups',
+			},
 			enums={
 				{"VERTEX", "(int)OBJloader::Buffer::VERTEX"},
 				{"NORMAL", "(int)OBJloader::Buffer::NORMAL"},
@@ -2518,11 +3007,17 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 				{"NUM_BUFFER", "(int)OBJloader::Buffer::NUM_BUFFER"},
 			},
 			memberFunctions={[[
+				void init(const vector3N& vertices, const intvectorn& triangles);
+				void init(const vector3N& vertices, const vector3N& normals, const intvectorn& triangles);
+				intvectorn _mergeDuplicateVertices(double distThr)
+				intvectorn _mergeDuplicateVertices()
 				int numFace() const 
 				OBJloader::Face & getFace(int i)
 				int numVertex() const;
 				int numNormal() const;
 				int numTexCoord() const;
+				int numColor() const;
+				vector4& getColor(int i);
 				vector3& getVertex(int i);
 				vector3& getNormal(int i);
 				vector2& getTexCoord(int i);
@@ -2571,6 +3066,8 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 			(vectorn const& image1d, m_real sizeX, m_real sizeZ, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileZ)
 			]],
 			memberFunctions=[[
+			const matrixn & getHeightMap() const 
+			vector3 getSize() const 
 			m_real height(vector2 x, vector3& normal) const;
 			m_real height(vector2 x) const;
 			vector3 pick(Ray const& ray, vector3& normal) const;
@@ -2591,6 +3088,32 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 			bool isNull() const;
 			bool operator==(const OBJloader::FaceEdge& other); @ __eq
 			]],
+		},
+		{
+			name='ChatClient',
+			--ifndef='_MSC_VER',
+			headerFile='../../BaseLib/utility/Chat.h',
+			decl='class ChatClient;',
+			ctors={'(bool useStdIn)'},
+			memberFunctions=[[
+			bool isConnected() 
+			std::string getErrorMessage() 
+			std::string getMessage(int tv_sec, int tv_usec);
+			std::string getMessage();
+			void sendMessage(const char* msg);
+			]]
+		},
+		{
+			name='ChatServer',
+			--ifndef='_MSC_VER',
+			decl='class ChatServer;',
+			ctors={'()'},
+			memberFunctions=[[
+			bool isWaiting() 
+			std::string getErrorMessage() 
+			bool singleStep(int tv_sec, int tv_usec);
+			bool singleStep();
+			]]
 		},
 		{
 			name='EdgeConnectivity',
@@ -2651,6 +3174,7 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 			memberFunctions=[[
 			int numElements() 
 			OBJloader::Element const& element(int i)
+			void mergeAllElements();
 			void scale(vector3 const& scalef);
 			void scale(vector3 const& scalef, int ifacegroup);
 			void scaleElements(vector3 const& scalef);
@@ -2667,7 +3191,11 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 			void merge(OBJloader::Geometry const& a, OBJloader::Geometry const& b); 
 			void convertToOBJ()
 			void copyFrom(OBJloader::Geometry const& otherMesh); @ assign
+			void _updateMeshFromElements()
+			double totalVolume() const;
+
 			void assignMesh(OBJloader::Mesh const& otherMesh); 
+			void assignTerrain(OBJloader::Terrain const& otherMesh, vector3 const& trans); 
 			]],
 		},
 		{
@@ -2877,13 +3405,13 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 			static void buttonSetLabel(FlLayout::Widget& w, const char* s)
 			{
 #ifndef NO_GUI				
-				w.button()->copy_label(s);
+				w.widgetRaw()->copy_label(s);
 #endif
 			}
 			static const char* buttonLabel(FlLayout::Widget& w)
 			{
 #ifndef NO_GUI				
-				return w.button()->label();
+				return w.widgetRaw()->label();
 #else
 				return "button";
 #endif
@@ -3025,7 +3553,9 @@ static void inputType(FlLayout::Widget& w, const char* str)
 			static void buttonShortcut(FlLayout::Widget& w, const char* s)
 			static void buttonTooltip(FlLayout::Widget& w, const char* s)
 			static void buttonSetLabel(FlLayout::Widget& w, const char* s)
+			static void buttonSetLabel(FlLayout::Widget& w, const char* s) @ copyLabel
 			static const char* buttonLabel(FlLayout::Widget& w)
+			static const char* buttonLabel(FlLayout::Widget& w) @ label
 			static void redraw(FlLayout::Widget& w)
 			static void setVisible(FlLayout::Widget& w)
 			static int userData(FlLayout::Widget& w)
@@ -3046,7 +3576,11 @@ static void inputType(FlLayout::Widget& w, const char* str)
 			static void inputValue1(FlLayout::Widget& w, const char* text) @ inputValue
 			static std::string inputValue2(FlLayout::Widget& w) @ inputValue
 			static void inputType(FlLayout::Widget& w, const char* str)
-			]]}
+			]]},
+			memberFunctions=[[
+			float progressValue()
+			void progressValue(float)
+			]]
 
 		},
 		{
@@ -3737,6 +4271,12 @@ static void setPosition(Ogre::SceneNode* pNode, m_real x, m_real y, m_real z)
 				return 18;
 #endif
 			}
+			static void setShadowTechnique(Ogre::SceneManager* pmgr, int i)
+			{
+#if !defined (NO_GUI)                                         
+				pmgr->setShadowTechnique((Ogre::ShadowTechnique )i);
+#endif
+			}
 			]],
 			memberFunctions=[[
             void setShadowTextureSize(int size);
@@ -3744,6 +4284,7 @@ static void setPosition(Ogre::SceneNode* pNode, m_real x, m_real y, m_real z)
 			]],
 			staticMemberFunctions={[[
 			static int getShadowTechnique(Ogre::SceneManager* pmgr)
+			static void setShadowTechnique(Ogre::SceneManager* pmgr, int i)
 			static void setFog(Ogre::SceneManager* pmgr, double r, double g, double b, double a, double min, double max)
 			static void setFogExponential(Ogre::SceneManager* pmgr, double r, double g, double b, double a, double min, double max)
 			static void setFogNone(Ogre::SceneManager* pmgr)
@@ -3886,7 +4427,11 @@ memberFunctions={[[
 		{
 			name='MotionDOF',
 			inheritsFrom='matrixn',
-			ctors={ "(const MotionDOFinfo&)", "(const MotionDOF&)"},
+			ctors=[[ 
+				(const MotionDOFinfo&)
+				(const MotionDOF&)
+				(const MotionDOFinfo&, const Motion&)
+				]],
 			properties={	"MotionDOFinfo mInfo @ dofInfo"},
 			staticMemberFunctions={
 				[[
@@ -3956,6 +4501,7 @@ staticMemberFunctions={[[
 ]]},
 memberFunctions={[[
 	void init();
+	int numBone() const;
 	void forwardKinematics();
 	void inverseKinematics();
 	void inverseKinematicsExact();
@@ -3963,6 +4509,8 @@ memberFunctions={[[
 	void operator=(BoneForwardKinematics const& other);
 	void setPose(const Posture& pose);
 	void setPoseDOF(const vectorn& poseDOF);
+	void setPoseDOFusingCompatibleDOFinfo(MotionDOFinfo const& dofInfo, const vectorn& poseDOF);
+	void setSphericalQ(const vectorn& q);
 	void setChain(const Posture& pose, const Bone& bone);
 	void getPoseFromGlobal(Posture& pose) const;
 	void getPoseDOFfromGlobal(vectorn& poseDOF) const;
@@ -4140,6 +4688,7 @@ memberFunctions={[[
 				// use _setPose and _setPoseDOF for new codes
 				void SetPose(const Posture & posture, const MotionLoader& skeleton) @ _setPose
 				void setPoseDOF(const vectorn& poseDOF, MotionDOFinfo const& info); @ _setPoseDOF
+				void setSamePose(BoneForwardKinematics  const& in)
 
 				bool GetVisible() const; @ getVisible
 				void SetVisible(bool bVisible); @ setVisible
@@ -4147,8 +4696,11 @@ memberFunctions={[[
 				void applyAnim(const MotionDOF& motion); @ applyMotionDOF
 				void setThickness(float thick){}
 				void scale(double x, double y, double z);
+				void setScale(double s)
 				void setScale(double x, double y, double z);
-				  void SetTranslation(double x, double y, double z); @ setTranslation
+				void setScale(vector3 const& x)
+				  void setTranslation(double x, double y, double z); 
+				  void setTranslation(vector3 const& x);
 				  vector3 const&  getTranslation() const; 
 				  void setMaterial(const char* mat)
 				void setDrawOrientation(int ijoint)
@@ -4160,6 +4712,7 @@ memberFunctions={[[
 			inheritsFrom='PLDPrimSkin',
 			memberFunctions={[[
 			void setPoseDOF(const vectorn& poseDOF);
+			void setSphericalQ(const vectorn& q);
 			void setPose(BoneForwardKinematics const& in) @ setSamePose
 			void setPose(IK_sdls::LoaderToTree const& in) @ setSamePose
 			void setMaterial(int, const char*); @ setBoneMaterial
@@ -4192,7 +4745,7 @@ memberFunctions={[[
 		{
 			name='Pose',
 			className='Posture',
-			ctors={'()', '(const Posture&)'},
+			ctors={'()', '(const Posture&)', '(const MotionLoader& )'},
 			properties={
 				'vector3N m_aTranslations; @ translations',
 				'quaterN m_aRotations; @ rotations',
@@ -4209,6 +4762,7 @@ memberFunctions={[[
 				int numTransJoint() const	
 				Posture* clone() const; @ ;adopt=true;
 				void Clone(const Posture* pPosture) @ assign
+				void assignConstraintOnly(const Posture& other)
 				void Blend(const Posture& a, const Posture& b, m_real t); @ blend	//!< a*(1-t)+b*(t)
 				void Blend(const Posture& b, m_real t) @ blend
 				void Align(const Posture& other); @ align
@@ -4270,7 +4824,9 @@ memberFunctions={[[
 				vector3 origin() const		
 				vector3 direction() const	
 				vector3 getPoint(m_real t) const
+				void scale(double s) 
 				void translate(vector3 const& t)
+				int pickBarycentric(const OBJloader::Mesh& mesh, vector3 & baryCoeffs, vector3 & pickPos)
 				]],
 			wrapperCode=[[
 			inline static vectorn intersects(Ray & r, const Plane& pl) 
@@ -4301,6 +4857,20 @@ memberFunctions={[[
 			staticMemberFunctions=[[
 			static vectorn intersects(Ray & r, const Plane& p) 
 			static vectorn intersects(Ray & r, const Sphere& p) 
+			static vectorn intersects(Ray & r, const std::vector<Plane>& pl) 
+			]],
+		},
+		{
+			decl='class Box2D;',
+			name='Box2D',
+			ctors=[[
+			()
+			(vector2 const& m , vector2 const& M)
+			]] ,
+			properties={'vector2 min', 'vector2 max'},
+			memberFunctions=[[
+			double distance(vector2 const& p);
+			bool contains(vector2 const& pt, double margin)	const;
 			]],
 		},
 		{
@@ -4371,6 +4941,10 @@ memberFunctions={[[
 					Motion copy=motion;
 					MotionUtil::smooth(motion, copy, kernelRoot, kernelJoint);
 				}
+				static double transitionCost(const Motion& motion, int from, int to,int windowsize )
+				{
+					return MotionUtil::transitionCost(motion, from, to, windowsize);
+				}
 			]],
 			enums={
 				{ "IS_DISCONTINUOUS","(int)IS_DISCONTINUOUS" },
@@ -4420,6 +4994,8 @@ memberFunctions={[[
 			void CalcInterFrameDifference(int startFrame ); @ calcInterFrameDifference
 			void ReconstructDataByDifference(int startFrame ); @ reconstructFromInterFrameDifference
 			void exportMOT(const char* filename) const; @ exportMot
+			void exportBinary(const char* filename) const;
+			void importBinary(const char* filename) ;
 			void samplePose(Posture& pose, m_real criticalTime) const;
 			]]},
 			staticMemberFunctions={[[
@@ -4430,6 +5006,7 @@ memberFunctions={[[
 			static void calcInterFrameDifference(Motion& motion)
 			static void translate(Motion& motion, vector3 const& t)
 			static void smooth(Motion& motion, float kernelRoot, float kernelJoint)
+			static double transitionCost(const Motion& motion, int from, int to, int windowsize)
 			static void MotionUtil::mirrorMotion(Motion& out, const Motion& in, intvectorn const& LrootIndices, intvectorn const& RrootIndices) @ mirrorMotion
 			]]}
 		},
@@ -4521,6 +5098,24 @@ inheritsFrom='LUAwrapper::Worker',
 			staticMemberFunctions={[[
 				static void onCallback(MotionPanel* mp, const char* text)
 			]]}
+		},
+		{
+			ifndef='NO_OGRE',
+			decl=[[
+			#ifndef NO_OGRE
+			#include "../OgreFltk/TraceManager.h"
+			#endif
+			]],
+			name='OgreTraceManager',
+			memberFunctions=[[
+			void eraseAll();
+			void hideOutputs();
+			void showOutputs();
+			int createTextArea( double width, double height, double top, double left, int fontSize, const char* caption);
+			void setCaption(int iElement, const char* caption);
+			void setVisible(int iElement, bool visible);
+			]];
+
 		},
 		{ 
 			name='Viewpoint',
@@ -4664,6 +5259,7 @@ inheritsFrom='LUAwrapper::Worker',
 	void addAfterFrameMoveObject(FrameMoveObject* pFMO);
 	void removeAfterFrameMoveObject(FrameMoveObject* pFMO);
 	void createDynamicTexture(const char* name, CImage const& image);
+	void createDynamicTexture(const char* name, CImage const& image, vector3 const& diffuseColor, vector3 const& specular_color);	
 	void createRenderTexture(const char* type, int width, int height, bool useCurrentViewport, const char* name);
 	void updateRenderTexture(const char* param);
 	void setMaterialParam(const char* mat, const char* paramName, double param_value)
@@ -4719,6 +5315,7 @@ inheritsFrom='LUAwrapper::Worker',
 				int numRotJoint() const;	//!< KeyFrame되어 있는 조인트의 개수를 구한다.
 				int numTransJoint() const;
 				int numBone() const; //!< including the DUMMY bone (= bone 0).
+				int numEndBone() const 
 				void setCurPoseAsInitialPose();
 
 				/// to retrieve the initial pose (identity pose)
@@ -4740,8 +5337,10 @@ inheritsFrom='LUAwrapper::Worker',
 				void removeAllRedundantBones();
 				void setPose(const Posture& pose);
 				void getPose(Posture& pose) const;
+				void setSphericalQ(const vectorn& q) const
 				void setPoseDOF(const vectorn& poseDOF) const
 				void getPoseDOF(vectorn& poseDOF) const
+				vectorn getPoseDOF() const
 				Bone& bone(int index) const;
 				Bone& getBoneByTreeIndex(int index)	const;
 				Bone& getBoneByRotJointIndex(int iRotJoint)	const;
@@ -4763,6 +5362,7 @@ inheritsFrom='LUAwrapper::Worker',
 				void _updateTreeIndex();
 				void _initDOFinfo();
 				void printHierarchy();
+				void printHierarchy(); @print
 				]],
 			wrapperCode=[[
 
@@ -4878,6 +5478,7 @@ inheritsFrom='LUAwrapper::Worker',
 	ctors={
 	'(MotionDOFinfo const& dofInfo, std::vector<MotionUtil::Effector>& effectors, intvectorn const& hip_bone_indexes, intvectorn const& knee_bone_indexes, vectorn const& axis_sign)',
 	'(MotionDOFinfo const& dofInfo, std::vector<MotionUtil::Effector>& effectors, intvectorn const& knee_bone_indexes, vectorn const& axis_sign)',
+	'(MotionDOFinfo const& dofInfo, std::vector<MotionUtil::Effector>& effectors, intvectorn const& knee_bone_indexes, const vector3N & axes)',
 	'(MotionDOFinfo const& dofInfo, std::vector<MotionUtil::Effector>& effectors, Bone const& left_knee, Bone const& right_knee)',
 	   },
 memberFunctions={[[
@@ -4944,15 +5545,26 @@ memberFunctions={[[
 				memberFunctions={[[
 					void setParam(const char* type, double value)
 					void setParam(const char* type, double value, double value2)
+					void setParam(const char* type, vectorn const& ){}
 					void IKsolve(vectorn const& , vectorn& , vector3N const& )
 					void IKsolve(vectorn& , vector3N const& )
 					bool _updateBoneLength(MotionLoader const& loader);
 					bool _changeNumEffectors(int n) 
+					int _numConstraints() 
 					bool _changeNumConstraints(int n) 
 					bool _setEffector(int i, Bone* bone, vector3 const& lpos) 
 					bool _setRelativeConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2) 
+					bool _setRelativeConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, double weight) 
+					bool _setRelativeConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, vector3 const& delta, double weight) 
+					bool _setRelativeDistanceConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, double thr, double weight) 
+					bool _setRelativeDistanceConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, vector3 const& delta, double targetDist, double weight) 
 					bool _setPlaneDistanceConstraint(int i, Bone* bone, vector3 const& lpos, vector3 const& global_normal, float idepth) 
+					bool _setDistanceConstraint(int i, Bone* bone, vector3 const& lpos, vector3 const& gpos, float targetDist) 
+					bool _setRelativeHalfSpaceConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, vector3 const& global_normal, float idepth, double weight) 
 					bool _setHalfSpaceConstraint(int i, Bone* bone, vector3 const& lpos, vector3 const& global_normal, float idepth) 
+					bool _setSkinningConstraint(int i, intvectorn const& treeIndices, vector3N const& localpos, vectorn  const&weights, vector3 const& desired_pos) 
+					bool _setFastSkinningConstraint(int i, int numMarkers)
+					void _setFastSkinningConstraintParam(int imarker, intvectorn const& treeIndices, vector3N const& localpos, vectorn  const&weights, vector3 const& desired_pos)
 					bool _setCOMConstraint(int i, vector3 const& com)
 					bool _setCOMConstraint(int i, vector3 const& com, double wx, double wy, double wz)
 					bool _setPositionConstraint(int i, Bone* bone, vector3 const&lpos, vector3 const& desired_pos, double wx, double wy, double wz) 
@@ -4964,6 +5576,7 @@ memberFunctions={[[
 					bool _setPoseConstraint(int i, vectorn const& pose, double weight, int startBoneIndex);
 					bool _setPoseConstraint(int i, vectorn const& pose, double weight);
 					bool _setEffectorWeight(int i, double w) 
+					bool _setConstraintWeight(int i, double w) 
 					bool _setEffectorYConstraint(int i, double weight, const vectorn& ew)
 					bool _effectorUpdated()
 				]]},
@@ -4991,7 +5604,9 @@ memberFunctions={[[
 				]]},
 				memberFunctions={[[
 				void createNewShape()
+				void removeShape()
 				void translateMesh( vector3 const& trans);
+				void setJointRange(int i, double min_deg, double max_deg)
 				void setJointPosition(vector3 const& trans);
 				void setJointAxes(const char* axes)
 				void translateBone(vector3 const& trans);
@@ -5014,6 +5629,7 @@ memberFunctions={[[
 				double mass();
 				vector3 inertia() const;
 				void setInertia(double ix, double iy, double iz);
+				void setMass(double m);
 				void jointToBody(vector3& lposInOut) const;
 				void bodyToJoint(vector3& lposInOut) const;
 				]] },
@@ -5061,7 +5677,8 @@ memberFunctions={[[
 									"(const char*)",
 									"(VRMLloader const&)",
 									"(MotionLoader const&,double)",
-									"(OBJloader::Geometry const&, bool)",
+									"(OBJloader::Geometry const&, bool useFixedRoot)",
+									"(OBJloader::Terrain* terrin)",
 									"(CTextFile& vrmlFile)"
 								},
 								staticMemberFunctions={[[
@@ -5074,8 +5691,9 @@ memberFunctions={[[
 
 								]]},
 								memberFunctions={
-								--void setTotalMass( m_real totalMass); 
 								[[
+								TString getURL() const 
+								void setURL(const char* u) 
 								void setTotalMass( m_real totalMass); 
 								void changeAll3DOFjointsToSpherical()
 								void changeAllMultiDOFjointsToSpherical()
@@ -5094,7 +5712,8 @@ memberFunctions={[[
 									void exportBinary(const char* filename); 
 									int numHRPjoints()
 									void scale(float fScale,Motion& mot);
-
+									void addRelativeConstraint(int ibone1, vector3 const& lpos1, int ibone2, vector3 const& lpos2);
+									void _getAllRelativeConstraints(intvectorn& ibone, vector3N& localpos) const;
 									]]
 								},
 							},
@@ -5122,8 +5741,16 @@ memberFunctions={[[
 								ifndef='NO_GUI',
 								name='SkinnedMeshLoader',
 								inheritsFrom='MotionLoader',
-								ctors={"(const char*)","(const char*, bool)"},
+								ctors={
+									"(const char*)",
+									"(const char*, bool)",
+									"(const char*, bool,bool)",
+								},
 								memberFunctions={ [[
+								void getInfo(SkinnedMeshFromVertexInfo& vi) const;
+								double getDerivedScale(int treeIndex)
+								double getBindingPoseInverseScale(int treeIndex)
+								void getVertexInfo(int vertIdx, intvectorn& treeIndices,  vector3N& localpos, vectorn &weights)
 								void reorderVertices()
 								void loadMesh(const char* fn);
 								OBJloader::Mesh& getCurrMesh();
@@ -5215,6 +5842,7 @@ memberFunctions={[[
 			functions={[[
 			m_real sop::map(m_real t, m_real min, m_real max, m_real v1, m_real v2)
 			m_real sop::clampMap(m_real t, m_real min, m_real max, m_real v1, m_real v2)
+			m_real sop::sigmoid(m_real x)
 			]]}
 		},
 		{
@@ -5283,12 +5911,15 @@ memberFunctions={[[
 				void RE_dumpOutput(TStrings& output, int i); @ dumpOutput
 				void RE_outputEraseAll(int i); @outputEraseAll
 				void RE::outputState(bool bOutput);
+				bool RE::useSeperateOgreWindow();
 				int RE::numOutputManager();
 				MotionLoader* RE::motionLoader(const char* name);
 				MotionLoader* RE::createMotionLoader(const char* name, const char* key)
 				MotionLoader* MotionManager::createMotionLoader(const char* name)  @ createMotionLoaderExt
 				Ogre::SceneNode* RE::ogreRootSceneNode();
 				Ogre::SceneNode* RE::createChildSceneNode(Ogre::SceneNode* parent, const char* child_name);
+				OgreTraceManager* RE::createTraceManager();@;ifndef=NO_GUI;
+
 				FrameSensor* RE::createFrameSensor();
 				TString RE::generateUniqueName();
 				static void RE_::remove(PLDPrimSkin* p)
@@ -5296,6 +5927,7 @@ memberFunctions={[[
 				Ogre::SceneNode* RE::createEntity(const char* id, const char* filename, const char* materialName)
 				Ogre::SceneNode* RE::createEntity(Ogre::SceneNode*, const char* id, const char* filename)
 				void RE::removeEntity(Ogre::SceneNode*)
+				void RE::removeEntity(const char*)
 				void RE::setMaterialName(Ogre::SceneNode* pNode, const char* mat);
 				void RE::moveEntity(Ogre::SceneNode*, quater const&, vector3 const&)
 				Ogre::Entity* RE::createPlane(const char* id, m_real width, m_real height, int xsegment, int ysegment, int texSegx, int texSegy)
@@ -5350,6 +5982,7 @@ memberFunctions={[[
 					  class LMatView;
 					  class LVec;
 					  class LVecView;
+					  class QPerformanceTimer2;
 					  class QPerformanceTimerCount2;
 					  class FractionTimer;
 					  class BSpline;
@@ -5370,6 +6003,8 @@ memberFunctions={[[
 					  namespace m
 					  {
 						  struct stitchOp;
+						  struct c0concat;
+						  struct c0stitch;
 						  struct linstitch;
 						  struct linstitchMulti;
 						  struct c1stitchPreprocess ;

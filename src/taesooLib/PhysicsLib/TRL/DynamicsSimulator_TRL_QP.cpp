@@ -172,7 +172,7 @@ vector3 DynamicsSimulator_TRL_QP::getContactForce(int ichar, int ibone) const
 	return contactForce;
 }
 
-void DynamicsSimulator_TRL_QP::drawLastContactForces(vector3 const& draw_offset)
+void DynamicsSimulator_TRL_QP::drawLastContactForces(int ichara, vector3 const& draw_offset) const
 {
 	static ObjectList g_debugDraw;
 	int ichar=0;
@@ -370,8 +370,8 @@ void DynamicsSimulator_TRL_QP::registerCollisionCheckPair
 						linkPair.param=param;
 						//link2->name.c_str();
 
+						printf("%s:%s-%s:%s added\n", linkPair.charName1.c_str(), linkPair.linkName1.c_str(), linkPair.charName2.c_str(), linkPair.linkName2.c_str());
 						collisionDetector->addCollisionPair(linkPair, false, false);
-						printf("added\n");
 
 					}
 				}
@@ -489,9 +489,9 @@ void DynamicsSimulator_TRL_QP::stepKinematic2(int ichar, vectorn const& ddq)
 
 
 
-void DynamicsSimulator_TRL_QP::get_contact_pos(int ichar, vector3N & M, CollisionSequence& collisionSequence)
+void DynamicsSimulator_TRL_QP::get_contact_pos(int ichar, vector3N & M, CollisionSequence& collisionSequence ) const
 {
-	VRMLloader& skel=skeleton(ichar);
+	const VRMLloader& skel=skeleton(ichar);
 	int noc =0;
 
 	for(size_t i=0; i < collisionDetector->getCollisionPairs().size(); ++i)

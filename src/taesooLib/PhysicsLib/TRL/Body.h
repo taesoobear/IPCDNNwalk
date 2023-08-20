@@ -40,6 +40,8 @@ inline double dot(vector3 const& a, vector3 const& b) { return a%b;}
 #include "Link.h"
 
 
+#include <Eigen/Core>
+#include <Eigen/Dense>
 namespace TRL {
 	class Body;
 	class JointPath;
@@ -55,6 +57,8 @@ namespace TRL {
 
     public:
 
+		// stable pd-servo
+		Eigen::VectorXd kps, kds;
 
 		std::string modelName;
 		std::string name;

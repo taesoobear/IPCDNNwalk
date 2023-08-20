@@ -236,7 +236,7 @@ function generate()
 	writeIncludeBlock()
 	write('#include "MainLib/WrapperLua/luna.h"')
 	write('#include "MainLib/WrapperLua/luna_baselib.h"')
-	write('#include "PhysicsLib/luna_physics.h"')
+	--write('#include "PhysicsLib/luna_physics.h"')
 	--write('#include "KNearestInterpolationFast.h"')
 	write([[
 	#ifdef USE_MPI

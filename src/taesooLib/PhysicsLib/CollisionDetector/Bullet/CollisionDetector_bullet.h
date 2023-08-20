@@ -47,6 +47,8 @@ namespace OpenHRP {
 		virtual void rayTest(int ichar, int ilink, vector3 const& from, vector3 const& to, RayTestResult& result);
 		virtual void rayTestBackside(int ichar, int ilink, vector3 const& from, vector3 const& to, RayTestResult& result);
 
+		virtual bool isSignedDistanceSupported() { return true;}
+		virtual double calculateSignedDistance(int iloader, int ibody, vector3 const& position, vector3& normal);
 	};
 }
 

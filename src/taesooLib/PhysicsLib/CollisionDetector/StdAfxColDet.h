@@ -15,9 +15,6 @@
 #endif // _MSC_VER > 1000
 #endif // __GNU__
 
-#include<boost/numeric/ublas/vector.hpp>
-#include<boost/numeric/ublas/matrix.hpp>
-#include<boost/numeric/ublas/io.hpp>
 
 // Insert your headers here
 #define WIN32_LEAN_AND_MEAN		// Exclude rarely-used stuff from Windows headers

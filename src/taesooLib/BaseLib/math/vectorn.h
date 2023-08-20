@@ -5,6 +5,7 @@ class matrixn;
 class boolN;
 #include "vector3.h"
 #include "quater.h"
+#include "transf.h"
 #include "../utility/TypeString.h"
 #include "../utility/util.h"
 
@@ -102,7 +103,7 @@ class intvectornView :public intvectorn
 {
 public:
 	// L-value로 사용될수 있는, reference array로 만든다.
-	intvectornView (int* ptrr, int size, int stride);
+	intvectornView (const int* ptrr, int size, int stride=1);
 	// copy constructor : get reference.
 	intvectornView(const _tvectorn<int>& other)				{ assignRef(other);}
 	intvectornView(const intvectorn& other);//				{ assignRef(other);}
@@ -319,9 +320,11 @@ public:
 
 	void setVec3( int start, const vector3& src);
 	void setQuater( int start, const quater& src);
+	void setTransf(int start, const transf& t);
 
 	vector3 toVector3(int startIndex=0)	const;
 	quater toQuater(int startIndex=0) const;
+	transf toTransf(int startIndex=0) const;
 
 	friend class matrixn;
 
@@ -358,7 +361,7 @@ class vectornView :public vectorn
 {
 public:
 	// L-value로 사용될수 있는, reference array로 만든다.
-	vectornView (m_real* ptrr, int size, int stride);
+	vectornView (const m_real* ptrr, int size, int stride=1);
 	// 값을 reference로 받아온다.
 	vectornView(const _tvectorn<m_real>& other)		{ assignRef(other);}
 	vectornView(const vectorn& other)				{ assignRef(other);}

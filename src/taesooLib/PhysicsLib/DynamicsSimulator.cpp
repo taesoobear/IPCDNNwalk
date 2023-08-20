@@ -153,6 +153,8 @@ namespace OpenHRP
 #endif
 	//OpenHRP::CollisionDetector* createCollisionDetector_simple2();
 	OpenHRP::CollisionDetector* createCollisionDetector_libccd();
+	OpenHRP::CollisionDetector* createCollisionDetector_fcl();
+	//OpenHRP::CollisionDetector* createCollisionDetector_libccd_LBS();
 
 	DynamicsSimulator::DynamicsSimulator(const char* type)
 	{
@@ -165,7 +167,10 @@ namespace OpenHRP
 			collisionDetector =createCollisionDetector_bullet2(this);
 		else 
 #else
-		if(tid=="BULLET")
+		//if(tid=="SIMPLE")
+		//	collisionDetector =createCollisionDetector_simple2();
+		//else 
+			if(tid=="BULLET")
 			collisionDetector =createCollisionDetector_bullet();
 		else if(tid=="GJK")
 			collisionDetector =createCollisionDetector_gjk();
@@ -173,6 +178,10 @@ namespace OpenHRP
 #endif
 			if(tid=="LIBCCD")
 			collisionDetector =createCollisionDetector_libccd();
+			else if (tid=="FCL")
+			collisionDetector =createCollisionDetector_fcl();
+		//else if(tid=="LIBCCD_LBS")
+		//	collisionDetector =createCollisionDetector_libccd_LBS();
 		else if(tid=="OPCODE")
 		{
 #ifdef INCLUDE_OPCODE_DETECTOR
@@ -478,6 +487,15 @@ vector3 DynamicsSimulator::getWorldVelocity(int ichara,VRMLTransform* b, vector3
 void DynamicsSimulator::addForceToBone(int ichara, VRMLTransform* b, ::vector3 const& localpos, ::vector3 const& force)
 {
 	throw std::runtime_error("adddForceTobone not implemented yet");
+}
+
+void DynamicsSimulator::addGlobalForceToBone(int ichara, int treeindex, ::vector3 const& globalpos, ::vector3 const& globalforce)
+{
+	VRMLTransform* b=&(skeleton(ichara).VRMLbone(treeindex));
+	transf& T=getWorldState(ichara)._global(treeindex);
+	::vector3 f=T.toLocalDir(globalforce);
+	::vector3 p=T.toLocalPos(globalpos);
+	addForceToBone(ichara, b, p, f);
 }
 
 void DynamicsSimulator::setFrictionCoef(int contactQueryIndex, double coef)
@@ -873,4 +891,11 @@ void DynamicsSimulator::setU(int ichara, const vectorn& in)
 {
 	Msg::error("not impl");
 }
+const vectorn & DynamicsSimulator::getLastSimulatedPose(int ichara) const
+{ 
+	// _tempPose probably may not have been updated in some simulators.  
+	// check yourself.
+	return _characters[ichara]->_tempPose;
 }
+}
+

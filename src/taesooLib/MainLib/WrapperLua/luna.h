@@ -240,10 +240,10 @@ template <typename T> class Luna {
 
 	inline static userdataType* checkRaw(lua_State *L, int narg){
 		userdataType* ud=static_cast<userdataType*>(lua_touserdata(L,narg));
-		if(!ud) { printf("checkRaw: ud==nil\n"); luaL_typerror(L, narg, T_interface::className); }
+		if(!ud) { Msg::error("checkRaw: ud==nil\n"); luaL_typerror(L, narg, T_interface::className); }
 		if(ud->uniqueID !=T_interface::uniqueID) // type checking with almost no overhead
 			{
-				printf("ud->uid: %d != interface::uid : %d\n", ud->uniqueID, T_interface::uniqueID);
+				Msg::error("ud->uid: %d != interface::uid : %d\n", ud->uniqueID, T_interface::uniqueID);
 				luaL_typerror(L, narg, T_interface::className);
 			}
 		return ud;  // pointer to T object
@@ -357,6 +357,7 @@ class lunaStack
 	inline const char* tostring(int i) { return luaL_checkstring(L, i);}
 	inline bool toboolean(int i) { return lua_toboolean(L, i)==1;}
 	template <class T> T* topointer(int i) { return (T*)Luna<typename LunaTraits<T>::base_t>::check(L,i);}  
+	template <class T> inline static T* topointer( lua_State* L, int i) { return (T*)Luna<typename LunaTraits<T>::base_t>::check(L,i);}  
 
 	inline void _incr(){
 		currArg+=delta;
@@ -390,6 +391,9 @@ class lunaStack
 	// check and pop 
 	template <class T> T* check() { 
 		T* a=topointer<T>(currArg);_incr(); return a;}
+	// check only (no pop) 
+	template <class T> T* checkOnly() { 
+		T* a=topointer<T>(currArg); return a;}
 
 	inline void pop() { lua_pop(L,1);}
 
@@ -463,7 +467,7 @@ class lunaStack
 
 	// stack[top]=stack[top][key]
 	inline void replaceTop(const char* key){
-		if (!lua_istable(L,-1)) luaL_error(L, "Luna<>::replaceTop: non-table object cannot be accessed");
+		if (!lua_istable(L,-1)) luaL_error(L, "Luna<>::replaceTop: %s: non-table object cannot be accessed", key);
 		lua_pushstring(L, key);
 		lua_gettable(L, -2);
 		popSecondLast();
@@ -648,7 +652,7 @@ class lunaState
 	lunaState(lua_State* l):L(l){}
 	lua_State*  ptr() const {return L;}
 	inline operator lua_State*() const {return L;}
-	void print() const { printf("%lx\n", (unsigned long) L);}
+	void print() const {}
 };
 template <class T> void luna_push(lua_State *L, T const* c,bool garbageCollection=false) { Luna<typename LunaTraits<T>::base_t>::push(L,(typename LunaTraits<T>::base_t*)c,garbageCollection, LunaTraits<T>::className);}
 #endif

@@ -28,7 +28,6 @@ if(UNIX)
 	#	add_definitions(-DNDEBUG)
 	#endif()
 	message("Unix OS")
-	#set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -ftemplate-depth-100 -msse2 -mfpmath=sse -Wno-deprecated -std=c++11")
 	set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -ftemplate-depth-100 -Wno-deprecated -std=c++11")
 	if (APPLE)
 		find_package(PkgConfig REQUIRED)
@@ -43,11 +42,6 @@ if(UNIX)
 			${HOMEBREW_DIR}/include
 			"/usr/local/include/"
 			"/usr/local/include/OGRE"
-            "/Applications/OgreSDK/include/OGRE" 
-			"/Applications/OgreSDK/include/OIS"
-			"/Applications/OgreSDK/boost"
-			"/Applications/OgreSDK/include/OGRE/RenderSystems/GL/OSX"
-			"/Applications/OgreSDK/include/OGRE/RenderSystems/GL"
 			)
 		link_directories(
 			${HOMEBREW_DIR}/lib
@@ -55,8 +49,14 @@ if(UNIX)
 			/opt/homebrew/lib
 			)
 	else()
-		set(OGRE_INCLUDE "/usr/include/OGRE"
+		set(OGRE_INCLUDE 
+			"/usr/include/OGRE"
+			"/usr/include/OGRE/Bites"
+			"/usr/include/OGRE/RTShaderSystem"
 			"/usr/include/OIS"
+		"/usr/local/include/OGRE"
+		"/usr/local/include/OGRE/Bites"
+		"/usr/local/include/OGRE/RTShaderSystem"
 			)
 		if(UseLuaJit)
 			set(LUA_INCLUDE 
@@ -81,27 +81,29 @@ if(UNIX)
 else()
 	message("Windows OS")
 	add_definitions(-D_SCL_SECURE_NO_DEPRECATE)
-	add_definitions(-DMANUALLY_ADD_LIB)
-	set(OGRE_INCLUDE "${TAESOOLIB_DIR}/../dependencies/OgreSDK_vc10_v1-8-1/include/OGRE")
-	set(LUA_INCLUDE "${TAESOOLIB_DIR}/../dependencies/lua-5.1.5/src")
-	set(LUA_LIB "${TAESOOLIB_DIR}/../dependencies/lua-5.1.5/src/lua51.lib")
+	# unused settings
+	set(OGRE_INCLUDE )
+	set(LUA_INCLUDE )
+	set(LUA_LIB )
+	set(EIGEN3_INCLUDE_DIR "${TAESOOLIB_DIR}/../windows_dependencies/eigen-3.4.0")
+	include_directories (${EIGEN3_INCLUDE_DIR}	)
 endif()
 
 include_directories (	
-	/usr/include/eigen3
 	${OGRE_INCLUDE}
 	${LUA_INCLUDE}
 	)
 
 if(WIN32)
 	if(NoDevil)
+		set(NoFreeImage TRUE)
 		set(IMAGE_LIBS )
 	else()
-	set(IMAGE_LIBS
-		DevIL
-		ILU
-		freeimage
-		)
+		set(IMAGE_LIBS
+			DevIL
+			ILU
+			freeimage
+			)
 	endif()
 else()
 	if(NoDevil)
@@ -124,3 +126,4 @@ else()
 		endif()
 	endif()
 endif()
+

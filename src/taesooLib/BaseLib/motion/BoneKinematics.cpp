@@ -133,7 +133,7 @@ void BoneForwardKinematics::setPoseDOFusingCompatibleDOFinfo(MotionDOFinfo const
 			start+=nc;
 		}
 	}
-	assert(start==dof.size());
+	RANGE_ASSERT(start==dof.size());
 	forwardKinematics();
 }
 

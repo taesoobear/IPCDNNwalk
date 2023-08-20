@@ -5,20 +5,21 @@
 # This file internally uses cmake.
 # Makefile is reusable. Simply change the EXE variable.
 EXE=console
-BIN_FOLDER=../../../taesooLib_minimal_build/$(EXE)
-BIN_TO_SRC=../../../taesooLib_minimal/Samples/$(EXE)
+BIN_FOLDER=../taesooLib_build/$(EXE)
+BIN_TO_SRC=../../../$(EXE)
 SRC_TO_EXE=../../work/$(EXE)
+NUM_CORES=$(shell if [-f /proc/cpuinfo]; then cat /proc/cpuinfo | grep processor | wc -l;	else echo 4;fi)
 
 # all depends on init_finished.txt
 all: init_finished.txt
 	if ! test -d $(BIN_FOLDER) ; then rm init_finished.txt; exit 1;fi
-	cd $(BIN_FOLDER)/build_linux;make --no-print-directory
+	cd $(BIN_FOLDER)/build_linux;make --no-print-directory -j $(NUM_CORES)
 	cp $(BIN_FOLDER)/build_linux/OgreFltk $(SRC_TO_EXE)
 
 # debug depends on init_finished.txt
 debug: init_finished.txt
 	if ! test -d $(BIN_FOLDER) ; then rm init_finished.txt; exit 1;fi
-	cd $(BIN_FOLDER)/build_linux_debug;make --no-print-directory VERBOSE=1
+	cd $(BIN_FOLDER)/build_linux_debug;make --no-print-directory VERBOSE=1 -j $(NUM_CORES)
 	cp $(BIN_FOLDER)/build_linux_debug/OgreFltk $(SRC_TO_EXE)_debug
 
 mpi: init_finished.txt

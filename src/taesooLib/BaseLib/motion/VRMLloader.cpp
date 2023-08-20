@@ -21,6 +21,10 @@ _HRP_JOINT::_HRP_JOINT()
 		jointRangeMin=-180.f;
 		jointRangeMax=180.f;
 	}
+_HRP_JOINT::~_HRP_JOINT()
+{
+	delete[] jointAxis2;
+}
 bool _HRP_JOINT::_jointRangeIsLimited()
 {
 	if (jointRangeMin!=-180.f)
@@ -225,6 +229,14 @@ double VRMLTransform::mass()
   return 0;
 }
 
+void VRMLTransform::setMass(double m)
+{
+	VRMLTransform& bone=*this;
+	if(bone.mSegment)
+	{
+		bone.mSegment->mass=m;
+	}
+}
 vector3 VRMLTransform::inertia() const
 {
   VRMLTransform const& bone=*this;
@@ -289,7 +301,8 @@ void VRMLTransform::pack(BinaryFile& bf)
 		bf.packInt(mJoint->AxisNum);
 		for(int i=0;i<mJoint->AxisNum;i++)
 		{
-			bf.packFloat(mJoint->jointAxis2Angle[i]);
+			//bf.pack(mJoint->jointAxis2Angle[i]);
+			bf.packFloat(0.0);
 			bf.pack(mJoint->jointAxis2[i]);
 		}
 	}
@@ -348,6 +361,15 @@ void VRMLTransform::pack(BinaryFile& bf)
 
 	bf.pack(nameId(*this));
 }
+
+void VRMLTransform::setJointRange(int i, double min_deg, double max_deg)
+{
+	Msg::verify(mJoint->jointType==HRP_JOINT::ROTATE, "joint range of ball, universal, or free joints are not supporte yet");
+	Msg::verify(i==0, "hinge joint has only one dof");
+
+	mJoint->jointRangeMin=min_deg;
+	mJoint->jointRangeMax=max_deg;
+}
 void VRMLTransform::pack(FILE* file, int level)
 {
   TString transform;
@@ -385,7 +407,8 @@ void VRMLTransform::pack(FILE* file, int level)
 	  //Msg::print("length():%d\n",mJoint->AxisNum);
 	  for(int i=0;i<mJoint->AxisNum;i++)
 	  {
-		  fprintf(file," %f %f %f %f",mJoint->jointAxis2Angle[i],mJoint->jointAxis2[i].x,mJoint->jointAxis2[i].y,mJoint->jointAxis2[i].z);
+		  //fprintf(file," %f %f %f %f",mJoint->jointAxis2Angle[i],mJoint->jointAxis2[i].x,mJoint->jointAxis2[i].y,mJoint->jointAxis2[i].z);
+		  fprintf(file," %f %f %f %f",0.0,mJoint->jointAxis2[i].x,mJoint->jointAxis2[i].y,mJoint->jointAxis2[i].z);
 	  }
 	  fprintf(file,"%s",sp.ptr());
   }
@@ -470,11 +493,13 @@ static void getVec4(CTextFile& file, vector4& out)
 
 static void getMat3(CTextFile& file, matrix3& out)
 {
-  VERIFY(TString("[")==file.GetToken());
+	TString temp;
+	temp=file.GetToken();
+  VERIFY(temp=="[");
   for(int i=0; i<9; i++)
     out[i]=atof(file.GetToken());
-  VERIFY(TString("]")==file.GetToken());
-
+	temp=file.GetToken();
+  VERIFY(temp=="]");
 }
 
 static void unpackExposedField(CTextFile& file, TString& name, vectorn& out)
@@ -699,10 +724,13 @@ void VRMLTransform::unpack(VRMLloader& l, BinaryFile & bf)
 	{
 		mJoint->AxisNum=bf.unpackInt();
 		mJoint->jointAxis2 = new vector3[mJoint->AxisNum];
-		mJoint->jointAxis2Angle = new m_real[mJoint->AxisNum];
+		//mJoint->jointAxis2Angle = new m_real[mJoint->AxisNum];
 		for(int i=0;i<mJoint->AxisNum;i++)
 		{
-			mJoint->jointAxis2Angle[i]=bf.unpackFloat();
+			//mJoint->jointAxis2Angle[i]=bf.unpackFloat();
+			double unused=bf.unpackFloat();
+			if (unused!=0.0)
+				Msg::print("warning! non-zero default angle is no longer supported!\n");
 			bf.unpack(mJoint->jointAxis2[i]);
 		}
 	}
@@ -822,25 +850,34 @@ void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
 	    mJoint->jointAxis=file.GetQuotedText();
 	  else if(token=="axis")
 	  {
-			mJoint->AxisNum = 1;
-			mJoint->jointAxis="A";
-			mJoint->jointAxis2 = new vector3[mJoint->AxisNum];
-			mJoint->jointAxis2Angle = new m_real[mJoint->AxisNum];
-			for(int i=0;i<mJoint->AxisNum;i++)				
-			{
-				mJoint->jointAxis2Angle[i] = 0.0;
-		  	    getVec3(file,mJoint->jointAxis2[i]);
-			}
+		  if (!mJoint->jointAxis2)
+		  {
+			  mJoint->jointAxis2 = new vector3[3];
+			  //mJoint->jointAxis2Angle = new m_real[3];
+			  mJoint->AxisNum = 1;
+			  mJoint->jointAxis="A";
+		  }
+		  else
+		  {
+			  mJoint->AxisNum++;
+			  mJoint->jointAxis=mJoint->jointAxis+"A";
+		  }
+		  int i=mJoint->AxisNum-1;
+		  //mJoint->jointAxis2Angle[i] = 0.0;
+		  getVec3(file,mJoint->jointAxis2[i]);
 	  }
 	  else if(token=="jointAxis2")//if(token=="jointAxis")에 넣는게 나을 것 같 다.
 	 	{
 			// deprecated. use "axis" instead.
 			mJoint->AxisNum = mJoint->jointAxis.length();
 			mJoint->jointAxis2 = new vector3[mJoint->AxisNum];
-			mJoint->jointAxis2Angle = new m_real[mJoint->AxisNum];
+			//mJoint->jointAxis2Angle = new m_real[mJoint->AxisNum];
 			for(int i=0;i<mJoint->AxisNum;i++)				
 			{
-				mJoint->jointAxis2Angle[i] = atof(file.GetToken());
+				double unused=atof(file.GetToken());
+				if (unused!=0.0)
+					Msg::print("warning! non-zero default angle is no longer supported!\n");
+				//mJoint->jointAxis2Angle[i] = 
 		  	    getVec3(file,mJoint->jointAxis2[i]);
 			}
 		}
@@ -1280,8 +1317,7 @@ void VRMLTransform::initBones()
 		{
 		  setChannels("", mJoint->jointAxis);
 		  setArbitraryAxes(mJoint->jointAxis2);
-		  if( mJoint->jointAxis2Angle!=0)
-			  Msg::print("warning! non-zero default angle is no longer supported!\n");
+		  //if( mJoint->jointAxis2Angle!=0)
 
 		}
 		else
@@ -1769,6 +1805,42 @@ VRMLloader::VRMLloader(OBJloader::Geometry const& mesh, bool useFixedJoint)
 	_initDOFinfo();
 	//VRMLloader_updateMeshEntity(*l);
 }
+VRMLloader::VRMLloader(OBJloader::Terrain* terrain)
+	:MotionLoader()
+{
+	_frameRate=30;
+	_terrain=terrain;
+
+	m_pTreeRoot=new VRMLTransform();
+	m_pTreeRoot->SetNameId("floor");
+	VRMLTransform* root=new VRMLTransform();
+	MemoryFile m;
+
+	// VRMLTransform::pack
+	m.packInt(0);
+	m.pack("WAIST");
+	m.packInt(HRP_JOINT::FIXED);
+	m.pack("");
+
+	m.packInt(0);
+	m.pack(vector3(0,0,0)); //joint->translation
+
+	url.format("BODY_%s", RE::generateUniqueName().ptr());
+	HRP_SEGMENT mSegment;
+	OBJloader::Geometry mesh;
+	mesh.assignTerrain(*terrain, vector3(0,0,0));
+	pack_HRP_SEGMENT(m, &mSegment, url, TString("WAIST"), mesh);
+	m.packInt(0);
+	m.pack("WAIST");
+	root->unpack(*this, m);
+	m_pTreeRoot->AddChild(root);
+	_initDOFinfo(); 
+	name=RE::generateUniqueName();
+	url=name+".wrl";
+
+	_initDOFinfo();
+	//VRMLloader_updateMeshEntity(*l);
+}
 VRMLloader::VRMLloader(const char* filename)
  :MotionLoader()
 {
@@ -2124,7 +2196,7 @@ void VRMLloader::removeBone(Bone& target)
 {
 	// move meshes and segments to its parent before removing the bone.
 	VRMLTransform &v=(VRMLTransform&)target;	
-	Msg::verify(!v.mJoint || v.mJoint->jointType==HRP_JOINT::FIXED, "???cannot removebone");
+	Msg::verify(!v.mJoint || v.mJoint->jointType==HRP_JOINT::FIXED, "???cannot remove bone with non-fixed joints. (jointtype %d). use VRMLbone(ti):setJointAxes("") to fix a joint ", v.mJoint?(int)v.mJoint->jointType:-1 );
 	Msg::verify(!v.mTransform, "mergeShapes first!");
 	// v.mJoint->translation == v.getOffsetTransform().translation
 	if (v.mSegment)

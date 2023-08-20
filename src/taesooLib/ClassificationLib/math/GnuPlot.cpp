@@ -2,7 +2,9 @@
 #include "../BaseLib/math/mathclass.h"
 #include "../BaseLib/utility/util.h"
 #include "../BaseLib/utility/operatorString.h"
+#include "../BaseLib/math/intervals.h"
 #include "GnuPlot.h"
+
 
 #ifdef _MSC_VER
 #include <stdio.h>
@@ -111,11 +113,11 @@ void gnuPlot::plotArrow(const char* filename, const matrixn& mat, const char* ti
 
 	processFilename(filename, bPNG, fn, dir, lfn);
 
-	writeData(TString("../gnuPlot/")+fn+".dat", mat);
+	writeData(TString("")+fn+".dat", mat);
 
 	// write script file
 	FILE* script;
-	script=fopen(TString("../gnuPlot/")+fn+".dem","wt");
+	script=fopen(TString("")+fn+".dem","wt");
 	if(!script) Msg::error("gnuPlot file open error %s",filename);
 
 	if(bPNG)
@@ -188,7 +190,7 @@ void gnuPlot::mergedPlotScattered(const TStrings& filenames, int dim, const char
 	processFilename(filenames[0], bPNG, fn, dir, lfn);
 	// gnuPlot/fn.dem
 	FILE* script;
-	TString scriptfn=TString("../gnuPlot/")+dir+"/"+prefix+"Merge"+title+".dem";
+	TString scriptfn=TString("")+dir+"/"+prefix+"Merge"+title+".dem";
 	script=fopen(scriptfn,"wt");
 	if(!script) Msg::error("gnuPlot file open error %s",scriptfn.ptr());
 
@@ -279,11 +281,11 @@ void gnuPlot::plotScattered(const char* filename, const matrixn& mat, const char
 	bool bPNG;
 	processFilename(filename, bPNG, fn, dir, lfn);
 
-	writeData(TString("../gnuPlot/")+fn+".dat", mat);
+	writeData(TString("")+fn+".dat", mat);
 
 	// gnuPlot/fn.dem
 	FILE* script;
-	script=fopen(TString("../gnuPlot/")+fn+".dem","wt");
+	script=fopen(TString("")+fn+".dem","wt");
 	if(!script) Msg::error("gnuPlot file open error %s",filename);
 
 	if(bPNG)
@@ -359,7 +361,7 @@ void gnuPlot::plotScattered(const char* filename, const matrixn& mat, const char
 		fclose(script);
 
 		// gnuPlot/fn_fit.dem		
-		script=fopen(TString("../gnuPlot/")+fn+"_fit.dem","wt");
+		script=fopen(TString("")+fn+"_fit.dem","wt");
 		if(!script) Msg::error("gnuPlot file open error %s",filename);
 
 		//	set title 'data for fit demo'
@@ -446,7 +448,7 @@ gnuPlotQueue::gnuPlotQueue(const char* ffn, int dm, const char* title, const cha
 	gnuPlot::processFilename(filename, bPNG, fn, dir, lfn);
 
 	// gnuPlot/fn.dem
-	script=fopen(TString("../gnuPlot/")+fn+".dem","wt");
+	script=fopen(TString("")+fn+".dem","wt");
 	if(!script) Msg::error("gnuPlot file open error %s",filename.ptr());
 
 	if(bPNG)
@@ -486,6 +488,13 @@ void gnuPlotQueue::setRange(const intervalN& mRange)
 	if(dim==3)
 	fprintf(script, "set zrange [%f:%f]\n", mRange.start()[2], mRange.end()[2]);
 }
+void gnuPlotQueue::setRange(const intervals& mRange)
+{
+	fprintf(script, "set xrange [%f:%f]\n", mRange.row(0).start(), mRange.row(0).end());
+	fprintf(script, "set yrange [%f:%f]\n", mRange.row(1).start(), mRange.row(1).end());
+	if(dim==3)
+	fprintf(script, "set zrange [%f:%f]\n", mRange.row(2).start(), mRange.row(2).end());
+}
 
 void gnuPlotQueue::plotSignal(const vectorn& data, const char* label)
 {
@@ -503,7 +512,7 @@ void gnuPlotQueue::plotSignal(const vectorn& data, const char* label)
 */
 void gnuPlotQueue::plotScattered(const matrixn& data, const char* label)
 {
-	TString datfile("../gnuPlot/");
+	TString datfile("");
 	datfile+=fn+"_"+TString(label)+".dat";
 	writeData(datfile.ptr(), data);
 
@@ -527,7 +536,7 @@ void gnuPlotQueue::plotScattered(const matrixn& data, const char* label)
 
 void gnuPlotQueue::plotParametric(const matrixn& data, const char* label, int nstep)
 {
-	TString datfile("../gnuPlot/");
+	TString datfile("");
 	datfile+=fn+"_"+TString(label)+".dat";
 	writeData(datfile.ptr(), data, nstep);
 

@@ -62,45 +62,31 @@ intmat3D&  intmat3D::assign(intmat3D const& other)
 hypermatrixn::hypermatrixn(void)
 {
 	npages=nrows=columns=0;
-	data=NULL;
 }
 hypermatrixn::hypermatrixn(int ll, int mm, int nn)
 {
 	npages=nrows=columns=0;
-	data=NULL;
 	setSize(ll,mm,nn);
 }
 
 hypermatrixn::hypermatrixn(const hypermatrixn& other)
 {
 	npages=nrows=columns=0;
-	data=NULL;
 	assign(other);
 }
 hypermatrixn::~hypermatrixn(void)
 {
-	for(int i=0; i<npages; i++)
-		delete m_pages[i];
-	delete [] data;
 }
 
 void hypermatrixn::setSize( int ll, int mm, int nn)
 {
-	for(int i=0; i<npages; i++)
-		delete m_pages[i];
 
 	//!< 원래 데이타 유지 보장 전혀 없음.
-	data=new m_real[ll*mm*nn];
+	data.setSize(ll, mm*nn);
 
 	npages=ll;
 	nrows=mm;
 	columns=nn;
-
-	m_pages.resize(npages);
-	for(int i=0; i<npages; i++)
-	{
-		m_pages[i]=new matrixnView(data+i*mm*nn, mm, nn, nn);
-	}
 }
 
 hypermatrixn&  hypermatrixn::assign(hypermatrixn const& other)
@@ -117,10 +103,44 @@ void hypermatrixn::each(const m1::_op& op, const hypermatrixn& other)
 {
 	for(int i=0; i<page(); i++)
 	{
-		op.calc(*m_pages[i], other.page(i));
+		op.calc(page(i).lval(), other.page(i).lval());
 	}
 }
 
+void hypermatrixn::resize( int ll, int mm, int nn) // nrows, ncolumns만 안바뀌면 data 유지. 바뀐영역 0으로 초기화는 하지 않음.
+{
+	data.resize(ll, mm*nn);
+
+	npages=ll;
+	nrows=mm;
+	columns=nn;
+}
+
+void hypermatrixn::pushBack(const matrixn& mat)
+{
+	int mn=mat.cols()*mat.rows();
+	if(mn==data.cols() || data.cols()==0)
+	{
+		// compatible
+	}
+	else
+	{
+		data.resize(data.rows(), mn);
+	}
+
+	if (mat._getStride()==mat.cols())
+		data.pushBack(vectornView(&mat(0,0),mat.cols()*mat.rows()));
+	else
+	{
+		vectorn temp;
+		temp.fromMatrix(mat);
+		data.pushBack(temp);
+	}
+
+	npages=data.rows();
+	nrows=mat.rows();
+	columns=mat.cols();
+}
 /*
 hypermatrixn::hypermatrixn(void)
 {

@@ -20,6 +20,7 @@
 #include "ModelLoaderUtil_UT.h"
 #include <psim.h>
 
+#include "../BaseLib/motion/VRMLloader_internal.h"
 using namespace OpenHRP;
 using namespace std;
 
@@ -831,7 +832,7 @@ void DynamicsSimulator_UT::setLinkData(int ichara, LinkDataType t, vectorn const
 	
 }
 
-double DynamicsSimulator_UT::currentTime()
+double DynamicsSimulator_UT::currentTime() const
 {
 	return world->currentTime();
 }

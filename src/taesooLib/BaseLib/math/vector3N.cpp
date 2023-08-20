@@ -4,6 +4,9 @@
 #include "vector3N.h"
 #include "../utility/operatorString.h"
 #include "Operator_NR.h"
+#ifdef USE_NR
+#include "nr/nr.h"
+#endif
 
 vector3N::vector3N(const vector3NView& other)	{ assign(other);}
 
@@ -232,8 +235,7 @@ void vector3N::linstitch(vector3N const& a, vector3N const& b)
 	At.transpose(A);
 
 	Augmented.range(rows(), rows()+numCon, rows(), rows()+numCon).setAllValue(0.0);
-	Msg::error("ludcmp");
-	/*
+#ifdef USE_NR
 #define USE_LUDCMP
 #ifdef USE_LUDCMP
 	DP p;
@@ -291,7 +293,9 @@ void vector3N::linstitch(vector3N const& a, vector3N const& b)
 		for(int i=0; i<rows(); i++)
 			f(i)=x[i];
 	}
-	*/
+#else
+	Msg::error("ludcmp");
+#endif
 }
 void vector3N::hermite(const vector3& a, const vector3& b, int duration, const vector3& c, const vector3& d)
 {
@@ -390,8 +394,7 @@ void vector3N::linstitch(int discontinuity)
 	At[rows()-1][3]=A[3][rows()-1]=1.0;
 
 	Augmented.range(rows(), rows()+4, rows(), rows()+4).setAllValue(0.0);
-	Msg::error("ludcmd");
-	/*
+#ifdef USE_NR
 #define USE_LUDCMP
 #ifdef USE_LUDCMP
 	DP p;
@@ -445,7 +448,9 @@ void vector3N::linstitch(int discontinuity)
 		for(int i=0; i<rows(); i++)
 			f(i)=x[i];
 	}
-	*/
+#else
+	Msg::error("ludcmp");
+#endif
 }
 
 void vector3N::c0stitch(int discontinuity)

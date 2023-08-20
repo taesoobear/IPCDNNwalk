@@ -13,7 +13,7 @@
 ///It needs internal access
 #include "../../../BaseLib/motion/gjk/btTransform.h"
 #include "../../../BaseLib/motion/gjk/btConvexHullShape.h"
-//#include "../../../BaseLib/motion/gjk/btGjkEpa2.h"
+#include "../../../BaseLib/motion/gjk/btGjkEpa2.h"
 #include "../../../BaseLib/motion/gjk/btGjkEpa.h"
 #include "../../../BaseLib/motion/gjk/btStackAlloc.h"
 #include "../../../BaseLib/motion/gjk/btSphereShape.h"
@@ -312,6 +312,65 @@ void CollisionDetector_bullet::setWorldTransformations(int charIndex, BoneForwar
 			}
 		}
 	}
+}
+
+/*
+double CollisionDetector_bullet:: testSphereIntersection(int iloader, int ibody, vector3 const& position, double radius, vector3& normal)
+{
+	btSphereShape pointShape(btScalar(radius));
+	pointShape.setMargin(collisionMargin);
+
+	ColObject* colobject=m_col_objects[iloader][ibody];
+	for(int subMesh=0; subMesh<colobject->co.size(); subMesh++)
+	{
+		auto * shape2=(btConvexHullShape*)(colobject->co[subMesh]->getCollisionShape());
+		auto& T=colobject->co[subMesh]->getWorldTransform();
+#ifdef USE_GJK_EPA_SOLVER_OLD
+
+				Msg::error("not implemented yet");
+				btGjkEpaSolver::sResults results;
+				btScalar radialMargin = lp.margin;
+
+				btGjkEpaSolver::Collide(
+					(btConvexShape*)colobject[0]->co[subMesh1]->getCollisionShape(),
+					colobject[0]->co[subMesh1]->	getWorldTransform(),
+					(btConvexShape*)colobject[1]->co[subMesh2]->getCollisionShape(),
+					colobject[1]->co[subMesh2]->	getWorldTransform(),
+					radialMargin,
+					&g_stack,
+					results);
+				double depth=results.depth;
+				if (depth>0)
+#else 
+					ASSERT(false);
+#endif
+	}
+
+}
+*/
+double CollisionDetector_bullet:: calculateSignedDistance(int iloader, int ibody, vector3 const& position, vector3& normal)
+{
+	ColObject* colobject=m_col_objects[iloader][ibody];
+	double minDist=1e10;
+	btGjkEpaSolver2::sResults	res;
+	for(int subMesh=0; subMesh<colobject->co.size(); subMesh++)
+	{
+		auto * shape2=(btConvexHullShape*)(colobject->co[subMesh]->getCollisionShape());
+		auto& T=colobject->co[subMesh]->getWorldTransform();
+
+		btVector3 gp=ToBullet(position);
+		btScalar radialMargin = collisionMargin;
+		double dist=(btGjkEpaSolver2::SignedDistance(gp,radialMargin,shape2,T,res));
+		if (dist<minDist) 
+		{
+			minDist=dist;
+
+			normal=ToBase(res.normal);
+
+		}
+	}
+
+	return minDist+collisionMargin;
 }
 bool CollisionDetector_bullet::testIntersectionsForDefinedPairs( CollisionSequence & collisions)
 {

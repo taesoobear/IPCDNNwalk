@@ -18,7 +18,7 @@
 #ifndef NO_GUI
 
 #if _MSC_VER >1000
-//#define FL_DLL
+#define FL_DLL   // uncomment if you linked against fltk dll.
 
 #pragma once
 // disable boost codepage warning.
@@ -76,7 +76,7 @@
 */
 
 #ifndef NO_OGRE
-#if OGRE_VERSION_MINOR >= 12
+#if OGRE_VERSION_MINOR >= 12 || OGRE_VERSION_MAJOR>=13
 #include <Ogre.h>
 #else
 #include <OgrePrerequisites.h>

@@ -5,6 +5,9 @@
 #ifndef nullptr
 #define nullptr NULL
 #endif
+#ifdef Success
+#undef Success
+#endif
 #include "../../BaseLib/math/conversion.h"
 #include "../../BaseLib/motion/Liegroup.h"
 #include <Eigen/Core>
@@ -58,6 +61,7 @@ inline matrixnView matTView(Eigen::MatrixXd const& x) { Msg::verify(x.cols()==1 
 // if v1._getStride()==n (!=1), use Map<VectorXd, 0, Stride<Dynamic, n> > instead.
 inline Eigen::Map<Eigen::VectorXd> eigenView(vectorn const& v1) { Msg::verify(v1._getStride()==1,"cannot be converted to Eigen::Map<VectorXd>"); return Eigen::VectorXd::Map((double*)&v1[0], v1.size());}
 inline vectornView vecView(Eigen::VectorXd const& x) { return vectornView((double*)&x(0), x.size(), 1); }
+inline intvectornView vecView(Eigen::VectorXi const& x) { return intvectornView((int*)&x(0), x.size(), 1); }
 
 // all the following functions copy the data. Use eigenView for referencing.
 // convert to BaseLib type.

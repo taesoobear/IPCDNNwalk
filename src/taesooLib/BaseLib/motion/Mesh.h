@@ -70,11 +70,15 @@ namespace OBJloader
 		void resize(int numVertex, int numFace);
 		void resize(int numVertex, int numNormal, int numTexCoord, int numColor, int numFace);
 		inline void addFace(OBJloader::Face const& f) { m_arrayFace.push_back(f);}
+		void init(const vector3N& vertices, const intvectorn& triangles);
+		void init(const vector3N& vertices, const vector3N& normals, const intvectorn& triangles);
 
 		Buffer const& buffer(Buffer::Type type) const	{ return m_array[type];}
 		void resizeBuffer(Buffer::Type type, int n);
 		void resizeIndexBuffer(int numFace);
 		inline void resizeVertexBuffer(int n) { resizeBuffer(Buffer::VERTEX, n);}
+		inline void resizeNormalBuffer(int n) { resizeBuffer(Buffer::NORMAL, n);}
+		inline void resizeUVbuffer(int n) { resizeBuffer(Buffer::TEXCOORD, n);}
 
 		void copyIndex(Buffer::Type from, Buffer::Type to);
 
@@ -316,4 +320,42 @@ namespace OBJloader
 	};
 	void _createTerrain(Mesh& mesh, Raw2Bytes& image, int sizeX, int sizeY, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ);
 }
+
+class MotionLoader;
+class BoneForwardKinematics;
+class SkinnedMeshFromVertexInfo
+{
+	public:
+	struct VertexInfo
+	{
+		intvectorn treeIndices;
+		vector3N localpos;
+		vectorn weights;
+	};
+	std::vector<VertexInfo> vertices;
+	int numVertex() const { return vertices.size();}
+		SkinnedMeshFromVertexInfo(){}
+		SkinnedMeshFromVertexInfo(SkinnedMeshFromVertexInfo const& other);
+		SkinnedMeshFromVertexInfo(const char* filename);
+
+		void exportSkinInfo(const char* filename) const;
+		vector3 calcSurfacePointPosition( MotionLoader const& loader, intvectorn const& treeIndices, vectorn const& weights, vector3N const& localpos);
+		void _calcVertexPosition( MotionLoader const& loader, int vertexIndex, vector3& out);
+		void _calcVertexPosition( BoneForwardKinematics const& loader, int vertexIndex, vector3& out);
+		inline vector3 calcVertexPosition( MotionLoader const& loader, int vertexIndex) { vector3 out; _calcVertexPosition(loader, vertexIndex, out); return out; }
+		inline vector3 calcVertexPosition( BoneForwardKinematics const& fkSolver, int vertexIndex) { vector3 out; _calcVertexPosition(fkSolver, vertexIndex, out); return out; }
+		// modifies mesh
+		void calcVertexPositions(MotionLoader const& loader, OBJloader::Mesh& mesh) const;
+		// assumes that both meshes has a normal buffer 
+		void calcVertexNormals(MotionLoader const& loader, quaterN const& bindpose_global, vector3N const& local_normal, OBJloader::Mesh& mesh) const;
+
+		// modifies self.
+		void calcLocalVertexPositions(MotionLoader const& loader, OBJloader::Mesh const& mesh);
+
+		void resize(int numVertex) { vertices.resize(numVertex);}
+		inline intvectorn& treeIndices(int vertexIndex){ return vertices[vertexIndex].treeIndices;}
+		inline vector3N& localPos(int vertexIndex){ return vertices[vertexIndex].localpos;}
+		inline vectorn& weights(int vertexIndex){ return vertices[vertexIndex].weights;}
+		void getVertexInfo(int v1, int v2, int v3, vector3 const& baryCoeffs, intvectorn& treeIndices, vector3N& localpos, vectorn &weights);
+};
 #endif

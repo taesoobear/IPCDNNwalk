@@ -19,6 +19,10 @@
 // Include Guard
 #ifndef __OPCODE_H__
 #define __OPCODE_H__
+// stddef.h and stdarg.h must be included before Opcode headers 
+// as they latermay not compile being not able to find types in std::
+#include <stddef.h>
+#include <stdarg.h>
 
 #define ICE_NO_DLL
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -30,16 +34,29 @@
 #define sinf sin
 #define cosf cos
 #define acosf acos
-#define asinf sinf
+#define asinf asin
 #endif
 #endif
 
 #ifndef _MSC_VER
-
+#ifndef __int64
 #define __int64 long long int
-#define __stdcall /* */
-
 #endif
+#ifndef __stdcall /* this is defined in MinGW and CygWin, so avoid the warning */
+#define __stdcall /* */
+#endif
+#endif
+
+typedef int dTriIndex;
+
+#if defined(__GNUC__)
+#define OPCODE_NORETURN __attribute__((noreturn))
+#elif defined(_MSC_VER)
+#define OPCODE_NORETURN __declspec(noreturn)
+#else // #if !defined(_MSC_VER)
+#define OPCODE_NORETURN
+#endif // #if !defined(__GNUC__)
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Compilation messages
@@ -72,6 +89,7 @@
 		#define OPCODE_API
 #endif
 
+	#include "OPC_Settings.h"
 	#include "OPC_IceHook.h"
 //#include<iostream>
 	namespace Opcode
@@ -105,7 +123,9 @@
 		//#include "OPC_BoxPruning.h"
 		//#include "OPC_SweepAndPrune.h"
 
-		FUNCTION OPCODE_API bool InitOpcode();
+
+		typedef void (*OPCODE_AbortHandler)();
+		FUNCTION OPCODE_API bool InitOpcode(OPCODE_AbortHandler fnAbortHandler=NULL);
 		FUNCTION OPCODE_API bool CloseOpcode();
 	}
 

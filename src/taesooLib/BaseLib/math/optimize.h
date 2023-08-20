@@ -6,6 +6,9 @@
 #endif
 
 #include "OperatorStitch.h"
+#ifdef USE_NR
+#include "nr/nr.h"
+#endif
 
 class Optimize
 {
@@ -317,8 +320,8 @@ class FuncAbstractClass
 {
 public:
 	// return value should contain the initial solution.
-	vectorn& getInout(){}
-	inline m_real func(vectorn const& x){}
+	vectorn& getInout(){ ASSERT(false); return *((vectorn*)NULL);}
+	inline m_real func(vectorn const& x){return 0.0;}
 	inline void dfunc(vectorn const& x, vectorn& dx){}
 };
 
@@ -344,11 +347,12 @@ public:
 	void conjugateGradientSolve( m_real tolerance=1.0e-6)
 	{
 		vectorn& x=((Func*)_NRSolver::mFunc)->getInout();
-		Msg::error("cgsolve");
-		/*
+#ifdef USE_NR
 		int iter; DP fret;
 		NR::frprmn(x, tolerance, iter, fret, func, dfunc);
-		*/
+#else
+		Msg::error("cgsolve");
+#endif
 	}
 
 	void gradientDescentSolve( m_real ftol=1.0e-6)
@@ -359,7 +363,7 @@ public:
 //		NR_OLD::gradient_descent(x, x.size(), ftol, iter, fret, func, dfunc);
 	}
 
-	/*
+#ifdef USE_NR
 	static DP func(Vec_I_DP & x)
 	{
 		return ((Func*)_NRSolver::mFunc)->func(x);
@@ -369,7 +373,7 @@ public:
 	{
 		((Func*)_NRSolver::mFunc)->dfunc(x, dx);
 	}
-	*/
+#endif
 };
 
 

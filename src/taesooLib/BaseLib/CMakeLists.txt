@@ -31,8 +31,10 @@ if(WIN32)
 else()
    	if(NoDevil)
 		add_definitions(-DNO_DEVIL)
-		add_definitions(-DNO_FREEIMAGE)
 		message("nodevil?okay. many functionalities won't work.")
+	endif()
+	if(NoFreeImage)
+		add_definitions(-DNO_FREEIMAGE)
 		# warp cluster
 		include_directories (
 			${BaseLib_SOURCE_DIR}/../dependencies/FreeImage/Dist
@@ -40,6 +42,8 @@ else()
 	endif()
 	include_directories(
 		/usr/include/libxml2
+		/usr/include/eigen3
+		/usr/local/include/eigen3
 		)
 endif()
 set(utility
@@ -58,10 +62,16 @@ set(utility
 "./utility/TextFile.h"
 "./utility/tfile.cpp"
 "./utility/tfile.h"
+"./utility/cnpy/cnpy.h"
+"./utility/cnpy/cnpy.cpp"
 "./utility/BinaryFile.cpp"
 "./utility/BinaryFile.h"
 "./utility/TGL.cpp"
 "./utility/TGL.h"
+"./utility/Graph.h"
+"./utility/Graph.cpp"
+"./utility/Chat.cpp"
+"./utility/Chat.h"
 "./utility/TOnlineArray.cpp"
 "./utility/TOnlineArray.h"
 "./utility/TUGL.cpp"
@@ -74,6 +84,11 @@ set(utility
 "./utility/util.h"
 "./utility/namedmapsupport.h"
 "./utility/namedmapsupport.cpp"
+"./utility/FBX/miniz.c"
+"./utility/FBX/miniz.h"
+"./utility/FBX/ofbx.cpp"
+"./utility/FBX/ofbx.h"
+"./utility/FBX/FBXimporter.cpp"
 
 )
 
@@ -132,6 +147,7 @@ set(motion
 "./motion/Motion.h"
 "./motion/MotionDOF.cpp"
 "./motion/MotionDOF.h"
+"./motion/MotionDOFinfo.h"
 "./motion/MotionLoader.cpp"
 "./motion/MotionLoader.h"
 "./motion/MotionRetarget.cpp"
@@ -206,6 +222,8 @@ set(math
 "./math/tvector.h"
 "./math/vectorn.cpp"
 "./math/vectorn.h"
+"./math/floatvec.cpp"
+"./math/floatvec.h"
 "./math/quater.cpp"
 "./math/quater.h"
 "./math/transf.cpp"
@@ -250,8 +268,6 @@ set(math
 "./math/Filter.h"
 "./math/Metric.cpp"
 "./math/Metric.h"
-#"./math/nr/nr_all.cpp"
-#"./math/nr/nr_all2.cpp"
 )
 
 

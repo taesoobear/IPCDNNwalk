@@ -1,26 +1,35 @@
 #include "../BaseLib/baselib.h"
 #include "../BaseLib/math/matrix3.h"
 #include "../BaseLib/math/Operator.h"
+#include "../BaseLib/motion/Mesh.h"
+#include "../BaseLib/motion/Geometry.h"
+#include "../BaseLib/motion/intersectionTest.h"
+/*
 #include "../MainLib/OgreFltk/Mesh.h"
 #include "../MainLib/Ogre/intersectionTest.h"
+*/
 //#include "../MainLib/OgreFltk/objectList.h"
+/*
 #ifndef NO_GUI
 #include "../MainLib/OgreFltk/pldprimskin.h"
 #include "../MainLib/OgreFltk/framemoveobject.h"
 #include "../MainLib/OgreFltk/Line3D.h"
 #include "../MainLib/OgreFltk/RE.h"
 #endif
+*/
 #include "InertiaCalculator.h"
 
 #include "../BaseLib/motion/gjk/btVector3.h"
 #include "../BaseLib/motion/gjk/btGjkEpa2.h"
 #include "../BaseLib/motion/gjk/btConvexHullShape.h"
 
+/*
 #ifndef NO_GUI
 #include <Ogre.h>
 void _setMaterial(Ogre::SimpleRenderable* ptr, const char* name);
 #endif
 
+*/
 
 using namespace gjk;
 inline gjk::btVector3 ToBullet(vector3 const& v)

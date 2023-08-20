@@ -53,7 +53,7 @@ CollisionDetector_gjk::~CollisionDetector_gjk()
 
 
 #ifdef USE_GJK_EPA_SOLVER_OLD
-static btStackAlloc g_stack(100000);
+static btStackAlloc g_stack(1000000);
 #endif
 
 inline vector3 contactMidPos(
@@ -208,7 +208,7 @@ bool CollisionDetector_gjk::testIntersectionsForDefinedPairs( CollisionSequence 
 					if (
 							broadphase_cache_per_character(iloader1, iloader2)<4 &&
 							colobject[0]->mesh->elements[subMesh1].elementType==OBJloader::Element::BOX
-					&&colobject[1]->mesh->elements[subMesh2].elementType==OBJloader::Element::BOX)
+							&&colobject[1]->mesh->elements[subMesh2].elementType==OBJloader::Element::BOX)
 					{
 						// 점 접촉
 						auto * shape1=(btConvexHullShape*)(colobject[0]->co[subMesh1]->getCollisionShape());
@@ -220,7 +220,7 @@ bool CollisionDetector_gjk::testIntersectionsForDefinedPairs( CollisionSequence 
 						{
 							int np=shape1->getNumPoints();
 							const auto* pp=shape1->getPoints();
-							for(int i=0; i<np; i++)
+							for(int i=0; i<np; i++) // for all corner points of a box (for example)
 							{
 								btGjkEpaSolver2::sResults	res;
 								btVector3 gp=T1*pp[i];
@@ -238,6 +238,55 @@ bool CollisionDetector_gjk::testIntersectionsForDefinedPairs( CollisionSequence 
 							}
 						}
 
+						{
+							int np=shape2->getNumPoints();
+							const auto* pp=shape2->getPoints();
+							for(int i=0; i<np; i++)
+							{
+								btGjkEpaSolver2::sResults	res;
+								btVector3 gp=T2*pp[i];
+								double dist=(btGjkEpaSolver2::SignedDistance(gp,radialMargin,shape1,T1,res));
+								if(dist<0)
+								{
+
+									points.resize(points.size()+1);
+									auto& point=points.back();
+									point.idepth=std::max(dist*-1.0-collisionMargin, 0.0);
+									point.position=ToBase(gp)-normal*collisionMargin;
+									point.normal=normal;
+									maxDepth=std::max(maxDepth, point.idepth);
+								}
+							}
+						}
+					}
+					else if(broadphase_cache_per_character(iloader1, iloader2)<4 &&
+							colobject[0]->mesh->elements[subMesh1].elementType==OBJloader::Element::BOX
+							&&colobject[1]->mesh->elements[subMesh2].elementType==OBJloader::Element::OBJ)
+					{
+						auto * shape1=(btConvexHullShape*)(colobject[0]->co[subMesh1]->getCollisionShape());
+						auto * shape2=(btConvexHullShape*)(colobject[1]->co[subMesh2]->getCollisionShape());
+						auto& points=collisions[ipair].points;
+						auto& T1=colobject[0]->co[subMesh1]->getWorldTransform();
+						auto& T2=colobject[1]->co[subMesh2]->getWorldTransform();
+						{
+							int np=shape1->getNumPoints();
+							const auto* pp=shape1->getPoints();
+							for(int i=0; i<np; i++)
+							{
+								btGjkEpaSolver2::sResults	res;
+								btVector3 gp=T1*pp[i];
+								double dist=(btGjkEpaSolver2::SignedDistance(gp,radialMargin,shape2,T2,res));
+								if(dist<0)
+								{
+									points.resize(points.size()+1);
+									auto& point=points.back();
+									point.idepth=std::max(dist*-1.0-collisionMargin, 0.0);
+									point.position=ToBase(gp)+normal*(dist+collisionMargin);
+									point.normal=normal;
+									maxDepth=std::max(maxDepth, point.idepth);
+								}
+							}
+						}
 						{
 							int np=shape2->getNumPoints();
 							const auto* pp=shape2->getPoints();

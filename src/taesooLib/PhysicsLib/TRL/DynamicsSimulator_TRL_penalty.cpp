@@ -1814,3 +1814,133 @@ void OpenHRP::DynamicsSimulator_TRL_penalty::setTau(int ichara, const vectorn& t
 	ASSERT(qindex==ndof-nquat*4);
 	ASSERT(dqsindex==tau.size());
 }
+
+#define FREE_JOINT_QSIZE 6
+void OpenHRP::DynamicsSimulator_TRL_penalty::setStablePDparam(int ichara, const vectorn& kp, const vectorn& kd)
+{
+	// packing is different from setLinkData or setQ/setD
+	VRMLloader& l=skeleton(ichara);
+	auto &bi=bodyInfo(ichara);
+	int nquat=l.dofInfo.numSphericalJoint();
+	int ndof=l.dofInfo.numDOF();
+
+	int qindex=0; // == dqindex
+	int dqsindex=ndof-nquat*4;
+	int Qindex=0; // cacheIndex
+
+	bi.kps.resize(ndof-nquat);
+	bi.kds.resize(ndof-nquat);
+
+	auto& kps=bi.kps;
+	auto& kds=bi.kds;
+
+	for(int ibone=1; ibone<l.numBone(); ibone++)
+	{
+		VRMLTransform& b=(VRMLTransform&)l.bone(ibone);
+		switch(b.mJoint->jointType)
+		{
+			case HRP_JOINT::FIXED: 
+				continue;
+			case HRP_JOINT::FREE:
+				{
+					qindex+=3;
+					dqsindex+=3;
+
+					Qindex+=FREE_JOINT_QSIZE ;
+				}
+				break;
+			case HRP_JOINT::BALL:
+				Msg::error("TRL does not support ball joints");
+				break;
+			case HRP_JOINT::ROTATE:
+				{
+					int nq=l.dofInfo.numDOF(ibone);
+					for(int i=0; i<nq; i++) 
+					{
+						kps[Qindex]=kp(qindex);
+						kds[Qindex]=kd(qindex);
+						qindex+=1;
+						Qindex+=1;
+					}
+				}
+				break;
+		}
+	}
+	ASSERT(bi.kps.size()==Qindex);
+}
+void OpenHRP::DynamicsSimulator_TRL_penalty::calculateStablePDForces(int ichara, const vectorn& desired_q, vectorn & tau, bool applyRootExternalForce )
+{
+	// packing is different from setLinkData or setQ/setD
+	VRMLloader& l=skeleton(ichara);
+	int nquat=l.dofInfo.numSphericalJoint();
+	int ndof=l.dofInfo.numDOF();
+
+	int nActualDof = ndof-nquat ;
+
+	auto& bi=bodyInfo(ichara);
+
+    vectorn proportionalTorquePlusQDotDeltaT(nActualDof);
+	proportionalTorquePlusQDotDeltaT.setAllValue(0.0);
+    vectorn derivativeTorque(nActualDof);
+	derivativeTorque.setAllValue(0.0);
+
+	int qindex=0;
+	int qsindex=ndof-nquat*4;
+	int dqsindex=qsindex;
+	int Qindex=0;
+
+	auto& kps=bi.kps;
+	auto& kds=bi.kds;
+	double _timestep=world.timeStep();
+	Msg::verify(kps.size()==ndof-nquat, "call setStablePDparam first");
+	for(int ibone=1; ibone<l.numBone(); ibone++)
+	{
+		VRMLTransform& b=(VRMLTransform&)l.bone(ibone);
+		switch(b.mJoint->jointType)
+		{
+			case HRP_JOINT::FIXED: 
+				continue;
+			case HRP_JOINT::FREE:
+				{
+					qindex+=3;
+					qsindex+=4;
+					dqsindex+=3;
+
+					Qindex+=FREE_JOINT_QSIZE ;
+				}
+				break;
+			case HRP_JOINT::BALL:
+				Msg::error("TRL does not support ball joints");
+				break;
+			case HRP_JOINT::ROTATE:
+				{
+					int nq=l.dofInfo.numDOF(ibone);
+					int sj=b.mJoint->jointStartId;
+					for(int i=0; i<nq; i++) 
+					{
+						int cacheIndex=Qindex;
+						auto* link=getTRLlink(&bi, sj+i);
+						proportionalTorquePlusQDotDeltaT[qindex] = kps[cacheIndex] * (
+								desired_q[qindex] - link->q - 
+								_timestep * link->dq
+								);
+						derivativeTorque[qindex] = -kds[cacheIndex] * link->dq;
+						qindex++;
+						Qindex++;
+					}
+				}
+				break;
+		}
+	}
+
+	ASSERT(qindex==ndof-nquat*4);
+
+	tau= proportionalTorquePlusQDotDeltaT + derivativeTorque;
+	tau.range(0,3).setAllValue(0.0);
+	tau.range(qindex,qindex+3).setAllValue(0.0);
+
+    if (applyRootExternalForce) {
+		Msg::error("applyRootExternalForce not ported yet");
+		ASSERT(false); // not ported yet.
+    }
+}

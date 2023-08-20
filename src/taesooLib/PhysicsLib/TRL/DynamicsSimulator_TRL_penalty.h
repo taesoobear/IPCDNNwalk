@@ -38,45 +38,46 @@ namespace OpenHRP {
 		
 
 	public:
+		inline TRL::Body& bodyInfo(int ichara) { return *world.body(ichara);}
 
 		DynamicsSimulator_TRL_penalty(bool useSimpleColdet=true);
 		DynamicsSimulator_TRL_penalty(const char* coldet);
 
 		~DynamicsSimulator_TRL_penalty();
 
-		virtual void getBodyVelocity(int chara, VRMLTransform* b, Liegroup::se3& V) const ;
+		virtual void getBodyVelocity(int chara, VRMLTransform* b, Liegroup::se3& V) const override;
 		void calcMomentumDotJacobian(int ichar, matrixn& jacobian, matrixn& dotjacobian);
 
 		virtual void getWorldVelocity(int ichara, VRMLTransform* b
 			, ::vector3 const& localpos
-			, ::vector3& velocity) const;
+			, ::vector3& velocity) const override;
 
 		virtual void getWorldAcceleration(int ichara,VRMLTransform* b
 			, ::vector3 const& localpos
-			, ::vector3& acc) const;
+			, ::vector3& acc) const override;
 
-		virtual void getWorldAngVel(int ichara, VRMLTransform* b, ::vector3& angvel) const;
+		virtual void getWorldAngVel(int ichara, VRMLTransform* b, ::vector3& angvel) const override;
 
 		// body force
 		void addForceToBone(int ichara, VRMLTransform* b, ::vector3 const& localpos, ::vector3 const& force);
 		// torque around the world origin
 		void addWorldTorqueToBone(int ichara, VRMLTransform* b, ::vector3 const& world_torque);
 
-		virtual void _registerCharacter(const char *name, CharacterInfo const& cinfo);
+		virtual void _registerCharacter(const char *name, CharacterInfo const& cinfo) override;
 
 
 		virtual void init(double timeStep,
 						  OpenHRP::DynamicsSimulator::IntegrateMethod integrateOpt);
 
-		double currentTime() const;
-		void setCurrentTime(double t);
+		virtual double currentTime() const;
+		virtual void setCurrentTime(double t) override;
 
 		/* dw, dv, tauext, fext are w.r.t world coordinate
  		  |       |   | dw   |   |    |   | tauext    |
 		  | out_M | * | dv   | + | b1 | = | fext      |
 		  |       |   |ddq   |   |    |   | u         |
 		  */
-		virtual void calcMassMatrix(int ichara, matrixn& out, vectorn & b);
+		virtual void calcMassMatrix(int ichara, matrixn& out, vectorn & b) override;
 
 		virtual void setTimestep(double timeStep);
 		virtual double getTimestep();
@@ -97,8 +98,8 @@ namespace OpenHRP {
 		virtual void calcDotBodyJacobianAt(int ichar, int ibone, matrixn& jacobian, matrixn& dotjacobian, vector3 const& localpos);
 
 		// global jacobian 
-		virtual void calcJacobianAt(int ichar, int ibone, matrixn& jacobian, vector3 const& localpos);
-		virtual void calcDotJacobianAt(int ichar, int ibone, matrixn& dotjacobian, vector3 const& localpos);
+		virtual void calcJacobianAt(int ichar, int ibone, matrixn& jacobian, vector3 const& localpos) override;
+		virtual void calcDotJacobianAt(int ichar, int ibone, matrixn& dotjacobian, vector3 const& localpos) override;
 		
 		// spatial jacobian (when globalpos is vector3(0,0,0))
 		void _calcJacobianAt(int ichar, int ibone, matrixn& jacobian, vector3 const& globalpos);
@@ -111,8 +112,8 @@ namespace OpenHRP {
 		int calcS(int ichara, int ibone, matrixn& S);
 
 		// output is compatible to MotionDOF class.
-		virtual void getLinkData(int ichara, LinkDataType t, vectorn& out);
-		virtual void setLinkData(int ichara, LinkDataType t, vectorn const& in);
+		virtual void getLinkData(int ichara, LinkDataType t, vectorn& out) override;
+		virtual void setLinkData(int ichara, LinkDataType t, vectorn const& in) override;
 
 		// if model contains spherical joints, use getSphericalState* and setTau functions.
 		/*
@@ -194,6 +195,9 @@ namespace OpenHRP {
 
 		void eulerZYXtoState(vectorn const& eulerState, vectorn& state) const;
 		void eulerYXZtoState(vectorn const& eulerState, vectorn& state) const;
+
+		void setStablePDparam(int ichara, const vectorn& kp, const vectorn& kd);
+		void calculateStablePDForces(int ichara, const vectorn& desired_q, vectorn& tau, bool applyRootExternalForce=false);
 	};
 
 

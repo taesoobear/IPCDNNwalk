@@ -429,7 +429,10 @@ OgreRenderer::OgreRenderer(const char* fallback_configFileName, const char* conf
 
 void OgreRenderer::_constructor(const char* fallback_configFileName, const char* configFileName, const char* plugins_file, const char* ogre_config)
 {
+	printf("loading %s\n", configFileName);
+#if !defined(NO_GUI)
 	config.load(fallback_configFileName, configFileName);
+#endif
 	ASSERT(RE::g_pGlobals==NULL);
 	RE::g_pGlobals=new RE::Globals();
 	RE::g_pGlobals->pRenderer = this;    
@@ -1178,6 +1181,108 @@ void OgreRenderer::createDynamicTexture(const char* name, CImage const& image)
 	}
 #endif
 }
+void OgreRenderer::createDynamicTexture(const char* name, CImage const& image, vector3 const& diffuseColor, vector3 const& specularColor)
+{
+#ifndef NO_OGRE
+	int width=image.GetWidth();
+	int TEX_MAX_RESOLUTION=image.GetWidth();
+	int width2=TEX_MAX_RESOLUTION;
+	while(width2>width) width2/=2;
+
+	Msg::verify(width2>=2, "??? resolution error");
+	//std::cout << width2<<std::endl;
+	//
+	//change bygth
+	//const char* texturename="DynamicTexture";
+	//Ogre::TexturePtr texture =Ogre::TextureManager::getSingleton().getByName(texturename);
+	
+	std::ostringstream nameStream;
+	nameStream << name << "Texture";
+	std::string nameString=nameStream.str();
+	const char* texturename=nameString.c_str();
+	Ogre::TexturePtr texture =Ogre::TextureManager::getSingleton().getByName(texturename);
+	if(texture.isNull())
+		texture = Ogre::TextureManager::getSingleton().createManual(
+					texturename, // name
+					Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+					Ogre::TEX_TYPE_2D,      // type
+					width2, width2,         // width & height
+					0,                // number of mipmaps
+					Ogre::PF_BYTE_BGRA,     // pixel format
+					Ogre::TU_DEFAULT);      // usage; should be TU_DYNAMIC_WRITE_ONLY_DISCARDABLE for
+				//Ogre::TU_DYNAMIC_WRITE_ONLY_DISCARDABLE);      // usage; should be TU_DYNAMIC_WRITE_ONLY_DISCARDABLE for
+						  // textures updated very often (e.g. each frame)
+	else
+		width2=texture->getWidth();
+	 
+	// Get the pixel buffer
+	Ogre::HardwarePixelBufferSharedPtr pixelBuffer = texture->getBuffer();
+	 
+	// Lock the pixel buffer and get a pixel box
+	pixelBuffer->lock(Ogre::HardwareBuffer::HBL_NORMAL); // for best performance use HBL_DISCARD!
+	//pixelBuffer->lock(Ogre::HardwareBuffer::HBL_DISCARD); // for best performance use HBL_DISCARD!
+	const Ogre::PixelBox& pixelBox = pixelBuffer->getCurrentLock();
+	 
+	Ogre::uint8* pDest = static_cast<Ogre::uint8*>(pixelBox.data);
+	 
+	//CImage  img2;
+	//img2.CopyFrom(image);
+	//Imp:: resize(img2, width2, width2);
+
+	for (size_t j = 0; j < width2; j++)
+	{
+		int h=j*image.GetHeight()/width2;
+		//printf("%d %d\n", j,j);
+		if(h>image.GetHeight()-1) h=image.GetHeight()-1;
+		//CPixelRGB8* c_line=image.GetPixel(0, h);
+		CPixelRGB8* c_line=image.GetPixel(0, image.GetHeight()-h-1); // flip_y
+
+		//std::cout << y <<"/"<<image.GetHeight()<<std::endl;
+		for(size_t i = 0; i < width2; i++)
+		{
+			*pDest++ = c_line->B; // B
+			*pDest++ = c_line->G ; // G
+			*pDest++ = c_line->R; // R
+			*pDest++ = 255; // A
+			c_line++;
+		}
+	 
+		pDest += pixelBox.getRowSkip() * Ogre::PixelUtil::getNumElemBytes(pixelBox.format);
+	}
+	 
+	// Unlock the pixel buffer
+	pixelBuffer->unlock();
+	 
+	// Create a material using the texture
+	// change bygth
+	//	const char materialName[]=		"DynamicTextureMaterial"; // name
+	const char* materialName=name; // name
+	Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().getByName(materialName);
+	
+	if(material.isNull())
+	{
+		// I hardcoded material "DynamicTextureMaterial" in the CheckBoard.material so the below code won't execute unless you delete the material.
+		// change bygth
+		material=Ogre::MaterialManager::getSingleton().create(
+				materialName,
+		Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+		material->getTechnique(0)->getPass(0)->createTextureUnitState(texturename);
+		//material->getTechnique(0)->getPass(0)->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
+		material->getTechnique(0)->setDiffuse(diffuseColor.x, diffuseColor.y, diffuseColor.z, 1.0);
+		material->getTechnique(0)->setSpecular(specularColor.x, specularColor.y, specularColor.z, 1.0);
+	}
+#endif
+}
+/*
+Ogre::TexturePtr renderTexture = Ogre::TextureManager::getSingleton().createManual(MY_TEXTURE, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_2D, gameManager.getWindow()->getWidth(), gameManager.getWindow()->getHeight(), 0, Ogre::PF_A8R8G8B8, Ogre::TU_DYNAMIC_WRITE_ONLY);
+
+Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().create(MY_MATERIAL, GENERAL_RESOURCE_GROUP);
+material->getTechnique(0)->getPass(0)->setCullingMode(Ogre::CULL_NONE);
+material->getTechnique(0)->getPass(0)->createTextureUnitState(MY_TEXTURE);
+material->getTechnique(0)->getPass(0)->setDepthCheckEnabled(false);
+material->getTechnique(0)->getPass(0)->setDepthWriteEnabled(false);
+material->getTechnique(0)->getPass(0)->setLightingEnabled(false);
+*/
 void OgreRenderer:: createRenderTexture(const char* type, int width, int height, bool useCurrentViewport, const char* name)
 {
 #ifndef NO_OGRE

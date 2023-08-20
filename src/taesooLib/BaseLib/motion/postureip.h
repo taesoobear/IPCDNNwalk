@@ -89,8 +89,6 @@ public:
 	// size는 4의 배수. quaternion blending이 각 4컬럼씩마다 잘라서 수행된다.
 	vectorn m_additionalQuater;
 
-
-
 	// 아래 함수는 dynamic type checking을 하지 않는다. 왠만하면 operator=이나 clone()함수를 사용할것.
 	void _clone(const Posture* pPosture);
 

@@ -14,13 +14,6 @@ typedef int STATUS;
 #define SUCCESS 1
 #define FAILURE 0
 
-/*
-#ifndef EXCLUDE_BULLET_SIM
-#ifndef BT_USE_DOUBLE_PRECISION
-#define BT_USE_DOUBLE_PRECISION
-#endif
-#endif
-*/
 
 #ifdef USE_MOTION_BLENDING
 #define MotionInterpolator MotionBlending

@@ -14,6 +14,11 @@ namespace OBJloader
 	class Terrain;
 }
 
+namespace TRL
+{
+	class CollisionDetector_fcl ;
+}
+
 namespace HRP_JOINT
 {
 	enum jointType_T {  // trans, rot channel string:
@@ -64,6 +69,7 @@ public:
 	TString HRPjointName(int i) const;
 	HRP_JOINT::jointType_T HRPjointType(int i) const;
 	TString HRPjointAxis(int i) const;
+	void setJointRange(int i, double min_deg, double max_deg);
 
 	inline int lastHRPjointIndex() const	{return HRPjointIndex(numHRPjoints()-1);}
 	
@@ -72,6 +78,7 @@ public:
 	double mass();
 	vector3 inertia() const; // only diagonal.
 	matrix3 const& momentsOfInertia() const; // full.
+	void setMass(double m);
 	void setInertia(double ix, double iy, double iz);
 	void scaleMass( m_real scalef);
 	void translateMesh( vector3 const& trans);
@@ -104,6 +111,7 @@ class VRMLloader: public MotionLoader
 	double _frameRate;
 
 	OBJloader::Terrain* _terrain;// reference
+	friend class TRL::CollisionDetector_fcl ;
 public:
 	TString url;
 	TString name;
@@ -114,7 +122,9 @@ public:
 	void setURL(const char* u) { url=u;}
 	
 	virtual TString getName() { return name;}
+
 	VRMLloader(OBJloader::Geometry const& mesh, bool useFixedJoint=false);
+	VRMLloader(OBJloader::Terrain *terrain);
 	VRMLloader(const char* vrmlFile);
 	VRMLloader(CTextFile& vrmlFile);
 	VRMLloader(VRMLloader const& other); // copy constructor

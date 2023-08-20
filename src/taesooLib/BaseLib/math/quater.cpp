@@ -452,6 +452,7 @@ void quater::setRotation(const char* aChannel, m_real *aValue, bool bRightToLeft
 			axis=vector3(0,0,1);
 			break;
 		default:
+			Msg::error("unknown channels");
 			assert(0);
 			continue;
 		}

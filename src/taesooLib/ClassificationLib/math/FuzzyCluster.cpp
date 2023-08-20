@@ -1332,19 +1332,19 @@ void CFuzzyCluster::CalcDTWDistanceMatrix(const matrixn& aInputVec, int numRow, 
 typedef std::list<int> CCluster;
 
 
-void CFuzzyCluster::AggloCluster(const matrixn& distMat, m_real inter_cluster_thr, int& cluster_n, int* group_index)
+void CFuzzyCluster::AggloCluster(const matrixn& distMat, m_real inter_cluster_thr, int& cluster_n, int* group_index, int eLinkage)
 {
 	cluster_n=1;
 	matrixn interDist;
 	vectorn innerDist;
-	AggloClusterCore(distMat, interDist, innerDist,inter_cluster_thr, cluster_n, group_index);
+	AggloClusterCore(distMat, interDist, innerDist,inter_cluster_thr, cluster_n, group_index, eLinkage);
 }
 
-void CFuzzyCluster::AggloCluster(const matrixn& distMat, int cluster_n, int* group_index)
+void CFuzzyCluster::AggloCluster(const matrixn& distMat, int cluster_n, int* group_index, int eLinkage)
 {
 	matrixn interDist;
 	vectorn innerDist;
-	AggloClusterCore(distMat, interDist, innerDist, FLT_MAX, cluster_n, group_index);
+	AggloClusterCore(distMat, interDist, innerDist, FLT_MAX, cluster_n, group_index, eLinkage);
 }
 
 void FindMin(const matrixn& interDist, int nCluster, m_real& fMinDist, int& min_i, int& min_j)
@@ -1524,7 +1524,7 @@ void CFuzzyCluster::AggloClusterCore(const matrixn& distMat, matrixn& interDist,
 #endif*/
 	}
 
-	ASSERT(inner_cluster_thr!=FLT_MAX || aClusters.Size()==cluster_n);
+	Msg::verify(inner_cluster_thr!=FLT_MAX || aClusters.Size()==cluster_n, "clustering failed! %d", aClusters.Size());
 	cluster_n=aClusters.Size();
 
 	for(int i=0; i<numElts; i++)

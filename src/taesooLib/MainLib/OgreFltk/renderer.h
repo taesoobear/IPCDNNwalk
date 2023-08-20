@@ -68,6 +68,7 @@ public:
 	void setMaterialParam(const char* mat, const char* paramName, double value);
 	void cloneMaterial(const char* mat, const char* newMat);
 	void createDynamicTexture(const char* name, CImage const& image);	
+	void createDynamicTexture(const char* name, CImage const& image, vector3 const& diffuseColor, vector3 const& specular_color);	
 	void addNewDynamicObj(Ogre::AnimationState* const as);
 	void addFrameMoveObject(FrameMoveObject* pFMO);
 	void removeFrameMoveObject(FrameMoveObject* pFMO);

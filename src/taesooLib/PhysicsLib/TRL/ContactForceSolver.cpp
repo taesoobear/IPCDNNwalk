@@ -243,8 +243,12 @@ void ContactForceSolver::solve(CollisionSequence& corbaCollisionSequence)
 			setAccelCalcSkipInformation();
 		}
 
+		BEGIN_TIMER(sam1);
 	    setDefaultAccelerationVector();
+		END_TIMER2(sam1);
+		BEGIN_TIMER(sam2);
 	    setAccelerationMatrix();
+		END_TIMER2(sam2);
 
 		if(globalNumConstraintVectors - globalNumContactNormalVectors > 0){
 			clearSingularPointConstraintsOfClosedLoopConnections();

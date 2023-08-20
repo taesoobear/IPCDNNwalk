@@ -249,7 +249,7 @@ void ASFLoader::LoadASF(const char* filename)
 			m_strName=file.GetToken();
 		else if(Token(":units"))
 		{
-			while(ReadToken())
+			while((ReadToken()))
 			{
 				if(Token("angle"))
 				{
@@ -263,7 +263,7 @@ void ASFLoader::LoadASF(const char* filename)
 		}
 		else if(Token(":documentation"))
 		{
-			while(token=file.GetLine())
+			while((token=file.GetLine()))
 				if(token[0]==':') break;
 			file.Undo();
 		}

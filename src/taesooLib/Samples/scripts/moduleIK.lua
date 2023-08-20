@@ -405,10 +405,33 @@ end
 -- loadmotion('a.wrl', 'a.dof', 100) or loadmotion('a.wrl', 'a.bvh', 100) or loadmotion('a.bvh', nil, 100)
 function loadMotion(skel, motion, skinScale)
 	local mot={}
-	if string.upper(string.sub(skel,-3))=='WRL' then
-		mot.loader=MainLib.VRMLloader (skel)
+	local skel_ext=''
+	if type(skel)=='string' then
+		skel_ext=string.upper(string.sub(skel,-3))
+	end
+	if skel_ext=='WRL' or skel_ext=='LUA' or skel_ext=='' then
+		if skel_ext=='LUA' then
+			require('subRoutines/WRLloader')
+			mot.loader=MainLib.WRLloader (skel)
+		elseif skel_ext=='' then
+			if skel then
+				mot.loader=skel
+			else
+				local l=RE.createMotionLoaderExt_cpp(motion)
+				-- bvh files are usually  in cm unit.
+				mot.loader= l:toVRMLloader(2.5)
+			end
+		else
+			mot.loader=MainLib.VRMLloader (skel)
+		end
 
-		if string.upper(string.sub(motion, -3))=='DOF' then
+		if motion==nil or motion=='' then
+			mot.motionDOFcontainer=MotionDOFcontainer(mot.loader.dofInfo)
+			mot.motionDOFcontainer:resize(100)
+			mot.motionDOFcontainer.mot:matView():setAllValue(0)
+			mot.motionDOFcontainer.mot:matView():column(1):setAllValue(1)
+			mot.motionDOFcontainer.mot:matView():column(3):setAllValue(1)
+		elseif string.upper(string.sub(motion, -3))=='DOF' then
 			mot.motionDOFcontainer=MotionDOFcontainer(mot.loader.dofInfo, motion)
 		else
 			local tempMot=loadMotion(motion, nil, nil)
@@ -435,18 +458,54 @@ function loadMotion(skel, motion, skinScale)
 			end
 		end
 	else
-		mot.loader=RE.createMotionLoaderExt(skel)
-		if motion then
+
+		local loader
+		if select(1,string.find(skel,'%*')) then
+			local files=os.glob(skel)
+			if #files >0 then
+				table.sort(files)
+				local loaders={}
+				for i,skel in ipairs(files) do
+					loaders[i]=RE.createMotionLoaderExt(skel)
+				end
+				loader=loaders[1]
+				for i=2, #loaders do
+					loader.mMotion:concat(loaders[i].mMotion)
+				end
+			else
+				assert(false)
+			end
+		else
+
+			if string.upper(string.sub(skel,-3))=='FBX' then
+				FBXloader=require("FBXloader")
+				loader=FBXloader.motionLoader(skel)
+			else
+				loader=RE.createMotionLoaderExt(skel)
+			end
+		end
+		mot.loader=loader
+		if motion and motion~='' then
 			mot.motionDOFcontainer=MotionDOFcontainer(mot.loader.dofInfo, motion)
 		else
-			mot.motionDOFcontainer=MotionDOFcontainer(mot.loader.dofInfo)
-			mot.motionDOFcontainer.mot:set(mot.loader.mMotion)
-			mot.motionDOFcontainer:resize(mot.loader.mMotion:numFrames())
+			if mot.loader.mMotion then
+				mot.motionDOFcontainer=MotionDOFcontainer(mot.loader.dofInfo)
+				mot.motionDOFcontainer.mot:set(mot.loader.mMotion)
+				mot.motionDOFcontainer:resize(mot.loader.mMotion:numFrames())
+
+				mot.motion=mot.loader.mMotion:copy()
+			else
+				assert(false)
+			end
 		end
 	end
 	if skinScale then
 		mot.skin=createSkin(skel, mot.loader, skinScale)
-		mot.skin:applyMotionDOF(mot.motionDOFcontainer.mot)
+		if mot.motion then
+			mot.skin:applyAnim(mot.motion)
+		else
+			mot.skin:applyMotionDOF(mot.motionDOFcontainer.mot)
+		end
 		mot.skin:setMaterial('lightgrey_transparent')
 	end
 	return mot
@@ -509,7 +568,7 @@ end
 
 function createSkin(skel, loader, skinScale)
 	local skin
-	if string.upper(string.sub(skel,-3))=='WRL' then
+	if skel and string.upper(string.sub(skel,-3))=='WRL' then
 		skin= RE.createVRMLskin(loader, false);	-- to create character
 	else
 		skin= RE.createSkin(loader);	-- to create character
@@ -520,7 +579,7 @@ function createSkin(skel, loader, skinScale)
 	return skin
 end
 
-function createIKsolverForRetargetting(loader, marker_bone_indices, markerDistance, markerDistanceOverride)
+function createIKsolverForRetargetting(loader, marker_bone_indices,  markerDistance, markerDistanceOverride)
 	local mIKsolver=
 	{
 		effectors=MotionUtil.Effectors(),

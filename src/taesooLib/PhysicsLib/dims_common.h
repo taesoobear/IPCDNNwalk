@@ -31,4 +31,5 @@ static char charname_separator = ':';
 #ifndef MAX3
 #define MAX3(l, m, n) ((MAX(l,m) >= n) ? MAX(l,m) : n)
 #endif
+
 #endif

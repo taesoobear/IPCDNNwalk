@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "Geometry.h"
+#include "Terrain.h"
 #include "../math/Operator.h"
 #include <iostream>
 #include <fstream>
@@ -21,16 +22,29 @@ static void initFaceGroups(Geometry& mesh)
 	mesh.elements[0].tf.identity();
 }
 
+void Geometry::mergeAllElements()
+{
+	initFaceGroups(*this);
+}
 
 void Geometry::copyFrom(Geometry const& otherMesh)
 {
-	Mesh::copyFrom(otherMesh);
-	elements=otherMesh.elements;
+	//printf("copyfrom called\n");
+	if (otherMesh.elements.size()!=0)
+	{
+		Mesh::copyFrom(otherMesh);
+		elements=otherMesh.elements;
+	}
+	else
+	{
+		// invalid geometry. use only the mesh part (excluding elements).
+		assignMesh(otherMesh);
+	}
 }
 void Geometry::assignMesh(OBJloader::Mesh const& otherMesh)
 {
 	Mesh::copyFrom(otherMesh);
-	int nE=otherMesh.faceGroups.size();
+	int nE=faceGroups.size();
 	elements.resize(nE);
 	for(int i=0; i<nE; i++)
 	{
@@ -38,6 +52,17 @@ void Geometry::assignMesh(OBJloader::Mesh const& otherMesh)
 		elements[i].tf.identity();
 	}
 
+}
+void Geometry::assignTerrain(OBJloader::Terrain const& otherMesh, vector3 const& center)
+{
+	Mesh::copyFrom(otherMesh);
+
+	matrix4 temp;
+	temp.setTranslation(center, false);
+	transform(temp);
+
+	initFaceGroups(*this);
+	elements[0].elementType=Element::TRI;
 }
 
 bool Geometry::saveObj(const char* filename, bool vn, bool vt)
@@ -145,7 +170,7 @@ void Geometry::initEllipsoid(const vector3& size)
 {
 	Mesh halfSphere;
 	//halfSphere.loadObj("../Resource/mesh/half_sphere_111.obj");
-	load_half_sphere_111(halfSphere);
+	load_half_sphere_111(halfSphere); // radius==1 == half diameter
 	matrix4 m;
 	m.setScaling(size.x, size.y, size.z);
 	halfSphere.transform(m);
@@ -295,12 +320,22 @@ void Geometry::merge(Geometry const& a, Geometry const& b)
 	// avoid aliasing
 	if(&a==this)
 	{
+		if (a.numVertex()==0)
+		{
+			copyFrom(b);
+			return;
+		}
 		Geometry aa(a);
 		merge(aa,b);
 		return;
 	}
 	if(&b==this)
 	{
+		if (b.numVertex()==0)
+		{
+			copyFrom(a);
+			return;
+		}
 		Geometry bb(b);
 		merge(a,bb);
 		return;
@@ -679,4 +714,34 @@ void Geometry::initPlane(double size_x, double size_z) // normal : (0,1,0)
 	elements[0].elementType=Element::PLANE;
 	elements[0].elementSize=vector3(size_x, 0, size_z);
 	elements[0].tf.identity();
+}
+double Geometry::totalVolume()
+{
+	double volume=0;
+	for(int i=0; i<elements.size(); i++)
+	{
+		int t=element(i).elementType;
+
+		auto& es=element(i).elementSize;
+		double size3=es.x*es.y*es.z;
+		switch(t)
+		{
+			case Element::OBJ:
+				return 0;
+			case Element::BOX:
+				volume+=size3;
+				break;
+			case Element::CAPSULE:
+				volume+=0.523*es.x*es.x*es.x ; 
+			case Element::CYLINDER:
+				volume+=M_PI*0.25*es.x*es.x*es.y; // approximately 0.785 size3
+				break;
+			case Element::SPHERE:
+			case Element::ELLIPSOID:
+				volume+=4.0/3.0*M_PI*0.125*size3; // approximately 0.523 size3
+				break;
+
+		}
+	}
+	return volume;
 }

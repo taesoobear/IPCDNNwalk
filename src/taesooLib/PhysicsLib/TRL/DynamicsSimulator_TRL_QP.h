@@ -32,8 +32,8 @@ namespace OpenHRP {
 	 */
 	class DynamicsSimulator_TRL_QP : public DynamicsSimulator_TRL_penalty, public DynamicsSimulator_QP
 	{
-		vectorn _f;
-		vector3N contactPos;
+		mutable vectorn _f;
+		mutable vector3N contactPos;
 		TRL::ContactForceSolver* _contactForceSolver;
 		double _MA;
 	public:
@@ -53,9 +53,9 @@ namespace OpenHRP {
 		void stepKinematic(int ichar, vectorn const& dq);
 		void stepKinematic2(int ichar, vectorn const& ddq);
 		void get_contact_jacob(int ichar, matrixn & M, vectorn& v_star, CollisionSequence& collisionSequence);
-		void get_contact_pos(int ichar, vector3N& cpos, CollisionSequence& collisionSequence);
-		void drawLastContactForces(::vector3 const& draw_offset=::vector3(0,0,0));
-		::vector3 getContactForce(int ichar, int ibone) const;
+		void get_contact_pos(int ichar, vector3N& cpos, CollisionSequence& collisionSequence) const;
+		virtual void drawLastContactForces(int ichara=0, ::vector3 const& draw_offset=::vector3(0,0,0)) const override final;
+		virtual ::vector3 getContactForce(int ichar, int ibone) const override final;
 		void registerCollisionCheckPair ( const char *charName1, const char *linkName1, const char *charName2, const char *linkName2, vectorn const& param);
 		int getNumAllLinkPairs() const;
 	};

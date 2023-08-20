@@ -137,6 +137,7 @@ public:
 	int numRotJoint() const;	//!< KeyFrame되어 있는 조인트의 개수를 구한다.
 	int numTransJoint() const;
 	int numBone() const; //!< including the DUMMY bone (= bone 0).
+	inline int numEndBone() const { return m_nNumEndNode;}
 
 	// related to BoneForwardKinematics m_defaultFK
 	BoneForwardKinematics & fkSolver() const	{return m_defaultFK;}

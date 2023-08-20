@@ -32,10 +32,12 @@ namespace OpenHRP {
 	class DynamicsSimulator_TRL_LCP : public DynamicsSimulator_TRL_penalty
 	{
 	protected:
-		vectorn _f;
-		vector3N contactPos;
+		mutable vectorn _f;
+		mutable vector3N contactPos;
 		TRL::ContactForceSolver* _contactForceSolver;
 		double _MA;
+		bool _velocityDamping; // turned off by default.
+		double m_linearDamping, m_angularDamping;
 	public:
 
 		DynamicsSimulator_TRL_LCP(bool useSimpleColdet=true);
@@ -45,6 +47,14 @@ namespace OpenHRP {
 		~DynamicsSimulator_TRL_LCP();
 		void setParam_Epsilon_Kappa(double eps, double kap);
 		void setParam_R_B_MA(double r, double b, double ma);
+		void setDamping(double linearDamping=0.05, double angularDamping=0.85)
+		{
+			// turn on velocity damping (only when there are contacts)
+			// velocity damping is non-physical, but used in all game physics engines such as bullet3d.
+			_velocityDamping=true;
+			m_linearDamping=linearDamping;
+			m_angularDamping=angularDamping;
+		}
 
 		virtual void init(double timeStep,
 						  OpenHRP::DynamicsSimulator::IntegrateMethod integrateOpt);
@@ -53,9 +63,9 @@ namespace OpenHRP {
 		void stepSimulation_part1();
 		void stepKinematic(int ichar, vectorn const& dq);
 		void get_contact_jacob(int ichar, matrixn & M, vectorn& v_star, CollisionSequence& collisionSequence);
-		void get_contact_pos(int ichar, vector3N& cpos, CollisionSequence& collisionSequence);
-		void drawLastContactForces(::vector3 const& draw_offset=::vector3(0,0,0));
-		::vector3 getContactForce(int ichar, int ibone) const;
+		void get_contact_pos(int ichar, vector3N& cpos, CollisionSequence& collisionSequence) const;
+		virtual void drawLastContactForces(int ichara=0, ::vector3 const& draw_offset=::vector3(0,0,0)) const override final;
+		virtual ::vector3 getContactForce(int ichar, int ibone) const override final;
 		Liegroup::dse3 getCOMbasedContactForce(int ichar, int ibone) const; // returns (r x f, f)
 		void registerCollisionCheckPair ( const char *charName1, const char *linkName1, const char *charName2, const char *linkName2, vectorn const& param);
 		virtual void addRelativeConstraint(int ichara, Bone& bone1,::vector3 boneVector1,Bone& bone2,::vector3 boneVector2);

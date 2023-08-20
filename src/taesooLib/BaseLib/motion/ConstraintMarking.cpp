@@ -508,10 +508,10 @@ void ConstraintMarking::calcConstraintPos(int constraint)
 		MotionLoader& skel=m_pAccurateMotion->skeleton();
 
 		MotionUtil::GetSignals sig(*m_pAccurateMotion);
-		sig.jointPosVel(dep_GetBoneFromCon(skel,CONSTRAINT_LEFT_TOE), posL[CON_TOE], velL[CON_TOE]);
-		sig.jointPosVel(dep_GetBoneFromCon(skel, CONSTRAINT_RIGHT_TOE), posR[CON_TOE],   velR[CON_TOE] );
-		sig.jointPosVel(skel.getBoneByRotJointIndex(jointL), posL[CON_HEEL], velL[CON_HEEL] );
-		sig.jointPosVel(skel.getBoneByRotJointIndex(jointR), posR[CON_HEEL], velR[CON_HEEL] );
+		sig.jointPosVel(dep_GetBoneFromCon(skel,CONSTRAINT_LEFT_TOE), posL[CON_TOE].lval(), velL[CON_TOE].lval());
+		sig.jointPosVel(dep_GetBoneFromCon(skel, CONSTRAINT_RIGHT_TOE), posR[CON_TOE].lval(),   velR[CON_TOE].lval() );
+		sig.jointPosVel(skel.getBoneByRotJointIndex(jointL), posL[CON_HEEL].lval(), velL[CON_HEEL].lval() );
+		sig.jointPosVel(skel.getBoneByRotJointIndex(jointR), posR[CON_HEEL].lval(), velR[CON_HEEL].lval() );
 
 		matrixn m_aaHeightLeft;	
 		matrixn m_aaHeightRight;

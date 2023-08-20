@@ -48,6 +48,11 @@ LUAwrapper::~LUAwrapper()
 {
 	if(_ownState)
 		lua_close(L);
+	else
+	{
+		if(errorFunc && errorFunc==gettop())
+			lua_pop(L,1);
+	}
 }
 
 static void handleLUAerror(lua_State* L)

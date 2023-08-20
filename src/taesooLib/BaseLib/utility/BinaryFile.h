@@ -29,4 +29,16 @@ public:
 	virtual void close();
 };
 
+class ZipFile 
+{
+	void* data;
+	public:
+	ZipFile();
+	~ZipFile();
+	void openRead(const char* filename);
+	int getNumFiles() const;
+	std::string getFileName(int file_index) const;
+	unsigned int getFileSize(int file_index) const;
+	std::string getFileContent(int file_index) const;
+};
 #endif

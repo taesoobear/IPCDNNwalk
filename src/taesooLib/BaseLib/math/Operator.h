@@ -5,6 +5,7 @@
 #include "math_macro.h"
 #include "../math/tvector.h"
 class Metric;
+class boolN;
 namespace v
 {
 	int argMinRand(vectorn const& a, m_real thr=1.05, int start=0, int end=INT_MAX);
@@ -77,7 +78,7 @@ namespace v
 namespace m
 {
     void derivative(matrixn& velocity, matrixn const& positions);	
-	void derivative(matrixn& velocity, matrixn const& positions, bitvectorn const& discontinuity);	// ex) velocities.delta(positions);
+	void derivative(matrixn& velocity, matrixn const& positions, boolN const& discontinuity);	// ex) velocities.delta(positions);
     void derivativeQuater(matrixn& velocity, matrixn const& positions);	
 	void filter(matrixn& inout, int kernelSize);
 	void adaptiveFilter(matrixn& inout, vectorn const& kernelSize, float frameTime);

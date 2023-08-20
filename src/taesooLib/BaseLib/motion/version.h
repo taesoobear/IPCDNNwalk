@@ -2,7 +2,7 @@
 #define _VERSION_H_
 #pragma once
 
-static const int MOT_RECENT_VERSION=5;
+static const int MOT_RECENT_VERSION=6;
 
 static const char* MOT_VERSION_STRING[]={"v0", "v1", "v2", "mot_version3", "mot_version4", "mot_version5"};
 

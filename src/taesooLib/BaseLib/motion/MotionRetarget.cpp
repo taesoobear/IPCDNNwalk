@@ -1,7 +1,9 @@
 #include "stdafx.h"
 #include "../math/mathclass.h"
 #include "MotionRetarget.h"
-//#include "../math/nr/nr.h"
+#ifdef USE_NR
+#include "../math/nr/nr.h"
+#endif
 #include "MotionUtil.h"
 #include "Motion.h"
 #include "MotionDOF.h"
@@ -170,8 +172,7 @@ namespace m0
 
 		At.transpose(A);
 		Augmented.range(row, row+numCon, row, row+numCon).setAllValue(0.0);
-		Msg::error("ludcmp");
-		/*
+#ifdef USE_NR
 #define USE_LUDCMP
 #ifdef USE_LUDCMP
 		DP p;
@@ -219,7 +220,9 @@ namespace m0
 			for(int i=0; i<row; i++)
 				f(i)=x[i];
 		}
-		*/
+#else
+		Msg::error("ludcmp");
+#endif
 	}
 
 	void adjustOnlineMultiCon::calc(matrixn& curve) const
@@ -281,8 +284,7 @@ namespace m0
 
 		At.transpose(A);
 		Augmented.range(row, row+numCon, row, row+numCon).setAllValue(0.0);
-		Msg::error("ludcmp");
-		/*
+#ifdef USE_NR
 #define USE_LUDCMP
 #ifdef USE_LUDCMP
 		DP p;
@@ -333,7 +335,9 @@ namespace m0
 			for(int i=0; i<row; i++)
 				f(i)=x[i];
 		}
-		*/
+#else
+		Msg::error("ludcmp");
+#endif
 	}
 
 	void adjust::calc(matrixn& curve) const
@@ -393,8 +397,7 @@ namespace m0
 
 		At.transpose(A);
 		Augmented.range(row, row+numCon, row, row+numCon).setAllValue(0.0);
-		Msg::error("ludcmp");
-		/*
+#ifdef USE_NR
 #define USE_LUDCMP
 #ifdef USE_LUDCMP
 		DP p;
@@ -444,7 +447,9 @@ namespace m0
 			for(int i=0; i<row; i++)
 				f(i)=x[i];
 		}
-		*/
+#else
+		Msg::error("ludcmp");
+#endif
 	}
 
 	void adjustOnline2::calc(matrixn& curve) const
@@ -499,9 +504,8 @@ namespace m0
 
 		At.transpose(A);
 		Augmented.range(row, row+numCon, row, row+numCon).setAllValue(0.0);
-		Msg::error("ludcmp");
-		/*
-#define USE_LUDCMP
+#ifdef USE_NR
+//#define USE_LUDCMP
 #ifdef USE_LUDCMP
 		DP p;
 		matrixn LU(Augmented);
@@ -548,7 +552,9 @@ namespace m0
 			for(int i=0; i<row; i++)
 				f(i)=x[i];
 		}
-		*/
+#else
+		Msg::error("ludcmp");
+#endif
 	}
 	void adjustSumOnline::calc(matrixn& curve) const
 	{
@@ -599,8 +605,7 @@ namespace m0
 
 		Augmented.range(xsize, xsize+numCon, xsize, xsize+numCon).setAllValue(0.0);
 
-		Msg::error("ludcmp");
-		/*
+#ifdef USE_NR
 		DP p;
 		matrixn LU(Augmented);
 		Vec_INT indx(Augmented.rows());
@@ -641,7 +646,9 @@ namespace m0
 				f(i)=x[i];
 
 		}
-		*/
+#else
+		Msg::error("ludcmp");
+#endif
 	}
 }
 

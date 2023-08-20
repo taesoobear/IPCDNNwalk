@@ -5,6 +5,51 @@ gen_lua.enum_types[#gen_lua.enum_types+1]='OpenHRP::DynamicsSimulator::LinkDataT
 bindTargetPhysics={
 	classes={
 		{
+			ifndef='EXCLUDE_GMBS_SIM',
+			name='gmbs.RMatrix',
+			className='RMatrix',
+			ctors={ '()',
+			'(int nr, int nc)'},
+			memberFunctions={[[
+			RMatrix operator + (const RMatrix &m) const
+			RMatrix operator - (const RMatrix &m) const
+			RMatrix operator * (const RMatrix &m) const
+			]]},
+			wrapperCode=[[
+				static void assign(RMatrix& out, matrixn const& mat)
+				{
+					out.ReNew(mat.rows(), mat.cols());
+					for(int i=0; i<mat.rows(); i++)
+						for(int j=0; j<mat.cols(); j++)
+							out(i,j)=mat(i,j);
+
+				}
+				static matrixn toMat(RMatrix const& in)
+				{
+					matrixn out;
+					out.setSize(in.RowSize(), in.ColSize());
+
+					for(int i=0; i<out.rows(); i++)
+						for(int j=0; j<out.cols(); j++)
+							out(i,j)=in(i,j);
+					return out;
+				}
+			]],
+			staticMemberFunctions={[[
+				void assign(RMatrix& out, matrixn const& mat)
+				matrixn toMat(RMatrix const& in)
+				int Rank(const RMatrix &m);
+				double Det(RMatrix A);
+				RMatrix pInv(const RMatrix &A, double eps );								
+				RMatrix srInv(const RMatrix &A, double alpha);									
+				RMatrix Nullspace(const RMatrix &A, double eps );	
+				RMatrix Zeros(int r, int c);
+				RMatrix Ones(int r, int c);
+				RMatrix Rand(int r, int c);
+				RMatrix Eye(int r, int c );
+			]]}
+		},
+		{
 			name='Physics.InertiaCalculator',
 			className='InertiaCalculator',
 			decl='class InertiaCalculator;',
@@ -82,9 +127,17 @@ bindTargetPhysics={
 				void get_hull(matrixn& out);
 				]]
 			},
+			wrapperCode=[[
+			static void memTest()
+			{
+				auto* a=new OpenHRP::DynamicsSimulator_TRL_LCP("gjk");
+				delete a;
+			}
+			]],
 			staticMemberFunctions={
 				[[
 				static double GrahamScan::direction( std::pair<double,double> p0, std::pair<double,double> p1, std::pair<double,double> p2 ); 
+				static void memTest()
 				]]
 			},
 		},
@@ -284,9 +337,17 @@ bindTargetPhysics={
 			{
 				name='Physics.CollisionPointSequence',
 				className='OpenHRP::CollisionPointSequence',
+				wrapperCode=[[
+				static void erase(OpenHRP::CollisionPointSequence& self, int i)
+				{ self.erase(self.begin()+i); }
+				]],
 				memberFunctions=[[
 				OpenHRP::CollisionPoint& operator[](int i)
 				int size()
+				void resize(int n)
+				]],
+				staticMemberFunctions=[[
+				void erase(OpenHRP::CollisionPointSequence& self, int i)
 				]]
 			},
 			{
@@ -306,6 +367,9 @@ bindTargetPhysics={
 				OpenHRP::CollisionDetector* OpenHRP::createCollisionDetector_bullet(); 
 				OpenHRP::CollisionDetector* OpenHRP::createCollisionDetector_gjk(); 
 				OpenHRP::CollisionDetector* OpenHRP::createCollisionDetector_libccd();
+				//OpenHRP::CollisionDetector* OpenHRP::createCollisionDetector_libccd_LBS();
+				//OpenHRP::CollisionDetector* OpenHRP::createCollisionDetector_libccd_merged();
+				OpenHRP::CollisionDetector* OpenHRP::createCollisionDetector_fcl();
 				]]}
 			},
 			{
@@ -323,6 +387,11 @@ bindTargetPhysics={
 					virtual void rayTest(int ichar, int ilink, vector3 const& from, vector3 const& to, OpenHRP::CollisionDetector::RayTestResult& result);
 					virtual void rayTestBackside(int ichar, int ilink, vector3 const& from, vector3 const& to, OpenHRP::CollisionDetector::RayTestResult& result);
 					virtual bool testIntersectionsForDefinedPairs(OpenHRP::CollisionSequence & collisions);
+					bool getLocalBoundingBoxSize(int charIndex, int ibone, vector3& localSize) { return false;}
+					virtual bool isSignedDistanceSupported() { return true;}
+					virtual double calculateSignedDistance(int iloader, int ibody, vector3 const& position, vector3& normal);
+					virtual bool isSphereTestSupported() 
+					virtual double testSphereIntersection(int iloader, int ibody, vector3 const& position, double radius, vector3& contactpos, vector3& normal) 
 					]]},
 			},
 			{
@@ -405,6 +474,10 @@ bindTargetPhysics={
 					static void setPose(PLDPrimVRML& prim, OpenHRP::DynamicsSimulator& s, int ichara) 
 					]]},
 					memberFunctions={[[	
+					void drawLastContactForces();
+					void drawLastContactForces(int ichara);
+					void drawLastContactForces(int ichara, vector3 const& draw_offset);
+					vector3 getContactForce(int ichar, int ibone) const;
 					void calcInertia(int ichara,vectorn const& pose, vectorn& inertia) const
 					Liegroup::dse3 calcMomentumCOMfromPose(int ichara, double t, vectorn const& poseFrom, vectorn const& poseTo)
 					Liegroup::dse3 calcMomentumCOM(int ichara);
@@ -458,8 +531,10 @@ bindTargetPhysics={
 					void _updateContactInfo();
 					vectorn const& getLastSimulatedPose(int ichara);
 					std::vector<OpenHRP::DynamicsSimulator::ContactForce> & queryContactAll();
-					void addForceToBone(int ichara, VRMLTransform* b, vector3 const& localpos, vector3 const& force);
+					void addForceToBone(int ichara, VRMLTransform* b, vector3 const& localpos, vector3 const& localforce);
+					void addGlobalForceToBone(int ichara, int ibone, vector3 const& globalpos, vector3 const& globalforce);
 					virtual void calcMassMatrix(int ichara,matrixn& ,vectorn&);
+
 					// for QPservo
 					int getNumAllLinkPairs();
 					void getContactLinkBoneIndex(int ipair, intvectorn & ibone);
@@ -490,6 +565,83 @@ bindTargetPhysics={
 				name='Physics.DynamicsSimulator_penaltyMethod',
 				className='OpenHRP::DynamicsSimulator_penaltyMethod',
 				inheritsFrom='OpenHRP::DynamicsSimulator',
+			},
+			{
+				ifndef='EXCLUDE_GMBS_SIM',
+				name='Physics.DynamicsSimulator_gmbs_penalty',
+				className='OpenHRP::DynamicsSimulator_gmbs_penalty',
+				inheritsFrom='OpenHRP::DynamicsSimulator_penaltyMethod',
+				--isLuaInheritable=true,
+				isExtendableFromLua=true,
+				ctors={'()'},
+				memberFunctions={[[
+				void calcJacobian(int ichar, int ibone, matrixn& jacobian);
+				Liegroup::dse3 calcMomentumCOMfromPoseUpper(int ichara, double t, vectorn const& poseFrom, vectorn const& poseTo)
+				Liegroup::dse3 calcMomentumCOMfromPoseLower(int ichara, double t, vectorn const& poseFrom, vectorn const& poseTo)
+				void addForceToBone(int ichara, VRMLTransform* b, vector3 const& localpos, vector3 const& force);
+				void test(const char* test, matrixn& out);
+				void calcBoneDotJacobian(int ichar, int ibone, vector3 const& localpos,matrixn& jacobian, matrixn& dotjacobian);
+				void calcBoneDotJacobian2(int ichar, int ibone, vector3 const& localpos,matrixn& jacobian, matrixn& dotjacobian);
+				void calcMassMatrix(int ichara, matrixn& M, vectorn& b) @ calcMassMatrix3
+				void getBodyVelocity(int chara, VRMLTransform* b, Liegroup::se3& V) const
+				]]}
+			},
+			{
+				ifndef='EXCLUDE_GMBS_SIM',
+				name='Physics.DynamicsSimulator_gmbs',
+				className='OpenHRP::DynamicsSimulator_gmbs',
+				inheritsFrom='OpenHRP::DynamicsSimulator',
+				ctors={'()','(bool)', '(const char*)'},
+				decl=[[
+				namespace OpenHRP {
+				class DynamicsSimulator_gmbs;
+				}
+				vector3 calcCOM2_gmbs(OpenHRP::DynamicsSimulator_gmbs&s, int ichara);
+				]],
+				staticMemberFunctions={[[
+				vector3 calcCOM2_gmbs(OpenHRP::DynamicsSimulator_gmbs&s, int ichara)
+				]]},
+				memberFunctions={[[
+				void setCollisionMargin(int ilinkpair, double a)
+				void setAllCollisionMargin(vectorn const& a)
+				void getAllCollisionMargin(vectorn & a)
+				Liegroup::dse3 calcMomentumGlobal(int ichara);
+				// ys start
+				void stepKinematicMuscle_integrate(vectorn const& ddq, double dt);
+				void stepKinematicMuscle_updateother();
+				// ys end
+				bool stepKinematic(vectorn const& ddq, vectorn const& tau, bool );
+				//ys
+				double calcKineticEnergy() const
+				vector3 calculateCOMacc(int ichara);
+				void getLCPmatrix(matrixn& A, vectorn& b);
+				void getLCPsolution(vectorn& out);
+				void calcContactJacobianAll(matrixn &J_all, matrixn & dotJ_all, matrixn& V_all, matrixn & dot_v_all, int link_pair_count, double invfrictionCoef);
+				void calcJacobian(int ichar, int ibone, matrixn& jacobian);
+				void calcDotJacobian(int ichar, int ibone, matrixn& dotjacobian);
+				void _calcDotBodyJacobian(int ichar, int ibone, matrixn& jacobian, matrixn& dotjacobian, bool update);
+				void calcCOMjacobian(int ichar, matrixn& jacobian);
+				void calcMomentumDotJacobian(int ichar, matrixn& jacobian, matrixn& dotjacobian)
+				Liegroup::dse3 calcMomentumCOMfromPoseUpper(int ichara, double t, vectorn const& poseFrom, vectorn const& poseTo)
+				Liegroup::dse3 calcMomentumCOMfromPoseLower(int ichara, double t, vectorn const& poseFrom, vectorn const& poseTo)
+				void calcInertiaUpper(int ichara,vectorn const& pose, vectorn& inertia) const
+				void calcInertiaLower(int ichara,vectorn const& pose, vectorn& inertia) const
+				void setInertia(int ichara, int ibone, vector3 const& localCOM, vector3 const& inertia);
+				void calcBoneDotJacobian(int ichar, int ibone, vector3 const& localpos,matrixn& jacobian, matrixn& dotjacobian);
+				void calcBoneDotJacobian2(int ichar, int ibone, vector3 const& localpos,matrixn& jacobian, matrixn& dotjacobian);
+				void calcCOMdotJacobian(int ichar, matrixn& jacobian, matrixn& dotjacobian);
+				void calcMassMatrix2(int ichara,matrixn&, vectorn& );
+				void calcMassMatrix3(int ichara,matrixn&, vectorn& );
+				void test(const char* test, matrixn& out);
+				void collectExternalForce(int ichara, vectorn & extForce)
+				// QP
+				void getContactBases(std::vector<OpenHRP::DynamicsSimulator_QP::ContactBasis>& basis, double invfrictionCoef) const;
+				void calcContactBasisAll(matrixn& v_all, matrixn & dot_v_all, int link_pair_count, double invfrictionCoef);
+				void calcContactBoneIndex(int link_pair_count, intvectorn& boneIndex);
+				int getNumContactLinkPairs();
+				void getLinkPairBodiesBones(intvectorn& ibodies, intvectorn& ibones) const;
+				void getBodyVelocity(int chara, VRMLTransform* b, Liegroup::se3& V) const
+				]]}
 			},
 			{
 				ifndef='EXCLUDE_AIST_SIM',
@@ -545,6 +697,90 @@ bindTargetPhysics={
 				void stateToEulerYXZ(vectorn const& q, vectorn const& dq, vectorn& eulerState);
 				void eulerZYXtoState(vectorn const& eulerState, vectorn& state) const;
 				void eulerYXZtoState(vectorn const& eulerState, vectorn& state) const;
+				void setStablePDparam(int ichara, const vectorn& kp, const vectorn& kd);
+				void calculateStablePDForces(int ichara, const vectorn& desired_q, vectorn& tau);
+				]]
+			},
+			{
+				ifndef='EXCLUDE_RBDL_SIMULATOR',
+				name='Physics.DynamicsSimulator_Trbdl_penalty',
+				className='Trbdl::DynamicsSimulator_Trbdl_penalty',
+				inheritsFrom='OpenHRP::DynamicsSimulator_penaltyMethod',
+				ctors={'(const char*)'},
+				memberFunctions=[[
+				void setNonStatePoseDOF(int ichara, vectorn const& v);
+				void setNonStateDQ(int ichara, vectorn const& dq);
+				void setNonStateDDQ(int ichara, vectorn const& ddq);
+				transf getNonStateRootQ(int ichara);
+				int getSphericalState(int ichara, vectorn& q, vectorn& dq);
+				void setSphericalState(int ichara, const vectorn& q, const vectorn& dq);
+				void setTau(int ichara, const vectorn& tau);
+
+				void _calcMassMatrix(int ichara, matrixn& out, vectorn & b);
+				void _calcJacobianAt(int ichar, int ibone, matrixn& jacobian, vector3 const& localpos);
+				void _enableDotJocobianComputation(int ichara)
+				void _calcDotJacobianAt(int ichar, int ibone, matrixn& jacobian, vector3 const& localpos);
+				vectornView _Q(int ichara);
+				vectornView _QDot(int ichara);
+				vector3 _bodyW(int ichara, int treeIndex) const;
+				vector3 _bodyV(int ichara, int treeIndex) const;
+				void _stepKinematic(int ichara, vectorn const& QDDot);
+				void setStablePDparam(int ichara, const vectorn& kp, const vectorn& kd);
+				void calculateStablePDForces(int ichara, const vectorn& desired_q, vectorn& tau);
+				]],
+			},
+			{
+				ifndef='EXCLUDE_RBDL_SIMULATOR',
+				name='Physics.DynamicsSimulator_Trbdl_LCP',
+				decl=[[
+				namespace Trbdl {
+				class DynamicsSimulator_Trbdl_LCP;
+				}
+				]],
+				className='Trbdl::DynamicsSimulator_Trbdl_LCP',
+				inheritsFrom='Trbdl::DynamicsSimulator_Trbdl_penalty',
+				ctors={'()','(const char*)'},
+				memberFunctions={[[
+				const matrixn& getMLCP() const;
+				const vectorn& getMLCP_B() const;
+				const vectorn& getMLCP_X() const;
+				void setParam_Epsilon_Kappa(double eps, double kap)
+				void setParam_R_B_MA(double r, double b, double ma)
+				void stepSimulation()
+				void addRelativeConstraint(int ichara, Bone& bone1,vector3 boneVector1,Bone& bone2, vector3 boneVector2);
+				void removeRelativeConstraint(int ichara, Bone& bone1, Bone& bone2)	
+				Liegroup::dse3 getCOMbasedContactForce(int ichar, int ibone) const
+				]]},
+			},
+			{
+				ifndef='EXCLUDE_RBDL_SIMULATOR',
+				name='Physics.DynamicsSimulator_Trbdl_impulse',
+				decl=[[
+				namespace Trbdl {
+				class DynamicsSimulator_Trbdl_impulse;
+				}
+				]],
+				className='Trbdl::DynamicsSimulator_Trbdl_impulse',
+				inheritsFrom='Trbdl::DynamicsSimulator_Trbdl_penalty',
+				ctors={'(const char*)'},
+				memberFunctions={[[
+				void setParam_restitution_MA(double r, double ma)
+				void stepSimulation()
+				]]},
+			},
+			{
+				ifndef='EXCLUDE_RBDL_SIMULATOR',
+				name='Physics.DynamicsSimulator_Trbdl_QP',
+				className='Trbdl::DynamicsSimulator_Trbdl_QP',
+				inheritsFrom='Trbdl::DynamicsSimulator_Trbdl_penalty',
+				ctors={'(const char*)'},
+				memberFunctions=[[
+				// QP
+				void getContactBases(std::vector<OpenHRP::DynamicsSimulator_QP::ContactBasis>& basis, double invfrictionCoef) const;
+				void calcContactBasisAll(matrixn& v_all, matrixn & dot_v_all, int link_pair_count, double invfrictionCoef);
+				void calcContactBoneIndex(int link_pair_count, intvectorn& boneIndex);
+				int getNumContactLinkPairs();
+				void getLinkPairBodiesBones(intvectorn& ibodies, intvectorn& ibones) const;
 				]]
 			},
 			{
@@ -556,11 +792,33 @@ bindTargetPhysics={
 				void stepKinematic(int ichar, vectorn const& dq)
 				void setParam_Epsilon_Kappa(double eps, double kap)
 				void setParam_R_B_MA(double r, double b, double ma)
-				void drawLastContactForces();
-				void drawLastContactForces(vector3 const& draw_offset);
-				vector3 getContactForce(int ichar, int ibone) const;
+				void setDamping(double linearDamping, double angularDamping)
+				void setDamping()
 				Liegroup::dse3 getCOMbasedContactForce(int ichar, int ibone) const
 				]]
+			},
+			{
+				ifdef='USE_TRL_SOFTBODY',
+				name='Physics.DynamicsSimulator_TRL_softbody',
+				decl=[[
+				namespace TRL {
+				class DynamicsSimulator_TRL_softbody;
+				}
+				]],
+				className='TRL::DynamicsSimulator_TRL_softbody',
+				inheritsFrom='OpenHRP::DynamicsSimulator_TRL_penalty',
+				ctors={'()'},
+				memberFunctions={[[
+				void registerLBScharacter(VRMLloader* l, SkinnedMeshFromVertexInfo * info);
+				void registerCollisionCheckPair_Rigid_vs_LBS(int bodyIndex1, int treeIndex1, int bodyIndex2, vectorn const& param);
+				void registerCollisionCheckPair_LBS_vs_LBS(int bodyIndex1, int bodyIndex2, vectorn const& param);
+				void init(double timeStep, OpenHRP::DynamicsSimulator::IntegrateMethod integrateOpt);
+				void setParam_Epsilon_Kappa(double eps, double kap)
+				void setParam_R_B_MA(double r, double b, double ma)
+				void stepSimulation()
+				void addRelativeConstraint(int ichara, Bone& bone1,vector3 boneVector1,Bone& bone2, vector3 boneVector2);
+				void removeRelativeConstraint(int ichara, Bone& bone1, Bone& bone2)	
+				]]},
 			},
 			{
 				name='Physics.DynamicsSimulator_TRL_QP',
@@ -573,9 +831,6 @@ bindTargetPhysics={
 				void stepKinematic2(int ichar, vectorn const& ddq)
 				void setParam_Epsilon_Kappa(double eps, double kap)
 				void setParam_R_B_MA(double r, double b, double ma)
-				void drawLastContactForces();
-				void drawLastContactForces(vector3 const& draw_offset);
-				vector3 getContactForce(int ichar, int ibone) const;
 				int getNumContactLinkPairs();
 				int getNumAllLinkPairs();
 				// QP
@@ -641,6 +896,10 @@ function generatePhysicsBind()
 		void FullbodyIK_UTPoser_setParam(MotionUtil::FullbodyIK_MotionDOF* solver, int numiter, double stepsize);
 	}
 
+	#ifndef EXCLUDE_GMBS_SIM
+	#include "GMBS_implementation/DynamicsSimulator_gmbs_penalty.h"
+	#include "GMBS_implementation/DynamicsSimulator_gmbs.h"
+	#endif
 	//#include "Bullet_implementation/btDynamicsSimulator_impl.h"
 	#include "CollisionDetector.h"
 	//#include "RMatrixLUA.h"
@@ -650,9 +909,11 @@ function generatePhysicsBind()
 	#include "../BaseLib/math/OperatorStitch.h"
 	#include "clapack_wrap.h"
 	#include "SDRE.h"
+	#ifndef EXCLUDE_GMBS_SIM
+	#include "GMBS_implementation/rmatrix3j.h"
+	#endif
 	class GrahamScan;
         #include "CollisionDetector/CollisionDetector_libccd.h"
-	#include "DynamicsSimulator_QP.h"
 
 	namespace OpenHRP {
 		class DynamicsSimulator_impl;
@@ -664,10 +925,21 @@ function generatePhysicsBind()
 		class DynamicsSimulator_TRL_penalty;
 		class CollisionDetector_libccd;
 		OpenHRP::CollisionDetector* createCollisionDetector_bullet();
+		OpenHRP::CollisionDetector* createCollisionDetector_fcl();
 		OpenHRP::CollisionDetector* createCollisionDetector_gjk();
 		OpenHRP::CollisionDetector* createCollisionDetector_libccd();
+		//OpenHRP::CollisionDetector* createCollisionDetector_libccd_LBS();
+		//OpenHRP::CollisionDetector* createCollisionDetector_libccd_merged();
 		bool CollisionCheck(OpenHRP::CollisionDetector &s, OpenHRP::CollisionSequence & collisions, std::string chekmesh, std::string skipmesh);
 	}
+	#ifndef EXCLUDE_RBDL_SIMULATOR
+	namespace Trbdl {
+		class DynamicsSimulator_Trbdl_penalty;
+		class DynamicsSimulator_Trbdl_LCP;
+		class DynamicsSimulator_Trbdl_QP;
+		class DynamicsSimulator_Trbdl_impulse;
+	}
+	#endif
 	class MRDplot;
 
 	
@@ -686,7 +958,16 @@ function generatePhysicsBind()
 	#endif
 	#include "TRL/DynamicsSimulator_TRL_penalty.h"
 	#include "TRL/DynamicsSimulator_TRL_LCP.h"
+	#ifdef USE_TRL_SOFTBODY
+	#include "TRL/DynamicsSimulator_TRL_softbody.h"
+	#endif
 	#include "TRL/DynamicsSimulator_TRL_QP.h"
+	#ifndef EXCLUDE_RBDL_SIMULATOR
+	#include "rbdl/DynamicsSimulator_Trbdl_penalty.h"
+	#include "rbdl/DynamicsSimulator_Trbdl_LCP.h"
+	#include "rbdl/DynamicsSimulator_Trbdl_impulse.h"
+	#include "rbdl/DynamicsSimulator_Trbdl_QP.h"
+	#endif
 	]])
 	write('// 만약 luna_physics.h가 없다는 컴파일 에러가 나면, taesooLib/PhysicsLib/luna_physics.cpp 지우고 다시 컴파일 하세요. ')
 	write('#include "luna_physics.h"')
