@@ -225,6 +225,10 @@ local function packTransformRobot(bone, file, level, skel)
 		if bone.jointAxis then
 			if type(bone.jointAxis)=='string' then
 				transform=transform..string.format("  jointAxis \""..bone.jointAxis.."\"\n");
+			elseif type(bone.jointAxis)=='table' then
+				for i, v in ipairs(bone.jointAxis) do
+					transform=transform..string.format("  axis "..v.x..' '..v.y..' '..v.z.."\n");
+				end
 			else
 				local v=bone.jointAxis
 				transform=transform..string.format("  axis "..v.x..' '..v.y..' '..v.z.."\n");

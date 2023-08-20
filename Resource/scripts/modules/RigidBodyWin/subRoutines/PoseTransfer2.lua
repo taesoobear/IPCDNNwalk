@@ -34,12 +34,12 @@ function PoseTransfer2:__init(loaderA, loaderB, convInfoA, convInfoB, posScaleFa
 
 	if not convInfoA then
 		convInfoA=TStrings()
-		convInfoA:resize(loaderA:numBone()-1)
 		convInfoB=TStrings()
-		convInfoB:resize(loaderA:numBone()-1)
 		for i=1, loaderA:numBone()-1 do
-			convInfoA:set(i-1, loaderA:bone(i):name())
-			convInfoB:set(i-1, loaderA:bone(i):name())
+			if loaderA:bone(i):numChannels()>0 then
+				convInfoA:pushBack(loaderA:bone(i):name())
+				convInfoB:pushBack(loaderA:bone(i):name())
+			end
 		end
 	end
 
@@ -97,6 +97,7 @@ function PoseTransfer2:__init(loaderA, loaderB, convInfoA, convInfoB, posScaleFa
 	self.loaderA:getPose(self.bindPoseA);
 	self.loaderB:getPose(self.bindPoseB);
 	self.rAtoB=quaterN(self.loaderA:numBone())
+	self.rAtoB:matView():setAllValue(-1)
 	self.rAtoB_missing=quaterN(self.loaderB:numBone()) -- B-bones missing in A
 
 
@@ -144,12 +145,20 @@ function PoseTransfer2:__init(loaderA, loaderB, convInfoA, convInfoB, posScaleFa
 	self.posScaleFactor=posScaleFactor or 1
 	local Aroot=self.loaderA:bone(1):getFrame():copy()
 	Aroot.translation:scale(1/self.posScaleFactor)
-	self.rootAtoB=Aroot:inverse()*self.loaderB:bone(1):getFrame()
+	if Aroot.translation:length()<1e-3 then
+		self.rootAtoB=-self.loaderB:bone(AtoB(1)):getFrame().translation
+	else
+		-- map world position
+		self.rootAtoB=self.loaderB:bone(1):getFrame().translation - Aroot.translation 
+	end
 end
 
 function PoseTransfer2:setTargetSkeleton(poseA)
-	if dbg.lunaType(poseA)=='Pose' then
+	local tid=dbg.lunaType(poseA)
+	if tid=='Pose' then
 		self.loaderA:setPose(poseA)
+	elseif tid=='BoneForwardKinematics' then
+		self.loaderA:fkSolver():assign(poseA)
 	else
 		self.loaderA:setPoseDOF(poseA)
 	end
@@ -167,8 +176,10 @@ function PoseTransfer2:setTargetSkeleton(poseA)
 	--print(self.loaderB:bone(54):getFrame().rotation)
 	local BtoA=self.BtoA
 	local rootB=AtoB(1)
-	assert(rootB~=-1)
-	--[[
+	if rootB==-1 then
+		rootB=1
+		assert(BtoA(rootB)~=-1)
+	end
 	for i=rootB+1, loaderB:numBone()-1 do
 		-- fill-in missing internal joints
 		if BtoA(i)~=-1 then
@@ -184,7 +195,6 @@ function PoseTransfer2:setTargetSkeleton(poseA)
 			end
 		end
 	end
-	]]
 	--print('before:')
 	--print(self.loaderB:bone(24):getFrame().rotation)
 	--print(self.loaderB:bone(54):getFrame().rotation)
@@ -206,13 +216,12 @@ function PoseTransfer2:setTargetSkeleton(poseA)
 		loaderB:bone(iB):getFrame().rotation:assign(loaderA:bone(iA):getFrame().rotation*self.rAtoB_additional(i))
 	end
 
-	-- set root
-	loaderB:bone(1):getFrame():assign(loaderA:bone(1):getFrame()*self.rootAtoB)
+	-- set root translation
+	loaderB:bone(1):getFrame().translation:assign(loaderA:bone(1):getFrame().translation/self.posScaleFactor+self.rootAtoB)
 
 	-- an inverse kinematics followed by a forward kinematics. (to recalculate all joint positions)
 	local pose=Pose()
 	loaderB:fkSolver():getPoseFromGlobal(pose)
-	pose.translations(0):scale(1/self.posScaleFactor)
 	for i=0, pose.rotations:size()-1 do
 		pose.rotations(i):normalize()
 	end

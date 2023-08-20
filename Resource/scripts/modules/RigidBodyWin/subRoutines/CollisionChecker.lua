@@ -2,10 +2,27 @@
 CollisionChecker=LUAclass()
 function CollisionChecker:__init(...)
 	local obj={...}
+	local colType='libccd'
+	--local colType='fcl'
+	--local colType='gjk'
+	if type(obj[1])=='string' then
+		colType=obj[1]
+		obj=obj[2] or {}
+	end
 	self.nbObj=#obj;
 	-- in cpp, use OpenHRP::createCollisionDetector_libccd() or ..._bullet()
-	self.collisionDetector=Physics.CollisionSequence.createCollisionDetector_libccd()
+	if colType=='libccd' then
+		self.collisionDetector=Physics.CollisionSequence.createCollisionDetector_libccd()
+	elseif colType=='fcl' then
+		self.collisionDetector=Physics.CollisionSequence.createCollisionDetector_fcl()
+	elseif colType=='gjk' then
+		self.collisionDetector=Physics.CollisionSequence.createCollisionDetector_gjk()
+	else
+		self.collisionDetector=Physics.CollisionSequence.createCollisionDetector_libccd_merged()
+	end
+	--self.collisionDetector=Physics.CollisionSequence.createCollisionDetector_libccd_LBS()
 	--self.collisionDetector=Physics.CollisionSequence.createCollisionDetector_bullet()
+	--self.collisionDetector=Physics.CollisionSequence.createCollisionDetector_gjk() -- experimental
 	self.collisionSequence=Physics.CollisionSequence()
 
 	self.pose={}
@@ -19,8 +36,37 @@ function CollisionChecker:__init(...)
 	end
 end
 
+-- s: from , t: to in cm scale.
+function CollisionChecker:checkRayIntersection(s, t)
+	local cd=self.collisionDetector
+	local r=Physics.RayTestResult ()
+	s=s/config.skinScale
+	t=t/config.skinScale
+
+	local clostest_T=1.0
+	local hitPos
+	local hitNormal
+
+	for j=1,self.nbObj do
+		local nb=cd:getModel(j-1):numBone()
+		for i=1, nb -1 do
+			cd:rayTest(j-1, i,s ,t , r)
+			--cd:rayTestBackside(j-1, i,s ,t , r)
+
+			if r:hasHit() and r.m_closestHitFraction<clostest_T then
+				clostest_T=r.m_closestHitFraction
+				local o=vector3()
+				o:interpolate(r.m_closestHitFraction, s,t)
+				hitPos=o
+				hitNormal=r.m_hitNormalWorld:copy()
+			end
+		end
+	end
+	return clostest_T~=1.0, hitPos, hitNormal
+end
 function CollisionChecker:setPoseDOF(iloader, dof)
 	local loader=self.collisionDetector:getModel(iloader)
+	assert(dof:size()==loader.dofInfo:numDOF())
 	loader:setPoseDOF(dof)
 	self.collisionDetector:setWorldTransformations(iloader, loader:fkSolver())
 	self.pose[iloader]=dof:copy()
@@ -30,8 +76,14 @@ end
 function CollisionChecker:registerSelfPairs(iloader1, collpairs)
 	local loader1=self.collisionDetector:getModel(iloader1)
 	for ii, v in ipairs(collpairs) do
-		local i=loader1:getTreeIndexByName(v[1])
-		local j=loader1:getTreeIndexByName(v[2])
+		local i, j
+		if type(v[1])=='string' then
+			i=loader1:getTreeIndexByName(v[1])
+			j=loader1:getTreeIndexByName(v[2])
+		else
+			i=v[1]
+			j=v[2]
+		end
 		local bone_i=loader1:VRMLbone(i)
 		local bone_j=loader1:VRMLbone(j)
 		self.collisionDetector:addCollisionPair(loader1, bone_i:treeIndex(), loader1, bone_j:treeIndex())

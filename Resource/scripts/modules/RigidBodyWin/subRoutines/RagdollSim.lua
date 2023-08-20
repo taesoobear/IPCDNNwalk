@@ -1,9 +1,6 @@
 
-require("RigidBodyWin/subRoutines/PDservo")
---require("RigidBodyWin/subRoutines/IDservo")
---require("RigidBodyWin/subRoutines/QPservo")
---require("RigidBodyWin/subRoutines/LQRservo")
---require("RigidBodyWin/subRoutines/JTcontroller")
+--require("RigidBodyWin/subRoutines/PDservo")
+require("RigidBodyWin/subRoutines/PDservo_spd")
 
 RagdollSim=LUAclass ()
 
@@ -118,17 +115,9 @@ function RagdollSim:__init(loader, drawSkeleton, motdof, simulatorParam)
 			end
 			self.pdservo:initPDservo(model.start, self.motionDOF:numFrames(), self.motionDOF, self.DMotionDOF)
 		else	 
-			if true then
-				self.pdservo=PDservo(loader.dofInfo)
-				self.pdservo:initPDservo(model.start, self.motionDOF:numFrames(),
-				self.motionDOF, self.DMotionDOF)
-			else
-				-- doesn't work well
-				self.pdservo=LQRservo(loader,simulatorParam.timestep,100,10)
-				self.pdservo:initLQRservo(model.start, self.motionDOF:numFrames(),
-				self.motionDOF, self.DMotionDOF)
-				self.pdservo.simulator=self.simulator
-			end
+			self.pdservo=PDservo(loader.dofInfo)
+			self.pdservo:initPDservo(model.start, self.motionDOF:numFrames(),
+			self.motionDOF, self.DMotionDOF, self.simulator)
 		end
 		--	   local dofInfo=loader.dofInfo
 		--	   local ibone=loader:getBoneByName("LeftShoulder"):treeIndex()

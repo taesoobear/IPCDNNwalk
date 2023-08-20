@@ -4,6 +4,8 @@ PDservo=LUAclass()
 
 
 function PDservo:setCoef(dofInfo,kp, kd, tgtVelScale, k_scale)
+	assert(dofInfo:numSphericalJoint()==1)
+	-- spherical joint가 있는 경우 PDservo_spherical 사용할 것!
    kp:setSize(dofInfo:numDOF())
    kp:setAllValue(k_p)
    kd:setSize(dofInfo:numDOF())
@@ -204,12 +206,15 @@ function PDservo:generateTorque(simulator)
 	return true
 end
 
+--gTimer=util.Timer()
 function PDservo:stepSimul(simulator, drawDebugInformation)
 	simulator:setLinkData(0, Physics.DynamicsSimulator.JOINT_TORQUE, self.controlforce)
 	if drawDebugInformation then
 		simulator:drawDebugInformation()
 	end
+	--gTimer:start()
 	simulator:stepSimulation()
+	--print(gTimer:stop2())
 end
 
 function PDservo:_generateTorque(simulator, frame)
@@ -462,21 +467,24 @@ end
 --class 'PoseMaintainer'
 PoseMaintainer=LUAclass()
 
-function PoseMaintainer:__init()
+function PoseMaintainer:__init(skeletonIndex)
+	assert(skeletonIndex)
 	self.theta=vectorn()
 	self.dtheta=vectorn()
 	self.theta_d=vectorn() -- desired q
 	self.dtheta_d=vectorn() -- desired dq
 	self.controlforce=vectorn()
 
+	self.skeletonIndex=skeletonIndex or 0
 	-- followings are temporaries
 	self.kp=vectorn()
 	self.kd=vectorn()
 end
 
 function PoseMaintainer:init(skel, simulator, k_p, k_d, k_p_slide, k_d_slide)
-	simulator:getLinkData(0, Physics.DynamicsSimulator.JOINT_VALUE, self.theta_d)
-	simulator:getLinkData(0, Physics.DynamicsSimulator.JOINT_VELOCITY, self.dtheta_d)
+	local si=self.skeletonIndex
+	simulator:getLinkData(si, Physics.DynamicsSimulator.JOINT_VALUE, self.theta_d)
+	simulator:getLinkData(si, Physics.DynamicsSimulator.JOINT_VELOCITY, self.dtheta_d)
 
 	local dofInfo=skel.dofInfo
 	self.kp:setSize(dofInfo:numDOF())
@@ -511,13 +519,13 @@ function PoseMaintainer:init(skel, simulator, k_p, k_d, k_p_slide, k_d_slide)
 end
 
 function PoseMaintainer:generateTorque(simulator)
-	simulator:getLinkData(0, Physics.DynamicsSimulator.JOINT_VALUE, self.theta)
-	simulator:getLinkData(0, Physics.DynamicsSimulator.JOINT_VELOCITY, self.dtheta)
-	self.controlforce:setSize(simulator:skeleton(0).dofInfo:numDOF())
+	local si=self.skeletonIndex
+	simulator:getLinkData(si, Physics.DynamicsSimulator.JOINT_VALUE, self.theta)
+	simulator:getLinkData(si, Physics.DynamicsSimulator.JOINT_VELOCITY, self.dtheta)
+	self.controlforce:setSize(simulator:skeleton(si).dofInfo:numDOF())
 	self.controlforce:setAllValue(0)
 
-	self.controlforce:assign(self.kp*(self.theta_d-self.theta)+
-		self.kd*(self.dtheta_d-self.dtheta))
+	self.controlforce:assign(self.kp*(self.theta_d-self.theta)+ self.kd*(self.dtheta_d-self.dtheta))
 
 end
 function PoseMaintainer:resetParam(kp, kd, theta_d)

@@ -8,9 +8,10 @@ end
 
 function Constraints:__init(...)
 	local points={...}
+	self.blueCircles={}
 	self.basePos=vector3(0,0,0)
 	self.prefix="con"..RE.generateUniqueName()
-	self.matSelected='red'
+	self.matSelected='red_transparent'
 	self.matUnselected='blue_transparent'
 	self.objectList=Ogre.ObjectList()
 	if type(points[1])=='table' then
@@ -28,8 +29,15 @@ function Constraints:__init(...)
 	end
 	self.selectedVertex = -1
 	self.planeNormal= self:_calcPlaneNormal()
-	self:drawConstraints()
 	self.size=5
+	self.redrawBlueCircles=true
+	self:drawConstraints()
+end
+
+function Constraints:setCON(conpos)
+	self.conPos:assign(conpos)
+	self.selectedVertex = -1
+	self:drawConstraints()
 end
 
 function Constraints:addCON(pos)
@@ -79,31 +87,62 @@ end
 function Constraints:drawConstraints(ev)
 	local conPos=self.conPos
 	for i=0 ,conPos:size()-1 do
-		self.objectList:erase(self.prefix..i)
+		self:_eraseSphere(self.prefix..i)
 	end
 	self.objectList:erase(self.prefix..'arrow')
 	
 	local function dbgDraw(name, pos, color)
 		color = color or 'blue_transparent'
-		dbg.drawSphere(self.objectList, pos, name, color, self.size)
+		self:_drawSphere(pos, name, color, self.size)
 	end
 	for i=0, conPos:size()-1 do
 		if self.selectedVertex==i then
 			dbgDraw(self.prefix..i,conPos(i), self.matSelected)
 
-			dbg.drawArrow2D(self.objectList, conPos(i), self.planeNormal, self.prefix..'arrow')
+			if not self.draggingDisabled then
+				dbg.drawArrow2D(self.objectList, conPos(i), self.planeNormal, self.prefix..'arrow')
+			end
 		else
 			dbgDraw(self.prefix..i,conPos(i), self.matUnselected)
 		end
 	end
 	
 	for i=conPos:size() , conPos:size()+2 do
-		self.objectList:erase( self.prefix..i)
+		self:_eraseSphere( self.prefix..i)
 	end
 	if self.selectedVertex~=-1 then
-		dbg.drawSphere(self.objectList, conPos(self.selectedVertex), self.prefix.."selected",'red_transparent',self.size*5/3);
+		self:_drawSphere(conPos(self.selectedVertex), self.prefix.."selected",'red_verytransparent',self.size*5/3);
 	else
-		self.objectList:erase( self.prefix.."selected")
+		self:_eraseSphere( self.prefix.."selected")
+	end
+
+	if self.redrawBlueCircles then
+		local goal=vector3N()
+		for k, v in pairs(self.blueCircles) do
+			goal:pushBack(v[1])
+			assert(v[2]==self.size or v[2]==nil)
+		end
+			local thickness=self.size*2-- 10 cm
+		dbg.drawBillboard(goal:matView(), self.prefix..'_conblue', 'blueCircle', thickness, 'QuadListV')
+		self.redrawBlueCircles =false
+	end
+end
+
+function Constraints:_drawSphere(pos, name, color, size)
+	if color=='blue_transparent' then
+		self.blueCircles[name]={pos, size}
+		self.redrawBlueCircles=true
+	else
+		dbg.drawSphere(self.objectList, pos, name, color,size)
+	end
+end
+
+function Constraints:_eraseSphere(name)
+	if self.blueCircles[name] then
+		self.blueCircles[name]=nil
+		self.redrawBlueCircles=true
+	else
+		self.objectList:erase(name)
 	end
 end
 Constraints.redraw=Constraints.drawConstraints
@@ -112,6 +151,7 @@ function Constraints:connect(fcn, arg)
 	self.eventFunctionArg=arg
 end
 function Constraints:handleRendererEvent(ev, button, x, y)
+	dbg.updateBillboards(0.05)
 	local conPos=self.conPos
 	if ev =="PUSH" or 
 		ev=="MOVE" or
@@ -136,7 +176,10 @@ function Constraints:handleRendererEvent(ev, button, x, y)
 				local normal=self:_calcPlaneNormal()
 				self.planeNormal=normal
 				self:drawConstraints()
-				return 1;
+				if self.selectedVertex~=-1 then
+					return 1
+				end
+				return 0;
 			end		
 		elseif (ev =='DRAG') then
 			if self.draggingDisabled then
@@ -184,7 +227,7 @@ function Constraints:handleRendererEvent(ev, button, x, y)
 				end
 				self.selectedVertex=-1
 				self:drawConstraints()
-				return 1
+				return 0
 			end
 		end
 		return 0;
@@ -210,7 +253,7 @@ function Constraints:updateSelectedVertex(ray)
 		local cursorPos=ray:getPoint(SphereRay_intersectsCheck(1))-self.basePos
 		-- cursorPos 는 Sphere 와 Ray 의 충돌 값에서 얻어온 좌표 
 		-- Plane 과 Ray 의 값을 안쓰는 이유는 화면돌림에 따라 거리값이 변해서 안씀(보는 시점에 따라 플레인과 레이의 거리가 달라지기때문)
-		if(conPos(i):distance(cursorPos)< 11) then
+		if(conPos(i):distance(cursorPos)< self.size*2+1) then
 			RE.output("selected" , i);
 			self.selectedVertex=i
 			if self.eventFunction and prevSel~=self.selectedVertex then

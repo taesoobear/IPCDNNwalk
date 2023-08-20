@@ -50,6 +50,7 @@ function MainLib.WRLloader(input)
 			file:_unpackVRMLloader(loader)
 			local pose=vectorn()
 			file:unpack(pose)
+			loader:setURL(filename)
 			loader:setPoseDOF(pose)
 			local info={}
 			local markers={}
@@ -79,6 +80,11 @@ function MainLib.WRLloader(input)
 						loader:addRelativeConstraint(bone(i), localpos(i),
 						bone(i+1), localpos(i+1))
 					end
+				elseif code=='pose' then
+					local pose=loader:pose()
+					file:unpack(pose.rotations)
+					file:unpack(pose.translations)
+					loader:setPose(pose)
 				end
 			end
 			file:close()
@@ -89,6 +95,7 @@ function MainLib.WRLloader(input)
 
 		t=loadLuaFile(filename)
 		url=filename:sub(1,-9)
+		t.url=filename
 	else
 		t=input
 	end
@@ -176,6 +183,9 @@ function MainLib.WRLloader(input)
 	local file=CTextFile()
 	file:OpenMemory(out)
 	local loader=MainLib.VRMLloader(file)
+	if t.url then
+		loader:setURL(t.url)
+	end
 
 	if t.body.jointType=='fixed' and rootpos:length()>0.00001 then
 		loader:setPosition(rootpos)
@@ -267,11 +277,17 @@ function MotionUtil.generateWRLforRobotSimulation(loader, robotname, cylinder_ra
 				q:axisToAxis(vector3(0,1,0), offset:Normalize())
 				table.insert(geom, 
 				{
-					'Capsule', 
+					-- capsule is slow to render
+					--'Capsule', 
+					--rotation=q,
+					--translation=offset/2,
+					--radius=cylinderRadius, 
+					--height=math.max(offset:length(), 1e-2),
+
+					'Box',
 					rotation=q,
 					translation=offset/2,
-					radius=cylinderRadius, 
-					height=math.max(offset:length(), 1e-2),
+					size=vector3(cylinderRadius,math.max(offset:length(), 1e-2),cylinderRadius),
 				}
 				)
 				c=c:sibling()
@@ -317,4 +333,33 @@ function rotateGeom(q, geom)
 		geom.translation=q*geom.translation
 	end
 	return out
+end
+
+-- convert to a table. table[3] can be used as an input to WRLloader.
+function MainLib.VRMLloader:toTable()
+	local tbl={ name=self:name()}
+	local bones={}
+	for i=1, self:numBone()-1 do
+		local bone={}
+		local b=self:VRMLbone(i)
+		bone.name=b:name()
+		bone.jointType=b:jointType()
+		bone.jointAxis=b:jointAxis()
+		bone.translation=b:getOffset()
+		bone.geometry=b:getMesh():toTable()[3]
+		if b:numChildren()>0 then
+			bone.children={}
+		end
+		bones[i]=bone
+	end
+	tbl.body= bones[1]
+	for i=2, self:numBone()-1 do
+		local b=self:VRMLbone(i)
+		local bone=bones[i]
+		table.insert(bones[b:parent():treeIndex()].children, bone)
+	end
+	return {"__userdata", "MainLib.VRMLloader", tbl}
+end
+function MainLib.VRMLloader:exportLUA(filename)
+	util.writeFile(filename, 'return '..table.toHumanReadableString(self:toTable()[3]))
 end

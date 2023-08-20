@@ -11,7 +11,7 @@ end
 
 gFolder=package.resourcePath
 
-simulators={UT=0, AIST=1, SDFAST=2, VP=3, gmbs=4, gmbs_penalty=5, gmbs_QP=6, TRL=7, TRL_penalty=8}
+simulators={UT=0, AIST=1, SDFAST=2, VP=3, gmbs=4, gmbs_penalty=5, gmbs_QP=6, TRL=7, TRL_penalty=8, bullet=9, mujoco=10, Trbdl_penalty=11,Trbdl_LCP=12, Trbdl_QP=13, PhysX=14, mujoco=15, TRL_gjk=16, Trbdl_impulse=17}
 
 model_files={}
 model_files.default={}
@@ -404,6 +404,14 @@ function createSimulator(simulator)
 	   return Physics.DynamicsSimulator_TRL_penalty("libccd")
    elseif simulator==simulators.TRL then
 	   return Physics.DynamicsSimulator_TRL_LCP("libccd")
+	elseif simulator==simulators.Trbdl_penalty then
+	   return Physics.DynamicsSimulator_Trbdl_penalty("libccd")
+	elseif simulator==simulators.Trbdl_LCP then
+	   return Physics.DynamicsSimulator_Trbdl_LCP("libccd")
+	elseif simulator==simulators.Trbdl_QP then
+	   return Physics.DynamicsSimulator_Trbdl_QP("libccd")
+   elseif simulator==simulators.Trbdl_impulse then
+	   return Physics.DynamicsSimulator_Trbdl_impulse("libccd")
    else
       return Physics.DynamicsSimulator_SDFAST()
    end
@@ -501,8 +509,8 @@ function calcDerivative_row_fd(i, dmotionDOF, motionDOF)
    MainLib.VRMLloader.projectAngles(dmotionDOF_i) -- align angles
    dmotionDOF_i:rmult(model.frame_rate)
 
-   local T=motionDOF:rootTransformation(i)
-   local twist=T:twist(motionDOF:rootTransformation(i+1),1/model.frame_rate)
+   local T=motionDOF:row(i):toTransf(0)
+   local twist=T:twist(motionDOF:row(i+1):toTransf(0),1/model.frame_rate)
    -- incorrect, but previous results were optimized using this.
    dmotionDOF_i:setVec3(0, twist.v)
    dmotionDOF_i:setVec3(4, twist.w)
@@ -1100,8 +1108,10 @@ end
 function _createEmptyMotion(loader, fn)
 	local motionDOFcontainer=MotionDOFcontainer(loader.dofInfo)
 	motionDOFcontainer:resize(10)
-	motionDOFcontainer.mot:matView():setAllValue(0)
-	motionDOFcontainer.mot:matView():column(3):setAllValue(1)
+	for i=0, 9 do
+		loader:getPoseDOF(motionDOFcontainer.mot:row(i))
+	end
+	motionDOFcontainer.mot:matView():column(1):setAllValue(0.95)
 	motionDOFcontainer:exportMot(fn)
 end
 
