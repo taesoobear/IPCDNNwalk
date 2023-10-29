@@ -1,5 +1,5 @@
-# Fast and Flexible Multilegged Locomotion Using Learned Centroidal Dynamics
-
+# Fast and Flexible Multilegged Locomotion Using Learned Centroidal Dynamics, in proc. ACM SIGGRAPH 2020
+# Adaptive Tracking of a Single-Rigid-Body Character in Various Environments, In proc. ACM SIGGRAPH ASIA 2023 
 
 Target platform
 =
@@ -57,7 +57,7 @@ How to build (Mac)
 ```
   FYI, most linker and compiler settings are in src/taesoolib/Samples/Common_baselib.cmake and Common_mainlib.cmake files.
 
-How to run
+How to run FlexLoco 2020
 = 
 ```
   pip3 install torch python3-tk gym
@@ -66,8 +66,14 @@ How to run
    Choose the opengl renderer if asked to choose one.
    Now, click the play button, and adjust the slider bars for speed/orientation. Also, you can change the motion type by clicking the button.
 
-How to build ogre 3D from source codes (Linux)
+How to run AdaptiveSRB 2023
 =
+  This section will be updated soon.
+
+
+How to build ogre 3D from source codes (Linux) 
+=
+This is usually unnecessary because the ogre3d in the APT works well.
 ```
   sudo apt-get install libgles2-mesa-dev libxt-dev libxaw7-dev nvidia-cg-toolkit libsdl2-dev doxygen
   mkdir -p build;cd build; cmake ..
@@ -75,7 +81,7 @@ How to build ogre 3D from source codes (Linux)
   cd build; sudo make install
 ```
 
-How to build ogre 3D from source codes (Mac)
+How to build ogre 3D-13.4.3 from source codes (Mac)
 =
 ```
   brew install cmake sdl2 doxygen freeimage pkgconfig libzzip
@@ -86,15 +92,24 @@ How to build ogre 3D from source codes (Mac)
 
  1. Build "build-all" in the xcode after manually selecting the release build target. 
  2. Build "install" in the xcode again after manually selecting the release build target. 
- 3. Now open a finder, and copy build/sdk to /Applications/OgreSDK
- 4. Also, manually copy all frameworks in build/lib/macosx/Release/ to ~/Library/Frameworks/
- 5. Copy build/sdk/include/OGRE to /usr/local/include/
- 6. Install ois manually (https://github.com/wgois/OIS)
+ 3. Install ois and ogre manually as below (https://github.com/wgois/OIS)
 
 ```
   git clone https://github.com/wgois/OIS.git
-  cd OIS;cmake -H. -B./build; cd ./build; make; make install
+  cd OIS;cmake -H. -B./build; cd ./build; make; sudo make install
+	sudo mkdir -p /usr/local/include/OGRE
+	sudo mkdir -p /usr/local/include/OGRE/Overlay
+	sudo mkdir -p /usr/local/include/OGRE/Bites
+	sudo cp -rf OgreMain/include/* /usr/local/include/OGRE
+	sudo cp -rf Components/Overlay/include/*  /usr/local/include/OGRE/Overlay
+	sudo cp -rf Components/Bites/include/*  /usr/local/include/OGRE/Bites
+	sudo cp -rf RenderSystems/GLSupport/include/OSX/OgreOSXCocoa*.h  /usr/local/include/OGRE
+	sudo cp -rf RenderSystems/GLSupport/include/*.h  /usr/local/include/OGRE
+	sudo cp -rf build/include/* /usr/local/include/OGRE
+	sudo cp -rf build/include/OgreBites* /usr/local/include/OGRE/Bites
+	mkdir -p  /Applications/OgreSDK/lib/macosx/Release
+	cp -Rp build/lib/macosx/Release/* /Applications/OgreSDK/lib/macosx/Release
+	sudo cp -Rp build/lib/macosx/Release/*.framework /Library/Frameworks/
   sudo cp build/Dependencies/lib/libzzip.so* /usr/local/lib/
 ```
- 7. copy libfreetype*.dylib to /usr/local/lib
 
