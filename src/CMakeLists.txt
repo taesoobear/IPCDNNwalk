@@ -8,6 +8,7 @@ set (CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/taesooLib/Samples")
 get_filename_component(CAR_SAMPLE_DIR ${CMAKE_SOURCE_DIR} PATH)
 get_filename_component(PROJ_ROOT_DIR ${CAR_SAMPLE_DIR} PATH)
 set(TAESOOLIB_DIR "${CMAKE_SOURCE_DIR}/taesooLib")
+set(BUILD_CONSOLE OFF CACHE BOOL "BuildConsole option")
 
 #include(FindPkgConfig)
 #pkg_search_module(PYTHON3 REQUIRED python3)
@@ -27,6 +28,12 @@ execute_process(
 	)
 message(${NUMPY_INCLUDE_DIR})
 
+if(BUILD_CONSOLE)
+	add_definitions(-DSEGA)				
+	add_definitions(-DNO_GUI -DNO_OGRE)  
+	set(NO_GUI TRUE)
+endif()
+
 
 set(useShared TRUE)
 set(NoDevil TRUE)
@@ -35,8 +42,13 @@ set(NoLapack TRUE)
 set(NoUMFpack TRUE)
 
 include(Common_baselib) 
-add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/BaseLib "./BaseLib/build_shared_${CMAKE_BUILD_TYPE}" )
-add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/MainLib "./MainLib/build_shared_${CMAKE_BUILD_TYPE}" )
+if(BUILD_CONSOLE)
+	add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/BaseLib "./BaseLib/build_shared_console_${CMAKE_BUILD_TYPE}" )
+	add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/MainLib "./MainLib/build_shared_console_${CMAKE_BUILD_TYPE}" )
+else()
+	add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/BaseLib "./BaseLib/build_shared_${CMAKE_BUILD_TYPE}" )
+	add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/MainLib "./MainLib/build_shared_${CMAKE_BUILD_TYPE}" )
+endif()
 include(Common_mainlib) 
 
 # PhysicsLib settings
@@ -44,9 +56,15 @@ set(NoAISTsim TRUE) # use TRL_LCP instead!
 set(NoGMBSsim TRUE) # use TRL_LCP instead!
 set(NoUTsim TRUE) # use TRL_LCP instead!
 set(NoBulletSim TRUE) # use TRL_LCP instead!
-add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/PhysicsLib "./PhysicsLib/build_shared_${CMAKE_BUILD_TYPE}" )
-add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/ClassificationLib "./ClassificationLib/build_shared_${CMAKE_BUILD_TYPE}" )
+if(BUILD_CONSOLE)
+	add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/PhysicsLib "./PhysicsLib/build_shared_console_${CMAKE_BUILD_TYPE}" )
+	add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/ClassificationLib "./ClassificationLib/build_shared_console_${CMAKE_BUILD_TYPE}" )
+else()
+	add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/PhysicsLib "./PhysicsLib/build_shared_${CMAKE_BUILD_TYPE}" )
+	add_subdirectory(${CMAKE_SOURCE_DIR}/taesooLib/ClassificationLib "./ClassificationLib/build_shared_${CMAKE_BUILD_TYPE}" )
+endif()
 
+add_subdirectory(QP_controller/qpOASES-3.0beta "./PhysicsLib/build_qpOASES_${CMAKE_BUILD_TYPE}" )
 
 add_definitions(-D_USRDLL)
 add_definitions(-DMAINLIBPYTHON_EXPORTS)
@@ -68,6 +86,7 @@ include_directories (
 	../../taesooLib/Samples/scripts
 	${TAESOOLIB_DIR}
 	/usr/include/eigen3
+	QP_controller/qpOASES-3.0beta/include
 	)
 set(src_python
 # 	python only
@@ -84,6 +103,10 @@ set(src
   "cma/cmaes.c"
   "cma/CMAwrap.cpp"
   "cma/CMAwrap.h"
+  "QP_controller/eiquadprog.hpp"
+  "QP_controller/quadprog.cpp"
+  "QP_controller/quadprog.h"
+  "QP_controller/quadprog_qpOASES.cpp"
   )
 
 set(src11 
@@ -116,7 +139,11 @@ else()
 endif()
 
 
-	set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CAR_SAMPLE_DIR}/work )
+	if(BUILD_CONSOLE )
+		set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CAR_SAMPLE_DIR}/work/console )
+	else()
+		set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CAR_SAMPLE_DIR}/work )
+	endif()
 
 	set(usePybind11 TRUE)
 	add_definitions(-DUSE_PYBIND11)
@@ -133,7 +160,7 @@ endif()
 		${FLTK_LIBS}
 		${IMAGE_LIBS}
 		${OGRE_LIBS}
-		${QPOASES_LIB}
+		qpOASES
 		dl
 		#boost_numpy
 		pthread

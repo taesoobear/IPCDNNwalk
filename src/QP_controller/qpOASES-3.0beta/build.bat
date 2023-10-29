@@ -1,0 +1,2 @@
+cmake .
+start qpOASES.sln

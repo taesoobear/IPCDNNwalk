@@ -465,6 +465,8 @@ Fl_Widget* FlLayout::create(const char* type, const char* id, const char* title)
 	  Fl_Box* b;
 		b=new Fl_Box(0,0,80,20);
 		o=b;
+#else
+		o=new Fl_Button(0,0,80,20);
 #endif
 	}
 	else if(tid=="Input")

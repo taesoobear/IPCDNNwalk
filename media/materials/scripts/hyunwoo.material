@@ -1,15 +1,13 @@
-material hyunwoo/body
+material Material_#1036/Material_#1021
 {
 	technique
 	{
 		pass
 		{
-			//shading gouraud
-
-			ambient 0.70000 0.70000 0.70000
-			diffuse 0.40000 0.40000 0.40000 0.80000
-			specular 0.00000 0.00000 0.00000 1.00000 0.00000
-			emissive 0.00000 0.00000 0.00000 1.00000
+            ambient 0.6 0.6 0.6
+            diffuse 0.7 0.7 0.7
+            specular 0.2 0.2 0.2 0.0
+            emissive 0.0 0.0 0.0
 
 			texture_unit
 			{
@@ -19,19 +17,18 @@ material hyunwoo/body
 	}
 }
 
-material hyunwoo/rr_01
+//material hyunwoo/rr_01
+material Material_#1036/19_-_Default
 {
 	technique
 	{
 		pass
 		{
 			//shading gouraud
-
-			ambient 0.70000 0.70000 0.70000
-			diffuse 0.40000 0.40000 0.40000 0.80000
-			specular 0.00000 0.00000 0.00000 1.00000 0.00000
-			emissive 0.00000 0.00000 0.00000 1.00000
-
+            ambient 0.6 0.6 0.6
+            diffuse 0.7 0.7 0.7
+            specular 0.2 0.2 0.2 0.0
+            emissive 0.0 0.0 0.0
 			texture_unit
 			{
 				texture rr_01.jpg
@@ -40,19 +37,17 @@ material hyunwoo/rr_01
 	}
 }
 
-material hyunwoo/leg
+material Material_#1036/22_-_Default
 {
 	technique
 	{
 		pass
 		{
 			//shading gouraud
-
-			ambient 0.70000 0.70000 0.70000
-			diffuse 0.40000 0.40000 0.40000 0.80000
-			specular 0.00000 0.00000 0.00000 1.00000 0.00000
-			emissive 0.00000 0.00000 0.00000 1.00000
-
+            ambient 0.6 0.6 0.6
+            diffuse 0.7 0.7 0.7
+            specular 0.2 0.2 0.2 0.0
+            emissive 0.0 0.0 0.0
 			texture_unit
 			{
 				texture leg.jpg
@@ -62,18 +57,16 @@ material hyunwoo/leg
 }
 
 
-material hyunwoo/rr_arms
+material Material_#1036/rr_arms
 {
 	technique
 	{
 		pass
 		{
-			//shading gouraud
-
-			ambient 0.70000 0.70000 0.70000
-			diffuse 0.40000 0.40000 0.40000 0.80000
-			specular 0.00000 0.00000 0.00000 1.00000 0.00000
-			emissive 0.00000 0.00000 0.00000 1.00000
+            ambient 0.6 0.6 0.6
+            diffuse 0.7 0.7 0.7
+            specular 0.2 0.2 0.2 0.0
+            emissive 0.0 0.0 0.0
 
 			texture_unit
 			{

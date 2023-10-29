@@ -40,7 +40,7 @@
 #include "OgreStringConverter.h"
 #include "OgreException.h"
 #else
-#include "../../MainLib/MainLib.h"
+#include "MainLib/MainLib.h"
 #endif
 
 

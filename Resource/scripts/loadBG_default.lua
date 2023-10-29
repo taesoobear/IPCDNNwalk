@@ -24,6 +24,7 @@ if false then
 	bgnode=RE.ogreSceneManager():getSceneNode("BackgroundNode")
 	bgnode:setPosition(vector3(gridposx*4*100,0,gridposz*4*100))
 end
+if not ent then return end
 if depthShadow then
 	ent:setMaterialName('Ogre/DepthShadowmap/Receiver/RockWall/PCF')
 else

@@ -23,8 +23,9 @@ debug: init_finished.txt
 	if ! test -d $(BIN_FOLDER) ; then rm init_finished.txt; exit 1;fi
 	cd $(BIN_FOLDER)/build_linux_debug;make --no-print-directory VERBOSE=1 -j $(NUM_CORES)
 
-console:
-	cd ../work;python3 -i config.py
+console: init_finished.txt
+	if ! test -d $(BIN_FOLDER)/build_linux_console; then mkdir -p $(BIN_FOLDER)/build_linux_console ; cd $(BIN_FOLDER)/build_linux_console;  cmake -G "Eclipse CDT4 - Unix Makefiles" -D CMAKE_BUILD_TYPE=Release -D BUILD_CONSOLE=ON $(BIN_TO_SRC);fi
+	cd $(BIN_FOLDER)/build_linux_console;make --no-print-directory -j $(NUM_CORES)
 
 run2: 
 	cd ../work;python3 test_bidirectional_functioncalls.py
@@ -58,13 +59,13 @@ showcapture:
 	
 # this would probably install more libraries than necessary, but I guess it doens't matter for most.
 install_dependencies:
+	pip3 install torch scikit-build tensorboardX gym matplotlib h5py
 	sudo apt-get install python3-pip libpython3-dev libcupti-dev
 	pip3 install numpy
 	sudo apt install python3-numpy
 
 install_dependencies_mac:
-	cd ../../taesooLib;make build_dependencies_mac
-	make build_dependencies
+	python3 -m pip install scikit-build tensorboardX gym matplotlib h5py
 	python3 -m pip install --only-binary=:all: numpy
 	#python3 -m pip install --only-binary=:all: tensorflow
 	python3 -m pip install torch

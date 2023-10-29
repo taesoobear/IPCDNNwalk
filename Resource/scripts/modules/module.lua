@@ -451,6 +451,7 @@ function RE.loadMotions(skelFile, motionFile)
 		motionDOFcontainer.fileNames={0, motionFile}
 	end
 
+	motion:setConstraints(Motion.IS_DISCONTINUOUS, motionDOFcontainer.discontinuity)
 	return _loader, motionDOFcontainer, motion
 end
 
@@ -566,7 +567,7 @@ subtitlebar={}
 function subtitlebar:create()
    self:destroy()
    
-   self.textArea=TextArea("Trace2", "subtitlebarContainer", "id2", 4,480-60,720, 480-4,10)
+   --self.textArea=TextArea("Trace2", "subtitlebarContainer", "id2", 4,480-60,720, 480-4,10)
 end
 
 function subtitlebar:setCaption(caption)
@@ -2841,9 +2842,28 @@ function Geometry:toTable()
 				elt.color=self:getColor(self:getFace(s):colorIndex(0))
 			end
 		else
-			elt[1]='OBJ'
-			-- not implemented yet
-			assert(false)
+			print('warning! using Box instead of OBJ')
+			elt[1]='Box'
+			elt.translation=vector3(0,0,0)
+			elt.rotation=quater(1, 0,0,0)
+			local s=self.faceGroups:startI(i)
+			local e=self.faceGroups:endI(i)
+			local boxMin=vector3(-0.01,-0.01, -0.01)
+			local boxMax=vector3(0.01,0.01, 0.01)
+			for fi=s, e-1 do
+				local f=self:getFace(fi)
+				for j=0,2 do
+					local v=self:getVertex(f:vertexIndex(j))
+					boxMin.x=math.min(boxMin.x, v.x)
+					boxMin.y=math.min(boxMin.y, v.y)
+					boxMin.z=math.min(boxMin.z, v.z)
+					boxMax.x=math.max(boxMax.x, v.x)
+					boxMax.y=math.max(boxMax.y, v.y)
+					boxMax.z=math.max(boxMax.z, v.z)
+				end
+			end
+			elt.translation=boxMax*0.5+boxMin*0.5
+			elt.size=boxMax-boxMin
 		end
 		table.insert(out, elt)
 	end
@@ -3840,7 +3860,7 @@ function boolN:exportIntervals(fn)
 	local out=table.concat(out, '\n')
 	util.writeFile(fn, out)
 end
-defineDerived(boolN, {boolNView}, {"__add", "count", "exportIntervals", "bitwiseOR", "bitwiseAND", "runLengthEncode"})
+defineDerived(boolN, {boolNView}, {"count", "exportIntervals", "bitwiseOR", "bitwiseAND", "runLengthEncode"})
 
 function vector3N:__mul(o)
 	local out=vector3N(self:size())
@@ -5331,6 +5351,7 @@ MotionDOFview.exportMot=MotionDOF.exportMot
 
 MotionDOFcontainer=LUAclass()
 
+-- write to a dof file.
 function MotionDOFcontainer:exportMot(filename)
 
    local binaryFile=util.BinaryFile()
@@ -5348,6 +5369,22 @@ function MotionDOFcontainer:exportMot(filename)
 		   binaryFile:pack(v)
 	   end
    end
+   binaryFile:pack('(end)')
+   binaryFile:close()
+end
+-- write to a dof file.
+function MotionDOF:exportMot(filename)
+
+   local binaryFile=util.BinaryFile()
+   binaryFile:openWrite(filename, true) -- single precision mode
+   binaryFile:packInt(2) -- version
+   binaryFile:packInt(self:numFrames())
+   binaryFile:packInt(self.dofInfo:numDOF())
+   binaryFile:pack(self:matView())
+   local zero=boolN(self:numFrames())
+   binaryFile:pack(zero)
+   binaryFile:pack(zero)
+   binaryFile:pack(zero)
    binaryFile:pack('(end)')
    binaryFile:close()
 end
@@ -5369,15 +5406,22 @@ function MotionDOFcontainer:sub(startF, endF)
 	return out
 end
 
-function extractConstraints(mot, type)
-
-   discontinuity=boolN(mot:numFrames())
-
-   for i=0,mot:numFrames()-1 do
-      discontinuity:set(i, mot:isConstraint(i, type))
-   end
-
-   return discontinuity
+function Motion:getConstraints( contype)
+	assert(contype and contype>=0 and contype<=Motion.IS_DISCONTINUOUS)
+	local mot=self
+	local discontinuity=boolN(mot:numFrames())
+	for i=0,mot:numFrames()-1 do
+		discontinuity:set(i, mot:isConstraint(i, contype))
+	end
+	return discontinuity
+end
+function Motion:setConstraints( contype, con)
+	assert(contype and contype>=0 and contype<=Motion.IS_DISCONTINUOUS)
+	local mot=self
+	assert(con:size()==mot:numFrames())
+	for i=0,mot:numFrames()-1 do
+		mot:setConstraint(i, contype, con(i))
+	end
 end
 
 function MotionDOFcontainer.loadToTable(fn)
@@ -5484,20 +5528,28 @@ function MotionDOFcontainer:__init(dofInfo, filename)
 			   local tempMot=filename
 			   self:resize(tempMot:numFrames())
 			   self.mot:set(tempMot)
-			   self.discontinuity=extractConstraints(tempMot,Motion.IS_DISCONTINUOUS)
-			   self.conL=extractConstraints(tempMot,Motion.CONSTRAINT_LEFT_FOOT)
-			   self.conR=extractConstraints(tempMot,Motion.CONSTRAINT_RIGHT_FOOT)
+			   self.discontinuity=tempMot:getConstraints(Motion.IS_DISCONTINUOUS)
+			   self.conL=tempMot:getConstraints(Motion.CONSTRAINT_LEFT_FOOT)
+			   self.conR=tempMot:getConstraints(Motion.CONSTRAINT_RIGHT_FOOT)
 		   else
 			   local motdof=filename
 			   self:resize(motdof:numFrames())
 			   self.mot:assign(motdof)
 		   end
+	   elseif string.upper(str.right(filename,4))=="MOT2" then
+		   local tempMot=Motion(dofInfo:skeleton())
+		   tempMot:importBinary(filename)
+		   self.discontinuity=tempMot:getConstraints(Motion.IS_DISCONTINUOUS)
+		   self.conL=tempMot:getConstraints(Motion.CONSTRAINT_LEFT_FOOT)
+		   self.conR=tempMot:getConstraints(Motion.CONSTRAINT_RIGHT_FOOT)
+		   self.mot:set(tempMot)
+
 	   elseif string.upper(str.right(filename,3))=="MOT" then
 		   local tempMot=Motion(dofInfo:skeleton())
 		   dofInfo:skeleton():loadAnimation(tempMot, filename)
-		   self.discontinuity=extractConstraints(tempMot,Motion.IS_DISCONTINUOUS)
-		   self.conL=extractConstraints(tempMot,Motion.CONSTRAINT_LEFT_FOOT)
-		   self.conR=extractConstraints(tempMot,Motion.CONSTRAINT_RIGHT_FOOT)
+		   self.discontinuity=tempMot:getConstraints(Motion.IS_DISCONTINUOUS)
+		   self.conL=tempMot:getConstraints(Motion.CONSTRAINT_LEFT_FOOT)
+		   self.conR=tempMot:getConstraints(Motion.CONSTRAINT_RIGHT_FOOT)
 		   self.mot:set(tempMot)
 	elseif string.upper(str.right(filename,3))=="BVH" then
 

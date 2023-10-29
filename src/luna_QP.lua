@@ -122,14 +122,13 @@ bindTargetClassification={
 		},
 	},
 	modules={
-		--{
-		--	namespace='Eigen',
-		--	functions={[[
-		--	double solve_quadprog( HessianQuadratic & problem, const matrixn & CE, const vectorn & ce0, const matrixn & CI, const vectorn & ci0, vectorn & x) @ solveQuadprog
-		--	double solve_quadprog( HessianQuadratic & problem, const matrixn & CE, const vectorn & ce0, const matrixn & CI, const vectorn & ci0, vectorn & x, bool) @ solveQuadprog
-		--	void solveLCP(const matrixn&  N, const vectorn& r, vectorn& g, vectorn & a);
-		--	]]}
-		--}, 
+		{
+			namespace='Eigen',
+			functions={[[
+			double solve_quadprog( HessianQuadratic & problem, const matrixn & CE, const vectorn & ce0, const matrixn & CI, const vectorn & ci0, vectorn & x) @ solveQuadprog
+			double solve_quadprog( HessianQuadratic & problem, const matrixn & CE, const vectorn & ce0, const matrixn & CI, const vectorn & ci0, vectorn & x, bool) @ solveQuadprog
+			]]}
+		}, 
 		{
 			namespace='MPI',
 			ifdef='USE_MPI',
@@ -245,6 +244,9 @@ function generate()
 	#endif
 	#include "cma/CMAwrap.h"
 	#include "GA_simple.h"
+	#include "taesooLib/BaseLib/math/OperatorStitch.h"
+	#include "taesooLib/PhysicsLib/clapack_wrap.h"
+	#include "QP_controller/quadprog.h"
 	]])
 	writeHeader(bindTargetClassification)
 	writeDefinitions(bindTargetClassification, 'Register_QP') -- input bindTarget can be non-overlapping subset of entire bindTarget 

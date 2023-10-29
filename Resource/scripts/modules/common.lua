@@ -1,6 +1,32 @@
 
 require("module")
 
+if not Physics then return end
+function Physics.DynamicsSimulator:getPoseDPose(ichar)
+	local pose=vectorn()
+	local dpose=vectorn()
+	self:getLinkData(0, Physics.DynamicsSimulator.JOINT_VALUE, pose)
+	self:getLinkData(0, Physics.DynamicsSimulator.JOINT_VELOCITY, dpose)
+	return pose, dpose
+end
+function Physics.DynamicsSimulator:setPoseDPose(ichar, pose, dpose)
+	self:setLinkData(0, Physics.DynamicsSimulator.JOINT_VALUE, pose)
+	self:setLinkData(0, Physics.DynamicsSimulator.JOINT_VELOCITY, dpose)
+	self:initSimulation()
+end
+
+defineDerived(Physics.DynamicsSimulator, 
+{
+	Physics.DynamicsSimulator_gmbs,
+	Physics.DynamicsSimulator_gmbs_penalty,
+	Physics.DynamicsSimulator_TRL_QP,
+	Physics.DynamicsSimulator_TRL_LCP,
+}, 
+{
+	"getPoseDPose", 
+	"setPoseDPose",
+}
+)
 
 if Physics and PLDPrimVRML then
 	PLDPrimVRML.setPose=Physics.DynamicsSimulator.setPose
@@ -403,7 +429,9 @@ function createSimulator(simulator)
    elseif simulator==simulators.TRL_penalty then
 	   return Physics.DynamicsSimulator_TRL_penalty("libccd")
    elseif simulator==simulators.TRL then
-	   return Physics.DynamicsSimulator_TRL_LCP("libccd")
+	   --return Physics.DynamicsSimulator_TRL_LCP("libccd")
+	   return Physics.DynamicsSimulator_TRL_QP("simple")
+	   --return Physics.DynamicsSimulator_TRL_QP('simple') -- use simple collision detector 
 	elseif simulator==simulators.Trbdl_penalty then
 	   return Physics.DynamicsSimulator_Trbdl_penalty("libccd")
 	elseif simulator==simulators.Trbdl_LCP then

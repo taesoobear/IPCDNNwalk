@@ -26,6 +26,9 @@
 	#endif
 	#include "cma/CMAwrap.h"
 	#include "GA_simple.h"
+	#include "taesooLib/BaseLib/math/OperatorStitch.h"
+	#include "taesooLib/PhysicsLib/clapack_wrap.h"
+	#include "QP_controller/quadprog.h"
 	
 #ifndef genlua_luna_QP_lua15473501_def12                      // 1303
 #define genlua_luna_QP_lua15473501_def12                      // 1304
@@ -89,6 +92,12 @@ public:                                                       // 1329
     static FitnessCalcLua* _bind_ctor(lua_State *L);          // 1342
     static void _bind_dtor(FitnessCalcLua* obj);              // 1343
     typedef FitnessCalc base_t;                               // 1345
+};                                                            // 1351
+ class luna__interface_15473501_Eigen {
+public:                                                       // 1329
+    static const char moduleName[];                           // 1334
+    typedef LunaModule<luna__interface_15473501_Eigen> luna_t; // 1335
+    static luna_RegType methods[];                            // 1336
 };                                                            // 1351
 #if defined (USE_MPI)                                         // 1323
  class luna__interface_15473501_MPI {
@@ -805,6 +814,82 @@ luna_RegType LunaTraits<FitnessCalcLua >::methods[] = {       // 1649
     {"__newindex", &impl_LunaTraits<FitnessCalcLua >::__newindex}, // 1654
     {0,0}                                                     // 1657
 };                                                            // 1658
+ class impl_luna__interface_15473501_Eigen {
+public:                                                       // 1392
+    typedef LunaModule<luna__interface_15473501_Eigen> luna_t; // 1394
+// : number denotes the line number of luna_gen.lua that generated the sentence // 1399
+  inline static bool _lg_typecheck_solveQuadprog_overload_1(lua_State *L)
+  {                                                           // 1418
+    if( lua_gettop(L)!=6) return false;                       // 621
+    if( Luna<void>::get_uniqueid(L,1)!=55023510) return false; // HessianQuadratic // 629
+    if( Luna<void>::get_uniqueid(L,2)!=23735758) return false; // matrixn // 629
+    if( Luna<void>::get_uniqueid(L,3)!=10150210) return false; // vectorn // 629
+    if( Luna<void>::get_uniqueid(L,4)!=23735758) return false; // matrixn // 629
+    if( Luna<void>::get_uniqueid(L,5)!=10150210) return false; // vectorn // 629
+    if( Luna<void>::get_uniqueid(L,6)!=10150210) return false; // vectorn // 629
+    return true;
+  }                                                           // 656
+  inline static bool _lg_typecheck_solveQuadprog_overload_2(lua_State *L)
+  {                                                           // 1418
+    if( lua_gettop(L)!=7) return false;                       // 621
+    if( Luna<void>::get_uniqueid(L,1)!=55023510) return false; // HessianQuadratic // 629
+    if( Luna<void>::get_uniqueid(L,2)!=23735758) return false; // matrixn // 629
+    if( Luna<void>::get_uniqueid(L,3)!=10150210) return false; // vectorn // 629
+    if( Luna<void>::get_uniqueid(L,4)!=23735758) return false; // matrixn // 629
+    if( Luna<void>::get_uniqueid(L,5)!=10150210) return false; // vectorn // 629
+    if( Luna<void>::get_uniqueid(L,6)!=10150210) return false; // vectorn // 629
+    if( lua_isboolean(L,7)==0) return false;                  // 641
+    return true;
+  }                                                           // 656
+  static int _bind_solveQuadprog_overload_1(lua_State *L)
+  {                                                           // 1451
+    HessianQuadratic & problem=static_cast<HessianQuadratic &>(*Luna<HessianQuadratic >::check(L,1)); // 568
+    const matrixn & CE=static_cast<matrixn &>(*Luna<matrixn >::check(L,2)); // 568
+    const vectorn & ce0=static_cast<vectorn &>(*Luna<vectorn >::check(L,3)); // 568
+    const matrixn & CI=static_cast<matrixn &>(*Luna<matrixn >::check(L,4)); // 568
+    const vectorn & ci0=static_cast<vectorn &>(*Luna<vectorn >::check(L,5)); // 568
+    vectorn & x=static_cast<vectorn &>(*Luna<vectorn >::check(L,6)); // 568
+    try {                                                     // 340
+    double ret=solve_quadprog( problem, CE, ce0, CI, ci0, x); // 341
+    lua_pushnumber(L, ret);                                   // 342
+    } 
+    catch(std::exception& e) { ASSERT(false); luaL_error( L,e.what()); }
+    catch(...) { ASSERT(false); luaL_error( L,"unknown_error");}
+                                                              // 343
+    return 1;                                                 // 344
+  }                                                           // 374
+  static int _bind_solveQuadprog_overload_2(lua_State *L)
+  {                                                           // 1451
+    HessianQuadratic & problem=static_cast<HessianQuadratic &>(*Luna<HessianQuadratic >::check(L,1)); // 568
+    const matrixn & CE=static_cast<matrixn &>(*Luna<matrixn >::check(L,2)); // 568
+    const vectorn & ce0=static_cast<vectorn &>(*Luna<vectorn >::check(L,3)); // 568
+    const matrixn & CI=static_cast<matrixn &>(*Luna<matrixn >::check(L,4)); // 568
+    const vectorn & ci0=static_cast<vectorn &>(*Luna<vectorn >::check(L,5)); // 568
+    vectorn & x=static_cast<vectorn &>(*Luna<vectorn >::check(L,6)); // 568
+    bool _arg7=(bool)lua_toboolean(L,7);                      // 579
+    try {                                                     // 340
+    double ret=solve_quadprog( problem, CE, ce0, CI, ci0, x, _arg7); // 341
+    lua_pushnumber(L, ret);                                   // 342
+    } 
+    catch(std::exception& e) { ASSERT(false); luaL_error( L,e.what()); }
+    catch(...) { ASSERT(false); luaL_error( L,"unknown_error");}
+                                                              // 343
+    return 1;                                                 // 344
+  }                                                           // 374
+  static int _bind_solveQuadprog(lua_State *L)
+  {                                                           // 233
+    if (_lg_typecheck_solveQuadprog_overload_1(L)) return _bind_solveQuadprog_overload_1(L); // 236
+    if (_lg_typecheck_solveQuadprog_overload_2(L)) return _bind_solveQuadprog_overload_2(L); // 236
+    luaL_error(L, "solveQuadprog ( cannot find overloads:)\n(HessianQuadratic & problem,const matrixn & CE,const vectorn & ce0,const matrixn & CI,const vectorn & ci0,vectorn & x,)\n(HessianQuadratic & problem,const matrixn & CE,const vectorn & ce0,const matrixn & CI,const vectorn & ci0,vectorn & x,bool _arg7,)\n");
+                                                              // 243
+    return 0;                                                 // 244
+  }                                                           // 245
+}; // end of class impl_luna__interface_15473501_Eigen        // 1612
+const char luna__interface_15473501_Eigen::moduleName[] = "_Eigen"; // 1640
+luna_RegType luna__interface_15473501_Eigen::methods[] = {    // 1649
+    {"solveQuadprog", &impl_luna__interface_15473501_Eigen::_bind_solveQuadprog}, // 1654
+    {0,0}                                                     // 1657
+};                                                            // 1658
 #if defined (USE_MPI)                                         // 1372
  class impl_luna__interface_15473501_MPI {
 public:                                                       // 1392
@@ -1040,6 +1125,8 @@ void Register_QP(lua_State* L) {                              // 1665
     luna_dostring(L, "FitnessCalcLua=__luna._FitnessCalcLua"); // 1731
     luna_dostring(L,"                __luna._FitnessCalcLua.luna_class='FitnessCalcLua'"); // 1732
     luna_dostring(L,"            __luna.copyMethodsFrom(__luna._FitnessCalcLua, __luna._FitnessCalc)"); // 1741
+   LunaModule<luna__interface_15473501_Eigen >::Register(L);  // 1706
+    luna_dostring(L," \n                if Eigen==nil then \n                    Eigen={}\n                end \n                __luna.overwriteMethodsFrom(Eigen, __luna._Eigen)\n                "); // 1721
 #if defined (USE_MPI)                                         // 1696
    LunaModule<luna__interface_15473501_MPI >::Register(L);    // 1706
     luna_dostring(L," \n                if MPI==nil then \n                    MPI={}\n                end \n                __luna.overwriteMethodsFrom(MPI, __luna._MPI)\n                "); // 1721

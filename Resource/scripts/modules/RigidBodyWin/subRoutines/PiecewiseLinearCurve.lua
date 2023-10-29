@@ -3,7 +3,7 @@ math.PiecewiseLinearCurve=LUAclass()
 function math.PiecewiseLinearCurve:__init(timing, value)
 	self.timing=math.__checkVec(timing):copy()
 	self.value=math.__checkVec(value):copy()
-	assert(self.timing(0)==0)
+	assert(self.timing(0)<=0 )
 end
 
 function math.PiecewiseLinearCurve:sample(time)

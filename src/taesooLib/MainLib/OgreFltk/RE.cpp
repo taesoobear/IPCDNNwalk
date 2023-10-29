@@ -1034,6 +1034,8 @@ extern ConfigTable config;
 OgreRenderer* RE::_createRenderer(int& w, int &rw)
 {
 	auto* renderer=new OgreRenderer();
+	if (!config.Find("renderer_width"))
+		return renderer;
 	int DEFAULT_RENDERER_WIDTH=config.GetInt("renderer_width");
 	int DEFAULT_WIDTH=DEFAULT_RENDERER_WIDTH+config.GetInt("right_panel_width");
 	if (DEFAULT_RENDERER_WIDTH<20)

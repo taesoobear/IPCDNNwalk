@@ -286,6 +286,11 @@ void PLDPrimSkin::detachAnim()
 }
 void PLDPrimSkin::applyAnim(const MotionDOF& motion)
 {
+	if(motion.numFrames()==0)
+	{
+		Msg::error("motion has 0 frames");
+		return;
+	}
 	if(m_pTimer)	delete m_pTimer;
 
 	MotionDOFInterpolator* node;
@@ -304,6 +309,11 @@ void PLDPrimSkin::applyAnim(const MotionDOF& motion)
 }
 void PLDPrimSkin::ApplyAnim(const Motion& mot)
 {
+	if(mot.numFrames()==0)
+	{
+		Msg::error("motion has 0 frames");
+		return;
+	}
 	if(m_pTimer)	delete m_pTimer;
 
 	AlzzaPostureIP* node;

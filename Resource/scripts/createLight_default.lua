@@ -1,4 +1,10 @@
-dofile('../Resource/scripts/ogreConfig.lua')
+local f=io.open('../Resource/scripts/ogreConfig_personal.lua','r')
+if f then
+	f:close()
+	dofile('../Resource/scripts/ogreConfig_personal.lua')
+else
+	dofile('../Resource/scripts/ogreConfig.lua')
+end
 
 rootnode =RE.ogreRootSceneNode()
 if rootnode then
@@ -18,10 +24,10 @@ if RE.getOgreVersionMinor()>=12 then
 	local lightVar=0.02
 	
 	local sc=math.pow(0.5, 1/numMainLights)
-	local light1D=0.8
-	local light1S=0.2
-	local lightOD=0
-	local lightOS=0
+	local light1D=0.9
+	local light1S=0.8
+	local lightOD=0.0
+	local lightOS=0.0
 	local highQualityRendering=false -- set this true for high quality render
 
 	if not stencilShadow then
@@ -73,6 +79,9 @@ if RE.getOgreVersionMinor()>=12 then
 			end
 		end
 	end
+	if g_customShadowColor then
+		sc=g_customShadowColor
+	end
 
 	RE.ogreSceneManager():setShadowColour(sc,sc,sc)
 
@@ -104,6 +113,13 @@ if RE.getOgreVersionMinor()>=12 then
 		light:setCastShadows(true)
 		
 	end
+	light=RE.ogreSceneManager():createLight("FillLight")
+	light:setType("LT_DIRECTIONAL")
+	light:setDirection(0.5,0.7,-0.5)
+	light:setDiffuseColour(0.4,0.4,0.4)
+	light:setSpecularColour(0.4,0.4,0.4)
+	light:setCastShadows(false)
+	lightnode:attachObject(light)
 else
 	light=RE.ogreSceneManager():createLight("Mainlight")
 	light:setType("LT_DIRECTIONAL")

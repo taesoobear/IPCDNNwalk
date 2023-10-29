@@ -30,7 +30,7 @@ void __noop(...);
 #ifndef ASSERT
 #ifdef _DEBUG
 #define ASSERT(x) assert(x)
-#define RANGE_ASSERT(x) assert(x)
+#define RANGE_ASSERT(x) do {if(!(x)) throw std::runtime_error("range_error");} while(false)
 #define VERIFY(x) assert(x)
 #define TRACE	Msg::print
 #else

@@ -7,7 +7,7 @@ material use_vertexcolor
 		shading gouraud
 		ambient vertexcolour
 		diffuse vertexcolour
-		specular 0.50000 0.50000 0.50000 1.00000 0.00000
+		specular 0.50000 0.50000 0.50000 1.00000 3.00000
 		emissive 0.00000 0.00000 0.00000 1.00000
         }
     }
@@ -23,7 +23,7 @@ material use_vertexcolor_transparent
 			shading gouraud
 			ambient vertexcolour
 			diffuse vertexcolour
-			specular 0.50000 0.50000 0.50000 1.00000 0.00000
+			specular 0.50000 0.50000 0.50000 1.00000 3.00000
 			emissive 0.00000 0.00000 0.00000 1.00000
 			scene_blend alpha_blend
 			depth_write off
@@ -44,7 +44,26 @@ material lightgrey_transparent
 
 			ambient 0.5 0.5 0.5 0.5
 			diffuse 0.5 0.5 0.5 0.5
-			specular 0.5 0.5 0.5 0.5 0.0
+			specular 0.5 0.5 0.5 0.5 3.0
+			emissive 0.0 0.0 0.0 0.5
+			scene_blend alpha_blend
+			depth_write off
+		}
+	}
+}
+material grey_transparent
+{
+	receive_shadows off
+	cast_shadow off
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 0.5 0.5 0.5 0.5
+			diffuse 0.5 0.5 0.5 0.5
+			specular 0.5 0.5 0.5 0.5 3.0
 			emissive 0.0 0.0 0.0 0.5
 			scene_blend alpha_blend
 			depth_write off
@@ -63,7 +82,7 @@ material lightgrey_noshadow
 
 			ambient 0.5 0.5 0.5 1.0
 			diffuse 0.5 0.5 0.5 1.0
-			specular 0.5 0.5 0.5 1.0 0.0
+			specular 0.5 0.5 0.5 1.0 3.0
 			emissive 0.0 0.0 0.0 1.0
 			scene_blend alpha_blend
 		}
@@ -81,7 +100,7 @@ material yellow_transparent
 
 			ambient 1.0 1.0 0.5 0.5
 			diffuse 1.0 1.0 0.5 0.5
-			specular 0.5 0.5 0.5 0.5 0.0
+			specular 0.5 0.5 0.5 0.5 3.0
 			emissive 0.0 0.0 0.0 0.5
 			scene_blend alpha_blend
 			depth_write off
@@ -100,7 +119,7 @@ material lightgrey_verytransparent
 
 			ambient 0.5 0.5 0.5 0.2
 			diffuse 0.5 0.5 0.5 0.2
-			specular 0.5 0.5 0.5 0.2 0.0
+			specular 0.5 0.5 0.5 0.2 3.0
 			emissive 0.0 0.0 0.0 0.2
 			scene_blend alpha_blend
 			depth_write off
@@ -119,7 +138,7 @@ material invisible
 
 			ambient 0.5 0.5 0.5 0.0
 			diffuse 0.5 0.5 0.5 0.0
-			specular 0.5 0.5 0.5 0.0 0.0
+			specular 0.5 0.5 0.5 0.0 3.0
 			emissive 0.0 0.0 0.0 0.0
 			scene_blend alpha_blend
 			depth_write off
@@ -137,7 +156,7 @@ material invisible_shadow_receiver
 
 			ambient 0.5 0.5 0.5 0.0
 			diffuse 0.5 0.5 0.5 0.0
-			specular 0.5 0.5 0.5 0.0 0.0
+			specular 0.5 0.5 0.5 0.0 3.0
 			emissive 0.0 0.0 0.0 0.0
 			scene_blend alpha_blend
 			//depth_write off
@@ -156,7 +175,7 @@ material invisible_gth
 
 			ambient 0.5 0.5 0.5 0.0
 			diffuse 0.5 0.5 0.5 0.0
-			specular 0.5 0.5 0.5 0.0 0.0
+			specular 0.5 0.5 0.5 0.0 3.0
 			emissive 0.0 0.0 0.0 0.0
 			scene_blend alpha_blend
 			depth_write on 
@@ -177,7 +196,7 @@ material white_transparent
 
 			ambient 0.5 0.5 0.5 0.2
 			diffuse 0.5 0.5 0.5 0.2
-			specular 0.5 0.5 0.5 0.2 0.0
+			specular 0.5 0.5 0.5 0.2 3.0
 			emissive 0.0 0.0 0.0 0.2
 			scene_blend alpha_blend
 			depth_write off
@@ -196,8 +215,27 @@ material red_transparent
 
 			ambient 1.0 0.0 0.0 0.5
 			diffuse 1.0 0.0 0.0 0.5
-			specular 1.0 0.0 0.0 0.5 0.0
+			specular 1.0 0.0 0.0 0.5 3.0
 			emissive 0.0 0.0 0.0 0.5
+			scene_blend alpha_blend
+			depth_write off
+		}
+	}
+}
+material red_verytransparent
+{
+	receive_shadows off
+	cast_shadow off
+	technique
+	{
+		pass
+		{
+			shading gouraud
+
+			ambient 1.0 0.0 0.0 0.2
+			diffuse 1.0 0.0 0.0 0.2
+			specular 1.0 0.0 0.0 0.2 3.0
+			emissive 0.0 0.0 0.0 0.2
 			scene_blend alpha_blend
 			depth_write off
 		}
@@ -215,7 +253,7 @@ material red_transparent_ccw
 			cull_hardware anticlockwise
 			ambient 1.0 0.0 0.0 0.5
 			diffuse 1.0 0.0 0.0 0.5
-			specular 1.0 0.0 0.0 0.5 0.0
+			specular 1.0 0.0 0.0 0.5 3.0
 			emissive 0.0 0.0 0.0 0.5
 			scene_blend alpha_blend
 			depth_write off
@@ -234,7 +272,7 @@ material green_transparent
 
 			ambient 0.0 1.0 0.0 0.5
 			diffuse 0.0 1.0 0.0 0.5
-			specular 0.0 1.0 0.0 0.5 0.0
+			specular 0.0 1.0 0.0 0.5 3.0
 			emissive 0.0 0.0 0.0 0.5
 			scene_blend alpha_blend
 			depth_write off
@@ -253,7 +291,7 @@ material blue_transparent
 
 			ambient 0.0 0.0 1.0 0.5
 			diffuse 0.0 0.0 1.0 0.5
-			specular 0.0 0.0 1.0 0.5 0.0
+			specular 0.0 0.0 1.0 0.5 3.0
 			emissive 0.0 0.0 0.0 0.5
 			scene_blend alpha_blend
 			depth_write off
@@ -288,7 +326,7 @@ material black
 
 			ambient 0.50000 0.50000 0.50000 1.00000
 			diffuse 0.00 0.00 0.00000 0.0000
-			specular 0.50000 0.50000 0.50000 1.00000 0.00000
+			specular 0.50000 0.50000 0.50000 1.00000 3.00000
 			emissive 0.00000 0.00000 0.00000 1.00000
 
 		}
@@ -305,7 +343,7 @@ material lightgrey
 
 			ambient 0.5 0.5 0.5 1.0
 			diffuse 0.5 0.5 0.5 1
-			specular 0.5 0.5 0.5 1.0 0.0
+			specular 0.5 0.5 0.5 1.0 3.0
 			emissive 0.0 0.0 0.0 1.0
 
 		}
@@ -322,7 +360,7 @@ material lightblue
 
 			ambient 0.5 0.5 1.0 1.0
 			diffuse 0.6 0.6 0.75 1
-			specular 0.5 0.5 0.5 1.0 0.0
+			specular 0.5 0.5 0.5 1.0 3.0
 			emissive 0.0 0.0 0.0 1.0
 
 		}
@@ -339,7 +377,7 @@ material white
 
 			ambient 0.5 0.5 0.5 1.0
 			diffuse 0.8 0.8 0.8 0.8
-			specular 0.8 0.8 0.8 1.0 0.0
+			specular 0.8 0.8 0.8 1.0 3.0
 			emissive 0.0 0.0 0.0 1.0
 
 
@@ -356,7 +394,7 @@ material blue
 
 			ambient 0.5 0.5 0.5 1.0
 			diffuse 0.03440 0.03678 0.8 0.8
-			specular 0.8 0.8 0.8 1.0 0.0
+			specular 0.8 0.8 0.8 1.0 3.0
 			emissive 0.0 0.0 0.0 1.0
 
 		}
@@ -374,7 +412,7 @@ material lightgreen
 
 			ambient 0.5 1.0 0.5 1.0
 			diffuse 0.6 0.75 0.6 1.0
-			specular 0.8 0.8 0.8 1.0 0.0
+			specular 0.8 0.8 0.8 1.0 3.0
 			emissive 0.0 0.0 0.0 1.0
 
 		}
@@ -390,7 +428,7 @@ material green
 
 			ambient 0.1 0.1 0.1 1.0
 			diffuse 0.03440 0.9 0.03678 0.8
-			specular 0.8 0.8 0.8 1.0 0.0
+			specular 0.8 0.8 0.8 1.0 3.0
 			emissive 0.0 0.0 0.0 1.0
 		}
 	}
@@ -410,7 +448,7 @@ material red
 
 			ambient 0.5 0.5 0.5 1.0
 			diffuse 0.8 0.03678 0.03440 0.8
-			specular 0.8 0.8 0.8 1.0 0.0
+			specular 0.8 0.8 0.8 1.0 3.0
 			emissive 0.0 0.0 0.0 1.0
 
 		}
@@ -454,6 +492,23 @@ material solidblack
 		}
 	}
 }
+material solidyellow
+{
+	receive_shadows off
+
+	technique
+	{
+		pass
+		{
+			lighting off		
+			// Texture unit 0
+		        texture_unit 
+            		{
+				colour_op_ex source1 src_manual src_current 1 1 0
+		        }
+		}
+	}
+}
 material solidwhitepoint
 {
    technique
@@ -486,6 +541,24 @@ material solidwhite
 	}
 }
 
+material solidblue_cullnone
+{
+	receive_shadows off
+	technique
+	{
+		pass
+		{
+			lighting off		
+			cull_hardware none
+			// Texture unit 0
+		        texture_unit 
+            		{
+				colour_op_ex source1 src_manual src_current 0 0 1
+		        }
+		}
+	}
+}
+
 material solidblue 
 {
 	receive_shadows off
@@ -502,7 +575,6 @@ material solidblue
 		}
 	}
 }
-
 material solidlightblue
 {
 	receive_shadows off

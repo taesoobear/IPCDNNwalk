@@ -20,5 +20,5 @@ local chosenFile=Fltk.chooseFile("Choose an avi file to save", "../dump", "*.avi
 if chosenFile~='' then
 	os.execute('cp virtualDub/converted.avi "'..chosenFile..'"')
 else
-	print('see work/converted.avi')
+	print('see work/virtualDub/converted.avi')
 end
