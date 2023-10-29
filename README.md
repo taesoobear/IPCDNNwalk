@@ -110,6 +110,5 @@ How to build ogre 3D-13.4.3 from source codes (Mac)
   mkdir -p  /Applications/OgreSDK/lib/macosx/Release
   cp -Rp build/lib/macosx/Release/* /Applications/OgreSDK/lib/macosx/Release
   sudo cp -Rp build/lib/macosx/Release/*.framework /Library/Frameworks/
-  sudo cp build/Dependencies/lib/libzzip.so* /usr/local/lib/
 ```
 
