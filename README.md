@@ -97,19 +97,19 @@ How to build ogre 3D-13.4.3 from source codes (Mac)
 ```
   git clone https://github.com/wgois/OIS.git
   cd OIS;cmake -H. -B./build; cd ./build; make; sudo make install
-	sudo mkdir -p /usr/local/include/OGRE
-	sudo mkdir -p /usr/local/include/OGRE/Overlay
-	sudo mkdir -p /usr/local/include/OGRE/Bites
-	sudo cp -rf OgreMain/include/* /usr/local/include/OGRE
-	sudo cp -rf Components/Overlay/include/*  /usr/local/include/OGRE/Overlay
-	sudo cp -rf Components/Bites/include/*  /usr/local/include/OGRE/Bites
-	sudo cp -rf RenderSystems/GLSupport/include/OSX/OgreOSXCocoa*.h  /usr/local/include/OGRE
-	sudo cp -rf RenderSystems/GLSupport/include/*.h  /usr/local/include/OGRE
-	sudo cp -rf build/include/* /usr/local/include/OGRE
-	sudo cp -rf build/include/OgreBites* /usr/local/include/OGRE/Bites
-	mkdir -p  /Applications/OgreSDK/lib/macosx/Release
-	cp -Rp build/lib/macosx/Release/* /Applications/OgreSDK/lib/macosx/Release
-	sudo cp -Rp build/lib/macosx/Release/*.framework /Library/Frameworks/
+  sudo mkdir -p /usr/local/include/OGRE
+  sudo mkdir -p /usr/local/include/OGRE/Overlay
+  sudo mkdir -p /usr/local/include/OGRE/Bites
+  sudo cp -rf OgreMain/include/* /usr/local/include/OGRE
+  sudo cp -rf Components/Overlay/include/*  /usr/local/include/OGRE/Overlay
+  sudo cp -rf Components/Bites/include/*  /usr/local/include/OGRE/Bites
+  sudo cp -rf RenderSystems/GLSupport/include/OSX/OgreOSXCocoa*.h  /usr/local/include/OGRE
+  sudo cp -rf RenderSystems/GLSupport/include/*.h  /usr/local/include/OGRE
+  sudo cp -rf build/include/* /usr/local/include/OGRE
+  sudo cp -rf build/include/OgreBites* /usr/local/include/OGRE/Bites
+  mkdir -p  /Applications/OgreSDK/lib/macosx/Release
+  cp -Rp build/lib/macosx/Release/* /Applications/OgreSDK/lib/macosx/Release
+  sudo cp -Rp build/lib/macosx/Release/*.framework /Library/Frameworks/
   sudo cp build/Dependencies/lib/libzzip.so* /usr/local/lib/
 ```
 
