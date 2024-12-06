@@ -126,6 +126,7 @@ public:
 	matrixn& operator=(matrixn const& other)			{ _tmat<m_real>::assign(other); return *this;};
 	matrixn& operator=(const matrixnView& other);//{ assign(other); return *this;}
 
+	bool isnan() const;
 	vector3 row3(int row) const						{ return vector3(value(row,0), value(row,1), value(row, 2));}
 
 	// L-value로 사용될수 있는 reference vector 를 return한다.
@@ -187,13 +188,16 @@ public:
 	matrixn& fromVector(const vectorn& vec, int column);
 
 	TString output(const char* formatString="%f", int start=0, int end=INT_MAX) const;
+	TString shortOutput() const;
 
 	// sum of diagonal elements.
 	m_real trace() const;
 
 	matrixn& fromHyperMat(const hypermatrixn& mat);	//!< columnwise concat all pages of mat into one large matrix
 	matrixn&  resample(matrixn const& mat, int numSample);
+	matrixn derivative(double frame_rate) const;
 
+	void sampleRow( m_real criticalTime, vectorn& out) const;
 	friend std::ostream& operator<< ( std::ostream& os, const matrixn& u );
 private:
 

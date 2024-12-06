@@ -11,6 +11,7 @@
 #include "../BaseLib/math/conversion.h"
 #include "../BaseLib/math/Filter.h"
 #include "../BaseLib/math/matrix3.h"
+#include "../BaseLib/motion/Liegroup.h"
 #include "../BaseLib/utility/operatorString.h"
 #include "../BaseLib/utility/QPerformanceTimer.h"
 #include "../BaseLib/utility/tfile.h"
@@ -32,7 +33,6 @@
 
 #include <windows.h>
 #endif
-
 
 TString getCurrentDirectory();
 
@@ -191,26 +191,6 @@ void RE_::remove(PLDPrimSkin* p)
   printf("remove is deprecated. (Calling this is no longer needed as the object is owned by LUA).\n");
   //RE::remove(p);
 }
-void RE_::renderOneFrame(bool check)
-{
-  if(!RE::rendererValid() ) return;
-
-#ifndef NO_GUI
-  if(check)
-	{
-	  if(RE::FltkRenderer().visible())
-		{
-		  while(!Fl::check()) ;
-		}else{
-		while(!Fl::wait()) ;
-	  }
-	}
-#endif
-				
-
-  RE::renderer().renderOneFrame();
-}
-
 PLDPrimSkin* RE_::createSkin2(const MotionLoader& skel, int typet)
 {
   return RE::createSkin(skel, (RE::PLDPrimSkinType)typet);
@@ -243,4 +223,32 @@ int FlGenShortcut(const char* s)
 		}
 	return shortc;
 #endif
+}
+matrixn MotionDOF_calcDerivative(MotionDOF const& motionDOF, double frameRate )
+{
+	Msg::verify( motionDOF.mInfo.numSphericalJoint()==1,"numSphericalJoint!=-1");
+
+	return MotionDOF_calcDerivative((const_cast<MotionDOF&>(motionDOF))._matView(), frameRate);
+}
+
+matrixn MotionDOF_calcDerivative(matrixn const& motionDOF, double frameRate )
+{
+	matrixn dmotionDOF;
+	dmotionDOF.setSize(motionDOF.rows(), motionDOF.cols());
+	for(int  i=0; i<motionDOF.rows()-1; i++)
+	{
+		//-- 아래 코드는 MotionDOF.derivPose(mot:row(i), mot:row(i+1))과 동일
+		auto dmotionDOF_i=dmotionDOF.row(i);
+		dmotionDOF_i.sub(motionDOF.row(i+1), motionDOF.row(i)); //-- forward difference
+		dmotionDOF_i*=frameRate;
+
+		auto T=motionDOF.row(i).toTransf(0);
+		//-- body velocity
+		auto V=Liegroup::twist( T, motionDOF.row(i+1).toTransf(0), 1/frameRate);
+		dmotionDOF_i.setVec3(0, V.V());
+		dmotionDOF_i.set(3,0); //-- unused
+		dmotionDOF_i.setVec3(4, V.W());
+	}
+	dmotionDOF.row(dmotionDOF.rows()-1).assign(dmotionDOF.row(dmotionDOF.rows()-2));
+	return dmotionDOF;
 }

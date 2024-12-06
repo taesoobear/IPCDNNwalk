@@ -408,6 +408,65 @@ int Ray::pickBarycentric(const OBJloader::Mesh& mesh, vector3 & baryCoeffs, vect
 	}
 	return -1;
 }
+int Ray::pickBarycentric(const OBJloader::Mesh& mesh, const vector3N& vertexPositions, vector3 & baryCoeffs, vector3 & pickPos)
+{
+	auto& ray=*this;
+	double rayParam=DBL_MAX;
+	int argMin=-1;
+	vector3 normal;
+	for(int i=0; i<mesh.numFace(); i++)
+	{
+		OBJloader::Face const& f=mesh.getFace(i);
+		vector3 a=vertexPositions(f.vi(0));
+		vector3 b=vertexPositions(f.vi(1));
+		vector3 c=vertexPositions(f.vi(2));
+		vector3 d1, d2;
+		d1.difference(a,b);
+		d2.difference(b,c);
+		normal.cross(d1,d2);
+		normal.normalize();
+
+		auto res=ray.intersects(a,b,c,normal,true,false);
+		if(res.first) 
+		{
+			if(res.second<rayParam)
+			{
+				rayParam=res.second;
+				argMin=i;
+			}
+		}
+	}
+	if (rayParam!=DBL_MAX)
+	{
+		pickPos=ray.getPoint(rayParam);
+
+		OBJloader::Face const& f=mesh.getFace(argMin);
+		// getBarycentric
+		{
+			auto& p=pickPos;
+			vector3 v1=mesh.getVertex(f.vi(0));
+			vector3 v2=mesh.getVertex(f.vi(1));
+			vector3 v3=mesh.getVertex(f.vi(2));
+			vector3 v3v1 = v3 - v1;
+			vector3 v2v1 = v2 - v1;
+			vector3 pv1 = p - v1;
+
+			double v123Area = v2v1.cross( v3v1).length();
+			double v12PArea = pv1.cross( v2v1).length();
+			double v13PArea = pv1.cross( v3v1).length();
+
+			double v3Coeff = v12PArea / v123Area;
+			double v2Coeff = v13PArea / v123Area;
+			double v1Coeff = 1.0 - v2Coeff - v3Coeff;
+
+			baryCoeffs[0] = v1Coeff;
+			baryCoeffs[1] = v2Coeff;
+			baryCoeffs[2] = v3Coeff;
+		}
+		return argMin;
+	}
+	return -1;
+}
 namespace intersectionTest
 {
 void LineSegment::resetPosition(const vector3& from, const vector3& to)

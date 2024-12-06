@@ -7,6 +7,7 @@
 #include "tfile.h"
 #include "../math/mathclass.h"
 #include "../math/hyperMatrixN.h"
+#include "../math/tensor.hpp"
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -28,6 +29,14 @@ BinaryFile::BinaryFile(bool bWrite, const char* filename)
 	if(bWrite) openWrite(filename);
 	else openRead(filename);
 }
+BinaryFile::BinaryFile(bool bWrite, const std::string & filename)
+{
+	m_pFile=NULL;
+	m_pBuffer=NULL;
+	m_bReadToMemory=false;
+	if(bWrite) openWrite(filename.c_str());
+	else openRead(filename.c_str());
+}
 
 BinaryFile::~BinaryFile()
 {
@@ -43,7 +52,7 @@ bool BinaryFile::openWrite(const char *fileName, bool singlePrecisionMode)
 
 	if(m_pFile==NULL)
 	{
-		printf("Open error %s\n", fileName);
+		Msg::print("Open error %s\n", fileName);
 		return false;
 	}
 	return true;
@@ -55,7 +64,7 @@ bool BinaryFile::openRead(const char *fileName)
 
 	if(m_pFile==NULL)
 	{
-		printf("Open error %s\n", fileName);
+		Msg::print("Open error %s\n", fileName);
 		return false;
 	}
 
@@ -194,11 +203,7 @@ void BinaryFile::_unpackArray(void *buffer, int count, size_t size)
 		{
 			
 			if (ferror (m_pFile))
-			{
-				printf("ferror\n");
-				perror(NULL);
-				Msg::verify(false, "Error Reading from file\n");;
-			}
+				Msg::error("file read error\n");
 
 			m_pFile=NULL;
 		}
@@ -293,6 +298,15 @@ void BinaryFile::pack(const vectorn& vec)
 			_packArray((void*)&vec[0], vec.size(), sizeof(double));
 	}
 }
+void BinaryFile::pack(const floatvec& vec)
+{
+	_packInt(TYPE_SPFLOATN);
+	_packInt(vec.size());
+	if(vec.size()>0)
+	{
+		for(int i=0; i<vec.size(); i++) _packSPFloat(vec[i]);
+	}
+}
 
 void BinaryFile::pack(const vector3& vec)
 {
@@ -352,6 +366,88 @@ void BinaryFile::pack(const hypermatrixn& mat3d)
 
 	for(int i=0; i<mat3d.page(); i++)
 		pack(mat3d.page(i));
+}
+template <class T> void packAlong(BinaryFile& f, int dim, int startelt, const _tensor<T>& matnd)
+{
+	if(dim==matnd.ndim()-1)
+	{
+		T* ptr=matnd.dataPointer();
+		for(int i=0; i<matnd.shape(dim); i++)
+			f._packSPFloat((float)(ptr[startelt+matnd.strides()[dim]*i]));
+
+	}
+	else
+	{
+		for(int i=0; i<matnd.shape(dim); i++)
+			packAlong(f, dim+1,startelt+matnd.strides()[dim]*i, matnd);
+	}
+}
+template <class T> void unpackAlong(BinaryFile& f, int dim, int startelt, _tensor<T>& matnd)
+{
+	if(dim==matnd.ndim()-1)
+	{
+		T* ptr=matnd.dataPointer();
+
+		//printf("%d %d-%d\n", dim, startelt,startelt+matnd.strides()[dim]*matnd.shape(dim));
+		for(int i=0; i<matnd.shape(dim); i++)
+			ptr[startelt+matnd.strides()[dim]*i]=(T)f._unpackSPFloat();
+	}
+	else
+	{
+		for(int i=0; i<matnd.shape(dim); i++)
+		{
+			//printf("dim: %d %d \n", i, dim, startelt+matnd.strides()[dim]*i);
+			unpackAlong(f, dim+1,startelt+matnd.strides()[dim]*i, matnd);
+		}
+	}
+}
+void BinaryFile::pack(const Tensor& matnd)
+{
+	_packInt((int)TYPE_FLOATND);
+	pack(matnd.shape());
+	packAlong(*this, 0, 0, matnd);
+}
+void BinaryFile::pack(const floatTensor& matnd)
+{
+	_packInt((int)TYPE_SPFLOATND);
+	pack(matnd.shape());
+	packAlong(*this, 0, 0, matnd);
+}
+void BinaryFile::_unpackTensor(Tensor& matnd)
+{
+	intvectorn shape;
+	unpack(shape);
+	matnd.init(shape);
+	cout <<"shape:"<<shape<<endl;
+	cout <<"shape:"<<matnd.shape()<<endl;
+	cout <<"shape:"<<matnd.shape()<<endl;
+	unpackAlong(*this, 0, 0, matnd);
+}
+void BinaryFile::_unpackTensor(floatTensor& matnd)
+{
+	intvectorn shape;
+	unpack(shape);
+	matnd.init(shape);
+	cout <<"shape:"<<shape<<endl;
+	cout <<"shape:"<<matnd.shape()<<endl;
+	cout <<"shape:"<<matnd.shape()<<endl;
+	unpackAlong(*this, 0, 0, matnd);
+}
+void BinaryFile::unpack(Tensor& matnd)
+{
+	int typeCode=_unpackInt();
+	if(typeCode==TYPE_FLOATND || typeCode==TYPE_SPFLOATND)
+		_unpackTensor(matnd);
+	else
+		Msg::error("unpack Tensor failed");
+}
+void BinaryFile::unpack(floatTensor& matnd)
+{
+	int typeCode=_unpackInt();
+	if(typeCode==TYPE_FLOATND || typeCode==TYPE_SPFLOATND)
+		_unpackTensor(matnd);
+	else
+		Msg::error("unpack floatTensor failed");
 }
 
 void BinaryFile::unpack(hypermatrixn& mat3d)

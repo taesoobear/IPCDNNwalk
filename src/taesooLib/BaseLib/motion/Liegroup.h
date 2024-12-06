@@ -179,6 +179,7 @@ inline void assign33(MAT& a, MAT2 const& b)
 }	
 inline void skew(matrixn& out, vector3 const& w)
 {
+	out.setSize(3,3);
 	out(0,0)=0;
 	out(0,1)=-1*w.z;
 	out(0,2)=w.y;
@@ -189,8 +190,23 @@ inline void skew(matrixn& out, vector3 const& w)
 	out(2,1)=w.x;
 	out(2,2)=0;
 }
+
+inline void Ad(matrixn& m6, transf const& t)
+{
+	m6.setSize(6,6);
+	matrix3 R;
+	R.setFromQuaternion(t.rotation);
+	matrixnView theta=m6.slice(0,3,0,3);
+	assign33(theta.lval(), R);
+	m6.slice(0,3,3,6).setAllValue(0.0);
+	matrixn S(3,3);
+	skew(S, t.translation);
+	m6.slice(3,6,0,3).mult(S,theta);
+	m6.slice(3,6,3,6)=theta;
+}
 inline void dAd(::matrixn& a, transf const& b)
 {
+	a.setSize(6,6);
 	matrix3 br=SO3(b.rotation);
 	assign33T(a.range(0,3,0,3).lval(),br);
 	assign33T(a.range(3,6,3,6).lval(),br);

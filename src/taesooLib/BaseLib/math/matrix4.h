@@ -70,7 +70,7 @@ public:
 
 	// setTranslation preserves rotation parts unless manually specified otherwise (bPreserveCurrentRotation=false)
 	void setTranslation(const vector3& tx, bool bPreserveCurrentRotation=true);		//!< 다른 set계열 함수와 달리 rotation파트는 건드리지 않는다. 	
-
+	inline vector3 translation() const {	matrix4 const& other=*this; vector3 o; o.x=other._14; o.y=other._24; o.z=other._34; return o; }
 	inline void transpose() { matrix4 temp(*this); transpose(temp); }
 	
 	void mult(const matrix4& a, const matrix4& b);
@@ -94,6 +94,7 @@ public:
 	void leftMultTranslation(const vector3& vec);
 
 	inline matrix4 operator*(matrix4 const& a) const { matrix4 t; t.mult(*this,a); return t;}
+	inline matrix4 operator*(transf const& a) const { matrix4 t; t.mult(*this,matrix4(a)); return t;}
 	inline matrix4 operator+(matrix4 const& a) const { matrix4 t; t.add(*this,a); return t;}
 	inline matrix4 operator-(matrix4 const& a) const { matrix4 t; t.sub(*this,a); return t;}
 	vector3 operator*(vector3 const& a) const;

@@ -26,6 +26,14 @@ MotionManager::MotionManager(const char *szMotionFileName)
 	Init();
 
 }
+MotionManager::MotionManager()
+: ResourceManager<MotionLoader>("")
+{
+
+	// 실제 로딩은 처음으로 GetMotionLoaderPtr을 했을때 이루어진다.
+	Init();
+
+}
 
 MotionManager::~MotionManager()
 {
@@ -178,7 +186,10 @@ Motion* MotionManager::getMotion(const char* identifier)
 
 void MotionManager::Init()
 {
-	if(IsFileExist(m_szListFileName)){
+	if(m_szListFileName.length()==0)
+	{
+	}
+	else if(IsFileExist(m_szListFileName)){
 		LUAwrapper L;
 		L.dofile(m_szListFileName);
 

@@ -14,12 +14,14 @@ typedef double m_real;
 enum Purpose {HINGEJOINT, SLIDEJOINT, FREEJOINT,BALLJOINT, EFFECTOR, DUMMY_EFFECTOR};
 
 // Taesoo Kwon completely rewrote many parts of the original tutorial code by Buss,
-// and added support for SlideJoint, FreeJoint, BallJoint, RelativeConstraint, and velocity integration.
+// and added support for SlideJoint, FreeJoint, BallJoint, and velocity integration.
 
+/*
 namespace MotionUtil
 {
 	struct RelativeConstraint;
 }
+*/
 namespace IK_sdls
 {
 	class Tree;
@@ -180,12 +182,13 @@ public:
 class Effector : public Node
 {
 public:
-	MotionUtil::RelativeConstraint* constraint;
+	//MotionUtil::RelativeConstraint* constraint;
 	Effector(const vector3& localpos);
 	virtual void computeDeltaS(VectorRn &dS, Tree* tree);
 	virtual void calcJacobian(Tree* tree, MatrixRmn& J, int i, vector3 const& target);
 };
 
+/* --> moved to FullbodyIK_MotionDOF
 class RelativeConstraint : public Effector
 {
 public:
@@ -196,6 +199,7 @@ public:
 	virtual void computeDeltaS(VectorRn &dS, Tree* tree);
 	virtual void calcJacobian(Tree* tree, MatrixRmn& J, int i, vector3 const& target);
 };
+*/
 
 
 void angvel2qdot(quater& out, const quater& ep, const vector3& omega);

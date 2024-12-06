@@ -82,7 +82,7 @@ bool FastCaptureDirect::Screenshot(Fl_Window* win, int Width, int Height)
 
 	if(cursorPos.size())
 	{
-		temp.Load("../resource/default/cursor2.bmp");
+		temp.Load("../Resource/default/cursor2.bmp");
 		cursor.Init(&temp);
 	}
 
@@ -161,7 +161,7 @@ bool FastCaptureDirect::Screenshot(Fl_Window* win, int Width, int Height)
 		{
 			for(int i=0; i<mHeight; i++)
 			{
-				CPixelRGB8* yy=tempPixel[i];
+				CPixelRGB8* yy=tempPixel[mHeight-1-i];
 				uchar* pp=lpvBits+i*mWidth*3;
 				for(int j=0; j<mWidth; j++)
 				{
@@ -255,7 +255,7 @@ bool FastCaptureDirect::Screenshot(Fl_Window* win, int Width, int Height)
 		m_nCurrAccumulation++;
 		if (m_nCurrAccumulation==m_nTotalAccumulation)
 		{
-			tempPixel.DrawPattern(cursorPos[ii*2], cursorPos[ii*2+1], cursor, true, CPixelRGB8 (255,0,255));
+			tempPixel.DrawPattern(cursorPos[ii*2], mHeight-1-cursorPos[ii*2+1], cursor, true, CPixelRGB8 (255,0,255));
 			image.Save(filename);
 			m_nCurrAccumulation=0;
 			m_nCount++;

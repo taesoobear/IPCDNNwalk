@@ -21,6 +21,7 @@ struct luna_eqstr{
 	}
 };
 
+std::string lunaType(lua_State*L, int i);
 typedef int (*luna_mfp)(lua_State *L);
 #if (defined(_MSC_VER)&& _MSC_VER<1700) || (!defined(_MSC_VER) &&__cplusplus < 201103L)
 #define OLD_COMPILERS
@@ -150,6 +151,7 @@ class impl_LunaTraits
  public:
 };
 
+typedef struct {int uniqueID; void *pT; bool gc; bool has_env;} luna_userdataType;
 
 template <typename T> class Luna {
 	typedef LunaTraits<T > T_interface;
@@ -243,7 +245,7 @@ template <typename T> class Luna {
 		if(!ud) { Msg::error("checkRaw: ud==nil\n"); luaL_typerror(L, narg, T_interface::className); }
 		if(ud->uniqueID !=T_interface::uniqueID) // type checking with almost no overhead
 			{
-				Msg::error("ud->uid: %d != interface::uid : %d\n", ud->uniqueID, T_interface::uniqueID);
+				Msg::error("Type error! ud->uid: %d != interface::uid : %d\n", ud->uniqueID, T_interface::uniqueID);
 				luaL_typerror(L, narg, T_interface::className);
 			}
 		return ud;  // pointer to T object
@@ -375,8 +377,8 @@ class lunaStack
 	int luaType() { return lua_type(L, currArg); }
 	int luaType(int i) { return lua_type(L, i); }
 	// "number", "string", .. or luna types such as "vector3",...
-	std::string lunaType(int i);
-	std::string lunaType() { return lunaType(currArg);}
+	std::string lunaType() { return ::lunaType(L, currArg);}
+	std::string lunaType(int i) { return ::lunaType(L, i);}
 	// retrieve (or pop)
 	friend lunaStack& operator>>( lunaStack& os, double& a)      
 	{ a=os.tonumber(os.currArg); os._incr(); return os;}

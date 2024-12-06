@@ -665,7 +665,7 @@ do -- utility functions
 		end
 		array.pushBack(gen_lua.cpp_contents, unpack(lines))
 	end
-	-- normalizeClassName using theree special character ` (means %s+) and ~ (means %s*) and @p (means * - pointer)
+	-- normalizeClassName using theree special character ` (meaning %s+) and ~ (meaning %s*) and @p (meaning * : pointer)
 	-- const char*, const   char  *, const\tchar\t*, and so on becomes 'const`char`@p'
 	-- std::string, std::vector<std::string>, and so on becomes
 	-- std~::~string, std~::~vector~<~std~::~string~>
@@ -800,7 +800,7 @@ do -- utility functions
 			if true then -- error checking
 				local aa=args[iarg]
 				local v_pattern=normalizedClassNameToPattern(aa.c)
-				local nn=string.gsub(aa.t, v_pattern, '')
+				local nn=string.gsub(aa.t, string.gsub(v_pattern, '%*', '%%*'), '')
 				local mod=gen_lua.modifiers
 				for md=1,#mod do
 					nn=string.gsub(nn, mod[md],'')

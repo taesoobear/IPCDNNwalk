@@ -4,6 +4,7 @@
 #ifndef NO_GUI
 #include <Fl/Fl_Choice.H>
 #include <Fl/Fl_Window.H>
+#include <Fl/Fl_Browser.H>
 #endif
 class FlChoice : public Fl_Choice
 {

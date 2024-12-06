@@ -44,6 +44,8 @@ struct NodeWrap
 		axes="EFFECTOR";
 		node[0]=new IK_sdls::Effector(localPos);
 	}
+	/*
+	 * moved to FullbodyIK_MotionDOF
 	void createRelativeConstraint(Bone* _bone, Bone* _bone2, vector3 localPos1)
 	{
 		bone=_bone;
@@ -51,6 +53,7 @@ struct NodeWrap
 		axes="RELCON";
 		node[0]=new IK_sdls::RelativeConstraint(localPos1);
 	}
+	*/
 	void createFreeNode(Bone* _bone)
 	{
 		bone=_bone;
@@ -85,7 +88,7 @@ struct NodeWrap
 			else if(axes[i]=='A')
 			{
 				ax=_bone->getArbitraryAxis(i);
-				printf("_bone %s %d %s\n", _bone->NameId, i, ax.output().ptr());
+				printf("_bone %s %d %s\n", _bone->NameId, i, ax.output().c_str());
 			}
 			else
 				ax=unitx;
@@ -341,7 +344,7 @@ class LoaderToTree
 		intvectorn mDQindex; // Tree::jointIndex to DQindex
 		std::vector<IK_sdls::Node*> mNodeTraverse;
 		inline intvectorn const& getDQindex() {return mDQindex;}
-		std::vector<MotionUtil::RelativeConstraint*> _nonEffector_constraints;
+		//std::vector<MotionUtil::RelativeConstraint*> _nonEffector_constraints;
 };
 class LoaderToTree_selected
 {

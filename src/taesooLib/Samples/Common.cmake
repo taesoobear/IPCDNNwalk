@@ -2,9 +2,6 @@ set(NoDevil TRUE)
 set(NoFreeImage FALSE)
 set(NoLapack TRUE)
 set(NoUMFpack TRUE)
-if(WIN32)
-	set(NoFreeImage TRUE)
-endif()
 
 # all important dependencies are set in Common_baselib.cmake
 # NoAIST, NoGMBSsim, NoUTsim settings are in PhysicsLib/CMakeLists.txt

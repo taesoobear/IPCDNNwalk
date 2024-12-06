@@ -119,6 +119,7 @@ namespace OBJloader
 		void removeFaces(intvectorn const& faceIndices);
 		void addVertices(vector3N const& vertices);
 		void addNormals(vector3N const& normals);
+		void getVertices(vector3N & vertices);
 		// [ vi0, vi1, vi2, fi0; // for face 0
 		//   vi0', vi1', vi2', fi0'; // for face 1
 		//    ...
@@ -346,8 +347,10 @@ class SkinnedMeshFromVertexInfo
 		inline vector3 calcVertexPosition( BoneForwardKinematics const& fkSolver, int vertexIndex) { vector3 out; _calcVertexPosition(fkSolver, vertexIndex, out); return out; }
 		// modifies mesh
 		void calcVertexPositions(MotionLoader const& loader, OBJloader::Mesh& mesh) const;
+		void calcVertexPositions(BoneForwardKinematics const& fkSolver, OBJloader::Mesh& mesh) const;
 		// assumes that both meshes has a normal buffer 
 		void calcVertexNormals(MotionLoader const& loader, quaterN const& bindpose_global, vector3N const& local_normal, OBJloader::Mesh& mesh) const;
+		void calcVertexNormals(BoneForwardKinematics const& fkSolver, quaterN const& bindpose_global, vector3N const& local_normal, OBJloader::Mesh& mesh) const;
 
 		// modifies self.
 		void calcLocalVertexPositions(MotionLoader const& loader, OBJloader::Mesh const& mesh);

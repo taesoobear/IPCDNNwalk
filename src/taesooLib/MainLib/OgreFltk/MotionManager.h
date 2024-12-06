@@ -16,6 +16,7 @@ class MotionManager : public ResourceManager<MotionLoader>
 {
 public:
 	MotionManager(const char *szMotionFileName);
+	MotionManager();
 	virtual ~MotionManager();
 
 	void Init();

@@ -752,37 +752,17 @@ double IK_sdls::LoaderToTree::computeConstraintError(double verticalCoef)
 		n = mTree.effectors[ii];
 		int i = n->GetEffectorNum();
 		assert(i==ii);
-		if (n->constraint)
-		{
-			dS.SetTriple(ii, vector3(0,0,0));
-
-			Plane p(n->constraint->normal[0], 
-					n->constraint->normal[1], 
-					n->constraint->normal[2], 
-					n->constraint->idepth);
-			double d=p.distance(n->GetS());
-			if (n->constraint->eType==MotionUtil::RelativeConstraint::PLANE_DISTANCE)
-				fx+=d*d;
-			else if(d>0)
-				fx+=d*d;
-		}
-		else
-		{
-			// Compute the delta S value (differences from end effectors to target positions.
-			n->computeDeltaS(dS, &mTree);
-			fx+=dS.GetTriple(ii).squaredLength();
-		}
+		// Compute the delta S value (differences from end effectors to target positions.
+		n->computeDeltaS(dS, &mTree);
+		fx+=dS.GetTriple(ii).squaredLength();
 	}
 	if(verticalCoef>0.001)
 	{
 		for(int ii=0; ii<mTree.effectors.size(); ii++)
 		{
 			n = mTree.effectors[ii];
-			if (!n->constraint)
-			{
-				double dSy=dS.GetTriple(ii).y;
-				fx+=verticalCoef+SQR(dSy);
-			}
+			double dSy=dS.GetTriple(ii).y;
+			fx+=verticalCoef+SQR(dSy);
 		}
 	}
 	return fx;
@@ -874,32 +854,8 @@ void IK_sdls::LoaderToTree::computeConstraintErrorGradient(double* g, double ver
 			n=mTree.effectors[ii];
 			VectorR3 j;
 			Jend.GetTriple(ii, i, &j);
-			if(n->constraint)
-			{
-				vector3 normal(n->constraint->normal[0],
-						n->constraint->normal[1],
-						n->constraint->normal[2]);
-
-				if (n->constraint->eType==MotionUtil::RelativeConstraint::PLANE_DISTANCE)
-					// plane distance
-					g[i]+=2.0*(n->GetS()%normal)*(normal%j)
-						+ 2.0*n->constraint->idepth*(normal%j);
-				else
-				{
-					Plane p(n->constraint->normal[0], 
-							n->constraint->normal[1], 
-							n->constraint->normal[2], 
-							n->constraint->idepth);
-					if( p.distance(n->GetS())>0)
-						g[i]+=2.0*(n->GetS()%normal)*(normal%j)
-							+ 2.0*n->constraint->idepth*(normal%j);
-				}
-			}
-			else
-			{
-				// absolute or relative position
-				g[i]-= 2.0*dS.GetTriple(ii)%j;
-			}
+			// absolute position
+			g[i]-= 2.0*dS.GetTriple(ii)%j;
 		}	
 	}
 	if(verticalCoef>0.001)
@@ -910,7 +866,6 @@ void IK_sdls::LoaderToTree::computeConstraintErrorGradient(double* g, double ver
 				n=mTree.effectors[ii];
 				VectorR3 j;
 				Jend.GetTriple(ii, i, &j);
-				if(!n->constraint)
 				{
 					// absolute or relative position
 					g[i]-= 2.0*dS.GetTriple(ii).y*j.y;
@@ -1043,7 +998,6 @@ void IK_sdls::LoaderToTree::calcEffectorJacobianTranspose(matrixn& J)
 		n = mTree.effectors[ii];
 		int i = n->GetEffectorNum();
 		assert(i==ii);
-		ASSERT (!n->constraint);
 		n->calcJacobian(&mTree, Jend, i, n->GetS());
 	}
 }
@@ -1490,6 +1444,7 @@ void IK_sdls ::LoaderToTree:: _init_part2(MotionLoader const& skeleton, std::vec
 
 		mTree.InsertEffector(mNode[mBoneToNode[bone->GetIndex()]].back(), (IK_sdls::Effector*)mEffectorNode.back().node[0]);
 	}
+	/*
 	_nonEffector_constraints.resize(0);
 	for(int i=0; i<constraints.size(); i++)
 	{
@@ -1514,9 +1469,11 @@ void IK_sdls ::LoaderToTree:: _init_part2(MotionLoader const& skeleton, std::vec
 		}
 		else 
 		{
+		{
 			_nonEffector_constraints.push_back(&c);
 		}
 	}
+	*/
 }
 void IK_sdls ::LoaderToTree::copyTree(Bone* bone, 
 		IK_sdls::Node* parent)
@@ -1600,14 +1557,14 @@ void IK_sdls::LoaderToTree::compareTrees(vector3 trans)
 			
 			if(mNode[i].node[0]->IsJoint())
 			{
-				printf("node %d:%d:%s\n", mNode[i].node[0]->GetJointNum(), mNode[i].node[0]->GetParentJointNum(), (mNode[i].node[0]->GetS()+trans).output().ptr());
-				printf("NODE %d:%d:%s\n", mNode[i].back()->GetJointNum(), mNode[i].back()->GetParentJointNum(), (mNode[i].back()->GetS()+trans).output().ptr());
+				printf("node %d:%d:%s\n", mNode[i].node[0]->GetJointNum(), mNode[i].node[0]->GetParentJointNum(), (mNode[i].node[0]->GetS()+trans).output().c_str());
+				printf("NODE %d:%d:%s\n", mNode[i].back()->GetJointNum(), mNode[i].back()->GetParentJointNum(), (mNode[i].back()->GetS()+trans).output().c_str());
 			}
 			else
 			{
-				printf("efct %d:%d:%s\n", mNode[i].node[0]->GetEffectorNum(),mNode[i].node[0]->GetParentJointNum(), (mNode[i].node[0]->GetS()+trans).output().ptr());
+				printf("efct %d:%d:%s\n", mNode[i].node[0]->GetEffectorNum(),mNode[i].node[0]->GetParentJointNum(), (mNode[i].node[0]->GetS()+trans).output().c_str());
 			}
-			printf("bone %d:%s\n", mNode[i].bone->GetIndex(), mNode[i].bone->getTranslation().output().ptr());
+			printf("bone %d:%s\n", mNode[i].bone->GetIndex(), mNode[i].bone->getTranslation().output().c_str());
 		}
 	}
 

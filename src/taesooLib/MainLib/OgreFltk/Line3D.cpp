@@ -811,19 +811,19 @@ void ColorBillboardLineList::line(int i, vector3 const& start, vector3 const & e
 #endif
 }
 
-void ColorWidthBillboardLineList::line(int i, vector3 const& start, vector3 const & end, vector3 const & rgbcolor, m_real width, m_real tu1, m_real tu2)
+void ColorWidthBillboardLineList::line(int i, vector3 const& start, vector3 const & end, vector3 const & rgbcolor, m_real width, m_real width2, m_real tu1, m_real tu2)
 {
 #if OGRE_VERSION_MINOR >= 8 ||OGRE_VERSION_MAJOR>=13 
 
 	addChainElement(i, Ogre::BillboardChain::Element(
 		ToOgre(start), width, tu1, Ogre::ColourValue(rgbcolor[0],rgbcolor[1],rgbcolor[2],1), Ogre::Quaternion(1,0,0,0)));
 	addChainElement(i, Ogre::BillboardChain::Element(
-		ToOgre(end), width, tu2, Ogre::ColourValue(rgbcolor[0],rgbcolor[1],rgbcolor[2],1), Ogre::Quaternion(1,0,0,0)));
+		ToOgre(end), width2, tu2, Ogre::ColourValue(rgbcolor[0],rgbcolor[1],rgbcolor[2],1), Ogre::Quaternion(1,0,0,0)));
 #else
 	addChainElement(i, Ogre::BillboardChain::Element(
 		ToOgre(start), width, tu1, Ogre::ColourValue(rgbcolor[0],rgbcolor[1],rgbcolor[2],1)));
 	addChainElement(i, Ogre::BillboardChain::Element(
-		ToOgre(end), width, tu2, Ogre::ColourValue(rgbcolor[0],rgbcolor[1],rgbcolor[2],1)));
+		ToOgre(end), width2, tu2, Ogre::ColourValue(rgbcolor[0],rgbcolor[1],rgbcolor[2],1)));
 #endif
 }
 ColorPointList::ColorPointList()

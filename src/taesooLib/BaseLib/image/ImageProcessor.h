@@ -35,6 +35,7 @@ namespace Imp
 	void gammaCorrect(CImage& inout, double factor);
 	void dither(CImage& inout, int levels);
 	void resize(CImage& inout, int width, int height);
+	void downsample4(CImage& out, CImage const& in);
 	void blit(CImage& out, CImage const& in, TRect const& rect_in, int x, int y);
 	void concatVertical(CImage& out, CImage const& a, CImage const& b);
 	void crop(CImage& out, CImage const& in, int left, int top, int right, int bottom);
@@ -55,15 +56,18 @@ namespace Imp
 	CImage* DrawChart(const matrixn& matrix, int chart_type, float min=0, float max=0, float horizLine=FLT_MAX);		//!< 0 frame부터 n-1프레임까지의 여러 signal들을 그린다.
 	CImage* DrawChart(const matrixn& matrix, float min=0, float max=0);						//!< 0 frame부터 n-1프레임까지의 멀티 dimensional signal을 그린다.
 	CImage* DrawChart(const bitvectorn& ab, CPixelRGB8 color);
-	CImage* DrawChart(const intvectorn& ab, const char* colormapfile="Resource/default/colormap.bmp");
+	CImage* DrawChart(const intvectorn& ab, const char* colormapfile=NULL);
+	std::string defaultColormapFile();
 	CImage* DrawChartText(const intvectorn& ab, TStrings* translationTable=NULL);
 	void ChangeChartPrecision(int precision);
+	void ChangeBoolChartPrecision(int precision);
 	void DefaultPrecision();
 
 	// private
 	namespace _private
 	{
 		extern int g_nChartPrecision;
+		extern int g_nBoolChartPrecision;
 		void DrawChart(CImage* pInput, int numFrame, double* aValue,float min, float max, CPixelRGB8 color, int xoffset, int yoffset, int xdelta,int chart_type);
 	}
 }

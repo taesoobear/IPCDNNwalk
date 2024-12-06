@@ -186,7 +186,7 @@ struct 	InertiaCalculator_data
 		inertia._31=inertia._13;
 		inertia._32=inertia._23;
 
-		Msg::print("COM %s\n", centerOfMass.output().ptr());
+		Msg::print("COM %s\n", centerOfMass.output().c_str());
 		Msg::print("inertia %f %f %f\n", inertia._11, inertia._12, inertia._13);
 		Msg::print("		%f %f %f\n", inertia._21, inertia._22, inertia._23);
 		Msg::print("		%f %f %f\n", inertia._31, inertia._32, inertia._33);
@@ -365,7 +365,7 @@ struct 	InertiaCalculator_dataA
 		inertia._22=ii.y;
 		inertia._33=ii.z;
 
-		Msg::print("COM %s\n", centerOfMass.output().ptr());
+		Msg::print("COM %s\n", centerOfMass.output().c_str());
 		Msg::print("inertia %f %f %f\n", inertia._11, inertia._12, inertia._13);
 		Msg::print("		%f %f %f\n", inertia._21, inertia._22, inertia._23);
 		Msg::print("		%f %f %f\n", inertia._31, inertia._32, inertia._33);

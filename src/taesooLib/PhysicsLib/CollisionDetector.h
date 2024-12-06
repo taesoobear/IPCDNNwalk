@@ -29,6 +29,7 @@ namespace OpenHRP {
 	void changeLastModelName(const char* charName) { mTreeNames.back()=charName;} // overwrite name.
 	int addObstacle(OBJloader::Geometry const& mesh); // returns characterIndex
 	VRMLloader* getModel(int ichar) { return mTrees[ichar];}
+	int numModels() const { return (int)mTrees.size();}
 
 	void setMargin(int ilink, double margin);
 	void setMarginAll(vectorn const & margin);
@@ -46,7 +47,7 @@ namespace OpenHRP {
 	virtual void setWorldTransformations(int charIndex, BoneForwardKinematics const& fk)=0; 
     virtual bool testIntersectionsForDefinedPairs(CollisionSequence & collisions)=0;
 	// only libccd supports this.
-	virtual bool getLocalBoundingBoxSize(int charIndex, int ibone, vector3& localSize) { return false;}
+	virtual bool getLocalBoundingBoxSize(int charIndex, int ibone, vector3& localSize) { Msg::error("not imple");return false;}
 
 
 	// only bullet support this.

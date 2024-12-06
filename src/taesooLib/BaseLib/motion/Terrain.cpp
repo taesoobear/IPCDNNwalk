@@ -492,6 +492,42 @@ OBJloader::Terrain::Terrain(const char *filename, int sizeX, int sizeY, m_real w
 	_init(image, sizeX, sizeY, width, height, heightMax, ntexSegX, ntexSegZ, tileAlongZ);
 
 }
+OBJloader::Terrain::Terrain(const std::string& filename, int sizeX, int sizeY, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ)
+:Mesh()
+{
+	mSize.x=width;
+	mSize.z=height;
+	mSize.y=heightMax;
+
+	ASSERT(sizeof(short)==2);
+	Raw2Bytes image;
+	image.setSize(sizeY, sizeX);
+	FILE* file=fopen(filename.c_str(), "rb");
+	fread( (void*)(&image(0,0)), sizeof(short), sizeX*sizeY, file);
+	
+	fclose(file);
+
+#define BAD_NOTEBOOK
+#ifdef BAD_NOTEBOOK
+	// for my notebook, where 512 by 512 mesh doesn't load.
+	{
+		int _sizeX=sizeX;
+		int _sizeY=sizeY;
+		sizeX=MIN(64, _sizeX);
+		int sx=_sizeX/sizeX;
+		sizeY=MIN(64, _sizeY);
+		int sy=_sizeY/sizeY;
+		Raw2Bytes image2;
+		image2.setSize(sizeY, sizeX);
+		for(int y=0; y<sizeY; y++)
+			for(int x=0; x<sizeX; x++)
+				image2(y,x)=image(y*sy, x*sx);
+		image.assign(image2);
+	}
+#endif
+	_init(image, sizeX, sizeY, width, height, heightMax, ntexSegX, ntexSegZ, tileAlongZ);
+
+}
 OBJloader::Terrain::Terrain(vectorn const& image1d, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ)
 :Mesh()
 {

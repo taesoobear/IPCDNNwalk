@@ -1,10 +1,11 @@
 
 #include "stdafx.h"
+#include "../TRL/eigenSupport.h"
 #include "DynamicsSimulator_Trbdl_impulse.h"
+#include "BodyInfo.h"
 #include "../../MainLib/OgreFltk/RE.h"
 #include "../../MainLib/OgreFltk/pldprimskin.h"
 #include "../OpenHRPcommon.h"
-#include "../TRL/eigenSupport.h"
 #include <limits>
 #include "../../BaseLib/utility/QPerformanceTimer.h"
 #include "../../BaseLib/motion/VRMLloader_internal.h"

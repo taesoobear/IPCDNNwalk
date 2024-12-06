@@ -315,16 +315,28 @@ public:
 	//////////////////////////////////////////////////////////////////////
 
 	TString output(const char* formatString="%.10g", int start=0, int end=INT_MAX) const;
+	TString shortOutput() const;
 
 	vectorn& fromMatrix(matrixn const& mat);
 
 	void setVec3( int start, const vector3& src);
 	void setQuater( int start, const quater& src);
-	void setTransf(int start, const transf& t);
+	void setQuater6( int start, const quater& src);
+	void setTransf(int start, const transf& t); // 7 dim format (p, (w,x,y,z))
+	void setTransf9(int start, const transf& t); // 9 dim format (p, axis1, axis2) == YZ convention
+												 
+	// pytorch uses XY convention so...
+	//  taesooLib uses axes y (column1) and z (column2) for 6d representation.
+	//  but torch3d uses row0 and row1
+	void convertAxesYZtoTorch6D(); // in-place
+	void convertTorch6DtoAxesYZ(); // in-place
+	bool isnan() const;
 
 	vector3 toVector3(int startIndex=0)	const;
 	quater toQuater(int startIndex=0) const;
+	quater toQuater6(int startIndex=0) const;
 	transf toTransf(int startIndex=0) const;
+	transf toTransf9(int startIndex=0) const;
 
 	friend class matrixn;
 

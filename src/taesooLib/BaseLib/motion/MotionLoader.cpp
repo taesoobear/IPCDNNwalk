@@ -21,6 +21,18 @@ int Bone::getLocalTrans(vector3& trans, const double* dof)
 	trans+=getOffsetTransform().translation;
 	return nc;
 }
+int Bone::setLocalTrans(const vector3& trans, double* dof) const
+{
+	vector3 init_pos= getOffsetTransform().translation;
+	int nc=getTranslationalChannels().length();
+	for(int c=0;
+			c<nc; c++)
+	{
+		int xyz=getTranslationalChannels()[c]-'X';
+		dof[c]=trans[xyz]-init_pos[xyz]; // X or Y or Z
+	}
+	return nc;
+}
 int Bone::getLocalOri(quater& qRot, const double* dof)
 {
 	int nc=getRotationalChannels().length();
@@ -61,6 +73,29 @@ int Bone::getLocalOri(quater& qRot, const double* dof)
 	return nc;
 }
 
+int Bone::setLocalOri(const quater& qRot, double* dof) const
+{
+	int nc=getRotationalChannels().length();
+
+	if(getRotationalChannels().findChar(0,'A')!= -1)
+	{
+		for(int c=0;c<nc;c++)
+		{
+			dof[c] = qRot.rotationAngleAboutAxis(getArbitraryAxis(c));
+		}
+		return nc;
+	}
+	else
+	{
+		m_real aValue[3];
+
+		qRot.getRotation(getRotationalChannels(), aValue);
+
+		for(int c=0 ; c<nc; c++)
+			dof[c]=aValue[c];
+	}
+	return nc;
+}
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
@@ -132,7 +167,7 @@ void Bone::setArbitraryAxes(vector3* axisValue)
 	m_rotAxes = axisValue;
 }
 
-vector3 Bone::getArbitraryAxis(int i)
+vector3 Bone::getArbitraryAxis(int i) const
 {
 	return m_rotAxes[i];
 }
@@ -573,6 +608,30 @@ MotionLoader::MotionLoader(const char* filename, const char* option)
 
 	bf.close();
 }
+MotionLoader::MotionLoader(const std::string& filename, bool loadSkeletonOnly)
+:ModelLoader()
+,m_defaultFK(this)
+{
+	_initTranslationTable(m_translationTable);
+	m_pFactory=new TDefaultFactory<Posture>();
+
+	BinaryFile bf(false, filename.c_str());
+
+	int version=unpack(bf);
+
+	int type=bf.unpackInt();
+
+	if(type==POSTUREIP)
+	{
+		if(!loadSkeletonOnly)
+		{
+			m_cPostureIP.InitSkeleton(this);
+			m_cPostureIP._unpack(bf, version);
+		}
+	}
+
+	bf.close();
+}
 
 void MotionLoader::changeFactory(TFactory<Posture>* pF)
 {
@@ -942,7 +1001,7 @@ static void _getBoneByTransJoint(MotionLoader const& skel, std::vector<Bone*>& _
 void MotionLoader::removeBone(Bone& target)
 {
 	//Msg::verify(target.getRotationalChannels()==0,"removeBone1");
-	Msg::verify(target.getTranslationalChannels()==0,"removeBone2");
+	//Msg::verify(target.getTranslationalChannels()==0,"removeBone2");
 	Msg::verify(target.parent(),"removeBone3");
 
 	Bone& parent=*target.parent();
@@ -1013,7 +1072,10 @@ void MotionLoader::removeBone(Bone& target)
 	bool bNeedToRearrange=false;
 	for(int i=0; i<_rotJoint2bone.size(); i++)
 	{
-		if(_rotJoint2bone[i]!=&getBoneByRotJointIndex(i))
+		Bone* b=NULL;
+		if(i<numRotJoint())
+			b=&getBoneByRotJointIndex(i);
+		if(b&&_rotJoint2bone[i]!=b)
 		{
 			bNeedToRearrange=true;
 			break;
@@ -1022,7 +1084,10 @@ void MotionLoader::removeBone(Bone& target)
 
 	for(int i=0; i<_transJoint2bone.size(); i++)
 	{
-		if(_transJoint2bone[i]!=&getBoneByTransJointIndex(i))
+		Bone* b=NULL;
+		if(i<numTransJoint())
+			b=&getBoneByTransJointIndex(i);
+		if(b && _transJoint2bone[i]!=b)
 		{
 			bNeedToRearrange=true;
 			break;
@@ -1731,7 +1796,7 @@ void Bone::printHierarchy(int depth)
 	{
 		Msg::print("%s : %d, R: %d, T: %d %s:%s ", NameId, treeIndex(), rotJointIndex(), transJointIndex(), getRotationalChannels().ptr(), getTranslationalChannels().ptr() );
 		Msg::print("startT: %d endR: %d ",getSkeleton().dofInfo.startT(treeIndex()), getSkeleton().dofInfo.endR(treeIndex()));
-		Msg::print("offset: %s \n",getOffsetTransform().translation.output().ptr());
+		Msg::print("offset: %s \n",getOffsetTransform().translation.output().c_str());
 	}
 
 	for(Node *i=m_pChildHead; i!=NULL; i=i->m_pSibling)

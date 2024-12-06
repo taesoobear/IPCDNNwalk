@@ -6,6 +6,7 @@
 #include <limits.h>
 #include <cstdarg>
 #include "checkError.h"
+#include <string>
 class TString;
 namespace sz0
 {
@@ -38,6 +39,7 @@ public:
 	const char* ptr(int n=0) const			{ if(n>=length()) return NULL; return m_psData+n; }
 	inline operator const char*()	const	{ return ptr();}
 	inline const char* c_str() const		{ return ptr(0);}
+	inline std::string tostring() const { return std::string(ptr());}
 	int length() const						{ return m_nDataLen; }
 	void replace(char a, char b);
 	void replace(const char* a, const char* b);

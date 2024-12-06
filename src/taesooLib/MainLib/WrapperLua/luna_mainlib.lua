@@ -64,9 +64,12 @@ bindTargetBaseLib={
 			void exportSkinInfo(const char* filename) const;
 			vector3 calcSurfacePointPosition( MotionLoader const& loader, intvectorn const& treeIndices, vectorn const& weights, vector3N const& localpos)
 			vector3 calcVertexPosition( MotionLoader const& loader, int vertexIndex);
+			vector3 calcVertexPosition( BoneForwardKinematics const& fkSolver, int vertexIndex) 
 			void _calcVertexPosition( MotionLoader const& loader, int vertexIndex, vector3& out);
 			void calcVertexPositions(MotionLoader const& loader, OBJloader::Mesh& mesh) const;
+			void calcVertexPositions(BoneForwardKinematics const& fkSolver, OBJloader::Mesh& mesh) const;
 			void calcVertexNormals(MotionLoader const& loader,quaterN const& bindpose_global, vector3N const& localNormal, OBJloader::Mesh& mesh) const
+			void calcVertexNormals(BoneForwardKinematics const& fkSolver, quaterN const& bindpose_global, vector3N const& local_normal, OBJloader::Mesh& mesh) const;
 			void calcLocalVertexPositions(MotionLoader const& loader, OBJloader::Mesh const& mesh);
 			void resize(int numVertex) 
 			intvectorn& treeIndices(int vertexIndex)
@@ -82,13 +85,17 @@ bindTargetBaseLib={
 			decl=[[#include "../../BaseLib/utility/FBX/FBXimporter.h"]],
 			ctors=[[(const char*)]],
 			memberFunctions={[[
+			TStrings getModelNames();
+			matrix4 getModelCurrPose(const char* model_name);
 			int getMeshCount();
 			std::string getMesh(int imesh, OBJloader::Mesh & mesh);
 			std::string getMeshName(int imesh);
 			void getSkinnedMesh(int imesh, SkinnedMeshFromVertexInfo & skinned_mesh);
 			matrix4 getMeshCurrPose(int imesh);
-			bool hasBindPose(int ilimb);
-			matrix4 getBindPose(int ilimb);
+			int countBindPoses(int imesh);
+			bool hasBindPose(int ilimbnode);
+			matrix4 getBindPose(int ilimbnode);
+			void clearBindPose(); // after this, hasBindPose(ilimbnode) becomes false for all bones. To re-load bindposes, use countBindPoses(imesh)
 			intvectornView parentIndices();
 			void getRestPose(matrixn& pose);
 			void getRestPose(vector3N& jointpos, quaterN& jointori);
@@ -96,13 +103,25 @@ bindTargetBaseLib={
 			void getRestPoseScale(vectorn& scale); // only for checking purposes
 			void getBoneNames(TStrings& out);
 			void getLocalPose(matrixn& localpose);
-			void getAnim(int ilimb, vectorn& keytime, matrixn& traj);
+			void getAnim(int ilimbnode, vectorn& keytime, matrixn& traj);
+			int getAnimCount();
+			std::string getAnimName(int ianim);
+			vectorn getAnimInfo(int ianim);
+			void getAnim2(int ianim, int g_nFrames, double g_T, int ilimbnode, vectorn& keytime, matrixn& traj);
 			void saveTextures(); // slow
+			void saveTexturesToMemoryBuffer();
+			int numTexture() ;
+			CImage& getTexture(int itexture);
+			TString getTextureFileName(int itexture);
 			int getMaterialCount(int imesh);
 			vector3 getDiffuseColor(int imesh, int imat);
 			vector3 getSpecularColor(int imesh, int imat);
+			TStrings getMaterialPropertyTypes(int imesh, int imat);
+			vectorn getMaterialProperty(int imesh, int imat, const char* property_type);
 			std::string getDiffuseTexture(int imesh, int imat);
 			std::string getAllTextureNames(); // works after saveTextures
+			void unpackTextures(BinaryFile& bf);
+			void packTextures(BinaryFile& bf);
 			]]}
 		},
 		{
@@ -119,13 +138,22 @@ bindTargetBaseLib={
 			const intvectorn & shape() 
 			int wordSize() 
 			int numElts() 
+			std::string typeCode() 
+			bool fortranOrder() 
 			floatvecView floatvec() 
+			intvectornView intvec() 
 			vectornView doublevec() 
+			TStrings* stringvec() @ ;adopt=true;
 			]],
 			staticMemberFunctions=[[
 			static void NPYarray::npz_save(std::string zipname, std::string fname, hypermatrixn const& mat);
 			static void NPYarray::npz_save(std::string zipname, std::string fname, matrixn const& mat);
-			static void NPYarray::npz_save(std::string zipname, std::string fname, vectorn const& mat);
+			static void NPYarray::npz_save(std::string zipname, std::string fname, vectorn const& vec);
+			static void NPYarray::npz_save(std::string zipname, std::string fname, TStrings const& vec);
+			static void NPYarray::npz_save(std::string zipname, std::string fname, hypermatrixn const& mat, std::string mode);
+			static void NPYarray::npz_save(std::string zipname, std::string fname, matrixn const& mat, std::string mode);
+			static void NPYarray::npz_save(std::string zipname, std::string fname, vectorn const& vec, std::string mode);
+			static void NPYarray::npz_save(std::string zipname, std::string fname, TStrings const& vec, std::string mode);
 			]]
 		},
 		{
@@ -313,17 +341,6 @@ bindTargetBaseLib={
 			void GetFirstDerivative (m_real fTime, vectorn& kDer1) const
 			void GetSecondDerivative (m_real fTime, vectorn& kDer2) const
 			void GetThirdDerivative (m_real fTime, vectorn& kDer3) const
-			]]}
-		},
-		{
-			name='util.PerfTimer2',
-			className='QPerformanceTimerCount2',
-			ctors={'()'},
-			memberFunctions={[[
-			void reset()
-			void start()
-			void pause()
-			long stop() // milliseconds
 			]]}
 		},
 		{
@@ -567,7 +584,7 @@ bindTargetBaseLib={
 			inline static void setData(CImage& a,int width,int height,intvectorn dataVec,int stride)
 			{
 				uchar* data = (uchar*)&dataVec[0];
-				a.SetData(width,height,data,stride);
+				a._setDataFlipY(width,height,data,stride);
 			}
 			]],
 			memberFunctions={[[
@@ -596,6 +613,47 @@ bindTargetBaseLib={
 			vector3 hsv2rgb(vector3 const& in);
 			vector3 rgb2hsv(vector3 const& in);
 			]]}
+		},
+		{
+			luaname='CImage.Pixels',
+			cppname='CImagePixel',
+			decl=[[#include "../../BaseLib/image/ImagePixel.h"]],
+			ctors={"()", "(CImage*)",},
+			
+			wrapperCode=[[
+			inline static CPixelRGB8 GetPixel(CImagePixel& pixel, float x, float y)
+			{
+				int count;
+				return pixel.GetPixel(x, y,count);	
+			}
+			]],
+			staticMemberFunctions=[[
+			CPixelRGB8 GetPixel(CImagePixel& pixel, float x, float y)
+			]],
+			memberFunctions={[[
+			void Init(CImage* pInput);
+			void SetPixel(int x, int y, CPixelRGB8 color)
+			CPixelRGB8& GetPixel(int x, int y) const
+			CPixelRGB8& Pixel(int x, int y) const
+			void SetPixel(float x, float y, CPixelRGB8 color); ///< (0,1)좌표계에서 정의된 점을 그린다. -> 느리다는 점에 주의.
+
+			void DrawHorizLine(int x, int y, int width, CPixelRGB8 color);
+			void DrawVertLine(int x, int y, int height, CPixelRGB8 color);
+			void DrawVertLine(int x, int y, int height, CPixelRGB8 color,bool bDotted);
+			void DrawLine(int x1, int y1, int x2, int y2, CPixelRGB8 color);
+			void DrawBox(const TRect& rect, CPixelRGB8 color);
+			void DrawLineBox(const TRect& rect, CPixelRGB8 color);
+			void DrawPattern(int x, int y, const CImagePixel& patternPixel)
+			void DrawPattern(int x, int y, CImage* pPattern, bool bUseColorKey, CPixelRGB8 colorkey);
+			void DrawSubPattern(int x, int y, const CImagePixel& patternPixel, const TRect& patternRect)
+			void DrawSubPattern(int x, int y, const CImagePixel& patternPixel, const TRect& patternRect, bool bUseColorKey, CPixelRGB8 colorkey);
+
+			void Clear(CPixelRGB8 color);
+			void DrawText(int x, int y, const char* str)
+			void DrawText(int x, int y, const char* str, bool bUserColorKey, CPixelRGB8 colorkey)
+			int Width() const	
+			int Height() const	
+			]]},
 		},
 		{
 			name='DrawChart',
@@ -720,6 +778,7 @@ bindTargetBaseLib={
 					void packFloat(double num);
 					void pack(const char *str);
 					void pack(const vectorn& vec);
+					void pack(const floatvec& vec);
 					void pack(const vector3& vec);
 					void pack(const quater& vec);
 					void pack(const intvectorn& vec);
@@ -731,6 +790,8 @@ bindTargetBaseLib={
 					void pack(const boolN& vec);
 					void pack(const matrix4& mat);
 					void pack(const hypermatrixn& mat);
+					void pack(const Tensor& matnd);
+					void pack(const floatTensor& matnd);
 					int	unpackInt()	
 					double unpackFloat()	
 					TString unpackStr();
@@ -746,6 +807,8 @@ bindTargetBaseLib={
 					void unpack(vector3N& mat);
 					void unpack(matrix4& mat);
 					void unpack(hypermatrixn& mat);
+					void unpack(Tensor& matnd);
+					void unpack(floatTensor& matnd);
 					int _unpackInt()	
 					double _unpackFloat()
 					TString _unpackStr();
@@ -755,6 +818,8 @@ bindTargetBaseLib={
 					void _unpackMat(matrixn& mat);
 					void _unpackSPMat(matrixn& mat);
 					void _unpackBit(boolN& vec);
+					void _unpackTensor(Tensor& matnd);
+					void _unpackTensor(floatTensor& matnd);
 					int getFrameNum(int numOfData);
 				]]},
 				enums={
@@ -861,6 +926,9 @@ bindTargetBaseLib={
 			memberFunctions=
 			{
 				[[
+					void translate(const vector3& trans);
+					void rotate(const quater& q);		 
+					void rotate(const vector3& center, const quater&q)
 						void hermite(const vector3& a, const vector3& b, int duration, const vector3& c, const vector3& d);
 						void transition(const vector3& a, const vector3& b, int duration);
 						void bubbleOut(int start, int end)
@@ -875,12 +943,12 @@ bindTargetBaseLib={
 						vector3& at(int) @ row
 						vector3& at(int) 
 						vector3& at(int) @ __call
-						void transition(vector3 const&, vector3 const&, int duration) 
 						void setAllValue(vector3)
 						void pushBack(vector3 const& o)
 						vectornView x()
 						vectornView y()
 						vectornView z()
+					  vector3 sampleRow(m_real criticalTime)
 				]]
 				-- ,add,sub,mul
 			},
@@ -889,37 +957,10 @@ bindTargetBaseLib={
 						{
 							return matView(a).output();
 						}
-				  static vector3 sampleRow(vector3N const& in, m_real criticalTime)
-				  {
-				vector3 out;
-				//!< 0 <=criticalTime<= numFrames()-1
-				// float 0 이 정확하게 integer 0에 mapping된다.
-				int a;
-				float t;
-				
-				a=(int)floor(criticalTime);
-				t=criticalTime-(float)a;
-				
-				if(t<0.005)
-				  out=in.row(a);
-				else if(t>0.995)
-				  out=in.row(a+1);
-				else
-				  {
-					if(a<0)
-					  out.interpolate(t-1.0, in.row(a+1), in.row(a+2));
-					else if(a+1>=in.rows())
-					  out.interpolate(t+1.0, in.row(a-1), in.row(a));
-					else
-					  out.interpolate(t, in.row(a), in.row(a+1));
-				  }
-				return out;
-				  }
 				]],
 			staticMemberFunctions=
 			{
 				[[
-					  vector3 sampleRow(vector3N const& in, m_real criticalTime)
 						matrixnView matView(vector3N const& a, int start, int end)
 						matrixnView matView(vector3N const& a)
 						vectornView vecView(vector3N const&)
@@ -960,45 +1001,19 @@ bindTargetBaseLib={
 						void setAllValue(quater)
 						void pushBack(quater const& o)
 						void pushFront(quater const& o)
+						quater sampleRow(m_real criticalTime) const
 				]]
-				-- sampleRow
 			},
 			wrapperCode=[[
 					static TString __tostring(quaterN const& a)
 						{
 							return matView(a).output();
 						}
-      static quater sampleRow(quaterN const& in, m_real criticalTime)
-      {
-	quater out;
-	//!< 0 <=criticalTime<= numFrames()-1
-	// float 0 이 정확하게 integer 0에 mapping된다.
-	int a;
-	float t;
-	
-	a=(int)floor(criticalTime);
-	t=criticalTime-(float)a;
-	
-	if(t<0.005)
-	  out=in.row(a);
-	else if(t>0.995)
-	  out=in.row(a+1);
-	else
-	  {
-	    if(a<0)
-	      out.safeSlerp(in.row(a+1), in.row(a+2), t-1.0);
-	    else if(a+1>=in.rows())
-	      out.safeSlerp(in.row(a-1), in.row(a), t+1.0);
-	    else
-	      out.safeSlerp( in.row(a), in.row(a+1),t);
-	  }
-	return out;
-      }
+      
 				]],
 			staticMemberFunctions=
 			{
 				[[
-				static quater sampleRow(quaterN const& in, m_real criticalTime)
 						matrixnView matView(quaterN const& a, int start, int end)
 						matrixnView matView(quaterN const& a)
 					static TString __tostring(quaterN const& a)
@@ -1194,6 +1209,7 @@ bindTargetBaseLib={
 			},
 			memberFunctions=
 				[[
+				bool isnan() const
 				m_real at(int i) @ __call
 				void resample(vectorn const& vec, int numSample);
 				void bubbleOut(int start, int end)
@@ -1212,11 +1228,17 @@ bindTargetBaseLib={
 				vector3 toVector3(int startIndex)	const	
 				quater toQuater() const	
 				quater toQuater(int startIndex) const	
+				quater toQuater6() const	
+				quater toQuater6(int startIndex) const	
 				transf toTransf() const	
 				transf toTransf(int startIndex) const	
+				transf toTransf9() const	
+				transf toTransf9(int startIndex) const	
 				void setVec3( int start, const vector3& src)
 				void setQuater( int start, const quater& src)
 				void setTransf( int start, const transf& src)
+				void setQuater6( int start, const quater& src)
+				void setTransf9( int start, const transf& src)
 				inline void pushBack(double x)
 				int size()
 				void setSize(int)
@@ -1246,9 +1268,6 @@ bindTargetBaseLib={
 				void uniform(m_real x1, m_real x2);
 				matrixnView column() const;	// return n by 1 matrix, which can be used as L-value (reference matrix)
 				matrixnView row() const;	// return 1 by n matrix, which can be used as L-value (reference matrix)
-				void minimum(const matrixn& other)
-				void maximum(const matrixn& other)
-				void lengths(matrixn const& in)   
 				void fromMatrix(matrixn const& in)
 				]],
 			customFunctionsToRegister ={'setValues', 'values'},
@@ -1422,27 +1441,18 @@ bindTargetBaseLib={
 				t.inverse(m);
 				return t;
 			}
-			static vector3 translation(matrix4 const& other)
-			{	
-				vector3 o;
-				o.x=other._14;
-				o.y=other._24;
-				o.z=other._34;
-				return o;
-			}
 			]],
 			staticMemberFunctions={
 				[[
 				inline static void assign(matrix4& l, matrix4 const& m)
 				static TString out(matrix4& l) @__tostring
 				static matrix4 inverse(matrix4 const& m)
-				vector3 translation(const matrix4& other);
-
 				vector4 operator*(matrix4 const&, vector4 const& a);
 				]]
 			},
 			memberFunctions={
 				[[
+				vector3 translation();
 				m_real determinant() const;
 				void identity()	
 				void setValue( m_real x00, m_real x01, m_real x02, m_real x03, m_real x10, m_real x11, m_real x12, m_real x13, m_real x20, m_real x21, m_real x22, m_real x23, m_real x30, m_real x31, m_real x32, m_real x33)	;
@@ -1549,29 +1559,6 @@ bindTargetBaseLib={
 				c.transpose(a);
 				a=c;
 			}
-			inline static void sampleRow(matrixn const& in, m_real criticalTime, vectorn& out){
-				out.setSize(in.cols());
-				//!< 0 <=criticalTime<= numFrames()-1
-				// float 0 이 정확하게 integer 0에 mapping된다.
-				int a;
-				float t;
-
-				a=(int)floor(criticalTime);
-				t=criticalTime-(float)a;
-
-				if(t<0.005)
-					out=in.row(a);
-				else if(t>0.995)
-					out=in.row(a+1);
-				else {
-					if(a<0)
-						v::interpolate(out, t-1.0, in.row(a+1), in.row(a+2));
-					else if(a+1>=in.rows())
-						v::interpolate(out, t+1.0, in.row(a-1), in.row(a));
-					else
-						v::interpolate(out, t, in.row(a), in.row(a+1));
-					}
-				}
 
 
 				]]
@@ -1594,7 +1581,6 @@ bindTargetBaseLib={
 				static vectorn mean(matrixn& a) 
 				static void pushBack(matrixn& mat, const vectorn& v) 
 				static void transpose(matrixn& a)
-				static void sampleRow(matrixn const& in, m_real criticalTime, vectorn& out)
 				vector3NView vec3ViewCol(matrixn const& a, int startCol)
 				quaterNView quatViewCol(matrixn const& a, int startCol)
 				void m::LUinvert(matrixn& out, const matrixn& in); @ inverse
@@ -1605,6 +1591,8 @@ bindTargetBaseLib={
 			memberFunctions=
 			{
 				[[
+						void sampleRow(m_real criticalTime, vectorn& out)
+						bool isnan() const
 						void extractRows(matrixn const& mat, intvectorn const& rows);
 						void extractColumns(matrixn const& mat, intvectorn const& columns);
 						void assignRows(matrixn const& mat, intvectorn const& rows);
@@ -1650,6 +1638,7 @@ bindTargetBaseLib={
 		},
 		{
 			name='hypermatrixn',
+			decl=[[#include "../../BaseLib/math/tensor.hpp"]],
 			ctors=[[
 				(void)
 				(int pages, int nrows, int columns)
@@ -1667,7 +1656,90 @@ bindTargetBaseLib={
 				matrixnView page(int index) const		
 				void operator=(hypermatrixn const& other)
 				int _getStride1() const 
+				double& operator()(int i, int j, int k)@ __call
+				matrixn column(int index) const 
+				void setColumn(int index, matrixn const& in) const 
+				matrixn row(int index) const 
+				void setRow(int index, matrixn const& in) const 
+				matrixn weightedAverage(const vectorn & page_weights) const;
+			]],
+			staticMemberFunctions=[[
+			TensorView tensorView(const hypermatrixn& other) 
 			]]
+		},
+		{
+			name='floatTensor',
+			decl='class floatTensor;',
+			ctors=[[
+				()
+				(int pages, int nrows, int columns)
+				(int i, int pages, int nrows, int columns)
+				(int i, int j, int pages, int nrows, int columns)
+			]],
+			memberFunctions=[[
+				intvectornView shape() const;
+				int	pages() const	
+				int rows() const	
+				int cols() const	
+				void setAllValue(float value)
+				float get(int i, int j, int k) @ __call
+				void set(int i, int j, int k, float f)
+				float get(int i, int j, int k, int l) @ __call
+				void set(int i, int j, int k, int l, float f)
+				float get_ref(const intvectorn& indices) const @ __call
+				void set(const intvectorn& indices, float f)
+				floatvecView slice_1d(const intvectorn& indices) const
+				floatTensorView slice(const intvectorn& _indices) const
+				void assign(floatTensor const& other)
+				void assign(Tensor const& other)
+				void assign(floatvec const& other)
+				void assign(vectorn const& other)
+				void assign(matrixn const& other)
+				void assign(hypermatrixn const& other)
+				matrixn toMat() const
+			]]
+		},
+		{
+			name='Tensor',
+			decl='class Tensor;',
+			ctors=[[
+				()
+				(int pages, int nrows, int columns)
+				(int i, int pages, int nrows, int columns)
+				(int i, int j, int pages, int nrows, int columns)
+			]],
+			memberFunctions=[[
+				intvectornView shape() const;
+				int	pages() const	
+				int rows() const	
+				int cols() const	
+				void setAllValue(double value)
+				double get(int i, int j, int k) @ __call
+				void set(int i, int j, int k, double f)
+				double get(int i, int j, int k, int l) @ __call
+				void set(int i, int j, int k, int l, double f)
+				double get_ref(const intvectorn& indices) const @ __call
+				void set(const intvectorn& indices, double f)
+				vectornView slice_1d(const intvectorn& indices) const
+				TensorView slice(const intvectorn& _indices) const
+				void assign(floatTensor const& other)
+				void assign(Tensor const& other)
+				void assign(floatvec const& other)
+				void assign(vectorn const& other)
+				void assign(matrixn const& other)
+				void assign(hypermatrixn const& other)
+				matrixn toMat() const
+			]]
+		},
+		{
+			name='TensorView',
+			decl='class TensorView;',
+			inheritsFrom='Tensor',
+		},
+		{
+			name='floatTensorView',
+			decl='class floatTensorView;',
+			inheritsFrom='floatTensor',
 		},
 		{
 			decl='class vector2;',
@@ -1776,7 +1848,7 @@ bindTargetBaseLib={
 			static int __tostring(lua_State* L)
 			{
 				vector3& self=*luna_t::check(L,1);
-				lua_pushstring(L, self.output().ptr());
+				lua_pushstring(L, self.output().c_str());
 				return 1;
 			}
 			static vector3 __unm(vector3 const& a,vector3 const& a2)
@@ -1833,6 +1905,7 @@ bindTargetBaseLib={
 				void linearVelocity(vector3 const& v1, vector3 const& v2);
 				void translation(const matrix4& other);		//!< extract translation vector from a matrix
 				quater quaternion() const;	//!< rotation vector를 quaternion으로 바꾼다.	== quater q; q.setRotation(*this); }
+				double operator[](int i) @ __call
 				]],
 				{'void add(const vector3&);', rename='radd'},
 				{'void sub(const vector3&);', rename='rsub'},
@@ -1991,7 +2064,7 @@ bindTargetBaseLib={
 						void normalize();
 						quater normalized() const;
 						void align(const quater& other)
-						TString output(); @ __tostring
+						std::string output(); @ __tostring
 						void blend(const vectorn& weight, matrixn& aInputQuater);
 					]]
 					,
@@ -4510,13 +4583,19 @@ memberFunctions={[[
 	void setPose(const Posture& pose);
 	void setPoseDOF(const vectorn& poseDOF);
 	void setPoseDOFusingCompatibleDOFinfo(MotionDOFinfo const& dofInfo, const vectorn& poseDOF);
+	void setPoseDOFignoringTranslationalJoints(const vectorn& posedof_for_vrmlloader);
+	void getPoseDOFignoringTranslationalJoints(vectorn& posedof_for_vrmlloader);
 	void setSphericalQ(const vectorn& q);
 	void setChain(const Posture& pose, const Bone& bone);
+	void setChain(const Bone& bone);
 	void getPoseFromGlobal(Posture& pose) const;
 	void getPoseDOFfromGlobal(vectorn& poseDOF) const;
 	void getPoseFromLocal(Posture& pose) const;
 	void getPoseDOFfromLocal(vectorn& poseDOF) const;
 	MotionLoader const& getSkeleton() const		
+	Posture getPose() 
+	vectorn getPoseDOF() 
+	vectorn getPoseDOFignoringTranslationalJoints() 
 ]]}
 		},
 		{ 
@@ -4684,6 +4763,9 @@ memberFunctions={[[
 				void updateBoneLength(MotionLoader const& loader)
 				void setPose(const Motion& mot, int iframe)
 				void setPose(int iframe)
+				void setPose(const Posture & posture)
+				void setPoseDOF(const vectorn& poseDOF)
+				void setPoseDOFignoringTranslationalJoints(const vectorn& posedof_for_vrmlloader);
 				void SetPose(const Posture & posture, const MotionLoader& skeleton) @ setPose
 				// use _setPose and _setPoseDOF for new codes
 				void SetPose(const Posture & posture, const MotionLoader& skeleton) @ _setPose
@@ -4790,6 +4872,7 @@ memberFunctions={[[
 				[[
 				vector3 screenToWorldXZPlane(float x, float y, float height);
 				vector3 screenToWorldXZPlane(float x, float y );
+				vector2 worldToScreen(vector3 const& w) const ;
 				void screenToWorldRay(float x, float y, Ray& ray) const;
 				void volumeQuery(TStrings& nodeNames, float left, float top, float right, float bottom);@;ifndef=NO_OGRE;
 				void rayQuery(TStrings& nodeNames, float x, float y);@;ifndef=NO_OGRE;
@@ -4827,6 +4910,7 @@ memberFunctions={[[
 				void scale(double s) 
 				void translate(vector3 const& t)
 				int pickBarycentric(const OBJloader::Mesh& mesh, vector3 & baryCoeffs, vector3 & pickPos)
+				int pickBarycentric(const OBJloader::Mesh& mesh, const vector3N& vertexPositions, vector3 & baryCoeffs, vector3 & pickPos)
 				]],
 			wrapperCode=[[
 			inline static vectorn intersects(Ray & r, const Plane& pl) 
@@ -4990,6 +5074,7 @@ memberFunctions={[[
 			bool isDiscontinuous(int fr) const;//			{ return m_aDiscontinuity[fr%m_maxCapacity];}
 			void setDiscontinuity(int fr, bool value);//	{ m_aDiscontinuity.setValue(fr%m_maxCapacity, value);}
 			void setDiscontinuity(boolN const& bit);
+			boolN getDiscontinuity();
 			Posture& pose(int iframe) const;
 			void CalcInterFrameDifference(int startFrame ); @ calcInterFrameDifference
 			void ReconstructDataByDifference(int startFrame ); @ reconstructFromInterFrameDifference
@@ -5287,6 +5372,7 @@ inheritsFrom='LUAwrapper::Worker',
 		},
 		{
 			name='MotionUtil.PoseTransfer2',
+			decl='class PoseTransfer2;',
 			className='PoseTransfer2',
 			ctors={
 				'(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, TStrings const& bonesA, TStrings const& bonesB, double posScaleFactor )',
@@ -5471,6 +5557,13 @@ inheritsFrom='LUAwrapper::Worker',
 				{"RF4Intra1","(int)MotionLoader::RF4Intra1"},
 				{"RF4Intra2","(int)MotionLoader::RF4Intra2"},
 			}
+		},
+		{ 
+			luaname='MainLib.BVHLoader',
+			cppname='BVHLoader',
+			decl='class BVHLoader;',
+			ctors={"(const char*)", "(const char*, const char*)"},
+			inheritsFrom='MotionLoader',
 		},
 {
 	name='LimbIKsolver',
@@ -5694,6 +5787,7 @@ memberFunctions={[[
 								[[
 								TString getURL() const 
 								void setURL(const char* u) 
+								void setPosition(const vector3& pos)
 								void setTotalMass( m_real totalMass); 
 								void changeAll3DOFjointsToSpherical()
 								void changeAllMultiDOFjointsToSpherical()
@@ -5946,8 +6040,8 @@ memberFunctions={[[
 				PLDPrimOgreSkin* RE_createOgreSkin(const Motion&) @  createOgreSkin ;adopt=true;
 				PLDPrimOgreSkin* RE_createOgreSkin2(const MotionLoader& skel, Ogre::Entity* entity, const char* mappingTable, bool bCurrPoseAsBindPose) @ createOgreSkin ;adopt=true;
  				PLDPrimOgreSkin* RE_createOgreSkin2(const MotionLoader& skel, Ogre::Entity* entity, const char* mappingTable, bool bCurrPoseAsBindPose,double scale) @ createOgreSkin ;adopt=true;
-				int RE_getOgreVersionMinor() @ getOgreVersionMinor
-				void RE_buildEdgeList(const char* meshName) @ buildEdgeList
+				int RE::getOgreVersionMinor() 
+				void RE::buildEdgeList(const char* meshName) 
 				void ::loadPose(Posture& pose, const char* fn) 
 				void ::savePose(Posture& pose, const char* fn)
 				Ogre::SceneNode* RE::getSceneNode(PLDPrimSkin* skin)
@@ -6053,6 +6147,7 @@ memberFunctions={[[
 		#include "../BaseLib/math/Filter.h"
 		#include "../BaseLib/math/matrix3.h"
 		#include "../BaseLib/math/hyperMatrixN.h"
+		#include "../BaseLib/math/tensor.hpp"
 		#include "../BaseLib/math/BSpline.h"
 		//#include "../BaseLib/math/LMat.h"
 		//#include "../BaseLib/math/LVec.h"

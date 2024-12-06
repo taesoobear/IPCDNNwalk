@@ -43,6 +43,7 @@ namespace OBJloader
 		bool _tileAlongZ;
 		void _init(Raw2Bytes& image, int sizeX, int sizeY, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ);
 	public :
+		Terrain(const std::string& filename, int imageSizeX, int imageSizeY, m_real sizeX, m_real sizeZ, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ=false);
 		Terrain(const char* filename, int imageSizeX, int imageSizeY, m_real sizeX, m_real sizeZ, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ=false);
 		Terrain(vectorn const& image1d, m_real sizeX, m_real sizeZ, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ=false);
 

@@ -77,6 +77,7 @@ public:
 	void operator*=(m_real scalar);
 	matrix3 operator+(matrix3 const& b)	const { matrix3 c; c.add(*this,b); return c;}
 	matrix3 operator-(matrix3 const& b)	const { matrix3 c; c.sub(*this,b); return c;}
+	matrix3 operator-()	const { matrix3 c(*this); c.negate(); return c;}
 
 	void setRotation(const quater& q);
 	void zero();

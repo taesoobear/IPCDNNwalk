@@ -213,9 +213,8 @@ int MotionUtil::limbIK_1DOFknee( const vector3& goal, const vector3& sh, const v
 	quater q2;
 	q2.axisToAxis(d23, -d12);
 
-	vector3 axis_original;
-	q2.toAxisAngle(axis_original, currAngle);
-
+	vector3 _unused;
+	q2.toAxisAngle(_unused, currAngle);
 
 	// knee damping suggested in Foot skate cleanup by kovar
 	if(kneeDamping)

@@ -38,9 +38,11 @@ namespace OBJloader
 		Ogre::Mesh* mMesh;
 		MeshToEntity(const Mesh& mesh, const char* ogreMeshName, Option option=Option ());
 		MeshToEntity(const Mesh& mesh, const char* ogreMeshName, bool buildEdgeList, bool dynamicUpdate, bool useNormal=true, bool useTexCoord=true);
+		MeshToEntity(const Mesh& mesh, std::string const& ogreMeshName, bool buildEdgeList=false, bool dynamicUpdate=false, bool useNormal=true, bool useTexCoord=true, bool useColor=false);
 		MeshToEntity(const Mesh& mesh, const char* ogreMeshName, bool buildEdgeList, bool dynamicUpdate, bool useNormal, bool useTexCoord, bool useColor);
 		~MeshToEntity();
 		void updatePositions();
+		void updatePositions(const vector3N& vertices);
 		void updatePositionsAndNormals();
 
 		// created entities will not be removed automatically when destructing a MeshToEntity object.

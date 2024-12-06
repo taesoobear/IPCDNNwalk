@@ -54,7 +54,14 @@ public:
 	PLDPrimSkel (MotionLoader* pBVHL);
 	virtual ~PLDPrimSkel();
 
+	// simplified API (no callback and constraints drawing)
+	virtual void setPose(const Posture & posture);
+	virtual void setPoseDOF(const vectorn& poseDOF);
+	virtual void setPoseDOFignoringTranslationalJoints(const vectorn& poseDOF);
+
+	// with callback and constraints drawing
 	virtual void SetPose(const Posture & posture, const MotionLoader& skeleton);
+
 	virtual void getPose(Posture & posture);
 
 	virtual void updateBoneLength(MotionLoader const& loader){ mChain->updateBoneLength(loader); }
@@ -164,7 +171,6 @@ protected:
 #ifndef NO_OGRE
 	double _thickness;
 	BillboardLineList * _lines;
-	Ogre::SceneNode* mSceneNode;
 #endif
 };
 

@@ -46,6 +46,7 @@ public:
 	}
 
 	void dofile(const char* script);
+	inline void dofile(std::string script) { dofile(script.c_str());}
 	void dostring(const char* string);
 
 	template <class T>

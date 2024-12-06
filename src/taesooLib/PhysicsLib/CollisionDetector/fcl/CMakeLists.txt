@@ -166,6 +166,10 @@ if(NOT Eigen3_FOUND)
   set(Eigen3_FOUND ON)
 endif()
 
+if(MSVC AND NOT EIGEN3_INCLUDE_DIR)
+	set(EIGEN3_INCLUDE_DIR "${TAESOOLIB_DIR}/../windows_dependencies/eigen-3.4.0")
+endif()
+
 if(Eigen3_FOUND)
   set(FCL_HAVE_EIGEN TRUE)
 else()

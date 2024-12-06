@@ -2,6 +2,8 @@
 #include "renderer.h"
 #include "timesensor.h"
 #include "AnimationObject.h"
+#include "MotionPanel.h"
+#include "FltkScrollPanel.h"
 #ifndef NO_OGRE
 #include <OgreSceneNode.h>
 #endif
@@ -20,7 +22,15 @@ AnimationObject::AnimationObject()
 
 AnimationObject::~AnimationObject()
 {
-	if(m_pTimer) delete m_pTimer;
+
+	if(m_pTimer) {
+#ifndef NO_OGRE
+		if(RE::motionPanelValid())
+			RE::motionPanel().motionWin()->detachSkin(this);
+#endif
+
+		delete m_pTimer;
+	}
 	if(m_pSceneNode)
 	{
 		RE::removeEntity(m_pSceneNode);

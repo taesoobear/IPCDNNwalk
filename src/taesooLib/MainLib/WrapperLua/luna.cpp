@@ -101,9 +101,9 @@ void luna_derived_object::push(luna_derived_object const& o)
 lunaStack::~lunaStack()
 {
 }
-std::string lunaStack::lunaType(int i)
+std::string lunaType(lua_State*L, int i)
 {
-	if(luaType(i)==LUA_TUSERDATA)
+	if(lua_type(L, i)==LUA_TUSERDATA)
 	{
 		lua_getmetatable(L,i);
 		if(!lua_isnil(L,-1))

@@ -3,7 +3,7 @@
 #if _MSC_VER > 1000
 #pragma once
 #endif
-#include "../utility/TypeString.h"
+//#include "../utility/TypeString.h"
 #include <iostream>
 class quater;
 class matrix4;
@@ -39,7 +39,7 @@ class vector3
 	inline vector3 cross(const vector3& other) const	{ vector3 c; c.cross(*this, other); return c;}
 	inline vector3 mult(const vector3& o) const		{ return vector3(x*o.x, y*o.y, z*o.z);}
 	void normalize( const vector3 & );
-	inline vector3 dir()	{ vector3 temp; temp.normalize(*this); return temp; }
+	inline vector3 dir() const	{ vector3 temp; temp.normalize(*this); return temp; }
 	void negate(const vector3&);
 	void interpolate( double, vector3 const&, vector3 const& );
 	inline void lerp( vector3 const& a, vector3 const& b, double t)	{ interpolate(t, a, b);}
@@ -137,7 +137,7 @@ class vector3
 	inline void   setValue(double xx, double yy, double zz )	{ x=xx; y=yy; z=zz;}
 	void   setValue(const vectorn& other, int start=0);
 
-	TString output() const;
+	std::string output() const;
 
 	inline operator const double*() const		{ return &x;}
 	inline operator double*()					{ return &x;}

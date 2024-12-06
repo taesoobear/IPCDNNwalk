@@ -57,6 +57,7 @@ namespace TGL
 		public:
 
 		using vecIntvectorn=std::vector<intvectorn>;
+		using vecVectorn=std::vector<vectorn>;
 
 		Graph(int V) // No. of vertices
 		{

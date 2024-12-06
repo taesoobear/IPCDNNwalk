@@ -39,6 +39,9 @@ inline double dot(vector3 const& a, vector3 const& b) { return a%b;}
 
 #include "Link.h"
 
+#ifdef Success
+#undef Success
+#endif
 
 #include <Eigen/Core>
 #include <Eigen/Dense>

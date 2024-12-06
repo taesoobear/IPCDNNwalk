@@ -11,6 +11,7 @@
  *
  */
 #include "physicsLib.h"
+#include "../TRL/eigenSupport.h"
 #include "DynamicsSimulator.h"
 #include "Body.h"
 #include <vector>
@@ -18,14 +19,33 @@
 #include <algorithm>
 
 #include "DynamicsSimulator_Trbdl_penalty.h"
+#include "BodyInfo.h"
 #include "../MainLib/OgreFltk/VRMLloader.h"
 #include "../BaseLib/motion/VRMLloader_internal.h"
-#include "../TRL/eigenSupport.h"
 
 using namespace std;
 #include <rbdl/Logging.h>
 
 
+
+vectornView Trbdl::DynamicsSimulator_Trbdl_penalty::_Q(int ichara) { return vecView(bodyInfo(ichara).Q);}
+vectornView Trbdl::DynamicsSimulator_Trbdl_penalty::_QDot(int ichara) { return vecView(bodyInfo(ichara).QDot);}
+vector3 Trbdl::DynamicsSimulator_Trbdl_penalty::_bodyW(int ichara, int treeIndex) const { auto& bi=bodyInfo(ichara); return toVector3(bi.model.v[bi.links[treeIndex].bodyId], 0);}
+vector3 Trbdl::DynamicsSimulator_Trbdl_penalty::_bodyV(int ichara, int treeIndex) const { auto& bi=bodyInfo(ichara); return toVector3(bi.model.v[bi.links[treeIndex].bodyId], 3);}
+
+Trbdl::BodyInfo& Trbdl::DynamicsSimulator_Trbdl_penalty::bodyInfo(int ichara) { return *bodyInfoArray[ichara];}
+const Trbdl::BodyInfo& Trbdl::DynamicsSimulator_Trbdl_penalty::bodyInfo(int ichara) const { return *bodyInfoArray[ichara];}
+Trbdl::Link& Trbdl::DynamicsSimulator_Trbdl_penalty::getLink(int ichara, int ibone) { return bodyInfoArray[ichara]->links[ibone];}
+
+const vectorn & Trbdl::DynamicsSimulator_Trbdl_penalty::getLastSimulatedPose(int ichara) const { 
+	auto& bi=bodyInfo(ichara);
+	if (!bi.lastSimulatedPoseCached)
+	{
+		((DynamicsSimulator*)(this))->getPoseDOF(ichara, _getLastSimulatedPose(ichara));
+		bi.lastSimulatedPoseCached=true;
+	}
+	return _getLastSimulatedPose(ichara);
+}
 // #define INTEGRATOR_DEBUG
 static const int debugMode = false;
 static const bool enableTimeMeasure = false;
@@ -39,6 +59,8 @@ EIGEN_STRONG_INLINE void setLinearPart(SpatialVector & v, Vector3d const& vv) { 
 inline transf trl_transf(SpatialTransform const& X)
 {
 	transf out;
+	// X.E is stored transposed, but Quaternion::fromMatrix considers that
+	// when converting to Quaternion.
 	out.rotation=Trbdl::toBase(Quaternion::fromMatrix(X.E));
 	out.translation=toBase(X.r);
 	return out;
@@ -810,6 +832,14 @@ void Trbdl::DynamicsSimulator_Trbdl_penalty::_registerCharacter
 				{
 					links[i].joint=Joint(
 							SpatialVector (0., 1., 0., 0., 0., 0.),
+							SpatialVector (1., 0., 0., 0., 0., 0.)
+							);
+					numInternalJoints=2;
+				}
+				else if(b.getRotationalChannels()=="ZX")
+				{
+					links[i].joint=Joint(
+							SpatialVector (0., 0., 1., 0., 0., 0.),
 							SpatialVector (1., 0., 0., 0., 0., 0.)
 							);
 					numInternalJoints=2;
@@ -2180,3 +2210,364 @@ void Trbdl::DynamicsSimulator_Trbdl_penalty::calculateStablePDForces(int ichara,
 */
     }
 }
+void Trbdl::DynamicsSimulator_Trbdl_penalty::calculateStablePDForces(int ichara, const vectorn& desired_q, const vectorn& desired_dq, vectorn & tau, bool applyRootExternalForce )
+{
+	// packing is different from setLinkData or setQ/setD
+	VRMLloader& l=skeleton(ichara);
+	int nquat=l.dofInfo.numSphericalJoint();
+	int ndof=l.dofInfo.numDOF();
+
+	int nActualDof = ndof-nquat ;
+
+	auto& bi=bodyInfo(ichara);
+    auto& positions = bi.Q;
+    auto& velocities = bi.QDot;
+
+    vectorn proportionalTorquePlusQDotDeltaT(nActualDof);
+	proportionalTorquePlusQDotDeltaT.setAllValue(0.0);
+    vectorn derivativeTorque(nActualDof);
+	derivativeTorque.setAllValue(0.0);
+
+	int qindex=0;
+	int qsindex=ndof-nquat*4;
+	int dqsindex=qsindex;
+	int Qindex=0;
+
+	auto& kps=bi.kps;
+	auto& kds=bi.kds;
+	Msg::verify(kps.size()==ndof-nquat, "call setStablePDparam first");
+	for(int ibone=1; ibone<l.numBone(); ibone++)
+	{
+		VRMLTransform& b=(VRMLTransform&)l.bone(ibone);
+		auto& link=bi.links[ibone];
+		switch(b.mJoint->jointType)
+		{
+			case HRP_JOINT::FIXED: 
+				continue;
+			case HRP_JOINT::FREE:
+				{
+					qindex+=3;
+					qsindex+=4;
+					dqsindex+=3;
+
+					Qindex+=FREE_JOINT_QSIZE ;
+				}
+				break;
+			case HRP_JOINT::BALL:
+				{
+					auto targetPosition=desired_q.toQuater(qsindex);
+
+					int cacheIndex=Qindex;
+					float timeStep=_timestep;
+
+					targetPosition.normalize(); // Never trust user input
+
+					vector3 kp(
+							kps[cacheIndex],
+							kps[cacheIndex + 1],
+							kps[cacheIndex + 2]
+							);
+
+					quater localRotation=toBase(bi.model.GetQuaternion(link.jointId, bi.Q));
+
+					quater posDifference = targetPosition * localRotation.inverse();
+					posDifference.normalize();
+
+					vector3 axis=posDifference.rotationVector();
+
+					vector3 proportionalForceInParentFrame(
+							kps[cacheIndex] * axis.x,
+							kps[cacheIndex + 1] * axis.y,
+							kps[cacheIndex + 2] * axis.z
+							);
+					vector3 proportionalForceInChildFrame = localRotation.inverse()*proportionalForceInParentFrame;
+
+					proportionalTorquePlusQDotDeltaT[dqsindex] = proportionalForceInChildFrame[0] - 
+						timeStep * velocities[cacheIndex] * kps[cacheIndex];
+					proportionalTorquePlusQDotDeltaT[dqsindex + 1] = proportionalForceInChildFrame[1] -
+						timeStep * velocities[cacheIndex + 1] * kps[cacheIndex + 1];
+					proportionalTorquePlusQDotDeltaT[dqsindex + 2] = proportionalForceInChildFrame[2] -
+						timeStep * velocities[cacheIndex + 2] * kps[cacheIndex + 2];
+
+					derivativeTorque[dqsindex] = kds[cacheIndex] *( desired_dq[dqsindex]-velocities[cacheIndex]);
+					derivativeTorque[dqsindex + 1] = kds[cacheIndex + 1] *( desired_dq[dqsindex+1]-velocities[cacheIndex + 1]);
+					derivativeTorque[dqsindex + 2] = kds[cacheIndex + 2] *( desired_dq[dqsindex+2]-velocities[cacheIndex + 2]);
+					qsindex+=4;
+					dqsindex+=3;
+					Qindex+=3;
+				}
+				break;
+			case HRP_JOINT::ROTATE:
+				{
+					int nq=l.dofInfo.numDOF(ibone);
+					ASSERT(bi.model.mJoints[link.jointId].q_index==Qindex);
+					for(int i=0; i<nq; i++) 
+					{
+						int cacheIndex=Qindex;
+						proportionalTorquePlusQDotDeltaT[qindex] = kps[cacheIndex] * (
+								desired_q[qindex] - positions[cacheIndex] - 
+								_timestep * velocities[cacheIndex]
+								);
+						derivativeTorque[qindex] =kds[cacheIndex]*(desired_dq[qindex]  - velocities[cacheIndex]);
+						qindex++;
+						Qindex++;
+					}
+				}
+				break;
+		}
+	}
+
+	ASSERT(Qindex==bi.QDot.size());
+	ASSERT(qindex==ndof-nquat*4);
+
+	tau= proportionalTorquePlusQDotDeltaT + derivativeTorque;
+	tau.range(0,3).setAllValue(0.0);
+	tau.range(qindex,qindex+3).setAllValue(0.0);
+
+
+
+    if (applyRootExternalForce) {
+		Msg::error("applyRootExternalForce not ported yet");
+		ASSERT(false); // not ported yet.
+	/*
+        vector<float> rootForcePD(6, 0);
+
+        PxVec3 rootGlobalPosition = rootLink->link->getGlobalPose().p;
+        PxQuat rootGlobalRotation = rootLink->link->getGlobalPose().q;
+        UniformQuaternion(rootGlobalRotation);
+
+        PxVec3 rootGlobalLinearVelocity = rootLink->link->getLinearVelocity();
+        PxVec3 rootGlobalAngularVelocity = rootLink->link->getAngularVelocity();
+        
+        PxVec3 rootGlobalProportionalLinearForcePlusQDotDeltaT(
+            root_kps[0] * (targetPositions[0] - rootGlobalPosition[0] - timeStep * rootGlobalLinearVelocity[0]),
+            root_kps[1] * (targetPositions[1] - rootGlobalPosition[1] - timeStep * rootGlobalLinearVelocity[1]),
+            root_kps[2] * (targetPositions[2] - rootGlobalPosition[2] - timeStep * rootGlobalLinearVelocity[2])
+        );
+        PxVec3 rootGlobalDerivativeLinearForce(
+            -root_kds[0] * rootGlobalLinearVelocity[0],
+            -root_kds[1] * rootGlobalLinearVelocity[1],
+            -root_kds[2] * rootGlobalLinearVelocity[2]
+        );
+
+        PxQuat rootGlobalTargetRotationUser(targetPositions[4], targetPositions[5], targetPositions[6], targetPositions[3]);
+        rootGlobalTargetRotationUser.normalize();
+        
+        // transform from { x:front, y:up, z:right } to { x:up, y:back, z:right }
+        PxQuat rootGlobalTargetRotation = rootGlobalTargetRotationUser * frameTransform;
+
+        PxQuat diffQuat = rootGlobalTargetRotation * rootGlobalRotation.getConjugate();
+        if (PxAbs(diffQuat.w) < 0.70710678118f) {
+            diffQuat = (-rootGlobalTargetRotation) * rootGlobalRotation.getConjugate();
+        }
+        UniformQuaternion(diffQuat);
+
+        PxVec3 diffRotExpMapGlobal = QuatToExpMap(diffQuat);
+        PxVec3 rootGlobalProportionalTorquePlusQDotDeltaT(
+            root_kps[3] * (diffRotExpMapGlobal[0] - timeStep * rootGlobalAngularVelocity[0]),
+            root_kps[4] * (diffRotExpMapGlobal[1] - timeStep * rootGlobalAngularVelocity[1]),
+            root_kps[5] * (diffRotExpMapGlobal[2] - timeStep * rootGlobalAngularVelocity[2])
+        );
+        PxVec3 rootGlobalDerivativeTorque(
+            -root_kds[3] * rootGlobalAngularVelocity[0],
+            -root_kds[4] * rootGlobalAngularVelocity[1],
+            -root_kds[5] * rootGlobalAngularVelocity[2]
+        );
+
+        for (int i = 0; i < 3; i++) {
+            rootForcePD[i] += rootGlobalProportionalLinearForcePlusQDotDeltaT[i] + rootGlobalDerivativeLinearForce[i];
+        }
+        for (int i = 0; i < 3; i++) {
+            rootForcePD[i + 3] += rootGlobalProportionalTorquePlusQDotDeltaT[i] + rootGlobalDerivativeTorque[i];
+        }
+
+#ifdef ENABLE_SPD_ABA
+        extern bool g_ApplyABARootForce;
+        extern float g_RootExternalSpatialForce[100][6];
+        extern const float* g_ABA_Root_Kd;
+
+        g_ApplyABARootForce = true;
+        g_ABA_Root_Kd = root_kds.data();
+        memcpy(g_RootExternalSpatialForce[_id], rootForcePD.data(), 6 * sizeof(float));
+#endif
+*/
+    }
+}
+inline static void assign33(matrixn& self, const matrix3& M)
+{
+
+	self.set(0,0,M._11);
+	self.set(0,1,M._12);
+	self.set(0,2,M._13);
+	self.set(1,0,M._21);
+	self.set(1,1,M._22);
+	self.set(1,2,M._23);
+	self.set(2,0,M._31);
+	self.set(2,1,M._32);
+	self.set(2,2,M._33);
+}                      
+
+void Trbdl:: DynamicsSimulator_Trbdl_penalty::calcJacobianAt(int ichar, int ibone, matrixn& J, vector3 const & localpos)
+{
+	_calcJacobianAt(ichar, ibone, J, localpos);
+	// swap force and torque packing
+	matrixn temp;
+	temp=J.slice(0,0,3,6);
+	J.slice(0,0,3,6)=J.slice(0,0,0,3);
+	J.slice(0,0,0,3)=temp;
+
+	// R*bf (world force) to bf (body force)
+	// J[0:6]=(I  0)*J[0:6] 
+	//        (0  R)        
+	matrix3 R;
+	R.setFromQuaternion(getWorldState(ichar).global(1).rotation);
+	assign33(J.slice(3,6,3,6).lval(),R);
+}
+
+
+void Trbdl:: DynamicsSimulator_Trbdl_penalty::calcDotJacobianAt(int ichar, int ibone, matrixn& DJ, vector3 const & localpos)
+{
+	_calcDotJacobianAt(ichar, ibone, DJ, localpos);
+	// swap force and torque packing
+	matrixn temp;
+	temp=DJ.slice(0,0,3,6);
+	DJ.slice(0,0,3,6)=DJ.slice(0,0,0,3);
+	DJ.slice(0,0,0,3)=temp;
+
+	vector3 w=_bodyW(ichar, 1);
+	matrix3 R;
+	R.setFromQuaternion(getWorldState(ichar).global(1).rotation);
+	matrix3 skew_w;
+	skew_w.setTilde(w);
+	matrix3 dotR=R*skew_w; //  when w is the body angular velocity
+
+	assign33(DJ.slice(3,6,3,6).lval(), dotR);
+}
+
+inline static void zero(matrix4 & out)
+{
+	for(int i=0; i<4; i++)
+		for(int j=0; j<4; j++)
+			out.m[i][j]=0;
+}
+
+static inline double dot(double* a, Liegroup::dse3 const& b)
+{
+	double out=0;
+	for (int i=0; i<6; i++)
+		out+=a[i]*b[i];
+	return out;
+}
+
+static inline void radd(::vectorn & v, Liegroup::dse3 const& vv)
+{
+	for (int i=0; i<6; i++)
+		v(i)+=vv[i];
+}
+static inline Liegroup::dse3 mult(matrixn const& in, Liegroup::dse3 const& in2)
+{
+	Liegroup::dse3 out;
+	for (int i=0; i<6; i++)
+	{
+		out[i]=dot(&in(i,0), in2);
+	}	
+	return out;
+}
+
+void Trbdl::DynamicsSimulator_Trbdl_penalty::calcMomentumDotJacobian(int ichar, matrixn& jacobian, matrixn& dotjacobian)
+{
+	VRMLloader const& l=*_characters[ichar]->skeleton;
+	auto& cinfo=bodyInfo(ichar);
+	auto& model=cinfo.model;
+	matrixn j,dj;
+	jacobian.setSize(6,l.dofInfo.numActualDOF());
+	jacobian.setAllValue(0);
+	dotjacobian.setSize(6, l.dofInfo.numActualDOF());
+	dotjacobian.setAllValue(0);
+
+	{
+		::vector3 COM;
+		::vector3 COMVEL;
+		double totalMass;
+		COM=calculateCOM(ichar, totalMass);
+		COMVEL=calculateCOMvel(ichar, totalMass);
+		matrixn bJ, bdotJ;
+		matrixn dAd_T(6,6);
+		matrixn dot_dAd_T(6,6);
+		for(int i=1; i<l.numBone(); i++) {
+			calcJacobianAt(ichar, i, bJ,vector3(0,0,0));
+			calcDotJacobianAt(ichar,i,bdotJ,vector3(0,0,0));
+
+			auto& link=cinfo.links[i];
+			int bi=link.bodyId;
+			transf T_global=trl_transf(model.X_base[bi]);
+
+			matrix3 R(T_global.rotation);
+			matrix3 invR;
+			invR.inverse(R);
+
+			// bJ=invR*J
+
+			// R*invR=I
+			// dotR*invR+R*dot(invR)=0
+			// dot(invR)=-invR*dotR*invR
+			vector3 w=_bodyW(ichar, i);
+			matrix3 skew_w;
+			skew_w.setTilde(w);
+			matrix3 dotR=R*skew_w; //  when w is the body angular velocity
+			matrix3 dotInvR=-invR*dotR*invR;
+
+			// bdotJ=invR*dJ+dot(invR)*J
+			for(int j=0; j<bdotJ.cols(); j++)
+			{
+				bdotJ.column(j).setVec3(0, invR*bdotJ.column(j).toVector3(0)+dotInvR*bJ.column(j).toVector3(0));
+				bdotJ.column(j).setVec3(3, invR*bdotJ.column(j).toVector3(3)+dotInvR*bJ.column(j).toVector3(3));
+			}
+
+			for(int j=0; j<bJ.cols(); j++)
+			{
+				bJ.column(j).setVec3(0, invR*bJ.column(j).toVector3(0));
+				bJ.column(j).setVec3(3, invR*bJ.column(j).toVector3(3));
+			}
+
+
+
+
+			transf invBodyT=T_global.inverse();
+			matrix4 dotBodyT=calcDotT(T_global, trl_se3(model.v[bi]));
+
+
+			// T * invT = I
+			// dotT*invT+T*dotInvT=0
+			// dot(invT)=-invT*dotT*invT
+			
+			transf T=invBodyT*transf(COM);
+			Liegroup::dAd(dAd_T, T);
+			matrix4 dotCOM;
+			zero(dotCOM);
+			dotCOM.setTranslation(COMVEL);
+			matrix4 invBodyT2=invBodyT;
+			matrix4 dotT= invBodyT2*dotCOM- invBodyT2*dotBodyT*invBodyT2 * transf(COM); 
+			Liegroup::dot_dAd(dot_dAd_T, T, dotT);
+
+			VRMLTransform& bone=l.VRMLbone(i);
+			double mass=bone.mass();
+			Liegroup::Inertia I(mass, bone.momentsOfInertia(), mass*bone.localCOM());
+			for (int j=0; j<bJ.cols(); j++){
+				Liegroup::se3 cj=Liegroup::to_se3(bJ.column(j));
+				//dse3 cj2=dAd(T, body->I*cj);
+				//radd(jacobian.column(j).lval(), cj2);
+				Liegroup::dse3 temp=I*cj;
+				radd(jacobian.column(j).lval(),mult( dAd_T,temp));
+
+				radd(dotjacobian.column(j).lval(), 
+						mult(dot_dAd_T,temp)+mult(dAd_T,I*Liegroup::to_se3(bdotJ.column(j))));
+				// dAd(T)=
+				//    (     R       0 )'
+				//    (   skew(T)*R R )
+				// cj2= dAd(T)*I*cj
+			}
+		}
+	}
+}
+

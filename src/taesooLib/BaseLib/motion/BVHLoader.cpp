@@ -213,6 +213,11 @@ void BVHIP::Unpack(Parser* file)
 	ASSERT(token.toUpper()=="TIME:");
 	m_fFrameTime=(float)atof(file->getToken());
 
+	if(m_numFrames==0)
+	{
+		m_aaKeyvalue=NULL;
+		return;
+	}
 	float f_trlvalue;
 	FILE* parseFile = file->getFilePointer();
 
@@ -240,8 +245,18 @@ void BVHIP::Unpack(Parser* file)
 BVHLoader::BVHLoader(const char* filename, const char* option)
 :MotionLoader()
 {
-	std::cout << "BVHLoader: loading  " << filename <<std::endl;
-	Parser file(filename);
+	Parser file;
+	if(TString(option)=="loadFromMemory")
+	{
+		printf(".");
+		fflush(stdout);
+		file.openFromMemory(filename);
+	}
+	else
+	{
+		std::cout << "BVHLoader: loading  " << filename <<std::endl;
+		file.openFile(filename);
+	}
 	
 	Msg::verify(file.getToken().toUpper()=="HIERARCHY", "BVH file error: %s", filename);
 

@@ -11,6 +11,7 @@
  *
  */
 #include "physicsLib.h"
+#include "../TRL/eigenSupport.h"
 #include "DynamicsSimulator.h"
 #include "Body.h"
 #include <vector>
@@ -20,8 +21,8 @@
 #include "../../BaseLib/math/Operator.h"
 #include "../../BaseLib/math/conversion.h"
 
-#include "../TRL/eigenSupport.h"
 #include "DynamicsSimulator_Trbdl_QP.h"
+#include "BodyInfo.h"
 #include "../../BaseLib/utility/QPerformanceTimer.h"
 #ifndef NO_OGRE
 #include <OgreSceneNode.h>

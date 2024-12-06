@@ -122,6 +122,9 @@ void  v::hermite(vectorn& out, double a, double b, int duration, double c, doubl
 		out(i)=_hermite(a, vel1, d, vel2, (double)(i+1)/totalTime);
 	}
 }
+#ifdef Success
+#undef Success
+#endif
 #include <Eigen/Dense>
 #include <Eigen/LU>
 

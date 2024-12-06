@@ -39,6 +39,7 @@ namespace __gnu_cxx {
 #else
 #include <unordered_map>
 #endif
+#include "RE.h"
 class TraceBase : public AbstractTraceManager
 {
 public:
@@ -74,7 +75,6 @@ public:
 
 #ifndef NO_GUI
 
-#include "RE.h"
 
 class TraceManager : public Fl_Double_Window, public TraceBase
 {
@@ -98,6 +98,7 @@ namespace Ogre
 	class OverlayContainer;
 }
 
+#include "framemoveobject.h"
 class OgreTraceManager: public TraceBase, public FrameMoveObject
 {
 	bool eraseRequested;

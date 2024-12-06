@@ -122,6 +122,12 @@ MeshToEntity::MeshToEntity(const OBJloader::Mesh& mesh, const char* meshId, bool
 	//std::cout<<"b "<<buildEdgeList <<" d "<<dynamicUpdate<<std::endl;
 	//std::cout<<"b "<<mSavedOption.buildEdgeList <<" d "<<mSavedOption.dynamicUpdate<<std::endl;
 }
+MeshToEntity::MeshToEntity(const OBJloader::Mesh& mesh, const std::string& meshId, bool buildEdgeList, bool dynamicUpdate, bool useNormal, bool useTexCoord, bool useColor)
+:MeshToEntity(mesh, meshId.c_str(), Option(useColor, useNormal, useTexCoord, buildEdgeList, dynamicUpdate))
+{
+	//std::cout<<"b "<<buildEdgeList <<" d "<<dynamicUpdate<<std::endl;
+	//std::cout<<"b "<<mSavedOption.buildEdgeList <<" d "<<mSavedOption.dynamicUpdate<<std::endl;
+}
 		
 		
 MeshToEntity::MeshToEntity(const OBJloader::Mesh& mesh, const char* meshId, Option option)
@@ -373,6 +379,51 @@ void OBJloader::MeshToEntity::updatePositions()
 	for(int i=0; i<mData->numOgreVertex(); i++)
 	{
 		vector3 const& pp=mesh.getVertex(mData->ogreVertices[i][Buffer::VERTEX]);
+		posElem->baseVertexPointerToElement(vertex, &prPos);
+
+		*prPos++ = pp.x;
+		*prPos++ = pp.y;
+		*prPos++ = pp.z;
+
+		box.merge(Ogre::Vector3(pp.x, pp.y, pp.z));
+
+		vertex += vBuf->getVertexSize();
+	}
+	vBuf->unlock();
+
+	mMesh->_setBounds(box);
+	mMesh->_setBoundingSphereRadius(box.getMinimum().distance(box.getMaximum()));
+
+	if(option.buildEdgeList)
+	{
+		mMesh->freeEdgeList();
+		mMesh->buildEdgeList();
+	}
+#endif
+}
+void OBJloader::MeshToEntity::updatePositions(const vector3N & vertices)
+{
+  #ifndef NO_OGRE
+	Option& option=mSavedOption;
+
+	const VertexElement* posElem = mMesh->sharedVertexData->vertexDeclaration->findElementBySemantic(Ogre::VES_POSITION);
+	HardwareVertexBufferSharedPtr vBuf = mMesh->sharedVertexData->vertexBufferBinding->getBuffer(posElem->getSource());
+
+	unsigned char* vertex=static_cast<unsigned char*>(vBuf->lock(HardwareBuffer::HBL_NORMAL ));
+
+
+	float* prPos;
+	// Drawing stuff
+	vector3 min, max;
+
+	min.x=min.y=min.z=FLT_MAX;
+	max.x=max.y=max.z=-FLT_MAX;
+
+	Ogre::AxisAlignedBox box;
+
+	for(int i=0; i<mData->numOgreVertex(); i++)
+	{
+		vector3 const& pp=vertices(mData->ogreVertices[i][Buffer::VERTEX]);
 		posElem->baseVertexPointerToElement(vertex, &prPos);
 
 		*prPos++ = pp.x;

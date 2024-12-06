@@ -897,5 +897,110 @@ const vectorn & DynamicsSimulator::getLastSimulatedPose(int ichara) const
 	// check yourself.
 	return _characters[ichara]->_tempPose;
 }
-}
 
+vectorn DynamicsSimulator::poseToSphericalQ(int ichara, const vectorn& pose) const // packing is different from setLinkData or setQ/setDQ
+{
+	// packing is different from setLinkData or setQ/setD
+	const VRMLloader& l=skeleton(ichara);
+	int nquat=l.dofInfo.numSphericalJoint();
+	int ndof=l.dofInfo.numDOF();
+	int qindex=0; // == dqindex (linear joints )
+	int qsindex=ndof-nquat*4; // spherical joints (4씩증가)
+	int dof_index=0;
+	vectorn q (ndof);
+
+	for(int ibone=1; ibone<l.numBone(); ibone++)
+	{
+		VRMLTransform& b=(VRMLTransform&)l.bone(ibone);
+		switch(b.mJoint->jointType)
+		{
+		 	case HRP_JOINT::FIXED: 
+				continue;
+			case HRP_JOINT::FREE:
+				{
+					// translation
+					q.setVec3(qindex, pose.toVector3(0));
+					q.setQuater(qsindex, pose.toQuater(3));
+					qindex+=3;
+					qsindex+=4;
+					dof_index+=7;
+				}
+				break;
+			case HRP_JOINT::BALL:
+				{
+					q.setQuater(qsindex, pose.toQuater(dof_index));
+					dof_index+=4;
+					qsindex+=4;
+				}
+				break;
+			case HRP_JOINT::ROTATE:
+				{
+					int nq=l.dofInfo.numDOF(ibone);
+					for(int i=0; i<nq; i++) 
+					{
+						q[qindex]=pose[dof_index];
+						qindex++;
+						dof_index++;
+					}
+				}
+				break;
+		}
+	}
+
+	ASSERT(qindex==ndof-nquat*4);
+	Msg::verify(qsindex==q.size(), "incorrect input: setSphericalState of character %d", ichara );
+	return q;
+}
+vectorn DynamicsSimulator::dposeToSphericalDQ(int ichara, const vectorn& dpose) const // packing is different from setLinkData or setQ/setDQ
+{
+	// packing is different from setLinkData or setQ/setD
+	const VRMLloader& l=skeleton(ichara);
+	int nquat=l.dofInfo.numSphericalJoint();
+	int ndof=l.dofInfo.numDOF();
+	int qindex=0; // == dqindex (linear joints )
+	int dqsindex=ndof-nquat*4; // 3씩 증가.
+	int dof_index=0;
+	vectorn dq (ndof-nquat);
+
+	for(int ibone=1; ibone<l.numBone(); ibone++)
+	{
+		VRMLTransform& b=(VRMLTransform&)l.bone(ibone);
+		switch(b.mJoint->jointType)
+		{
+		 	case HRP_JOINT::FIXED: 
+				continue;
+			case HRP_JOINT::FREE:
+				{
+					// translation
+					dq.setVec3(qindex, dpose.toVector3(0));
+					dq.setVec3(dqsindex, dpose.toVector3(4));
+					qindex+=3;
+					dqsindex+=3;
+					dof_index+=7;
+				}
+				break;
+			case HRP_JOINT::BALL:
+				{
+					dq.setVec3(dqsindex, dpose.toVector3(dof_index+1));
+					dof_index+=4;
+					dqsindex+=3;
+				}
+				break;
+			case HRP_JOINT::ROTATE:
+				{
+					int nq=l.dofInfo.numDOF(ibone);
+					for(int i=0; i<nq; i++) 
+					{
+						dq[qindex]=dpose[dof_index];
+						qindex++;
+						dof_index++;
+					}
+				}
+				break;
+		}
+	}
+
+	ASSERT(qindex==ndof-nquat*4);
+	return dq;
+}
+}

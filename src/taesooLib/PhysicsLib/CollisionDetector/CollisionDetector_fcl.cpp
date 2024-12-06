@@ -1,8 +1,48 @@
 /** @file CollisionDetector/server/CollisionDetector_fcl.cpp
  * by taesoo
  */
-#include "../../physicsLib.h"
+#include "../../BaseLib/math/mathclass.h"
+#include "../../BaseLib/motion/intersectionTest.h"
+#include "fcl/math/constants.h"
+#include "fcl/narrowphase/collision.h"
+#include "fcl/narrowphase/collision_object.h"
+#include "fcl/narrowphase/distance.h"
 
+namespace OBJloader
+{
+	class Geometry;
+}
+
+struct fcl_ColObject // corresponds to a bone
+{
+	struct OBJ_T{ 
+		std::shared_ptr<fcl::CollisionGeometry<double>> geom;
+		fcl::CollisionObject<double>* co;
+		bool isMesh;
+	};
+
+	struct Info{
+		vector3N vertices;
+		int elementType;
+		vector3 elementSize;
+		transf tf; // local coordinate for the element
+		transf gtf; // global coordinate for the element
+	};
+	//
+	// one bone can have multiple convex collision shapes
+	std::vector<OBJ_T> co;
+	std::vector<Info> co_info;
+
+	bool isLargeBox(int isubMesh, double thr);
+
+
+	// for broadphase
+	intersectionTest::AABB lb;	// local bounds
+	intersectionTest::AABB gb;	// global bounds
+	OBJloader::Geometry* mesh;
+};
+
+#include "../../physicsLib.h"
 #include "CollisionDetector_fcl.h"
 #include "../MainLib/OgreFltk/pldprimskin.h"
 #include "../MainLib/OgreFltk/VRMLloader.h"
@@ -63,7 +103,7 @@ int CollisionDetector_fcl::addModel(VRMLloader* loader)
 	return ichar;
 }
 
-void CollisionDetector_fcl_init_ColObject(TRL::CollisionDetector_fcl::ColObject* pCol, HRP_SHAPE* shape)
+void CollisionDetector_fcl_init_ColObject(fcl_ColObject* pCol, HRP_SHAPE* shape)
 {
 	pCol->mesh=&shape->mesh;
 	int numSubMesh=shape->mesh.faceGroups.size();
@@ -202,17 +242,15 @@ void CollisionDetector_fcl_init_ColObject(TRL::CollisionDetector_fcl::ColObject*
 			//else
 			{
 				ASSERT(false);
-				/*
-				ccd_general_t gen;
-				gen.type = CCD_OBJ_GENERAL;
-				copy(vector3(0,0,0), gen.pos);
-				copy(quater(1,0,0,0), gen.quat);
-				gen._data=NULL;
+				//ccd_general_t gen;
+				//gen.type = CCD_OBJ_GENERAL;
+				//copy(vector3(0,0,0), gen.pos);
+				//copy(quater(1,0,0,0), gen.quat);
+				//gen._data=NULL;
 
-				gen.ccdSupport=&ccdSupportConvex;
-				pCol->co[subMesh].gen=gen;
-				pCol->co[subMesh].gen._data=(void*)&info;
-				*/
+				//gen.ccdSupport=&ccdSupportConvex;
+				//pCol->co[subMesh].gen=gen;
+				//pCol->co[subMesh].gen._data=(void*)&info;
 			}
 		}
 	}
@@ -220,7 +258,7 @@ void CollisionDetector_fcl_init_ColObject(TRL::CollisionDetector_fcl::ColObject*
 void CollisionDetector_fcl::_addModel(VRMLloader* loader)
 {
 	m_col_objects.resize(m_col_objects.size()+1);
-	std::vector<ColObject*>& _object=m_col_objects.back();
+	std::vector<fcl_ColObject*>& _object=m_col_objects.back();
 
 	int numBone=loader->numBone();
 	_object.resize(numBone);
@@ -232,7 +270,7 @@ void CollisionDetector_fcl::_addModel(VRMLloader* loader)
 		HRP_SHAPE* shape=loader->VRMLbone(b).mShape;
 		if(shape)
 		{
-			_object[b]=new ColObject();
+			_object[b]=new fcl_ColObject();
 			CollisionDetector_fcl_init_ColObject(_object[b], shape);
 
 		}
@@ -263,7 +301,7 @@ void CollisionDetector_fcl::removeCollisionPair(const OpenHRP::LinkPair& colPair
 void CollisionDetector_fcl::setWorldTransformations(int charIndex, BoneForwardKinematics const& fk)
 {
 	int i=charIndex;
-	std::vector<ColObject*>& col_objects=m_col_objects[i];
+	std::vector<fcl_ColObject*>& col_objects=m_col_objects[i];
 #ifdef USE_BROADPHASE
 	matrix4 gtransf;
 #endif
@@ -271,7 +309,7 @@ void CollisionDetector_fcl::setWorldTransformations(int charIndex, BoneForwardKi
 	{
 		if(col_objects[b])
 		{
-			ColObject& co=*col_objects[b];
+			fcl_ColObject& co=*col_objects[b];
 
 #ifdef DEBUG_DRAW
 		if(!g_objectList) g_objectList=new ObjectList();
@@ -313,8 +351,8 @@ void CollisionDetector_fcl::setWorldTransformations(int charIndex, BoneForwardKi
 			for(int subMesh=0; subMesh<co.co.size(); subMesh++)
 			{
 
-				ColObject::OBJ_T& obj=co.co[subMesh];
-				CollisionDetector_fcl::ColObject::Info& info=co.co_info[subMesh];
+				fcl_ColObject::OBJ_T& obj=co.co[subMesh];
+				fcl_ColObject::Info& info=co.co_info[subMesh];
 
 
 				if(info.elementType==OBJloader::Element::OBJ
@@ -388,7 +426,7 @@ inline static void addPoint2(OpenHRP::CollisionPointSequence& points,  OpenHRP::
 	point.idepth=c.penetration_depth;
 	addPoint( points, point);
 }
-inline static void addCornerPoints(OpenHRP::CollisionPointSequence& points,  TRL::CollisionDetector_fcl::ColObject* pCol, int subMesh1,
+		inline static void addCornerPoints(OpenHRP::CollisionPointSequence& points,  fcl_ColObject* pCol, int subMesh1,
 		VRMLloader* tree,
 		OBJloader::Terrain* terrain, bool isMesh1=false
 		)
@@ -455,7 +493,7 @@ bool CollisionDetector_fcl::testIntersectionsForDefinedPairs( OpenHRP::Collision
 	collisions.pairs=&mPairs;
 
 
-	ColObject* colobject[2];
+	fcl_ColObject* colobject[2];
 
 #ifdef USE_BROADPHASE_CACHE
 	intvectorn  broadphase_cache(mPairs.size()); 
@@ -589,17 +627,15 @@ bool CollisionDetector_fcl::testIntersectionsForDefinedPairs( OpenHRP::Collision
 				}
 				//Msg::output("intersect", "0");
 #ifdef DEBUG_DRAW
-				/*
-				if(!g_objectList) g_objectList=new ObjectList();
+				//if(!g_objectList) g_objectList=new ObjectList();
 
-					TString nameid;
-					nameid.format("%d %d %d %d", lp.charIndex[0], lp.link[0]->treeIndex(),
-							lp.charIndex[1], lp.link[1]->treeIndex());
-					if(intersect)
-						g_objectList->drawSphere(ToBase(pos)*100,nameid.ptr(),"red", 2.0);
-					else
-						g_objectList->drawSphere(ToBase(pos)*100,(nameid+"last").ptr(),"blue", 2.0);
-						*/
+				//	TString nameid;
+				//	nameid.format("%d %d %d %d", lp.charIndex[0], lp.link[0]->treeIndex(),
+				//			lp.charIndex[1], lp.link[1]->treeIndex());
+				//	if(intersect)
+				//		g_objectList->drawSphere(ToBase(pos)*100,nameid.ptr(),"red", 2.0);
+				//	else
+				//		g_objectList->drawSphere(ToBase(pos)*100,(nameid+"last").ptr(),"blue", 2.0);
 #endif
 			}
 	}
@@ -621,3 +657,10 @@ namespace OpenHRP
 	}
 }
 
+bool fcl_ColObject::isLargeBox(int isubMesh, double thr)
+{
+	// large enough to contain corner spheres (see CollisionDetector_fcl_LBS.cpp).
+	auto& info=co_info[isubMesh];
+	auto& esize=info.elementSize;
+	return info.elementType==OBJloader::Element::BOX && esize.x>thr && esize.y>thr && esize.z>thr;
+}

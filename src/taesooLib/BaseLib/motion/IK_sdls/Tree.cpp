@@ -89,12 +89,14 @@ void Tree::InsertEffector(IK_sdls::Node* parent, IK_sdls::Effector* child)
 	}
 }
 
+/*
 void Tree::InsertRelativeConstraint(IK_sdls::Node* parent1, IK_sdls::Node* parent2, IK_sdls::RelativeConstraint* child)
 {
 	InsertEffector(parent1, child);
 	assert(child->_additionalNode->purpose==DUMMY_EFFECTOR);
 	InsertEffector(parent2, child->_additionalNode);
 }
+*/
 
 
 void Tree::RemoveAllEffectors()

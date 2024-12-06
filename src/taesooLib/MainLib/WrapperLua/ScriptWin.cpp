@@ -46,9 +46,18 @@ void ScriptWin::getglobal(lunaStack& l, const char* func)
 	}
 	lastFunc=func;
 }
+bool ScriptWin::getglobalNoException(lunaStack& l, const char* func)
+{
+	l.getglobal(func);
+	if(lua_isnil(l.L,-1)){
+		return false;
+	}
+	lastFunc=func;
+	return true;
+}
 static void fastPrint(const char* out)
 {
-	static TString prevOut(" ");
+	TString prevOut(" ");
 
 	int start;
 	for(start=0; out[start]!=0 && prevOut[start]!=0 &&
@@ -162,6 +171,8 @@ m_renderer(&renderer)
 #else
 	renderer.setHandler(this);
 	renderer.ogreRenderer().addFrameMoveObject(this);
+	if(RE::motionPanelValid())
+		mp.motionWin()->connect(*this);
 #endif
 }
 
@@ -189,13 +200,26 @@ void ScriptWin::checkErrorFunc(lunaStack&l)
 }
 void ScriptWin::luna_call(lunaStack& l,int numIn, int numOut)
 {
+	if(!L) {
+		printf("%s__\n", lastFunc.ptr()); return;
+	}
 	try{
 #ifdef USE_LUNA_PCALL
 	checkErrorFunc(l);
 	if(lua_pcall(l.L,numIn,numOut,errorFunc))
 	{
 		//Msg::print("Error in ScriptWin::luna_call('%s')\n", lastFunc.ptr());
-		Msg::error("lua_pcall %s failed: %s\n", lastFunc.ptr(), lua_tostring(L, -1));
+		TString errMsg=lua_tostring(L, -1);
+		if(errMsg=="error in error handling")
+		{
+			if (lastFunc!="dtor")
+				printf("%s==nil?\n", lastFunc.ptr());
+			else
+				printf(".\n");
+			return;
+		}
+		else
+			Msg::error("lua_pcall %s failed: %s\n", lastFunc.ptr(), errMsg.ptr());
 		lua_pop(L, 1);
 		//handleLUAerror(l.L);
 	}
@@ -214,6 +238,7 @@ void ScriptWin::luna_call(lunaStack& l,int numIn, int numOut)
 	}
 	catch (std::exception& e)
 	{
+		printf("%s", e.what());
 		Msg::msgBox("c++ error : %s", e.what());
 		ASSERT(0);
 	}
@@ -308,10 +333,12 @@ void ScriptWin::onCallback(FlLayout::Widget const& w, Fl_Widget * pWidget, int u
 	else
 	{
 		lunaStack l(L);
-		getglobal(l,"onCallback");
-		l.push<FlLayout::Widget>(&w);
-		l<<(double)userData;
-		luna_call(l,2,0);
+		if(getglobalNoException(l,"onCallback"))
+		{
+			l.push<FlLayout::Widget>(&w);
+			l<<(double)userData;
+			luna_call(l,2,0);
+		}
 	}
 }
 
@@ -322,9 +349,11 @@ void ScriptWin::OnFrameChanged(FltkMotionWindow*, int currFrame)
 	{
 		lunaStack l(L);
 
-		getglobal(l,"onFrameChanged");
-		l<<(double)currFrame;
-		luna_call(l,1,0);
+		if(getglobalNoException(l,"onFrameChanged"))
+		{
+			l<<(double)currFrame;
+			luna_call(l,1,0);
+		}
 	}
 
 }
@@ -340,9 +369,11 @@ int ScriptWin::FrameMove(float fElapsedTime)
 #endif
 	if (L){
 		lunaStack l(L);
-		getglobal(l,"frameMove");
-		l<<(double)fElapsedTime;
-		luna_call(l,1,0);
+		if(getglobalNoException(l,"frameMove"))
+		{
+			l<<(double)fElapsedTime;
+			luna_call(l,1,0);
+		}
 	}
 	return 1;
 }
@@ -390,7 +421,7 @@ static lua_State* _initLuaEnvironment(FlLayout* win)
 
 static void _loadScript(lua_State* L, FlLayout* win, const char* script)
 {
-	Msg::print("loading %s", script);
+	Msg::print("loading %s\n", script);
 	if(script && luaL_dofile(L, script)==1)
 		handleLUAerror(L);
 }
@@ -409,7 +440,10 @@ void ScriptWin::_checkErrorFunc()
 void ScriptWin::initLuaEnvironment()
 {
 	_initLuaEnvironment();
-	::_loadScript(L, this, "config.lua");
+	if(RE::renderer().taesooLibPath()=="../")
+		::_loadScript(L, this, "config.lua");
+	else
+		::_loadScript(L, this, "work/taesooLib/Resource/scripts/relative_mode/config.lua");
 	_checkErrorFunc();
 }
 void ScriptWin::_loadScript(const char* script, const char* scriptstring)
@@ -601,12 +635,8 @@ int ScriptWin::handleRendererMouseEvent(int ev, int x, int y, int button)
 	}
 
 	lunaStack l(L);
-	getglobal(l,"handleRendererEvent");
-	if(lua_isnil(l.L, -1))
-	{
-		return 0;
-	}
-	else
+	bool check=getglobalNoException(l,"handleRendererEvent");
+	if(check)
 	{
 		l<<evs<<(double)button<<(double)x<<(double)y;
 		luna_call(l,4,1);
@@ -614,6 +644,7 @@ int ScriptWin::handleRendererMouseEvent(int ev, int x, int y, int button)
 		l>>out;
 		return int(out);
 	}
+	return 0;
 }
 
 int	ScriptWin::handleRendererEvent(int ev) 
@@ -649,12 +680,7 @@ int	ScriptWin::handleRendererEvent(int ev)
 			int key;
 			lunaStack l(L);
 			key=Fl::event_key();
-			getglobal(l,"handleRendererEvent");
-			if(lua_isnil(l.L, -1))
-			{
-				return 0;
-			}
-			else
+			if(getglobalNoException(l,"handleRendererEvent"))
 			{
 				TString keys;
 				if(key>='a' && key<='z')

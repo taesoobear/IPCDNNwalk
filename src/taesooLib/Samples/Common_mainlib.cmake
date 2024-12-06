@@ -1,7 +1,9 @@
 set(LUNA_GEN ${MainLib_SOURCE_DIR}/WrapperLua/luna_gen.lua)
 if(WIN32)
 	include_directories(
-		${MainLib_SOURCE_DIR}/../../windows_dependencies/ogre-13.4.4/include/Ogre
+		${MainLib_SOURCE_DIR}/../../windows_dependencies/ogre-13.4.3/build_win/include
+		${MainLib_SOURCE_DIR}/../../windows_dependencies/ogre-13.4.3/OgreMain/include
+		${MainLib_SOURCE_DIR}/../../windows_dependencies/ogre-13.4.3/include
 		${MainLib_SOURCE_DIR}/../../windows_dependencies/fltk-1.3.8
 		${MainLib_SOURCE_DIR}/../../windows_dependencies/fltk-1.3.8/build_win
 		${MainLib_SOURCE_DIR}/../../windows_dependencies/lua-5.1.5/src
@@ -24,9 +26,9 @@ if(WIN32)
 		${MainLib_SOURCE_DIR}/../../windows_dependencies/fltk-1.3.8/build_win/lib/Release/libfltk_png.lib
 		)
 	set(OGRE_LIBS
-		"${MainLib_SOURCE_DIR}/../../windows_dependencies/ogre-13.4.4/lib/OgreMain.lib"
-		"${MainLib_SOURCE_DIR}/../../windows_dependencies/ogre-13.4.4/lib/OgreOverlay.lib"
-		"${MainLib_SOURCE_DIR}/../../windows_dependencies/ogre-13.4.4/lib/OgreBites.lib"
+		"${MainLib_SOURCE_DIR}/../../windows_dependencies/ogre-13.4.3/build_win/lib/Release/OgreMain.lib"
+		"${MainLib_SOURCE_DIR}/../../windows_dependencies/ogre-13.4.3/build_win/lib/Release/OgreOverlay.lib"
+		"${MainLib_SOURCE_DIR}/../../windows_dependencies/ogre-13.4.3/build_win/lib/Release/OgreBites.lib"
 		)
 else()
 	include_directories(

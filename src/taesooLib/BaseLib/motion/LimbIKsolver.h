@@ -1,6 +1,6 @@
 #ifndef LIMBIKSOLVER_H_
 #define LIMBIKSOLVER_H_
-#include "../BaseLib/motion/FullbodyIK_MotionDOF.h"
+#include "FullbodyIK_MotionDOF.h"
 
 
 namespace MotionUtil

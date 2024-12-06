@@ -348,6 +348,14 @@ double CollisionDetector_bullet:: testSphereIntersection(int iloader, int ibody,
 
 }
 */
+bool CollisionDetector_bullet:: getLocalBoundingBoxSize(int charIndex, int ibone, vector3& localSize)
+{
+	std::vector<ColObject*>& _object=m_col_objects[charIndex];
+	auto& lb=_object[ibone]->lb;
+
+	localSize=	lb.getMaximum()-lb.getMinimum();
+	return true;
+}
 double CollisionDetector_bullet:: calculateSignedDistance(int iloader, int ibody, vector3 const& position, vector3& normal)
 {
 	ColObject* colobject=m_col_objects[iloader][ibody];

@@ -46,7 +46,11 @@ class OgreRenderer : public Ogre::FrameListener
 {
 protected:
 	void _constructor(const char* fallback_configFileName, const char* configFileName, const char* plugins_file, const char* ogre_config);
+	void _locateTaesooLib();
+	std::string mTaesooLib_path;
+	std::string mPluginPath;
 public:
+	std::string taesooLibPath() const { return mTaesooLib_path;}
 	OgreRenderer(const char* fallback_configFileName, const char* configFileName, const char* plugins_file, const char* ogre_config);
 	OgreRenderer();
 	virtual ~OgreRenderer();
@@ -67,8 +71,11 @@ public:
 	void updateRenderTexture(const char* param);
 	void setMaterialParam(const char* mat, const char* paramName, double value);
 	void cloneMaterial(const char* mat, const char* newMat);
+	void _updateDynamicTexture(const char* textureName, CImage const& image, bool reuseIfExists=true);	
+	void _linkMaterialAndTexture(const char* materialName, const char* textureName);
 	void createDynamicTexture(const char* name, CImage const& image);	
-	void createDynamicTexture(const char* name, CImage const& image, vector3 const& diffuseColor, vector3 const& specular_color);	
+	void createDynamicTexture(const char* name, CImage const& image, vector3 const& diffuseColor, vector3 const& specular_color, double shininess=10.0);	
+	void createMaterial(const char* name, vector3 const& diffuseColor, vector3 const& specular_color, double shininess=10.0);	
 	void addNewDynamicObj(Ogre::AnimationState* const as);
 	void addFrameMoveObject(FrameMoveObject* pFMO);
 	void removeFrameMoveObject(FrameMoveObject* pFMO);
@@ -112,6 +119,8 @@ public:
 	Viewport const& viewport()	const;
 	Viewport& viewport(int viewport);
 	void addNewViewport();
+
+	int _getOgreTextureWidth(const char* texturename);
 #ifndef NO_OGRE
 	Ogre::Root *mRoot;
 	Ogre::RenderWindow *mWnd;

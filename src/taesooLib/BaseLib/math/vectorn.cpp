@@ -4,6 +4,14 @@
 #include "float.h"
 #include "Metric.h"
 
+bool vectorn::isnan() const
+{
+	const auto& in=*this;
+	for(int i=0,n=in.size(); i<n; i++) 
+		if(in[i]!=in[i]) return true; 
+
+	return false;
+}
 //m_real* allocate(int n);
 //void deallocate(m_real *b);
 
@@ -222,26 +230,20 @@ intvectorn&  intvectorn::makeSamplingIndex(int nLen, int numSample)
 	return *this;
 }
 
+#include "Operator.h"
 intvectorn&  intvectorn::makeSamplingIndex2(int nLen, int numSample)
 {
 	// 첫프레임과 마지막 프레임은 반드시 포함하고 나머지는 그 사이에서 uniform sampling
-	if(numSample<2 || nLen<3)
+	if(numSample<2)
 		return makeSamplingIndex(nLen, numSample);
 
 	setSize(numSample);
-	(*this)[0]=0;
-	(*this)[numSample-1]=nLen-1;
 
-	if(numSample>2)
+	for (int i=0; i<numSample; i++)
 	{
-		intvectorn samplingIndex;
-		samplingIndex.makeSamplingIndex(nLen-2, numSample-2);
-		samplingIndex+=1;
+		double position=sop::map(i, 0, numSample-1, 0, nLen-1);
 
-		for(int i=1; i<numSample-1; i++)
-		{
-			this->value(i)=samplingIndex[i-1];
-		}
+		(*this)[i]=ROUND(position);
 	}
 	return *this;
 }
@@ -734,6 +736,27 @@ TString vectorn::output(const char* formatString, int start, int end) const
 	return id;
 }
 
+TString vectorn::shortOutput() const
+{
+	TString id;
+	id.add("{");
+	auto& a =*this;
+	if (a.size()<10 )
+	{
+		for (int j=0; j<a.size(); j++)
+			id.add("%.3f, ",a(j));
+	}
+	else
+	{
+		for (int j=0; j<5; j++)
+			id.add("%.3f, ",a(j));
+		id.add("..., ");
+		for (int j=a.size()-5; j< a.size(); j++)
+			id.add("%.3f, ",a(j));
+	}
+	id.add("}");
+	return id;
+}
 
 
 
@@ -1345,14 +1368,60 @@ vectorn vectorn::Each(void (*cOP)(m_real&,m_real)) const					{ vectorn c; c.assi
 vectorn vectorn::Each(m_real (*cOP)(m_real,m_real), vectorn const& b)	const { vectorn c; c.each2(cOP, *this,b); return c;}
 void vectorn::setVec3( int start, const vector3& src)	{RANGE_ASSERT(start+3<=size()); for(int i=start; i<start+3; i++) (*this)[i]=src.getValue(i-start);}
 void vectorn::setQuater( int start, const quater& src)	{RANGE_ASSERT(start+4<=size());for(int i=start; i<start+4; i++) (*this)[i]=src.getValue(i-start);}
+void vectorn::setQuater6( int start, const quater& q)	{
+	RANGE_ASSERT(start+6<=size());
+	setVec3(start,q.getFrameAxis(1));
+	setVec3(start+3,q.getFrameAxis(2));
+}
 void vectorn::setTransf( int start, const transf& src)	{
 	RANGE_ASSERT(start+7<=size());
 	for(int i=start; i<start+3; i++) (*this)[i]=src.translation.getValue(i-start);
 	start+=3;
 	for(int i=start; i<start+4; i++) (*this)[i]=src.rotation.getValue(i-start);
 }
+
+void vectorn::setTransf9(int start, const transf& tf)
+{
+	RANGE_ASSERT(start+9<=size());
+	setVec3(start,tf.translation);
+	setVec3(3+start,tf.rotation.getFrameAxis(1));
+	setVec3(6+start,tf.rotation.getFrameAxis(2));
+}
+
+void vectorn::convertAxesYZtoTorch6D()
+{
+	RANGE_ASSERT(size()%6==0);
+	int n=size()/6;
+	for(int i=0; i<n; i++)
+	{
+		auto y=toVector3(i*6);
+		auto z=toVector3(i*6+3);
+		vector3 x=y.cross(z);
+		setVec3(i*6, vector3(x.x, y.x, z.x));
+		setVec3(i*6+3, vector3(x.y, y.y, z.y));
+	}
+}
+void vectorn::convertTorch6DtoAxesYZ()
+{
+	RANGE_ASSERT(size()%6==0);
+	int n=size()/6;
+	for(int i=0; i<n; i++)
+	{
+		auto xt=toVector3(i*6);
+		auto yt=toVector3(i*6+3);
+		vector3 zt=xt.cross(yt);
+		setVec3(i*6, vector3(xt.y, yt.y, zt.y));
+		setVec3(i*6+3, vector3(xt.z, yt.z, zt.z));
+	}
+}
 vector3 vectorn::toVector3(int startIndex)	const	{RANGE_ASSERT(startIndex+3<=size());vector3 out; for(int i=0; i<3; i++) out[i]=getValue(i+startIndex); return out;};
 quater vectorn::toQuater(int startIndex) const		{RANGE_ASSERT(startIndex+4<=size()); quater out; for(int i=0; i<4; i++) out[i]=getValue(i+startIndex); return out;};
+quater vectorn::toQuater6(int startIndex) const		{
+	RANGE_ASSERT(startIndex+6<=size()); 
+	quater q; 
+	q.setFrameAxesYZ(toVector3(startIndex), toVector3(startIndex+3));
+	return q;
+}
 transf vectorn::toTransf(int startIndex) const		{
 	RANGE_ASSERT(startIndex+7<=size()); 
 	transf t;
@@ -1364,6 +1433,14 @@ transf vectorn::toTransf(int startIndex) const		{
 		quater &out=t.rotation; for(int i=0; i<4; i++) out[i]=getValue(i+startIndex); 
 	}
 	return t;
+};
+transf vectorn::toTransf9(int startIndex) const		{
+	RANGE_ASSERT(startIndex+9<=size()); 
+	transf out;
+
+	out.translation=toVector3(startIndex);
+	out.rotation=toQuater6(startIndex+3);
+	return out;
 };
 
 std::ostream& operator<< ( std::ostream& os, const vectorn& u )

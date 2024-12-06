@@ -38,6 +38,7 @@ public:
 	void DrawVertLine(int x, int y, int height, CPixelRGB8 color,bool bDotted=false);
 	void DrawLine(int x1, int y1, int x2, int y2, CPixelRGB8 color);
 	void DrawBox(const TRect& rect, CPixelRGB8 color);
+	void DrawLineBox(const TRect& rect, CPixelRGB8 color);
 	void DrawPattern(int x, int y, const CImagePixel& patternPixel, bool bUseColorKey=false, CPixelRGB8 colorkey=CPixelRGB8 (0,0,0), bool bOverideColor=false, CPixelRGB8 overrideColor=CPixelRGB8 (0,0,0));
 	void DrawPattern(int x, int y, CImage* pPattern, bool bUseColorKey=false, CPixelRGB8 colorkey=CPixelRGB8 (0,0,0), bool bOverideColor=false, CPixelRGB8 overrideColor=CPixelRGB8 (0,0,0));
 	void DrawSubPattern(int x, int y, const CImagePixel& patternPixel, const TRect& patternRect, bool bUseColorKey=false, CPixelRGB8 colorkey=CPixelRGB8 (0,0,0));

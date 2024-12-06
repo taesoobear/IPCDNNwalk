@@ -78,6 +78,7 @@ public:
 	void decomposeStitch(int discontinuity);
 	void linstitch(int discontinuity);
 
+      quater sampleRow(m_real criticalTime) const;
 	// a의 마지막 프레임이 b의 첫프레임과 동일해지도록 stitch. 최종 길이는 a.size()+b.size()-1이 된다.
 	void linstitch(quaterN const& a, quaterN const& b);
 	void c0stitch(quaterN const& a, quaterN const& b);

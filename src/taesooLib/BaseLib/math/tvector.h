@@ -1,6 +1,7 @@
 #ifndef _TEMPLATE_TVECTOR_H_
 #define _TEMPLATE_TVECTOR_H_
 #pragma once
+#include <cmath>
 //============================================================================]
 // The two following templated classes contain a static member function (doOperation)
 // performing assignation operation between two values(= or +=).

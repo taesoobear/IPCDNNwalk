@@ -71,5 +71,6 @@ void OutputToFile(const char* filename, const char* string);
 int Hash(const char* string);
 namespace RE {
 	TString generateUniqueName();
+	std::string taesooLibPath();
 }
 #endif

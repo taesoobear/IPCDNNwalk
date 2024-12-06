@@ -270,3 +270,11 @@ void transf::integrateBodyVel(vector3 const& rel_ang_vel, vector3 const& rel_lin
 	rotation+=p_ep_dot;
 	rotation.normalize();
 }
+transf transf::project2D() const
+{
+	transf out;
+	out.rotation=rotation.rotationY();
+	out.translation=translation;
+	out.translation.y=0;
+	return out;
+}

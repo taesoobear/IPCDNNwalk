@@ -25,10 +25,6 @@
 
 #include "stdafx.h"
 #include "Image.h"
-#ifndef NO_DEVIL
-#include <IL/il.h>
-#include <IL/ilu.h>
-#endif
 #ifndef NO_FREEIMAGE
 #include "FreeImage.h"
 #endif
@@ -59,45 +55,25 @@ CPixelRGB8 CPixels::average() const
 }
 
 ;
-int CImage::__uniqueID=1;
 
 CImage::CImage()
 	:
 	_size(0,0),
 	_dataPtr(NULL),
-	_stride(0),
-	_id(__uniqueID)
+	_opacityMap(NULL),
+	_stride(0)
 {
-    #ifndef NO_DEVIL
-	if(__uniqueID==1)
-	{
-		ilInit();
-		iluInit();
-	}
-
-	__uniqueID++;
-	ILuint images[1];
-	ilGenImages(1, images);
-	_id=images[0];
-	#endif
 }
 
 CImage::~CImage()
 {
-#ifndef NO_DEVIL
-	if(_dataPtr)
-	{
-		ILuint images[1];
-		images[0]=_id;
-		ilDeleteImages(1, images);
-	}
-#else
 	if(_dataPtr)
 	{
 		delete [] _dataPtr;
+		delete[] _opacityMap;
 		_dataPtr=NULL;
+		_opacityMap=NULL;
 	}
-#endif
 }
 
 int CImage::GetWidth() const
@@ -111,54 +87,42 @@ void CImage::CopyFrom(CImage const& other)
 
 	_size.x=other.GetWidth();
 	_size.y=other.GetHeight();
-	#ifndef NO_DEVIL
-	ilBindImage(_id);
-	ilCopyImage(other._id);
-	_dataPtr=ilGetData();
-	_stride=GetWidth()*3;
-#else
 	_dataPtr=new uchar[_size.x*_size.y*3];
 	_stride=GetWidth()*3;
 	for(int y=0; y<_size.y; y++)
 		memcpy(&_dataPtr[y*_stride], &other._dataPtr[y*other._stride], _stride);
 
-	#endif
+	if(other._opacityMap)
+	{
+		_opacityMap=new uchar[_size.x*_size.y];
+		for(int y=0; y<_size.y; y++)
+			memcpy(&_dataPtr[y*_stride], &other._dataPtr[y*other._stride], GetWidth());
+	}
+	else
+		_opacityMap=NULL;
 }
 
-void CImage::SetData(int width, int height, uchar* dataPtr, int stride)
+void CImage::_setDataFlipY(int width, int height, uchar* dataPtr, int stride)
 {
-    #ifndef NO_DEVIL
-	ilBindImage(_id);
-	ilTexImage(width, height, 1, 3, IL_RGB, IL_UNSIGNED_BYTE, NULL);
-	_size=Int2D(width, height);
-
-	for(int i=0; i<GetHeight(); i++)
-	{
-		int ii=GetHeight()-i-1;
-		ilSetPixels(0,i,0, GetWidth(), 1, 1, IL_RGB, IL_UNSIGNED_BYTE, dataPtr+stride*ii);
-	}
-
-	_dataPtr=ilGetData();
+	_size.x=width;
+	_size.y=height;
+	_dataPtr=new uchar[width*height*3];
 	_stride=GetWidth()*3;
-	#endif
+	for(int y=0; y<_size.y; y++)
+		//memcpy(&_dataPtr[y*_stride], &dataPtr[(_size.y-y-1)*stride], _stride); // flipY
+		memcpy(&_dataPtr[y*_stride], &dataPtr[y*stride], _stride); // no flipY
+	_opacityMap=NULL;
 }
 
 // assumes RGB8 format.
 bool CImage::Create(int width, int height)
 {
-#ifndef NO_DEVIL
-	_size.x=width;
-	_size.y=height;
-	ilBindImage(_id);
-	ilTexImage(width, height, 1, 3, IL_RGB, IL_UNSIGNED_BYTE, NULL);
-	_dataPtr=ilGetData();
-	_stride=GetWidth()*3;
-#else
 	_size.x=width;
 	_size.y=height;
 	_dataPtr=new uchar[width*height*3];
 	_stride=GetWidth()*3;
-#endif
+	memset((void*)_dataPtr, 200, width*height*3);
+	_opacityMap=NULL;
 	return true;
 }
 
@@ -183,49 +147,148 @@ static void CImage_flipY(CImage& inout)
 		memcpy(line1, line2, sizeof(CPixelRGB8)*inout.GetWidth());
 		memcpy(line2, line_swap, sizeof(CPixelRGB8)*inout.GetWidth());
 	}
+	delete[] line_swap;
+
+	if(inout.getOpacityMap()) 
+	{
+		unsigned char * line_swap=new unsigned char[inout.GetWidth()];
+		for(int i=0; i<inout.GetHeight()/2; i++)
+		{
+			unsigned char* line1=inout.getOpacity(0,i);
+			unsigned char* line2=inout.getOpacity(0, inout.GetHeight()-i-1);
+			memcpy(line_swap, line1, sizeof(unsigned char)*inout.GetWidth());
+			memcpy(line1, line2, sizeof(unsigned char)*inout.GetWidth());
+			memcpy(line2, line_swap, sizeof(unsigned char)*inout.GetWidth());
+		}
+		delete[] line_swap;
+	}
 }
-bool CImage::Load(const char* filename)
+void CImage::flipY()
 {
-#ifndef NO_FREEIMAGE
-	FREE_IMAGE_FORMAT formato = FreeImage_GetFileType(filename,0);
-	FIBITMAP* imagen = FreeImage_Load(formato, filename);
-	FIBITMAP* temp = imagen;  
-	imagen = FreeImage_ConvertTo32Bits(imagen);
-	FreeImage_Unload(temp);
-
-	_size.x = FreeImage_GetWidth(imagen);
-	_size.y = FreeImage_GetHeight(imagen);
-	_dataPtr=new unsigned char[32*_size.x*_size.y];
-	_stride=GetWidth()*3;
-
-	char* pixeles = (char*)FreeImage_GetBits(imagen);
-
+	CImage_flipY(*this);
+}
+static void setData(unsigned char* _dataPtr, unsigned char*& _opacityMap, Int2D& _size, const unsigned char* pixeles)
+{
+	bool hasTransparency=false;
+	int transparencyCount=0;
 	for(int j= 0; j<_size.x*_size.y; j++)
 	{
 		_dataPtr[j*3+0]= pixeles[j*4+2];
 		_dataPtr[j*3+1]= pixeles[j*4+1];
 		_dataPtr[j*3+2]= pixeles[j*4+0];
-		//_dataPtr[j*4+3]= pixeles[j*4+3];
+		_opacityMap[j]= pixeles[j*4+3];
+		transparencyCount+=int (_opacityMap[j]<250);
 	}
+
+	// 현재 alpha채널이 있으면 depth test를 끄는 코드가 fbximporter에 있어서.
+	// conservative하게 25% 이상 투명 픽셀이 있을때만 alpha채널 살렸음. 
+	if (transparencyCount>((_size.x*_size.y)/4))
+		hasTransparency=true;
+
+	if(!hasTransparency)
+	{
+		delete[]_opacityMap;
+		_opacityMap=NULL;
+	}
+}
+
+#if 1 // turn off timer
+#undef BEGIN_TIMER
+#undef END_TIMER2
+#define BEGIN_TIMER(x)
+#define END_TIMER2(x)
+#else
+#include "../utility/QPerformanceTimer.h"
+#endif
+bool CImage::loadFromMemory(const char* filename, long data_length, const unsigned char* ptr)
+{
+
+#ifndef NO_FREEIMAGE
+	BEGIN_TIMER(freeImageLoad);
+	FREE_IMAGE_FORMAT formato = FreeImage_GetFileType(filename,0);
+	if(formato == FIF_UNKNOWN) {
+		// no signature ?
+		// try to guess the file format from the file extension
+		formato = FreeImage_GetFIFFromFilename(filename);
+	}
+	FIMEMORY * stream=FreeImage_OpenMemory(const_cast<unsigned char*>(ptr), data_length);
+	FIBITMAP* imagen = FreeImage_LoadFromMemory(formato, stream);
+	if (!imagen)
+		printf("error??? loading(mem) %s %d %d\n", filename, data_length, formato);
+	if ( FreeImage_GetBPP( imagen ) != 32 )
+	{
+		FIBITMAP* temp = imagen;  
+		imagen = FreeImage_ConvertTo32Bits(imagen);
+		FreeImage_Unload(temp);
+	}
+	FreeImage_CloseMemory(stream);
+	_size.x = FreeImage_GetWidth(imagen);
+	_size.y = FreeImage_GetHeight(imagen);
+	if(_size.x==0)
+		printf("resolution error!! %d %d, %s\n", _size.x, _size.y, filename);
+	_dataPtr=new unsigned char[3*_size.x*_size.y];
+	_opacityMap=new unsigned char[_size.x*_size.y];
+	_stride=GetWidth()*3;
+
+	unsigned char* pixeles = (unsigned char*)FreeImage_GetBits(imagen);
+	setData(_dataPtr, _opacityMap, _size, pixeles);
+	FreeImage_Unload(imagen);
+
+#else
+	ASSERT(false);
+	printf("error!no freeimage\n");
+#endif
+
+	END_TIMER2(freeImageLoad2);
+
+	//Save("out.jpg");
+	return true;
+}
+#ifndef NO_FREEIMAGE
+static void FreeImageErrorHandler(FREE_IMAGE_FORMAT fif, const char *message) {
+ printf("\n*** "); 
+ if(fif != FIF_UNKNOWN) {
+ printf("%s Format\n", FreeImage_GetFormatFromFIF(fif));
+ }
+ printf(message);
+ printf(" ***\n");
+}
+#endif
+// In your main program …
+bool CImage::Load(const char* filename)
+{
+#ifndef NO_FREEIMAGE
+	FreeImage_SetOutputMessage(FreeImageErrorHandler);
+	FREE_IMAGE_FORMAT formato = FreeImage_GetFileType(filename,0);
+	if(formato == FIF_UNKNOWN) {
+		// no signature ?
+		// try to guess the file format from the file extension
+		formato = FreeImage_GetFIFFromFilename(filename);
+	}
+	FIBITMAP* imagen = FreeImage_Load(formato, filename);
+	if (!imagen)
+		printf("error??? loading %s\n", filename);
+	if ( FreeImage_GetBPP( imagen ) != 32 )
+	{
+		FIBITMAP* temp = imagen;  
+		imagen = FreeImage_ConvertTo32Bits(imagen);
+		FreeImage_Unload(temp);
+	}
+
+	_size.x = FreeImage_GetWidth(imagen);
+	_size.y = FreeImage_GetHeight(imagen);
+	if(_size.x==0)
+		printf("resolution error!! %d %d, %s\n", _size.x, _size.y, filename);
+	_dataPtr=new unsigned char[3*_size.x*_size.y];
+	_opacityMap=new unsigned char[_size.x*_size.y];
+	_stride=GetWidth()*3;
+
+	unsigned char* pixeles = (unsigned char*)FreeImage_GetBits(imagen);
+	setData(_dataPtr, _opacityMap, _size, pixeles);
 	FreeImage_Unload(imagen);
 #else
-    #ifndef NO_DEVIL
-	ilBindImage(_id);
-	ilLoadImage(filename);
-	ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
-	_size.x= ilGetInteger(IL_IMAGE_WIDTH);
-	_size.y= ilGetInteger(IL_IMAGE_HEIGHT);
-	_dataPtr=ilGetData();
-	_stride=GetWidth()*3;
-	#endif
+	printf("error! no freeimage\n");
 #endif
-	if (TString(filename).right(3).toUpper()=="JPG" ||TString(filename).right(3).toUpper()=="PNG")
-	{
-		CImage_flipY(*this);
-		_flipped=true;
-	}
-	else
-		_flipped=false;
 
 
 	//Save("out.jpg");
@@ -275,11 +338,6 @@ bool GenericWriter(FIBITMAP* dib, const char* lpszPathName, int flag=0) {
 
 static void CImage_SaveFreeImage(CImage & image, const char* filename, int BPP=-1)
 {
-//#define DEVIL_FLIP_Y
-#if (defined (_MSC_VER)) && (defined (DEVIL_FLIP_Y))
-	printf("here\n");
-   	CImage_flipY(image); // somehow some versions of ms windwows devil shows different behavior.
-#endif
 //	applyFloydSteinberg(image, 4);
 
 	BYTE* bits=image._dataPtr;
@@ -357,9 +415,6 @@ static void CImage_SaveFreeImage(CImage & image, const char* filename, int BPP=-
 
 	//FIBITMAP *dst2 = FreeImage_Dither(dst, FID_FS);
 	FreeImage_Unload(dst);
-#if (defined (_MSC_VER)) && (defined (DEVIL_FLIP_Y))
-	CImage_flipY(image);
-#endif
 }
 #endif
 
@@ -398,6 +453,28 @@ bool CImage::Save(const char* filename) const
 	return 1;
 }
 
+bool CImage::saveOpacity(const char* filename) const
+{
+	if(!getOpacityMap())
+		return false;
+
+#ifndef NO_FREEIMAGE
+	BYTE* bits=const_cast<BYTE*>(getOpacityMap());
+	int width=GetWidth();
+	int height=GetHeight();
+	int scan_width=width;
+	
+	// convert a 8-bit raw buffer (top-left pixel first) to a FIBITMAP
+	// ----------------------------------------------------------------
+	FIBITMAP *dst = FreeImage_ConvertFromRawBits(bits, width, height, scan_width,
+			8, 0, 0, 0, FALSE);
+
+	GenericWriter(dst, filename);
+
+	//FIBITMAP *dst2 = FreeImage_Dither(dst, FID_FS);
+	FreeImage_Unload(dst);
+#endif
+}
 bool CImage::save(const char* filename, int BPP) const
 {
 	if(Imp::IsFileExist(filename))

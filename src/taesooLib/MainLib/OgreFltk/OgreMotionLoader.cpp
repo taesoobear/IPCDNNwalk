@@ -208,6 +208,7 @@ SkinnedMeshLoader::SkinnedMeshLoader(const char* ogreMeshFile, bool unpackTexCoo
 
 	int num_channel;
 	MakeBoneArrayFromTree(num_channel);
+	_initDOFinfo();
 	//TargetIndex 멤버 셋팅
 
 	ogreBoneToBone.setSize(si->getNumBones());

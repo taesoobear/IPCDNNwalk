@@ -382,6 +382,16 @@ int Viewpoint::CheckConstraint()
 	}
 
 	UpdateVPosFromVHD();
+	if(m_fDepth<100)
+	{
+		vector3 vdir=m_vecVAt-m_vecVPos;
+		vdir.normalize();
+		if(m_vecVPos.y<30.f )
+			m_vecVPos.y=30.f;
+		m_vecVAt=m_vecVPos+vdir*100;
+		m_fDepth=100;
+
+	}
 	return 1;
 }
 

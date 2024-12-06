@@ -1,8 +1,8 @@
+-- FBXloader=require('FBXloader') 
 require('subRoutines/WRLloader')
--- uses software LBS skinning. so much slower than OgreEntity but I prefer simplicity here.
+-- uses software LBS skinning. so much slower than c++/shader-based OgreEntity class but I prefer simplicity here.
 --
 local FBXloader=LUAclass()
-
 -- use FBXloader.motionLoader(filename ) or FBXloader(filename)
 
 local function printTreeIndices(ti, loader_i)
@@ -38,6 +38,111 @@ local function toZUP_q(q)
 	return quater(q.w, q.x,  -q.z, q.y);
 end
 
+function FBXloader:_getBindPoseGlobal(imesh)
+	if self.bindpose_global then
+		return self.bindpose_global
+	end
+	local bg= self.fbxInfo[imesh].bindpose_global
+	assert(bg)
+	return bg
+end
+function FBXloader:_bakeBindPose()
+	-- 현재 포즈로 mesh를 굽는다. (즉, 모든 메시가 동일한 bindpose를 갖게 된다. 원본메시는 사라지지만, 뒤쪽 구현이 쉬워짐.)
+	local loader=self.loader
+
+	for i, meshInfo in ipairs(self.fbxInfo) do
+		local ME=self.fbxInfo[i]
+		local skin=meshInfo.skin
+		local mesh=meshInfo[1]
+		skin:calcVertexPositions(self.loader:fkSolver(), mesh)
+		skin:calcVertexNormals(self.loader:fkSolver(), self:_getBindPoseGlobal(i), meshInfo.localNormal, mesh)
+		meshInfo.bindpose_global=nil
+	end
+	self:_setBindPose(loader)
+
+	self.fbx=nil -- disconnect from the original fbx file.
+end
+function FBXloader:_bindPoseUpdated()
+	local loader=self.loader
+	for i,meshInfo in ipairs(self.fbxInfo) do
+		local mesh=meshInfo[1]
+		local skin=meshInfo.skin
+		assert(self.bindpose_global) -- assert baked
+		skin:calcLocalVertexPositions(self.loader, mesh)
+
+		if mesh:numNormal()>0 then
+			for i=0, mesh:numNormal()-1 do
+				meshInfo.localNormal(i):assign(mesh:getNormal(i))
+			end
+		end
+	end
+end
+
+function FBXloader:useBindPoseAsIdentityPose()
+	self.loader:setPose(self.bindpose)
+	self:setCurPoseAsInitialPose()
+end
+function FBXloader:numMesh()
+	return #self.fbxInfo
+end
+function FBXloader:getMeshInfo(fbxMeshIndex)
+	local meshInfo=self.fbxInfo[fbxMeshIndex]
+	local mesh=meshInfo[1]
+	return { mesh=meshInfo[1], skin=meshInfo.skin,  }
+end
+function FBXloader:setPose(pose)
+	self.loader:setPose(pose)
+end
+function FBXloader:setCurPoseAsInitialPose()
+
+	self:_bakeBindPose()
+
+	-- backup the original skeleton (for creating pose map, etc...)
+	self.orig_loader=self.loader:copy()
+
+	local curPose=self.loader:pose()
+
+	self.loader:setCurPoseAsInitialPose()
+
+	local rootpos=curPose.translations(0)
+
+	self.loader:bone(1):getOffsetTransform().translation:zero()
+	
+
+	self.loader:updateInitialBone()
+	local poseI=self.loader:pose()
+	poseI.translations(0):assign(rootpos)
+	self.loader:setPose(poseI)
+	self.orig_loader:setPose(curPose)
+
+	local convertFromOriginalPose=MotionUtil.PoseTransfer(self.orig_loader, self.loader, true)
+
+	convertFromOriginalPose:setTargetSkeleton(self.bindpose)
+
+	self:_setBindPose(self.loader)
+	self:_bindPoseUpdated()
+
+	convertFromOriginalPose:setTargetSkeleton(self.currentPose)
+	self.currentPose=self.loader:pose()
+
+	if self.orig_loader.mMotion:numFrames()>0 then
+		self.loader.mMotion:resize(self.orig_loader.mMotion:numFrames())
+		for i=0, self.orig_loader.mMotion:numFrames()-1 do
+			convertFromOriginalPose:setTargetSkeleton(self.orig_loader.mMotion:pose(i))
+			self.loader.mMotion:pose(i):assign(self.loader:pose())
+		end
+	end
+	self:setPose(poseI)
+	return convertFromOriginalPose
+end
+
+
+function FBXloader:getPoseDOF()
+	return self.loader:getPoseDOF()
+end
+function FBXloader:pose()
+	return self.loader:pose()
+end
 function FBXloader:mirrorVA(jointpos)
 	for i=0, jointpos:size()-1 do
 		jointpos(i):assign(self:mirror(jointpos(i)))
@@ -49,20 +154,45 @@ function FBXloader:mirrorQA(jointori)
 	end
 end
 
+function FBXloader:fkSolver()
+	return self.loader:fkSolver()
+end
 function FBXloader:genSkelTable(fbx, options)
+	local mesh_count=self.fbx:getMeshCount()
+
+	self.options=options
+	--
+	--fbx:getDefaultPose(jointpos, jointori)
+	local names=TStrings()
+	fbx:getBoneNames(names)
+	self.fbxNumLimbNodes=names:size()
+
 	local jointpos=vector3N()
 	local jointori=quaterN()
-	if self.fbx:hasBindPose(0) then
-		self:getBindPose(jointpos, jointori)
-		self:checkRelativeRestPose(jointpos, jointori)  -- heuristic.  I cannot find the option  that describes this condition.
+	if options.useMeshBindPose then --or fbx:getMeshCount()==1 then
+		-- ortiz.fbx 나 Kay.fbx등 fbx에 들어있는 restpose가 적절하지 않은 경우 사용.
+		local argMax=0
+		local max_bp=0
+		for i=0, mesh_count-1 do
+			local nbp=self.fbx:countBindPoses(i)
+			if nbp>max_bp then
+				argMax=i
+				max_bp=nbp
+			end
+		end
+		if max_bp>0 then
+			self.fbx:countBindPoses(argMax) -- update.
+			self:getBindPose(jointpos, jointori)
+			self:checkRelativeRestPose(jointpos, jointori)  -- heuristic.  I cannot find the option  that describes this condition.
+		else
+			fbx:getRestPose(jointpos, jointori)
+		end
 	else
 		fbx:getRestPose(jointpos, jointori)
 	end
+
 	--self:drawPose(jointpos, jointori, options, 'bindpose', vector3(-300,0,0))
 	--self:drawRestPose(options)
-
-
-	self.options=options
 
 	if options.mirror or options.toYUP or options.toZUP then
 		self.convertAxis=true
@@ -118,16 +248,26 @@ function FBXloader:genSkelTable(fbx, options)
 		self:mirrorQA(jointori)
 	end
 
-	--fbx:getDefaultPose(jointpos, jointori)
-	local names=TStrings()
-	fbx:getBoneNames(names)
+
 	local pid=fbx:parentIndices()
 	local skinScale=options.skinScale or 100
 
 	--dbg.drawBillboard( jointpos:matView()*skinScale, 'line3', 'redCircle', 10, 'QuadListV') -- QuadListV is view-dependent -> use drawBillboard
+	if names:size()==0 then
+		-- this fbx file has no skeleton
+		names:resize(1)
+		names:set(0, 'Root')
+		pid=CT.ivec(-1)
+		local pose=transf(fbx:getModelCurrPose('Model::Model'))
+
+		jointpos=vector3N(1)
+		jointpos(0):assign(pose.translation)
+		jointori=quaterN(1)
+		jointori(0):assign(pose.rotation)
+		self.rigidBody=true
+	end
 
 	local tbl, currentPose, bones, parent=MotionUtil.generateWRLfromRawInfo(names(0),1/5/skinScale , names, pid, jointpos, jointori)
-
 
 	for i=1, #bones do
 		bones[i].name=string.gsub(bones[i].name, " ", "__SPACE__")
@@ -170,9 +310,6 @@ function FBXloader:genSkelTable(fbx, options)
 		end
 	end
 
-	if options.cleanupBones then
-		targetIndex=FBXloader.cleanupBones(tbl, bones, targetIndex, options.cleanupBones, currentPose)
-	end
 	if false then
 		-- print selected bone names
 		for i=0, targetIndex:size()-1 do
@@ -191,7 +328,8 @@ function FBXloader:genSkelTable(fbx, options)
 			return bones
 		end
 
-		-- map from targetIndex to rotJointIndex of bindPose
+		-- map from targetIndex (==original rotJointIndex==original treeIndex-1)
+		-- to new rotJointIndex of bindPose
 		local invMap=intvectorn(origTargetIndex:maximum()+1)
 		invMap:setAllValue(-1)
 		for i=0, origTargetIndex:size()-1 do
@@ -243,12 +381,71 @@ function FBXloader:scale(scaleFactor)
 	self.loader:setPose(self.currentPose)
 end
 
+function FBXloader:scaleSubtree(ibone, scaleFactor)
+	if ibone==1 then
+		self:scale(scaleFactor)
+	else
+		local CA=require("RigidBodyWin/subRoutines/CollisionIK")
+		local isChildren=CA.checkAllChildrenExcluding(self.loader,self.loader:bone(ibone):name())
+		local contained=CA.checkAllChildren(self.loader,self.loader:bone(ibone):name())
+		local l=self.loader
+		for i=1, l:numBone()-1 do
+			if isChildren(i) then
+				local offset= l:bone(i):getOffsetTransform()
+				offset.translation:scale(scaleFactor)
+			end
+		end
+		self.loader:fkSolver():init()
+
+		for isubMesh, subMesh in ipairs(self.fbxInfo) do
+			local skin=subMesh.skin
+			for i=0, skin:numVertex()-1 do
+				local TI=skin:treeIndices(i)
+				for j=0, TI:size()-1 do
+					if contained(TI(j)) then
+						skin:localPos(i)(j):scale(scaleFactor)
+					end
+				end
+			end
+		end
+	end
+end
+function FBXloader:scaleBone(ibone, scaleFactor)
+	local b=self.loader:bone(ibone)
+	b=b:childHead()
+	local isV3=type(scaleFactor)~='number'
+	while b do
+		local offset= b:getOffsetTransform()
+		offset.translation:scale(scaleFactor)
+		b=b:sibling()
+	end
+	self.loader:fkSolver():init()
+
+	for isubMesh, subMesh in ipairs(self.fbxInfo) do
+		local skin=subMesh.skin
+		for i=0, skin:numVertex()-1 do
+			local TI=skin:treeIndices(i)
+			for j=0, TI:size()-1 do
+				if ibone==TI(j) then
+					skin:localPos(i)(j):scale(scaleFactor)
+				end
+			end
+		end
+	end
+end
+function FBXloader:_updateBindPoseMesh()
+	self.loader:setPose(self.bindpose)
+	self:_bakeBindPose()
+end
+
 function FBXloader:createSkinningInfo()
 
-
 	local subMesh=self.fbxInfo[1]
+	self:_updateBindPoseMesh()
 
 	if #self.fbxInfo>1 then
+		-- 
+
 		-- merge submeshes into one
 		local tot_mesh=#self.fbxInfo
 		local mm=util.MeshMerger(tot_mesh)
@@ -275,6 +472,7 @@ function FBXloader:createSkinningInfo()
 		end
 
 		subMesh.skin=skin
+		assert(self.bindpose_global) -- assert baked
 		skin:calcLocalVertexPositions(self.loader, mesh)
 	end
 	local fbx_info={}
@@ -283,6 +481,8 @@ function FBXloader:createSkinningInfo()
 		skinScale=self.options.skinScale
 	end
 	fbx_info.loader=self.loader:toVRMLloader(2.5/skinScale) -- tree index can be changed!!!
+	assert(fbx_info.loader.dofInfo:hasQuaternion(1)==self.loader.dofInfo:hasQuaternion(1)) 
+	assert(fbx_info.loader:bone(1):getRotationalChannels()==self.loader:bone(1):getRotationalChannels()) 
 	fbx_info.loader:setPose(self.bindpose)
 	fbx_info.mesh=subMesh[1]
 
@@ -314,7 +514,57 @@ function FBXloader:createSkinningInfo()
 	return fbx_info
 end
 
-function FBXloader:getAnim(loader)
+function FBXloader:getTraj(ianim, targetIndex)
+	local trajCache={}
+	local fbx=self.fbx
+	local info
+	if fbx.getAnim2 then
+		info=self.fbx:getAnimInfo(ianim)
+	end
+	for i=0, targetIndex:size()-1 do
+		local ti=i+1
+		local ilimb=targetIndex(i)
+
+
+		local keytime=vectorn()
+		local traj=matrixn()
+		if fbx.getAnim2 then
+			local nf=info(0)
+			local dt=info(1)
+			local T=info(2)
+			fbx:getAnim2(ianim, nf, T, ilimb, keytime, traj);
+
+			--local keytime2=vectorn()
+			--local traj2=matrixn()
+			--fbx:getAnim(ilimb, keytime2, traj2)
+			--if (traj2-traj):length()>1e-4 then
+			--	dbg.console()
+			--end
+		else
+			fbx:getAnim(ilimb, keytime, traj)
+		end
+		trajCache[ti]={keytime, traj}
+	end
+	if targetIndex(0) ~=0 then
+		-- root changed
+		assert(targetIndex(0)==1)
+		local keytime=vectorn()
+		local traj=matrixn()
+		local ilimb=0
+		if fbx.getAnim2 then
+			local nf=info(0)
+			local dt=info(1)
+			local T=info(2)
+			fbx:getAnim2(ianim, nf, T, ilimb, keytime, traj);
+		else
+			fbx:getAnim(ilimb, keytime, traj)
+		end
+		trajCache[0]={keytime, traj}
+	end
+	return trajCache
+end
+
+function FBXloader:_getAnim(ianim, loader, motion)
 	local nkey=-1
 	local fbx=self.fbx
 	local targetIndex=self.wrlInfo.targetIndex
@@ -329,16 +579,23 @@ function FBXloader:getAnim(loader)
 			return T
 		end
 	end
+	if fbx.getAnim2 then
+		for i=ianim, self.fbx:getAnimCount()-1 do
+			local info=self.fbx:getAnimInfo(i)
+			if info(0)>0 then
+				ianim=i
+				break
+			end
+		end
+	end
+	
+	local trajCache=FBXloader.getTraj(self, ianim, targetIndex)
 	for i=1, loader:numBone()-1 do
 		local keytime=vectorn()
 		local traj=matrixn()
 		local ilimb=i-1
 		ilimb=targetIndex(ilimb);
-		if self.trajCache and self.trajCache[i] then
-			keytime, traj=unpack(self.trajCache[i])
-		else
-			fbx:getAnim(ilimb, keytime, traj)
-		end
+		keytime, traj=unpack(trajCache[i])
 		if keytime:size()==0 then
 			-- no motion
 			break
@@ -348,53 +605,71 @@ function FBXloader:getAnim(loader)
 
 		local frameTime=keytime(1)-keytime(0)
 		if i==1 then
-			loader.mMotion:initEmpty(loader, nkey, frameTime)
+			motion:initEmpty(loader, nkey, frameTime)
 			if ilimb~=0 then
 				assert(ilimb==1)
-				local traj0=matrixn()
-				local keytime0=vectorn()
-				fbx:getAnim(0, keytime0, traj0)
+				local traj0, keytime0=unpack(trajCache[0])
 				for j=0, nkey-1 do
 					local tf0=getTF(traj0,j)
 					local tf=tf0*getTF(traj,j)
 
-					loader.mMotion:pose(j).rotations(0):assign(tf.rotation)
-					loader.mMotion:pose(j).translations(0):assign(tf.translation)
+					motion:pose(j).rotations(0):assign(tf.rotation)
+					motion:pose(j).translations(0):assign(tf.translation)
 				end
 			else
 				for j=0, nkey-1 do
 					local tf=getTF(traj, j)
-					loader.mMotion:pose(j).rotations(0):assign(tf.rotation)
-					loader.mMotion:pose(j).translations(0):assign(tf.translation)
+					motion:pose(j).rotations(0):assign(tf.rotation)
+					motion:pose(j).translations(0):assign(tf.translation)
 				end
 			end
 		else
 			local ri=loader:getRotJointIndexByTreeIndex(i)
 			for j=0, nkey-1 do
 				local tf=getTF(traj,j)
-				loader.mMotion:pose(j).rotations(ri):assign(tf.rotation)
+				motion:pose(j).rotations(ri):assign(tf.rotation)
 			end
 			local ti=loader:getTransJointIndexByTreeIndex(i)
 			if ti~=-1 then
 				for j=0, nkey-1 do
 					local tf=getTF(traj, j)
-					loader.mMotion:pose(j).translations(ti):assign(tf.translation)
+					motion:pose(j).translations(ti):assign(tf.translation)
 				end
 			end
 		end
 	end
 	if self.convertAxis then
-		for j=0, loader.mMotion:numFrames()-1 do
-			local pose=loader.mMotion:pose(j)
+		for j=0, motion:numFrames()-1 do
+			local pose=motion:pose(j)
 			self:mirrorVA(pose.translations)
 			self:mirrorQA(pose.rotations)
 		end
 	end
 end
 
+function FBXloader:getAnim(loader)
+	if self.fbx.getAnim2 then
+		self.trackNames={}
+		self.trackIndex={}
+		for i=0, self.fbx:getAnimCount()-1 do
+			table.insert(self.trackNames, self.fbx:getAnimName(i))
+			self.trackIndex[self.fbx:getAnimName(i)]=i
+		end
+	else
+		self.trackNames={ 'default'}
+	end
+	FBXloader._getAnim(self, 0, loader, loader.mMotion)
+end
+
+function FBXloader:loadTrack(trackName)
+	local loader=self.loader
+	self:_getAnim(self.trackIndex[trackName], loader, loader.mMotion)
+end
+
 function FBXloader:__mergeFBXloaders(loaders, options)
 	for i=1, #loaders do
 		print('numBone', i, loaders[i].loader:numBone())
+		loaders[i]:_updateBindPoseMesh()
 	end
 	-- bone supersets
 	local bones={}
@@ -480,30 +755,18 @@ function FBXloader:__mergeFBXloaders(loaders, options)
 	end
 	mloader:fkSolver():inverseKinematics()
 
-	local pose=Pose()
-	mloader:getPose(pose)
 
-	self.currentPose=pose
-	self.bindpose=pose
-
-	self.bindpose_global=quaterN(mloader:numBone())
-	for i=1, mloader:numBone()-1 do
-		self.bindpose_global(i):assign(mloader:bone(i):getFrame().rotation)
-	end
-
-	--local loader=mloader:toVRMLloader(2.5/options.skinScale)
-	self.loader=mloader
-	self.uid=RE.generateUniqueName()
+	self:_setBindPose(mloader)
 	local loader=mloader
 
-	loader:setPose(pose)
+	loader:setPose(self.bindpose)
 
 	if options.exportBVH then
 		local newLoader=loader
 
 		newLoader.mMotion:initEmpty(newLoader, 10)
 		for i=0, newLoader.mMotion:numFrames()-1 do
-			newLoader.mMotion:pose(i):assign(pose)
+			newLoader.mMotion:pose(i):assign(self.bindpose)
 		end
 		newLoader.mMotion:exportBVH(options.exportBVH)
 
@@ -556,6 +819,7 @@ function FBXloader:__mergeFBXloaders(loaders, options)
 		end
 
 		meshInfo.skin=skin
+		assert(self.bindpose_global) -- assert baked
 		skin:calcLocalVertexPositions(self.loader, mesh)
 
 		if mesh:numNormal()>0 then
@@ -571,6 +835,149 @@ function FBXloader:__mergeFBXloaders(loaders, options)
 		self:scale(1/100)
 	end
 
+end
+
+function FBXloader:exportBinary(fn)
+	if self.options and self.options.useTexture and self.fbx.saveTexturesToMemoryBuffer then
+		-- texture 이미지들이 파일로 저장된적이 없으니, 여기서 저장해야 한다.
+		self.fbx:saveTextures()
+		-- todo: fbx.dat에 저장해야하나? fbx.texturecache를 그대로 쓰는게 날까? 일단 이대로 두겠음.
+	end
+	self:_updateBindPoseMesh()
+	-- save necessary information only.
+	assert(string.sub(fn,-8)=='.fbx.dat')
+	local s= util.BinaryFile()
+	s:openWrite(fn, true) 
+	s:packInt(0) -- version
+	s:_pack(self.loader)
+	if self.rigidBody then
+		s:packInt(1)
+	else
+		s:packInt(0)
+	end
+	local fbxInfo={}
+	for i, v in ipairs(self.fbxInfo) do
+		local info={}
+		info.diffuseColor=v.diffuseColor
+		info.specularColor=v.specularColor
+		info.localNormal=v.localNormal
+		if v.diffuseTexture then
+			info.diffuseTexture=os.processFileName(v.diffuseTexture)
+		end
+		info.skin=v.skin
+		info.shininess=v.shininess
+		info[1]=v[1] -- Mesh
+		info[2]=v[2] -- name
+		fbxInfo[i]=info
+	end
+	s:packTable(fbxInfo)
+	s:_pack(self.bindpose)
+	s:_pack(self.currentPose)
+	s:_pack(self.loader:pose())
+	s:pack(self.bindpose_global)
+	s:close()
+end
+function FBXloader:__unpackBinary(s, filename)
+	local version=s:unpackInt() -- version
+	assert(version==0)
+	self.loader=MotionLoader()
+	s:_unpack(self.loader)
+	self.fbx={}
+	if s:unpackInt()==1 then
+		self.rigidBody =true
+	else
+		self.rigidBody =false
+	end
+	self.fbxInfo= s:unpackTable()
+	local bpose=Pose()
+	s:_unpack(bpose)
+	self.bindpose=bpose
+	local cpose=Pose()
+	s:_unpack(cpose)
+	self.currentPose=cpose
+	local cpose2=Pose()
+	s:_unpack(cpose2)
+	self.loader:setPose(cpose2)
+	self.bindpose_global=quaterN()
+	s:unpack(self.bindpose_global)
+
+	self.uid=RE.generateUniqueName()
+	for i, meshInfo in ipairs(self.fbxInfo) do
+		self:_loadTexture(meshInfo, filename)
+	end
+end
+function FBXloader:_setBindPose(mloader)
+	local pose=Pose()
+	mloader:getPose(pose)
+
+	self.bindpose=pose
+
+	if not self.currentPose then
+		self.currentPose=pose:copy()
+	end
+
+	-- shared bindpose_global
+	local bindpose_global=quaterN(mloader:numBone())
+	for i=1, mloader:numBone()-1 do
+		bindpose_global(i):assign(mloader:bone(i):getFrame().rotation)
+	end
+	self.bindpose_global=bindpose_global
+
+	--local loader=mloader:toVRMLloader(2.5/options.skinScale)
+	self.loader=mloader
+	self.uid=RE.generateUniqueName()
+end
+
+function FBXloader:_loadTexture(meshInfo,filename)
+	if RE.ogreSceneManager() and meshInfo.diffuseTexture then
+		meshInfo.diffuseTexture=os.processFileName(meshInfo.diffuseTexture)
+
+		local diffuseTexture
+		local image
+		if self.fbx.saveTexturesToMemoryBuffer then
+			-- first try to find in-memory images
+			for i=0, self.fbx:numTexture()-1 do
+				if os.filename(self.fbx:getTextureFileName(i))==meshInfo.diffuseTexture then
+					image=self.fbx:getTexture(i)
+				end
+			end
+		end
+		if image and image:GetWidth()==0 then
+			image=nil
+		end
+		if not image then
+			local _,filepath=os.processFileName(filename)
+			if os.isFileExist(meshInfo.diffuseTexture) then
+				diffuseTexture=meshInfo.diffuseTexture
+			elseif os.isFileExist(filepath..'/'..meshInfo.diffuseTexture) then
+				diffuseTexture=filepath..'/'..meshInfo.diffuseTexture
+			elseif os.isFileExist('../media12/mixamo/'..meshInfo.diffuseTexture) then
+				diffuseTexture='../media12/mixamo/'..meshInfo.diffuseTexture
+			elseif os.isFileExist('work/taesooLib/media12/mixamo/'..meshInfo.diffuseTexture) then
+				diffuseTexture='work/taesooLib/media12/mixamo/'..meshInfo.diffuseTexture
+			else
+				print('Warning! failed to find '..meshInfo.diffuseTexture)
+			end
+
+			if diffuseTexture then
+				image=CImage()
+				image:Load(diffuseTexture)
+			end
+		end
+		if RE.renderer().createMaterial then
+			-- latest taesooLib
+			meshInfo.material=self.uid..meshInfo.diffuseTexture
+			if image then
+				RE.renderer():createDynamicTexture(self.uid..meshInfo.diffuseTexture,image , meshInfo.diffuseColor, meshInfo.specularColor, meshInfo.shininess or 10)
+			else
+				RE.renderer():createMaterial(self.uid..meshInfo.diffuseTexture, meshInfo.diffuseColor, meshInfo.specularColor, meshInfo.shininess or 10)
+			end
+		elseif image then
+			RE.renderer():createDynamicTexture(self.uid..meshInfo.diffuseTexture,image , meshInfo.diffuseColor, meshInfo.specularColor)
+			meshInfo.material=self.uid..meshInfo.diffuseTexture
+			print("Error! cannot load "..meshInfo.diffuseTexture)
+		end
+	end
 end
 function FBXloader.getIndexMap(loader_i, loader)
 	local invMap_i={}
@@ -598,6 +1005,23 @@ function FBXloader:__init(filename, options)
 	if type(filename)=='table' then
 		self:__mergeFBXloaders(filename, options)
 		return
+	elseif type(filename)~='string' then
+		-- init empty
+		local loader=filename
+		self:_setBindPose(loader)
+		self.fbx={}
+		local meshInfo={ Mesh(), 'merged' , skin= SkinnedMeshFromVertexInfo()}
+		self.fbxInfo={ meshInfo }
+		return
+	elseif filename:sub(-8)=='.fbx.dat' then
+		local s= util.BinaryFile(true) -- load to memory.
+		if not s:openRead(filename) then
+			error("openRead"..filename)
+		end
+		self:__unpackBinary(s, filename)
+		s:close()
+		self:_postprocessOptions(filename, options)
+		return 
 	end
 	local fbx=util.FBXimporter(filename)
 
@@ -620,16 +1044,32 @@ function FBXloader:__init(filename, options)
 		
 
 		loader=FBXloader_lua.motionLoader(filename)
+
+		local boneExists={}
+		for i, binfo in ipairs(self.wrlInfo.bones) do
+			boneExists[binfo.name]=true
+		end
+
+
 		local i=1
 		while i<loader:numBone() do
 			local bone=loader:bone(i)
 			if bone:name()=='SITE' then
+				print('removing bone' ..i, bone:name())
 				loader:removeBone(bone)
+			elseif not boneExists[bone:name()] then
+				print('removing bone' ..i, bone:name())
+				loader:removeBone(bone)
+			else
+				i=i+1
 			end
-			i=i+1
 		end
-		for i=1, loader:numBone()-1 do
-			assert(loader:bone(i):name()==self.wrlInfo.bones[i].name)
+
+		local c=1
+		for i=1, #self.wrlInfo.bones do
+			local bname=self.wrlInfo.bones[i].name
+			assert (loader:bone(c):name()==bname) 
+			c=c+1
 		end
 		currentPose:assign(loader.mMotion:pose(0))
 	else
@@ -642,6 +1082,16 @@ function FBXloader:__init(filename, options)
 
 	self:getAnim(loader)  -- result goes to loader.mMotion
 
+	--[[
+	print(self.fbx:getAnimName(0))
+	do
+		local keytime=vectorn()
+		local traj=matrixn()
+		self.fbx:getAnim2(1,0,keytime, traj)
+		dbg.console()
+	end
+	]]
+	-- invMap: convert original tree index to new tree index
 	local invMap 
 	if targetIndex(0)~=0 or targetIndex~=CT.colon(0, loader:numBone()-1) then
 		local ti=targetIndex
@@ -690,14 +1140,10 @@ function FBXloader:__init(filename, options)
 	--self.loader:setPose(currentPose)
 	local mesh_count=fbx:getMeshCount()
 
-	local inv_bindpose_scale=1.0/fbx:getBindPose(targetIndex(0)):getColumn(0):length()
 
 	self.bindpose=self.currentPose
 	loader:setPose(self.bindpose)
-	self.bindpose_global=quaterN(loader:numBone())
-	for i=1, loader:numBone()-1 do
-		self.bindpose_global(i):assign(loader:bone(i):getFrame().rotation)
-	end
+
 
 	local chooseLOD=1
 	for i=1, mesh_count do
@@ -736,6 +1182,47 @@ function FBXloader:__init(filename, options)
 		local mesh=Mesh()
 		local mesh_name=fbx:getMesh(i, mesh)
 
+		local useRestPoseAsBindPose=false
+		if loader.mMotion:numFrames()> 0 and self.fbx:getMeshCount()>1 then
+			-- bigvegas_Walking.fbx의 bindpose가 이상해서 예외처리.
+			-- (motion이 있고, meshcount가 2 이상인경우 bindpose 대신 restpose사용-.-)
+			useRestPoseAsBindPose=true
+		end
+		if options.useMeshBindPose then
+			-- override 
+			useRestPoseAsBindPose=false
+		end
+
+		if not useRestPoseAsBindPose and not self.rigidBody then
+			-- use mesh bind pose
+			self.fbx:countBindPoses(i) -- update.
+			local jointpos=vector3N()
+			local jointori=quaterN()
+			self:getBindPose(jointpos, jointori)
+			if invMap then
+				for i=0, jointpos:size()-1 do
+					local newTI=invMap[i+1]
+					if newTI then
+						loader:bone(newTI):getFrame().rotation:assign(jointori(i))
+						loader:bone(newTI):getFrame().translation:assign(jointpos(i))
+					end
+				end
+			else
+				for i=0, jointpos:size()-1 do
+					loader:bone(i+1):getFrame().rotation:assign(jointori(i))
+					loader:bone(i+1):getFrame().translation:assign(jointpos(i))
+				end
+			end
+		end
+
+		local inv_bindpose_scale
+		if self.rigidBody then
+			inv_bindpose_scale=1.0
+		else
+			inv_bindpose_scale=1.0/fbx:getBindPose(targetIndex(0)):getColumn(0):length()
+		end
+
+
 		local pose=fbx:getMeshCurrPose(i)
 		pose:leftMultScaling(inv_bindpose_scale, inv_bindpose_scale, inv_bindpose_scale)
 		mesh:transform(pose)
@@ -760,6 +1247,16 @@ function FBXloader:__init(filename, options)
 						mesh:getFace(v):setIndex(f:colorIndex(0), f:colorIndex(2), f:colorIndex(1), Mesh.COLOR)
 					end
 				end
+			end
+		end
+		if self.options.flipNormal then
+			for v=0, mesh:numVertex()-1 do
+				mesh:getNormal(v):assign(-1*mesh:getNormal(v))
+			end
+
+			for v=0, mesh:numFace()-1 do
+				local f=mesh:getFace(v);
+				mesh:getFace(v):setIndex(f:vertexIndex(0), f:vertexIndex(2), f:vertexIndex(1), Mesh.VERTEX)
 			end
 		end
 
@@ -800,6 +1297,13 @@ function FBXloader:__init(filename, options)
 			end
 		end
 
+
+		local bindpose_global=quaterN(loader:numBone())
+		for i=1, loader:numBone()-1 do
+			bindpose_global(i):assign(loader:bone(i):getFrame().rotation)
+		end
+		meshInfo.bindpose_global=bindpose_global
+
 		skin:calcLocalVertexPositions(self.loader, mesh)
 
 		if mesh:numNormal()>0 then
@@ -813,13 +1317,34 @@ function FBXloader:__init(filename, options)
 	if chooseLOD<0 then
 		self.fbxInfo=fbxInfo
 	end
-	if options.useTexture then
-		fbx:saveTextures()
+	if options.useTexture or options.useTexCoord then
+		if options.useTexture then
+			if fbx.saveTexturesToMemoryBuffer then
+				-- latest taesooLib
+				if os.isFileExist(filename..'.texturecache') then
+					-- png로딩이 느려서 미리 저장한 uncompressed를 로딩.
+					local f=util.BinaryFile(false, filename..'.texturecache')
+
+					local timer=util.Timer()
+					fbx:unpackTextures(f)
+					f:close()
+					print('unpack textures', timer:stop2())
+				else
+					fbx:saveTexturesToMemoryBuffer()
+					-- png로딩이 느려서 그냥 uncompressed로 다시 저장.
+					local f=util.BinaryFile(true, filename..'.texturecache')
+					fbx:packTextures(f)
+					f:close()
+				end
+			else
+				fbx:saveTextures()
+			end
+		end
 		for ilist, i in ipairs(meshList) do
 			local c=fbx:getMaterialCount(i)
 			for j=0, c-1 do
-				print('diffuse', i, fbx:getDiffuseColor(i, j), fbx:getDiffuseTexture(i,j))
-				print('specular', i, fbx:getSpecularColor(i, j))
+				--print('diffuse', i, fbx:getDiffuseColor(i, j), fbx:getDiffuseTexture(i,j))
+				--print('specular', i, fbx:getSpecularColor(i, j))
 			end
 			if c>0 then
 				local j=0
@@ -827,20 +1352,72 @@ function FBXloader:__init(filename, options)
 				meshInfo.diffuseColor=fbx:getDiffuseColor(i, j)
 				meshInfo.specularColor=fbx:getSpecularColor(i, j)
 				assert(meshInfo.specularColor.x==meshInfo.specularColor.x)
+
+				if fbx.getMaterialPropertyTypes then
+					-- todo: support shiniess
+					--local types=fbx:getMaterialPropertyTypes (i,j)
+					local shininess=fbx:getMaterialProperty (i,j,'ShininessExponent')
+					if shininess:size()>0 then
+						meshInfo.shininess=shininess(0)
+					end
+				end
+				if not meshInfo.shininess then
+					meshInfo.shininess =10
+				end
 				meshInfo.diffuseTexture=filename:sub(1,-5)..'_'..os.filename(fbx:getDiffuseTexture(i,j))
 
-				if RE.ogreSceneManager() and os.isFileExist(meshInfo.diffuseTexture) then
-					local image=CImage()
-					image:Load(meshInfo.diffuseTexture)
-					RE.renderer():createDynamicTexture(self.uid..meshInfo.diffuseTexture,image , meshInfo.diffuseColor, meshInfo.specularColor)
-					meshInfo.material=self.uid..meshInfo.diffuseTexture
+				if meshInfo.diffuseTexture:endsWith('.png') then
+					-- todo: support transparency
 				end
-				
+
+				self:_loadTexture(meshInfo, filename)
 			end
 		end
-		print(fbx:getAllTextureNames())
+		--print(fbx:getAllTextureNames())
 	end
 
+	self:_postprocessOptions(filename, options)
+end
+
+function FBXloader:_postprocessOptions(filename,options)
+	if options.cleanupBones then
+		require("FBXloader_tools").FBXloader_cleanupBones(self, options.cleanupBones)
+	end
+	if options.scale then
+		self:scale(options.scale)
+	end
+	if options.currentPoseAsIdentity then
+		self:setCurPoseAsInitialPose()
+	end
+	if options.useBindPoseAsIdentityPose then
+		self:useBindPoseAsIdentityPose()
+	end
+	if options.cacheCollisionMesh then
+		if type(options.cacheCollisionMesh )=='string' then
+			assert( type(filename)=='string' )
+			assert(options.cacheCollisionMesh :sub(-10,-2)=='.colcache')
+			assert(tonumber(options.cacheCollisionMesh :sub(-1))~=nil)
+			self.cacheCollisionMesh=filename..options.cacheCollisionMesh 
+		elseif type(filename)=='string' then
+			--self.cacheCollisionMesh=filename..'.colcache' -- single convex per bone
+			self.cacheCollisionMesh=filename..'.colcache6' -- six convexes per bone
+		else
+			print('cacheCollisionMesh: this case is not supported.')
+		end
+	end
+	if options.boneNamePrefix then
+		local loader=self.loader
+		for i=1, loader:numBone()-1 do
+			loader:bone(i):setName( options.boneNamePrefix.. loader:bone(i):name())
+		end
+	end
+	if options.renameBones then
+		local loader=self.loader
+		for i=1, loader:numBone()-1 do
+			local newname=string.gsub(loader:bone(i):name(), unpack(options.renameBones))
+			loader:bone(i):setName(newname)
+		end
+	end
 end
 -- the original wrl table is changed in place.
 function FBXloader.changeRoot(wrl, bones, newRootBoneIndex, origTargetIndex)
@@ -958,9 +1535,12 @@ end
 FBXloader.Skin=LUAclass()
 function FBXloader.Skin:__init(fbxloader, option)
 	if not option then option={} end
+	self.scale=vector3(1,1,1)
 	self.fbx=fbxloader
+	self.fkSolver=fbxloader.loader:fkSolver():copy()
 	if option.drawSkeleton then
 		self.skelSkin=RE.createSkin(fbxloader.loader)
+		self.skelSkin:setPose(fbxloader.loader:pose())
 	end
 	self.uid=RE.generateUniqueName()
 
@@ -1003,13 +1583,87 @@ function FBXloader.Skin:__init(fbxloader, option)
 			entity:setMaterialName('grey_transparent')
 		end
 		local node=RE.createChildSceneNode(RE.ogreRootSceneNode(), self.uid..'_'..i)
-		self.nodes[i]= node
-		node:attachObject(entity)
+		self.nodes[i]= {node, vector3(0,0,0), vector3N()}
+
+		if self.fbx.rigidBody then
+			local node2=RE.createChildSceneNode(node, self.uid..'__'..i)
+			node2:attachObject(entity)
+
+			if not self.nodes2 then
+				self.nodes2={}
+			end
+			self.nodes2[i]=node2
+		else
+			node:attachObject(entity)
+		end
+	end
+	self:setPose(fbxloader.loader:pose())
+end
+
+function FBXloader.Skin:applyAnim(motion)
+	require('subRoutines/Timeline')
+	self.timeline=Timeline('fbx', motion:numFrames(), 1/motion:frameRate())
+	local EVR=LUAclass(EventReceiver)
+	EVR.__init=function(self)
+	end
+	EVR.onFrameChanged=function (self, win, iframe)
+		if iframe<self.motion:numFrames() then
+			self.skin:setPose(self.motion:pose(iframe))
+		end
+	end
+	self.EVR=EVR()
+	self.EVR.skin=self
+	self.EVR.motion=motion
+end
+function FBXloader.Skin:applyMotionDOF(dof)
+	require('subRoutines/Timeline')
+	self.timeline=Timeline('fbx', dof:numFrames(), 1/30)
+	local EVR=LUAclass(EventReceiver)
+	EVR.__init=function(self)
+	end
+	EVR.onFrameChanged=function (self, win, iframe)
+		if iframe<self.motion:numFrames() then
+			self.skin:setPoseDOF(self.motion(iframe))
+		end
+	end
+	self.EVR=EVR()
+	self.EVR.skin=self
+	self.EVR.motion=dof
+end
+
+
+function FBXloader.Skin:getNode(meshIndex)
+	return self.nodes[meshIndex][1]
+end
+function FBXloader.Skin:getNodeInfo(meshIndex)
+	return self.nodes[meshIndex]
+end
+-- return1 mesh: the index array is valid, but its vertex positions/normals member are invalid 
+-- return2 vertex array. (corresponding to the current pose of the skin)
+function FBXloader.Skin:getMesh(meshIndex)
+	return self.fbx.fbxInfo[meshIndex][1], self.nodes[meshIndex][3]
+end
+
+function FBXloader.Skin:numMesh()
+	return #self.nodes
+end
+
+
+function FBXloader.Skin:getState() 
+	return self.fkSolver
+end
+function FBXloader.Skin:setVisible(bVisible)
+	if self.skelSkin then
+		self.skelSkin:setVisible(bVisible)
+	end
+	for i, v in ipairs(self.nodes) do
+		v[1]:setVisible(bVisible)
 	end
 end
 function FBXloader.Skin:dtor()
+	self.skelSkin=nil
 	for i, v in ipairs(self.nodes) do
-		RE.removeEntity(v)
+		RE.removeEntity(v[1])
 	end
 	self.nodes=nil
 end
@@ -1018,6 +1672,15 @@ function FBXloader.Skin:setMaterial(name)
 		me:getLastCreatedEntity():setMaterialName(name)
 	end
 end
+function FBXloader.Skin:unsetMaterial()
+	for i, me in ipairs(self.ME) do
+		local meshInfo= self.fbx.fbxInfo[i]
+		me:getLastCreatedEntity():setMaterialName(meshInfo.material )
+	end
+end
+
+-- assuming self.loader==mLoader_orig
+-- poseconv=MotionUtil.PoseTransfer(mLoader, mLoader_orig, true)
 function FBXloader.Skin:setPoseTransfer(poseconv)
 	self.poseMap=poseconv
 end
@@ -1027,8 +1690,8 @@ function FBXloader.Skin:setPose(pose)
 		pose=Pose()
 		self.poseMap:target():getPose(pose)
 	end
-	self.fbx.loader:setPose(pose)
-	self:setSamePose(self.fbx.loader:fkSolver())
+	self.fkSolver:setPose(pose)
+	self:setSamePose(self.fkSolver)
 end
 function FBXloader.Skin:_setPose(pose, loader)
 	self:setPose(pose)
@@ -1040,51 +1703,159 @@ function FBXloader.Skin:setPoseDOF(pose)
 		self.poseMap:source():getPose(pose)
 		self.poseMap:setTargetSkeleton(pose)
 		self.poseMap:target():getPose(pose)
-		self.fbx.loader:setPose(pose)
+		self.fkSolver:setPose(pose)
 	else
-		self.fbx.loader:setPoseDOF(pose)
+		self.fkSolver:setPoseDOF(pose)
 	end
-	self:setSamePose(self.fbx.loader:fkSolver())
+	self:setSamePose(self.fkSolver)
 end
 function FBXloader.Skin:setSamePose(fk)
 	--assert(fk==self.fbx.loader:fkSolver()) BoneForwardKinematics.operator==  doesn't work yet.
 	if self.skelSkin then
 		self.skelSkin:setSamePose(fk)
 	end
+	self.fkSolver:assign(fk)
 	local fbxloader=self.fbx
+	if fbxloader.rigidBody then
+		for i, node2 in ipairs(self.nodes2) do
+			node2:setOrientation(fk:globalFrame(1).rotation)
+			node2:setPosition(fk:globalFrame(1).translation)
+		end
+		return
+	end
+	local rootTrans=fk:globalFrame(1).translation:copy()
+	for ibone=1, self.fkSolver:numBone()-1 do
+		--self.fkSolver:globalFrame(ibone).translation:rsub(rootTrans)
+	end
+
 	for i, meshInfo in ipairs(fbxloader.fbxInfo) do
 		local ME=self.ME[i]
+		local node=self.nodes[i]
 		local skin=meshInfo.skin
 		local mesh=meshInfo[1]
 
-		skin:calcVertexPositions(fbxloader.loader, mesh)
+		skin:calcVertexPositions(self.fkSolver, mesh)
+		local removeRootTrans=matrix4()
+		removeRootTrans:setTranslation(-rootTrans, false)
+		mesh:transform(removeRootTrans)
+
 		local useNormal=mesh:numNormal()>0
 		if useNormal then
-			skin:calcVertexNormals(fbxloader.loader, fbxloader.bindpose_global, meshInfo.localNormal, mesh)
+			skin:calcVertexNormals(self.fkSolver, fbxloader:_getBindPoseGlobal(i), meshInfo.localNormal, mesh)
 			ME:updatePositionsAndNormals()
 		else
 			ME:updatePositions()
 		end
+		if mesh.getVertices then
+			mesh:getVertices(node[3]) -- backup current mesh pose
+		end
+		node[1]:setPosition(node[2]+rootTrans*self.scale.x)
 	end
 end
 function FBXloader.Skin:setScale(x,y,z)
+	if not y then y=x end
+	if not z then z=x end
 	if self.skelSkin then
 		self.skelSkin:setScale(x,y,z)
 	end
 	for i ,node in ipairs(self.nodes) do
-		node:setScale(x,y,z)
+
+		local prevPos=node[1]:getPosition()
+		node[1]:setScale(x,y,z)
+		node[1]:setPosition(
+		prevPos.x/self.scale.x*x,
+		prevPos.y/self.scale.y*y,
+		prevPos.z/self.scale.z*z)
+	end
+	self.scale=vector3(x,y,z)
+end
+function FBXloader.Skin:_getVertexInWorld(meshIndex, vertexIndex)
+	local meshInfo=self.fbx.fbxInfo[meshIndex]
+	local skin=meshInfo.skin
+
+	return skin:calcVertexPosition(self.fkSolver, vertexIndex)
+end
+
+-- use proper ray pick
+function FBXloader.Skin:pickTriangle(x,y)
+	local ray=Ray()
+	RE.FltkRenderer():screenToWorldRay(x, y,ray)
+	return self:_pickTriangle(ray)
+end
+
+-- vertexPositions: relative to root translation.
+-- return { mesh:Mesh, skin:SkinnedMeshFromVertexInfo, vertexPositions:vector3N}
+function FBXloader.Skin:getMeshInfo(fbxMeshIndex)
+	if not fbxMeshIndex then
+		fbxMeshIndex=1
+	end
+	local node=self.nodes[fbxMeshIndex]
+	local meshInfo=self.fbx.fbxInfo[fbxMeshIndex]
+	local mesh=meshInfo[1]
+	return { mesh=meshInfo[1], skin=meshInfo.skin, vertexPositions=node[3], }
+end
+-- input ray will be modified!
+function FBXloader.Skin:_pickTriangle(ray)
+	local s=self.scale.x
+	local fbxMeshIndex=1 -- TODO: loop through all meshes
+	local node=self.nodes[fbxMeshIndex]
+	local meshPos=node[2]+self.fkSolver:globalFrame(1).translation*s
+	local out=vector3()
+	ray:translate(-meshPos)
+	ray:scale(1/s)
+
+	local out=vector3()
+	local baryCoeffs=vector3()
+	local mesh=self.fbx.fbxInfo[fbxMeshIndex][1]
+	local ti=ray:pickBarycentric(mesh,node[3],  baryCoeffs, out)
+
+	if ti>=0 then
+		return { faceIndex=ti, baryCoeffs=baryCoeffs, pos=meshPos+out*s}
+	else
+		return nil
 	end
 end
+function FBXloader.Skin:samplePosition(meshIndex, ti, baryCoeffs)
+	local meshInfo=self.fbx.fbxInfo[meshIndex]
+	local mesh=meshInfo[1]
+
+	local f=mesh:getFace(ti)
+	local v1, v2, v3
+	if mesh.getVertices then
+		local rootTrans=self.fkSolver:globalFrame(1).translation:copy()
+		local node=self.nodes[meshIndex]
+		local vertices=node[3]
+		v1=vertices(f:vertexIndex(0))+rootTrans
+		v2=vertices(f:vertexIndex(1))+rootTrans
+		v3=vertices(f:vertexIndex(2))+rootTrans
+	else
+		v1=self:_getVertexInWorld(meshIndex, f:vertexIndex(0))
+		v2=self:_getVertexInWorld(meshIndex, f:vertexIndex(1))
+		v3=self:_getVertexInWorld(meshIndex, f:vertexIndex(2))
+	end
+	local out2=v1*baryCoeffs.x+v2*baryCoeffs.y +v3*baryCoeffs.z
+	return out2
+end
 function FBXloader.Skin:setTranslation(x,y,z)
+	if y==nil then
+		assert(x)
+		y=x.y
+		z=x.z
+		x=x.x
+	end
 	if self.skelSkin then
 		self.skelSkin:setTranslation(x,y,z)
 	end
 	for i ,node in ipairs(self.nodes) do
-		node:setPosition(vector3(x,y,z))
+		node[1]:setPosition(node[1]:getPosition()-node[2]+vector3(x,y,z))
+		node[2]=vector3(x,y,z)
 	end
 end
 
 function RE.createFBXskin(fbxloader, drawSkeleton)
+	if not fbxloader.loader then
+		return RE.createSkinAuto(fbxloader)
+	end
 	if type(drawSkeleton)=='boolean' then
 		return FBXloader.Skin(fbxloader, { drawSkeleton=drawSkeleton})
 	else
@@ -1103,6 +1874,7 @@ function FBXloader.Converter:__init(filename)
 		end
 	end
 end
+function FBXloader.Converter:getMeshCount() return 0 end
 function FBXloader.Converter:hasBindPose(i) return false end
 function FBXloader.Converter:getRestPose(jointpos, jointori) 
 	local l=self.loader
@@ -1192,16 +1964,7 @@ function FBXloader.motionLoader(filename, options)
 	local targetIndex=info.wrlInfo.targetIndex
 	local currentPose=info.currentPose
 
-	local trajCache={}
-	for i=0, targetIndex:size()-1 do
-		local ti=i+1
-		local ilimb=targetIndex(i)
-
-		local keytime=vectorn()
-		local traj=matrixn()
-		fbx:getAnim(ilimb, keytime, traj)
-		trajCache[ti]={keytime, traj}
-	end
+	local trajCache=FBXloader.getTraj(info, 0, targetIndex)
 
 	for i, v in ipairs(bones) do
 		if trajCache[i][2]:cols()==7 then
@@ -1210,7 +1973,7 @@ function FBXloader.motionLoader(filename, options)
 	end
 	local loader=FBXloader.motionLoaderFromTable(bones, targetIndex)
 
-	FBXloader.getAnim(info, loader)
+	FBXloader.getAnim(info,loader)
 	loader:insertSiteBones()
 
 	if options.getTargetIndex then
@@ -1238,7 +2001,8 @@ function FBXloader.motionLoaderFromTable(bones)
 		mapBones[bone.name]=bone
 		local parent_treeIndex=bone.parent or parent[bone.name]
 		if parent_treeIndex then
-			loader:insertChildBone(loader:bone(parent_treeIndex), bone.name, false)
+			--loader:insertChildBone(loader:bone(parent_treeIndex), bone.name, false)
+			loader:insertChildBone(loader:getBoneByName(bones[parent_treeIndex].name), bone.name, false)
 		else
 			loader:insertChildBone(loader:bone(0), bone.name, false)
 		end
@@ -1273,11 +2037,13 @@ end
 
 function FBXloader:getBindPose(jointpos, jointori)
 	local fbx=self.fbx
-	local names=TStrings()
-	fbx:getBoneNames(names)
+	local numLimb=self.fbxNumLimbNodes
+	if not numLimb then
+		dbg.console()
+	end
 
 	local bindposes={}
-	for i=0, names:size()-1 do
+	for i=0, numLimb-1 do
 		local pose=fbx:getBindPose(i)
 		bindposes[i+1]=pose
 	end
@@ -1285,13 +2051,17 @@ function FBXloader:getBindPose(jointpos, jointori)
 	for i, v in ipairs(bindposes) do
 		v:leftMultScaling(inv_bindpose_scale, inv_bindpose_scale, inv_bindpose_scale)
 	end
-	jointpos:resize(names:size())
-	jointori:resize(names:size())
-	for i=0, names:size()-1 do
+	jointpos:resize(numLimb)
+	jointori:resize(numLimb)
+	for i=0, numLimb-1 do
 		local tf=transf(bindposes[i+1])
 		jointpos(i):assign(tf.translation)
 		jointori(i):assign(tf.rotation)
+	end
 
+	if self.convertAxis then
+		self:mirrorVA(jointpos)
+		self:mirrorQA(jointori)
 	end
 
 end

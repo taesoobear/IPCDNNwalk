@@ -262,6 +262,47 @@ void CollisionDetector_libccd_init_ColObject(OpenHRP::CollisionDetector_libccd::
 		}
 	}
 }
+
+vector2 OpenHRP::testSphereBox(vector3 const& center, double r, transf const& boxtf, vector3 const& box_size, vector3 & _pos, vector3& normal)
+{
+	ccd_t ccd;
+	CCD_INIT(&ccd);
+	ccd.support1 = ccdSupport;
+	ccd.support2 = ccdSupport;
+	ccd.center1  = ccdObjCenter;
+	ccd.center2  = ccdObjCenter;
+
+	ccd.max_iterations = 1000;     // maximal number of iterations
+	ccd.epa_tolerance  = 0.0001;  // maximal tolerance fro EPA part
+
+	int intersect=-1;
+
+	ccd_real_t depth; 
+	ccd_vec3_t dir; 
+	ccd_vec3_t pos;
+
+	ccd_sphere_t sphere;
+	sphere.type = CCD_OBJ_SPHERE;
+	copy(center, sphere.pos);
+	copy(quater(1,0,0,0), sphere.quat);
+	sphere._data=NULL;
+	sphere.radius=r;
+
+	ccd_box_t box;
+	box.type = CCD_OBJ_BOX;
+	copy(boxtf.translation, box.pos);
+	copy(boxtf.rotation, box.quat);
+	box._data=NULL;
+	box.x=box_size.x;
+	box.y=box_size.y;
+	box.z=box_size.z;
+
+	intersect = ccdMPRPenetration(&sphere, &box, &ccd, &depth, &dir, &pos); 
+
+	normal=ToBase(dir);
+	_pos=ToBase(pos);
+	return vector2((double)intersect, depth);
+}
 void CollisionDetector_libccd::_addModel(VRMLloader* loader)
 {
 	m_col_objects.resize(m_col_objects.size()+1);

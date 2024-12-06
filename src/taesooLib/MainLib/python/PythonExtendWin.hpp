@@ -5,16 +5,17 @@
 #endif
 #include "stdafx.h"
 #include "../../MainLib/OgreFltk/FlLayout.h"
-#include "PythonExtendWin.h"
+#include "_PythonExtendWin.h"
 #ifdef USE_BOOST_PYTHON
 #include  <boost/python.hpp>
 #endif
 #include <Python.h>
-#include "MainlibPython.h"
+#include "_MainlibPython.h"
 #include "../../MainLib/OgreFltk/MotionPanel.h"
 #include "../../MainLib/OgreFltk/FltkRenderer.h"
 #include "../../MainLib/OgreFltk/MovableText.h"
 #include "../../MainLib/OgreFltk/Loader.h"
+#include "../../MainLib/OgreFltk/RE.h"
 //#include "../../MainLib/OgreFltk/Joystick.h"
 #include "../../MainLib/OgreFltk/MotionPanel.h"
 //#include "../../MainLib/OgreFltk/OgreMotionLoader.h"
@@ -84,7 +85,6 @@ void readFile(TString & a, const char* fn)
 		{
 			inFile.getline(buf,1000,'\n');
 #ifdef _DEBUG
-			// import mainlibÀ» import mainlib_debug as mainlibÀ¸?? Ä¡È¯???Ö¾????Ñ´?.
 
 			TString temp=buf;
 			if(temp.find("import mainlib")!=-1)
@@ -115,12 +115,34 @@ void PythonExtendWin::onCallback(FlLayout::Widget const& w, Fl_Widget * pWidget,
 	if(w.mId=="scriptfn"|| w.mId=="load"|| w.mId=="X")
 		ScriptBaseWin::onCallback(w, pWidget, userData);
 	else
-		g_pythonEnv->m_main_namespace["onCallback"](w, userData); 
+	{
+		if (g_pythonEnv->m_main_namespace.contains("onCallback"))
+		{
+			try{
+				g_pythonEnv->m_main_namespace["onCallback"](w, userData); 
+			}
+			catch( pybind11::error_already_set &e)
+			{
+				printf("python error: %s\n", e.what());
+				throw e;
+			}
+		}
+	}
 }
 
 void PythonExtendWin::OnFrameChanged(FltkMotionWindow* p, int currFrame)
 {
-	g_pythonEnv->m_main_namespace["onFrameChanged"](currFrame); 
+	if (g_pythonEnv->m_main_namespace.contains("onFrameChanged"))
+	{
+		try{
+		g_pythonEnv->m_main_namespace["onFrameChanged"](currFrame); 
+		}
+		catch( pybind11::error_already_set &e)
+		{
+			printf("python error: %s\n", e.what());
+			throw e;
+		}
+	}
 }
 
 // PLDPrimSkin::DrawCallback
@@ -131,7 +153,18 @@ void PythonExtendWin::draw(const Motion& mot, int iframe)
 // FrameMoveObject
 int PythonExtendWin::FrameMove(float fElapsedTime)
 {
-	g_pythonEnv->m_main_namespace["frameMove"](fElapsedTime); 
+	if(g_pythonEnv->m_main_namespace.contains("frameMove"))
+	{
+		try{
+			g_pythonEnv->m_main_namespace["frameMove"](fElapsedTime);
+		}
+		catch( pybind11::error_already_set &e)
+		{
+			printf("python error: %s\n", e.what());
+			throw e;
+		}
+	}
+
 	return 1;
 }
 
@@ -165,8 +198,19 @@ int PythonExtendWin::handleRendererKeyboardEvent(int ev, int key)
 		double out= call<double> (callback,evs.ptr(), keys.ptr(),0,0);
 		return int(out);
 #else
-		double out=g_pythonEnv->m_main_namespace["handleRendererEvent"](evs.ptr(), keys.ptr(), 0,0).cast<double>();
-		return 0;
+		double out=0.0;
+		if(g_pythonEnv->m_main_namespace.contains("handleRendererEvent"))
+		{
+			try{
+				out=g_pythonEnv->m_main_namespace["handleRendererEvent"](evs.ptr(), keys.ptr(), 0,0).cast<double>();
+			}
+			catch( pybind11::error_already_set &e)
+			{
+				printf("python error: %s\n", e.what());
+				throw e;
+			}
+		}
+		return int(out);
 #endif
 	}
 }
@@ -196,7 +240,18 @@ int PythonExtendWin::handleRendererMouseEvent(int ev, int x, int y, int button)
 
 	return int(out);
 #else
-	double out=g_pythonEnv->m_main_namespace["handleRendererEvent"](evs.ptr(), button, x, y).cast<double>();
+	double out=0.0;
+	if(g_pythonEnv->m_main_namespace.contains("handleRendererEvent"))
+	{
+		try{
+		out=g_pythonEnv->m_main_namespace["handleRendererEvent"](evs.ptr(), button, x, y).cast<double>();
+		}
+		catch( pybind11::error_already_set &e)
+		{
+			printf("python error: %s\n", e.what());
+			throw e;
+		}
+	}
 	return int(out);
 #endif
 }
@@ -372,7 +427,20 @@ int PythonExtendWin::work(TString const& workname, lunaStack& L)
 #ifdef USE_BOOST_PYTHON
 		import("luamodule").attr("pycallFromLua")(arg);
 #else
-		WRAP_PY::module_::import("luamodule").attr("pycallFromLua")(arg);
+		try{
+			WRAP_PY::module_::import("luamodule").attr("pycallFromLua")(arg);
+		}
+		catch( pybind11::error_already_set &e)
+		{
+			try{
+				WRAP_PY::module_::import("work.luamodule").attr("pycallFromLua")(arg);
+			}
+			catch( pybind11::error_already_set &e)
+			{
+				printf("python error: %s\n", e.what());
+				throw e;
+			}
+		}
 #endif
 		return 0;
 	}
@@ -391,3 +459,24 @@ int PythonExtendWin::work(TString const& workname, lunaStack& L)
 
 	else return ScriptBaseWin::work(workname, L);
 }
+#ifdef NO_GUI
+PythonExtendWin* getAdditionalPythonWin(PythonExtendWin* parent, int worker_id)
+{
+	auto& m_pAdditionalPythonWins=parent->m_pAdditionalPythonWins;
+	if( m_pAdditionalPythonWins.size()<=worker_id)
+	{
+		int psize=m_pAdditionalPythonWins.size();
+		m_pAdditionalPythonWins.resize(worker_id+1);
+		for(int i=psize; i<worker_id+1; i++)
+			m_pAdditionalPythonWins[i]=NULL;
+	}
+	if( m_pAdditionalPythonWins[worker_id]==NULL)
+	{
+		static MotionPanel unused(0,0,10,10);
+		m_pAdditionalPythonWins[worker_id]=new PythonExtendWin(0,0,10,10,unused, RE::FltkRenderer());
+		m_pAdditionalPythonWins[worker_id]->__loadEmptyScript();
+	}
+
+	return m_pAdditionalPythonWins[worker_id];
+}
+#endif

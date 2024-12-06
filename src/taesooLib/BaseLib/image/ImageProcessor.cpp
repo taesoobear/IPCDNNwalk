@@ -34,24 +34,76 @@
 #include "../math/mathclass.h"
 #include "../math/bitVectorN.h"
 
-
-void Imp::blit(CImage& out, CImage const& in, TRect const& rect_in, int x, int y)
+namespace Imp{
+void overlay(CImage& out, CImage const& in, int out_x, int out_y)
 {
-	out.Create(rect_in.right-rect_in.left, rect_in.bottom-rect_in.top);
-	ASSERT(&out != &in);
-	ASSERT(rect_in.left>=0);
-	ASSERT(rect_in.right<=in.GetWidth());
-	ASSERT(rect_in.top>=0);
-	ASSERT(rect_in.bottom<=in.GetHeight());
-	ASSERT(rect_in.right>rect_in.left);
-	ASSERT(rect_in.bottom>rect_in.top);
-	ASSERT(x<out.GetWidth());
-	ASSERT(y<out.GetHeight());
-	ASSERT(x+rect_in.Width()<=out.GetWidth());
-	ASSERT(y+rect_in.Height()<=out.GetHeight());
+	int right=MIN(out.GetWidth(), in.GetWidth()+out_x);
+	int bottom=MIN(out.GetHeight(), in.GetHeight()+out_y);
+	
+	//printf("%d %d %d %d\n", in.GetWidth(), in.GetHeight(), out.GetWidth(), out.GetHeight());
+	for(int j=out_y; j<bottom; j++)
+	{
+		//printf("j:%d %d\n", j, out_y);
+		CPixelRGB8 * line=in.GetPixel(0, j-out_y);
+		//printf("a\n");
+		CPixelRGB8 * outl=out.GetPixel(0, j);
+		//printf("b %d %d %d\n", out_x, right, in.GetWidth());
+		for(int i=out_x; i<right; i++)
+		{
+			outl[i]=line[i-out_x];
+		}
+		//printf("c %d %d\n", out.GetWidth(), out.GetHeight());
+	}
+}
+}
+
+void Imp::blit(CImage& out, CImage const& in, TRect const& _rect_in, int x, int y)
+{
+	TRect rect_in=_rect_in;
+
+	if (rect_in.right>in.GetWidth())
+		rect_in.right=in.GetWidth();
+	if (rect_in.bottom>in.GetHeight())
+		rect_in.bottom=in.GetHeight();
+	if (rect_in.bottom<=rect_in.top)
+	{
+		printf("%d %d %d\n", rect_in.bottom, rect_in.top, in.GetHeight());
+		return;
+	}
+
+	if(&out==&in)
+	{
+		CImage src;
+		src.CopyFrom(in);
+		blit(out, src, _rect_in, x, y);
+		return;
+	}
+
+	//out.Create(rect_in.right-rect_in.left, rect_in.bottom-rect_in.top);
+	//printf("0\n");
+	RANGE_ASSERT(&out != &in);
+	//printf("1\n");
+	RANGE_ASSERT(rect_in.left>=0);
+	//printf("2\n");
+	RANGE_ASSERT(rect_in.right<=in.GetWidth());
+	//printf("3\n");
+	RANGE_ASSERT(rect_in.top>=0);
+	//printf("5\n");
+	RANGE_ASSERT(rect_in.right>rect_in.left);
+	//printf("6\n");
+	RANGE_ASSERT(rect_in.bottom>rect_in.top);
+	//printf("7\n");
+	RANGE_ASSERT(x<out.GetWidth());
+	//printf("8\n");
+	RANGE_ASSERT(y<out.GetHeight());
+	//printf("9\n");
+	RANGE_ASSERT(x+rect_in.Width()<=out.GetWidth());
+	//printf("1\n");
+	//RANGE_ASSERT(y+rect_in.Height()<=out.GetHeight());
 	
 	for(int j=rect_in.top; j<rect_in.bottom; j++)
 	{
+		if(j-rect_in.top+y>=out.GetHeight()) break;
 		CPixelRGB8 * line=in.GetPixel(0, j);
 		CPixelRGB8 * outl=out.GetPixel(0, j-rect_in.top+y);
 		for(int i=rect_in.left; i<rect_in.right; i++)
@@ -59,8 +111,35 @@ void Imp::blit(CImage& out, CImage const& in, TRect const& rect_in, int x, int y
 			outl[i-rect_in.left+x]=line[i];
 		}
 	}
+	//printf("2\n");
 }
 
+void Imp::downsample4(CImage& out, CImage const& in)
+{
+	int newWidth=in.GetWidth()/2;
+	int newHeight=in.GetHeight()/2;
+	out.Create(newWidth, newHeight);
+	CImagePixel op(&out);
+	CImagePixel ip((CImage*)&in);
+	
+	for(int i=0; i<newHeight; i++)
+	{
+		CPixelRGB8* lineo=out.GetPixel(0,i);
+		CPixelRGB8* line1=in.GetPixel(0,i*2);
+		CPixelRGB8* line2=in.GetPixel(0,i*2+1);
+		for(int j=0; j<newWidth; j++)
+		{
+			CPixelRGB8& p1=line1[j*2];
+			CPixelRGB8& p2=line1[j*2+1];
+			CPixelRGB8& p3=line2[j*2];
+			CPixelRGB8& p4=line2[j*2+1];
+			
+			lineo[j].R=(unsigned char)(((int)p1.R+(int)p2.R+(int)p3.R+(int)p4.R+2)/4);
+			lineo[j].G=(unsigned char)(((int)p1.G+(int)p2.G+(int)p3.G+(int)p4.G+2)/4);
+			lineo[j].B=(unsigned char)(((int)p1.B+(int)p2.B+(int)p3.B+(int)p4.B+2)/4);
+		}
+	}
+}
 void Imp::drawBox(CImage& inout, TRect const& t, int R, int G, int B)
 {
 	CImagePixel p(&inout);
@@ -68,7 +147,7 @@ void Imp::drawBox(CImage& inout, TRect const& t, int R, int G, int B)
 }
 void Imp::concatVertical(CImage& out, CImage const& a, CImage const& b)
 {
-//ASSERT(a.GetWidth()==b.GetWidth());
+	//ASSERT(a.GetWidth()==b.GetWidth());
 
 	if(a.GetHeight()==0)
 	{
@@ -93,7 +172,7 @@ void Imp::concatVertical(CImage& out, CImage const& a, CImage const& b)
 		return;
 	}
 
-out.Create(MAX(a.GetWidth(), b.GetWidth()), a.GetHeight()+b.GetHeight()+1);
+	out.Create(MAX(a.GetWidth(), b.GetWidth()), a.GetHeight()+b.GetHeight()+1);
 	
 	if(a.GetWidth()<b.GetWidth())
 	{
@@ -114,7 +193,14 @@ out.Create(MAX(a.GetWidth(), b.GetWidth()), a.GetHeight()+b.GetHeight()+1);
 	p.DrawHorizLine(10, a.GetHeight(), 10, CPixelRGB8(128,128,128));
 
 	ilOverlayImage(b._getILid(), 0, a.GetHeight()+1, 0);
-	#endif
+#else
+	overlay(out, a, 0,0);
+	CImagePixel p(&out);
+	p.DrawHorizLine(0, a.GetHeight(), out.GetWidth(), CPixelRGB8(255,255,255));
+	p.DrawHorizLine(10, a.GetHeight(), 10, CPixelRGB8(128,128,128));
+
+	overlay(out, b, 0,a.GetHeight()+1);
+#endif
 }
 
 void Imp::sharpen(CImage& out, double factor, int iterations)
@@ -134,12 +220,11 @@ void Imp::contrast(CImage& out, double factor)
 #endif
 }
 
+void gammaCorrection(CImage& _bitmapData, double fGamma);
 void Imp::gammaCorrect(CImage& out, double factor)
 {
-#ifndef NO_DEVIL
-	ilBindImage(out._getILid());
-	iluGammaCorrect(factor);
-#endif
+		// my implementation
+		gammaCorrection(out, 1.0/factor);
 }
 
 void applyFloydSteinberg(CImage& _bitmapData, int _levels);
@@ -208,6 +293,13 @@ void Imp::rotateRight(CImage& out, CImage const& in)
 
 void Imp::crop(CImage& out, CImage const& in, int left, int top, int right, int bottom)
 {
+	if(&out==&in)
+	{
+		CImage src;
+		src.CopyFrom(in);
+		crop(out, src, left, top, right, bottom);
+		return;
+	}
 	int width=right-left;
 	int height=bottom-top;
 	out.Create(width, height);
@@ -225,10 +317,15 @@ void Imp::crop(CImage& out, CImage const& in, int left, int top, int right, int 
 
 
 int Imp::_private::g_nChartPrecision=256;
+int Imp::_private::g_nBoolChartPrecision=10;
 
 void Imp::ChangeChartPrecision(int precision)
 {
 	Imp::_private::g_nChartPrecision=precision;
+}
+void Imp::ChangeBoolChartPrecision(int precision)
+{
+	Imp::_private::g_nBoolChartPrecision=precision;
 }
 
 void Imp::DefaultPrecision()
@@ -316,7 +413,7 @@ int ToImageY(double y, double min, double max, int yoffset)
 	int j=M_ToImageY(y);
 	if(j<0) j=0;
 	else if(j>(_private::g_nChartPrecision-1)) j=(_private::g_nChartPrecision-1);
-	j=(_private::g_nChartPrecision-1)-j;
+	//j=(_private::g_nChartPrecision-1)-j; // flipY
 	j+=yoffset;
 	return j;
 }
@@ -334,16 +431,16 @@ void _private::DrawChart(CImage* pInput, int numFrame, double* aValue,float min,
 	{
 		// draw y=0 line.
 		int zero_y=ToImageY(0, min, max, yoffset);
-		inputptr.DrawLine(0+xoffset, zero_y, xdelta*(numFrame-1)+xoffset,zero_y,CPixelRGB8(128,128,128));
+		inputptr.DrawLine(0+xoffset, zero_y, xdelta*(numFrame-1)+xoffset,zero_y,CPixelRGB8(208,208,208));
 	}
 	// draw top line
 	inputptr.DrawLine( 0+xoffset, (_private::g_nChartPrecision-1)+yoffset, xdelta*(numFrame-1)+xoffset, (_private::g_nChartPrecision-1)+yoffset, CPixelRGB8(128,128,128));
 
 	char temp[100];
-    sprintf(temp,"%f", min);
-	inputptr.DrawText(0+xoffset,240+yoffset, temp);
-	sprintf(temp,"%f", max);
+    sprintf(temp,"%.2f", min);
 	inputptr.DrawText(0+xoffset,yoffset, temp);
+	sprintf(temp,"%.2f", max);
+	inputptr.DrawText(0+xoffset,pInput->GetHeight()-20+yoffset, temp);
 
 
 
@@ -507,13 +604,14 @@ CImage* DrawChart(const matrixn& matrix, int chart_type, float min, float max , 
 	CImagePixel cip(pImage);
 	cip.Clear(CPixelRGB8(255,255,255));
 
-	CPixelRGB8 color[2];
-	color[0]=CPixelRGB8(0,0,128);
-	color[1]=CPixelRGB8(0,128,0);
+	CPixelRGB8 color[3];
+	color[0]=CPixelRGB8(200,0,0);
+	color[1]=CPixelRGB8(0,200,0);
+	color[2]=CPixelRGB8(0,0,200);
 
 	for(int i=0; i<matrix.rows(); i++)
 	{
-		_private::DrawChart(pImage, matrix.cols(), matrix[i], range.start(), range.end(), color[i%2], 0, 0, 1,chart_type);
+		_private::DrawChart(pImage, matrix.cols(), matrix[i], range.start(), range.end(), color[i%3], 0, 0, 1,chart_type);
 		if(horizLine!=FLT_MAX)
 		{
 			CImagePixel cip(pImage);
@@ -624,29 +722,40 @@ CImage* DrawChart(const vectorn& vector, int chart_type, float min, float max)
 
 CImage* DrawChart(const bitvectorn& ab, CPixelRGB8 color)
 {
+	int H=Imp::_private::g_nBoolChartPrecision;
 	CImage* pImage=new CImage();
-	pImage->Create(ab.size(), 20);
+	pImage->Create(ab.size(), H);
 
 	CImagePixel cip(pImage);
-	cip.DrawBox(TRect(0,0,ab.size(), 20), CPixelRGB8(0,0,0));
+	cip.DrawBox(TRect(0,0,ab.size(), H), CPixelRGB8(0,0,0));
 	for(int i=0; i<ab.size(); i++)
 	{
 		if(ab[i])
-			cip.DrawVertLine(i, 0, 20, color);
+			cip.DrawVertLine(i, 0, H, color);
 	}
 
 	return pImage;
 }
 
-CImage* DrawChart(const intvectorn& ab, const char* colormapfile)
+std::string defaultColormapFile()
 {
+	return RE::taesooLibPath()+"Resource/default/colormap.bmp";
+}
+CImage* DrawChart(const intvectorn& ab, const char* _colormapfile)
+{
+	std::string colormapfile;
+	if(!_colormapfile)
+		colormapfile=defaultColormapFile();
+	else
+		colormapfile=_colormapfile;
+	
 	CImage* pImage=new CImage();
 	pImage->Create(ab.size(), 20);
 
 	CImagePixel cip(pImage);
 
 	CImage icolormap;
-	icolormap.Load(colormapfile);
+	icolormap.Load(colormapfile.c_str());
 	CImagePixel colormap(&icolormap);
 
 	int min=ab.minimum();

@@ -1,7 +1,7 @@
 
 require("module")
 
-if not Physics then return end
+if not Physics or not Physics.DynamicsSimulator then return end
 function Physics.DynamicsSimulator:getPoseDPose(ichar)
 	local pose=vectorn()
 	local dpose=vectorn()

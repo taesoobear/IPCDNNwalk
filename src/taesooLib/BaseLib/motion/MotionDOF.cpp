@@ -140,13 +140,8 @@ void MotionDOFinfo::getDOF(Posture const& p, vectorn& dof) const
 		{
 			int start=startT(i);
 			int ti=bone.transJointIndex();
-			vector3 init_pos= bone.getOffsetTransform().translation;
-			for(int c=0, nc=bone.getTranslationalChannels().length();
-				c<nc; c++)
-			{
-				int xyz=bone.getTranslationalChannels()[c]-'X';
-				dof[start+c]=p.m_aTranslations[ti][xyz]-init_pos[xyz]; // X or Y or Z
-			}
+
+			bone.setLocalTrans(p.m_aTranslations[ti], &dof[start]);
 		}
 
 		int start=startR(i);
@@ -160,40 +155,7 @@ void MotionDOFinfo::getDOF(Posture const& p, vectorn& dof) const
 
 		if(hasAngles(i))
 		{
-			if(bone.getRotationalChannels().findChar(0,'A')!= -1)
-			{
-				for(int i=0;i<bone.getRotationalChannels().length();i++)
-				{
-					vector3 axis;
-					quater& qRot = p.m_aRotations[ri];
-
-					int numChannels = strlen(bone.getRotationalChannels());
-					for(int c=0;c<numChannels;c++)
-					{
-					//	printf("###%d %d###\n",start,c);
-						axis = bone.getArbitraryAxis(c);
-						dof[start+c] = qRot.rotationAngleAboutAxis(axis);
-						//printf("dof %d : %lf\n",start+c,dof[start+c]);	
-					}
-				}
-			}
-			else
-			{
-				m_real aValue[3];
-
-				p.m_aRotations[ri].getRotation(bone.getRotationalChannels(), aValue);
-				/*
-				quater q,qerr;
-				q.setRotation(bone.getRotationalChannels(), aValue);
-				qerr.difference(q, p.m_aRotations[ri]);
-				qerr.align(quater(1,0,0,0));
-				Msg::verify(qerr.rotationAngle()<0.001,"conversion error");
-				*/
-				
-				for(int c=0,nc=bone.getRotationalChannels().length()
-					; c<nc; c++)
-					dof[start+c]=aValue[c];
-			}
+			bone.setLocalOri(p.m_aRotations[ri], &dof[start]);
 		}
 	}
 }
@@ -1389,5 +1351,6 @@ void MotionDOF::calcForwardDerivative(int i, vectorn & dpose, double frameRate) 
 	transf T=rootTransformation(i);
 	Liegroup::se3 V=Liegroup::twist(T, rootTransformation(i+1), 1.0/frameRate);
 	dpose.setVec3(0, V.V());
+	dpose.setVec3(3, 0.0);
 	dpose.setVec3(4, V.W());
 }

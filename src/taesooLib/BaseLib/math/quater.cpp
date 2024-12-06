@@ -926,7 +926,7 @@ m_real quater::rotationAngleAboutAxis(const vector3& axis) const
 	return qaxis.rotationAngle(axis);
 }
 
-TString quater::output(bool bRotationVector)
+std::string quater::output(bool bRotationVector)
 {	
 	if(bRotationVector)
 	{
@@ -937,7 +937,7 @@ TString quater::output(bool bRotationVector)
 
 	TString temp;
 	temp.format("(%.10f %.10f %.10f %.10f)", w, x, y, z);
-	return temp;
+	return std::string(temp.ptr());
 }
 std::ostream &operator << (std::ostream &os, const quater &v)
 {

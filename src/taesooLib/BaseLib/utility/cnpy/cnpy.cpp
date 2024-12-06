@@ -16,6 +16,7 @@
 #include<stdint.h>
 #include<stdexcept>
 #include <regex>
+#include "../BinaryFile.h"
 
 char cnpy::BigEndianTest() {
     int x = 1;
@@ -64,7 +65,7 @@ template<> std::vector<char>& cnpy::operator+=(std::vector<char>& lhs, const cha
     return lhs;
 }
 
-void cnpy::parse_npy_header(unsigned char* buffer,size_t& word_size, std::vector<size_t>& shape, bool& fortran_order) {
+char cnpy::parse_npy_header(unsigned char* buffer,size_t& word_size, std::vector<size_t>& shape, bool& fortran_order) {
     //std::string magic_string(buffer,6);
     uint8_t major_version = *reinterpret_cast<uint8_t*>(buffer+6);
     uint8_t minor_version = *reinterpret_cast<uint8_t*>(buffer+7);
@@ -80,6 +81,8 @@ void cnpy::parse_npy_header(unsigned char* buffer,size_t& word_size, std::vector
     //shape
     loc1 = header.find("(");
     loc2 = header.find(")");
+    if (loc1 == std::string::npos || loc2 == std::string::npos)
+        throw std::runtime_error("parse_npy_header: failed to find header keyword: '(' or ')'");
 
     std::regex num_regex("[0-9][0-9]*");
     std::smatch sm;
@@ -98,15 +101,17 @@ void cnpy::parse_npy_header(unsigned char* buffer,size_t& word_size, std::vector
     bool littleEndian = (header[loc1] == '<' || header[loc1] == '|' ? true : false);
     assert(littleEndian);
 
-    //char type = header[loc1+1];
+    char type = header[loc1+1];
     //assert(type == map_type(T));
 
     std::string str_ws = header.substr(loc1+2);
     loc2 = str_ws.find("'");
     word_size = atoi(str_ws.substr(0,loc2).c_str());
+	if (type=='U') word_size*=4;
+	return type;
 }
 
-void cnpy::parse_npy_header(FILE* fp, size_t& word_size, std::vector<size_t>& shape, bool& fortran_order) {  
+char cnpy::parse_npy_header(FILE* fp, size_t& word_size, std::vector<size_t>& shape, bool& fortran_order) {  
     char buffer[256];
     size_t res = fread(buffer,sizeof(char),11,fp);       
     if(res != 11)
@@ -149,12 +154,14 @@ void cnpy::parse_npy_header(FILE* fp, size_t& word_size, std::vector<size_t>& sh
     bool littleEndian = (header[loc1] == '<' || header[loc1] == '|' ? true : false);
     assert(littleEndian);
 
-    //char type = header[loc1+1];
+    char type = header[loc1+1];
     //assert(type == map_type(T));
 
     std::string str_ws = header.substr(loc1+2);
     loc2 = str_ws.find("'");
     word_size = atoi(str_ws.substr(0,loc2).c_str());
+	if (type=='U') word_size*=4;
+	return type;
 }
 
 void cnpy::parse_zip_footer(FILE* fp, uint16_t& nrecs, size_t& global_header_size, size_t& global_header_offset)
@@ -184,9 +191,9 @@ cnpy::NpyArray load_the_npy_file(FILE* fp) {
     std::vector<size_t> shape;
     size_t word_size;
     bool fortran_order;
-    cnpy::parse_npy_header(fp,word_size,shape,fortran_order);
+    char type=cnpy::parse_npy_header(fp,word_size,shape,fortran_order);
 
-    cnpy::NpyArray arr(shape, word_size, fortran_order);
+    cnpy::NpyArray arr(shape, word_size, fortran_order, type);
     size_t nread = fread(arr.data<char>(),1,arr.num_bytes(),fp);
     if(nread != arr.num_bytes())
         throw std::runtime_error("load_the_npy_file: failed fread");
@@ -223,9 +230,9 @@ cnpy::NpyArray load_the_npz_array(FILE* fp, uint32_t compr_bytes, uint32_t uncom
     std::vector<size_t> shape;
     size_t word_size;
     bool fortran_order;
-    cnpy::parse_npy_header(&buffer_uncompr[0],word_size,shape,fortran_order);
+    char type=cnpy::parse_npy_header(&buffer_uncompr[0],word_size,shape,fortran_order);
 
-    cnpy::NpyArray array(shape, word_size, fortran_order);
+    cnpy::NpyArray array(shape, word_size, fortran_order, type);
 
     size_t offset = uncompr_bytes - array.num_bytes();
     memcpy(array.data<unsigned char>(),&buffer_uncompr[0]+offset,array.num_bytes());
@@ -263,9 +270,9 @@ cnpy::NpyArray load_the_npz_array(FILE* fp, uint32_t compr_bytes, uint32_t uncom
     std::vector<size_t> shape;
     size_t word_size;
     bool fortran_order;
-    cnpy::parse_npy_header(&buffer_uncompr[0],word_size,shape,fortran_order);
+    char type=cnpy::parse_npy_header(&buffer_uncompr[0],word_size,shape,fortran_order);
 
-    cnpy::NpyArray array(shape, word_size, fortran_order);
+    cnpy::NpyArray array(shape, word_size, fortran_order, type);
 
     size_t offset = uncompr_bytes - array.num_bytes();
     memcpy(array.data<unsigned char>(),&buffer_uncompr[0]+offset,array.num_bytes());
@@ -275,13 +282,15 @@ cnpy::NpyArray load_the_npz_array(FILE* fp, uint32_t compr_bytes, uint32_t uncom
 #endif
 
 cnpy::npz_t cnpy::npz_load(std::string fname) {
+    cnpy::npz_t arrays;  
+#if 0
+	// original implementation which is buggy
     FILE* fp = fopen(fname.c_str(),"rb");
 
     if(!fp) {
         throw std::runtime_error("npz_load: Error! Unable to open file "+fname+"!");
     }
 
-    cnpy::npz_t arrays;  
 
     while(1) {
         std::vector<char> local_header(30);
@@ -317,52 +326,83 @@ cnpy::npz_t cnpy::npz_load(std::string fname) {
 
         if(compr_method == 0) {arrays[varname] = load_the_npy_file(fp);}
         else {arrays[varname] = load_the_npz_array(fp,compr_bytes,uncompr_bytes);}
+
     }
 
-    fclose(fp);
-    return arrays;  
+	fclose(fp);
+
+#else
+	// taesoo's implementation
+	ZipFile zipFile;
+	zipFile.openRead(fname.c_str());
+
+	for(int i=0, nf=zipFile.getNumFiles(); i<nf; i++)
+	{
+		std::string varname=zipFile.getFileName(i);
+		//erase the lagging .npy        
+		varname.erase(varname.end()-6,varname.end());
+
+		std::string buffer_uncompr=zipFile.getFileContent(i);
+		if(buffer_uncompr.size()<=11)
+			throw std::runtime_error("parse_npy_header: failed fread");
+
+		std::vector<size_t> shape;
+		size_t word_size;
+		bool fortran_order;
+		char type=cnpy::parse_npy_header((unsigned char*)&buffer_uncompr[0],word_size,shape,fortran_order);
+
+		//printf("%s %d %d %d %s\n", varname.c_str(), content.size(), content[11], content[12], &content[11]); 
+
+		cnpy::NpyArray array(shape, word_size, fortran_order, type);
+		size_t uncompr_bytes =buffer_uncompr.size()-1;
+		size_t offset = uncompr_bytes - array.num_bytes();
+		memcpy(array.data<unsigned char>(),(unsigned char*)&buffer_uncompr[0]+offset,array.num_bytes());
+		arrays[varname] = array;
+	}
+#endif
+	return arrays;  
 }
 cnpy::NpyArray cnpy::npz_load(std::string fname, std::string varname) {
-    FILE* fp = fopen(fname.c_str(),"rb");
+	FILE* fp = fopen(fname.c_str(),"rb");
 
-    if(!fp) throw std::runtime_error("npz_load: Unable to open file "+fname);
+	if(!fp) throw std::runtime_error("npz_load: Unable to open file "+fname);
 
-    while(1) {
-        std::vector<char> local_header(30);
-        size_t header_res = fread(&local_header[0],sizeof(char),30,fp);
-        if(header_res != 30)
-            throw std::runtime_error("npz_load: failed fread");
+	while(1) {
+		std::vector<char> local_header(30);
+		size_t header_res = fread(&local_header[0],sizeof(char),30,fp);
+		if(header_res != 30)
+			throw std::runtime_error("npz_load: failed fread");
 
-        //if we've reached the global header, stop reading
-        if(local_header[2] != 0x03 || local_header[3] != 0x04) break;
+		//if we've reached the global header, stop reading
+		if(local_header[2] != 0x03 || local_header[3] != 0x04) break;
 
-        //read in the variable name
-        uint16_t name_len = *(uint16_t*) &local_header[26];
-        std::string vname(name_len,' ');
-        size_t vname_res = fread(&vname[0],sizeof(char),name_len,fp);      
-        if(vname_res != name_len)
-            throw std::runtime_error("npz_load: failed fread");
-        vname.erase(vname.end()-4,vname.end()); //erase the lagging .npy
+		//read in the variable name
+		uint16_t name_len = *(uint16_t*) &local_header[26];
+		std::string vname(name_len,' ');
+		size_t vname_res = fread(&vname[0],sizeof(char),name_len,fp);      
+		if(vname_res != name_len)
+			throw std::runtime_error("npz_load: failed fread");
+		vname.erase(vname.end()-4,vname.end()); //erase the lagging .npy
 
-        //read in the extra field
-        uint16_t extra_field_len = *(uint16_t*) &local_header[28];
-        fseek(fp,extra_field_len,SEEK_CUR); //skip past the extra field
-        
-        uint16_t compr_method = *reinterpret_cast<uint16_t*>(&local_header[0]+8);
-        uint32_t compr_bytes = *reinterpret_cast<uint32_t*>(&local_header[0]+18);
-        uint32_t uncompr_bytes = *reinterpret_cast<uint32_t*>(&local_header[0]+22);
+		//read in the extra field
+		uint16_t extra_field_len = *(uint16_t*) &local_header[28];
+		fseek(fp,extra_field_len,SEEK_CUR); //skip past the extra field
 
-        if(vname == varname) {
-            NpyArray array  = (compr_method == 0) ? load_the_npy_file(fp) : load_the_npz_array(fp,compr_bytes,uncompr_bytes);
-            fclose(fp);
-            return array;
-        }
-        else {
-            //skip past the data
-            uint32_t size = *(uint32_t*) &local_header[22];
-            fseek(fp,size,SEEK_CUR);
-        }
-    }
+		uint16_t compr_method = *reinterpret_cast<uint16_t*>(&local_header[0]+8);
+		uint32_t compr_bytes = *reinterpret_cast<uint32_t*>(&local_header[0]+18);
+		uint32_t uncompr_bytes = *reinterpret_cast<uint32_t*>(&local_header[0]+22);
+
+		if(vname == varname) {
+			NpyArray array  = (compr_method == 0) ? load_the_npy_file(fp) : load_the_npz_array(fp,compr_bytes,uncompr_bytes);
+			fclose(fp);
+			return array;
+		}
+		else {
+			//skip past the data
+			uint32_t size = *(uint32_t*) &local_header[22];
+			fseek(fp,size,SEEK_CUR);
+		}
+	}
 
     fclose(fp);
 
@@ -383,7 +423,7 @@ cnpy::NpyArray cnpy::npy_load(std::string fname) {
 }
 
 #include "../../math/hyperMatrixN.h"
-void NPYarray::npz_save(std::string zipname, std::string fname, hypermatrixn const& mat)
+void NPYarray::npz_save(std::string zipname, std::string fname, hypermatrixn const& mat, std::string mode)
 {
 	std::vector<float> temp;
 	std::vector<size_t> shape;
@@ -408,9 +448,9 @@ void NPYarray::npz_save(std::string zipname, std::string fname, hypermatrixn con
 				temp[i*stride+j*o+k]=(float)row[k];
 		}
 	}
-	cnpy::npz_save<float>(zipname, fname, &temp[0], shape,"w");  
+	cnpy::npz_save<float>(zipname, fname, &temp[0], shape,mode);  
 }
-void NPYarray::npz_save(std::string zipname, std::string fname, matrixn const& mat)
+void NPYarray::npz_save(std::string zipname, std::string fname, matrixn const& mat, std::string mode)
 {
 	std::vector<float> temp;
 	std::vector<size_t> shape;
@@ -428,9 +468,9 @@ void NPYarray::npz_save(std::string zipname, std::string fname, matrixn const& m
 		for(int k=0; k<o; k++)
 			temp[j*o+k]=(float)row[k];
 	}
-	cnpy::npz_save<float>(zipname, fname, &temp[0], shape,"w");  
+	cnpy::npz_save<float>(zipname, fname, &temp[0], shape,mode);  
 }
-void NPYarray::npz_save(std::string zipname, std::string fname, vectorn const& vec)
+void NPYarray::npz_save(std::string zipname, std::string fname, vectorn const& vec, std::string mode)
 {
 	std::vector<float> temp;
 	std::vector<size_t> shape;
@@ -440,7 +480,122 @@ void NPYarray::npz_save(std::string zipname, std::string fname, vectorn const& v
 	shape[0]=numElts;
 
 	for(int k=0; k<numElts; k++) temp[k]=(float)vec[k];
-	cnpy::npz_save<float>(zipname, fname, &temp[0], shape,"w");  
+	cnpy::npz_save<float>(zipname, fname, &temp[0], shape,mode);  
 }
 
+namespace cnpy{
+	// by taesoo
+void npz_save_U(std::string zipname, std::string fname, std::vector<int>& data, const std::vector<size_t>& shape, std::string mode = "w")
+{
+	//first, append a .npy to the fname
+	fname += ".npy";
 
+	//now, on with the show
+	FILE* fp = NULL;
+	uint16_t nrecs = 0;
+	size_t global_header_offset = 0;
+	std::vector<char> global_header;
+
+	if(mode == "a") fp = fopen(zipname.c_str(),"r+b");
+
+	if(fp) {
+		//zip file exists. we need to add a new npy file to it.
+		//first read the footer. this gives us the offset and size of the global header
+		//then read and store the global header.
+		//below, we will write the the new data at the start of the global header then append the global header and footer below it
+		size_t global_header_size;
+		cnpy::parse_zip_footer(fp,nrecs,global_header_size,global_header_offset);
+		fseek(fp,global_header_offset,SEEK_SET);
+		global_header.resize(global_header_size);
+		size_t res = fread(&global_header[0],sizeof(char),global_header_size,fp);
+		if(res != global_header_size){
+			throw std::runtime_error("npz_save: header read error while adding to existing zip");
+		}
+		fseek(fp,global_header_offset,SEEK_SET);
+	}
+	else {
+		fp = fopen(zipname.c_str(),"wb");
+	}
+	size_t wordSize=data.size()/shape[0];
+
+	std::vector<char> npy_header = _create_npy_header('U', wordSize, shape);
+
+	size_t nels = std::accumulate(shape.begin(),shape.end(),1,std::multiplies<size_t>());
+	size_t nbytes = data.size()*4 + npy_header.size();
+	//std::cout<<"nbytes"<<nbytes<<" "<<nels<<shape[0]<<std::endl;
+
+	//get the CRC of the data to be added
+	uint32_t crc = tmz_crc32(0L,(uint8_t*)&npy_header[0],npy_header.size());
+	crc = tmz_crc32(crc,(uint8_t*)(&data[0]),nels*wordSize*4);
+
+	//build the local header
+	std::vector<char> local_header;
+	local_header += "PK"; //first part of sig
+	local_header += (uint16_t) 0x0403; //second part of sig
+	local_header += (uint16_t) 20; //min version to extract
+	local_header += (uint16_t) 0; //general purpose bit flag
+	local_header += (uint16_t) 0; //compression method
+	local_header += (uint16_t) 0; //file last mod time
+	local_header += (uint16_t) 0;     //file last mod date
+	local_header += (uint32_t) crc; //crc
+	local_header += (uint32_t) nbytes; //compressed size
+	local_header += (uint32_t) nbytes; //uncompressed size
+	local_header += (uint16_t) fname.size(); //fname length
+	local_header += (uint16_t) 0; //extra field length
+	local_header += fname;
+
+	//build global header
+	global_header += "PK"; //first part of sig
+	global_header += (uint16_t) 0x0201; //second part of sig
+	global_header += (uint16_t) 20; //version made by
+	global_header.insert(global_header.end(),local_header.begin()+4,local_header.begin()+30);
+	global_header += (uint16_t) 0; //file comment length
+	global_header += (uint16_t) 0; //disk number where file starts
+	global_header += (uint16_t) 0; //internal file attributes
+	global_header += (uint32_t) 0; //external file attributes
+	global_header += (uint32_t) global_header_offset; //relative offset of local file header, since it begins where the global header used to begin
+	global_header += fname;
+
+	//build footer
+	std::vector<char> footer;
+	footer += "PK"; //first part of sig
+	footer += (uint16_t) 0x0605; //second part of sig
+	footer += (uint16_t) 0; //number of this disk
+	footer += (uint16_t) 0; //disk where footer starts
+	footer += (uint16_t) (nrecs+1); //number of records on this disk
+	footer += (uint16_t) (nrecs+1); //total number of records
+	footer += (uint32_t) global_header.size(); //nbytes of global headers
+	footer += (uint32_t) (global_header_offset + nbytes + local_header.size()); //offset of start of global headers, since global header now starts after newly written array
+	footer += (uint16_t) 0; //zip file comment length
+
+	//write everything
+	fwrite(&local_header[0],sizeof(char),local_header.size(),fp);
+	fwrite(&npy_header[0],sizeof(char),npy_header.size(),fp);
+	fwrite(&data[0],wordSize*4,nels,fp);
+	fwrite(&global_header[0],sizeof(char),global_header.size(),fp);
+	fwrite(&footer[0],sizeof(char),footer.size(),fp);
+	fclose(fp);
+}
+}
+void NPYarray::npz_save(std::string zipname, std::string fname, TStrings const& vec, std::string mode)
+{
+	std::vector<int> temp;
+	std::vector<size_t> shape;
+	int numElts=vec.size();
+	int wordSize=1;
+	for(int k=0; k<numElts; k++) 
+		wordSize=MAX(wordSize, vec[k].length());
+
+	temp.resize(numElts*wordSize);
+	shape.resize(1);
+	shape[0]=numElts;
+	for(int k=0; k<temp.size(); k++) 
+		temp[k]=0;
+
+	for(int k=0; k<numElts; k++) 
+	{
+		for(int j=0; j<vec[k].length(); j++)
+			temp[k*wordSize+j]=(int)vec[k][j];
+	}
+	cnpy::npz_save_U(zipname, fname, temp, shape,mode);  
+}

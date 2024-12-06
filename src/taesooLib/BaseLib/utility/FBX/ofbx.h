@@ -2,6 +2,7 @@
 // modified by Taesoo
 
 #include <string>
+#include <vector>
 
 
 namespace ofbx
@@ -207,6 +208,9 @@ struct Object
 	char name[128];
 	const IElement& element;
 	const Object* node_attribute;
+	// taesoo
+	mutable int limbIndex;
+
 
 protected:
 	bool is_node;
@@ -214,13 +218,23 @@ protected:
 };
 
 
+struct LimbNodeImpl ;
 struct Pose : Object {
 	static const Type s_type = Type::POSE;
 	Pose(const Scene& _scene, const IElement& _element);
 
+	struct BonePose
+	{
+		Matrix matrix;
+		LimbNodeImpl* limb;
+	};
+	std::vector<BonePose > bonePoses;
+
+
 	virtual int getNumMatrix() const =0;
 	virtual Matrix getMatrix(int i=0) const = 0;
 	virtual const Object* getNode(int i=0) const = 0;
+	virtual int updateLimbBindPoses()=0;
 };
 
 
@@ -334,12 +348,13 @@ struct LimbNodeImpl : Object
 		: Object(_scene, _element)
 	{
 		is_node = true;
-		bindpose=nullptr;
+		has_bindpose=false;
 	}
 	Type getType() const override { return Type::LIMB_NODE; }
-	const Pose* bindpose ;
-	int bindpose_idata;
+	Matrix _bindpose;
+	bool has_bindpose;
 };
+
 struct AnimationStack : Object
 {
 	static const Type s_type = Type::ANIMATION_STACK;

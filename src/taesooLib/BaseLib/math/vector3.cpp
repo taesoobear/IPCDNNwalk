@@ -411,11 +411,11 @@ quater vector3::quaternion() const
 	quater q; q.setRotation(*this);  return q;
 }
 
-TString vector3::output() const
+std::string vector3::output() const
 {
 	TString temp;
 	temp.format("%.10g %.10g %.10g", x, y,z);
-	return temp;
+	return std::string(temp.ptr());
 }
 
 void vector3::blend(const vectorn& weight, const matrixn& aInputVector)

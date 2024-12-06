@@ -62,7 +62,7 @@ public:
 class BVHLoader : public MotionLoader
 {
 public:
-	// option=="loadSkeletonOnly" or NULL
+	// option=="loadSkeletonOnly" or "loadFromMemory" or NULL
 	BVHLoader(const char *filename, const char* option=NULL);
 	virtual ~BVHLoader();
 

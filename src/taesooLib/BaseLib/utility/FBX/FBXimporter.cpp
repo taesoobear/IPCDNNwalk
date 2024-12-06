@@ -10,6 +10,9 @@
 #include <algorithm>
 #include <set>
 
+class CImage;
+class TStrings;
+
 #define KEYTIMECONV(x) ((double)((x)/(double)46186158000)) // I hate autodesk
 /*
 #include <glm/glm.hpp>
@@ -22,6 +25,8 @@
 #include "ofbx.h"
 #include <math.h>
 
+void _saveTextureToMem(const char* path, long data_length, const unsigned char* ptr, TStrings& texture_names, std::vector<CImage*>& textures);
+bool saveTexturesToMem(const ofbx::IScene* scene, TStrings& texture_names, std::vector<CImage*>& textures);
 #include "../math/mathclass_minimum.h"
 #include "../math/matrix4.h"
 #include "../math/Operator.h"
@@ -29,6 +34,17 @@
 using namespace std;
 //using namespace glm;
 #define USE_HASH
+inline void saveKey( int key_count, vectorn & vvals, vectorn& keyTime,
+		const float* xvals, const long long* key_time)
+{
+	keyTime.setSize(key_count);
+	vvals.setSize(key_count);
+	for(int ii=0; ii<key_count; ii++) 
+	{
+		keyTime[ii]=KEYTIMECONV(key_time[ii]);
+		vvals[ii]=xvals[ii];
+	}
+}
 inline unsigned int hash100(vector3 const& p)
 {
 	unsigned int x=(unsigned int)(p.x);
@@ -58,7 +74,7 @@ inline double getCardinalSplineABS(double t_global, vectorn const& time, vectorn
 	vectornView control1=control.range(0, control.size()-1);
 	vectornView control2=control.range(1, control.size());
 	double eps=1e-10;
-	assert(t_global>=0.0);
+	RANGE_ASSERT(t_global>=0.0);
 	double t=0;
 	double w;
 	int iseg=-1;
@@ -111,6 +127,12 @@ double sampleCurve1D(const vectorn& kt, const vectorn& kv, double t)
 	}
 	else  if(kt.size()==1)
 		return kv(0);
+	else if(kv.size()==2)
+	{
+		// linear
+		ASSERT(kt.size()==2);
+		return sop::map(t, kt(0), kt(1), kv(0), kv(1));
+	}
 	return getCardinalSplineABS(t, kt, kv);
 }
 vector3 sampleCurve3D(const vectorn * kt, const vectorn * kv, double t)
@@ -149,7 +171,13 @@ inline matrix4 inverse(matrix4 const& m) {return m.inverse();}
 inline vector3 get_vector(const ofbx::IElement* property) {
 	// Get the vaule of sepcific property
 	const ofbx::IElementProperty* iter = property->getFirstProperty();
-	while (iter != nullptr && iter->getType() != ofbx::IElementProperty::Type::DOUBLE) {
+	while (iter != nullptr && 
+			(
+			 iter->getType() != ofbx::IElementProperty::Type::DOUBLE
+			 && iter->getType() != ofbx::IElementProperty::Type::LONG
+			)
+		  ) {
+		//printf("skipping %c\n", iter->getType());
 		iter = iter->getNext();
 	}
 	vector3 vec (0.0f, 0.0f, 0.0f);
@@ -160,6 +188,7 @@ inline vector3 get_vector(const ofbx::IElement* property) {
 		vec[i] = iter->getValue().toDouble();
 		iter = iter->getNext();
 	}
+	assert(iter==nullptr);
 	return vec;
 }
 inline vector<const ofbx::IElement*> find_element(const ofbx::IElement* parent_element, const string& id) {
@@ -212,6 +241,7 @@ inline ofbx::IElement* find_property(const ofbx::IElement& obj, const char* name
 	}
 	return nullptr;
 }
+
 
 inline matrix4 get_T_matrix(const ofbx::IScene* scene, const char* mesh_name) {
 	// Get the transform matrix for meshes from original pose to binding pose
@@ -294,7 +324,7 @@ vector<const ofbx::Cluster*> clusters;
 vector<int> clusters_index;
 
 vector<const ofbx::Object*> limbVec;
-map<const ofbx::Object*, int> limbMap;
+//map<const ofbx::Object*, int> limbMap; -> doesn't work correctly on VS2022-.-
 vector<int> limbParents;
 
 int key_count_max = -1;
@@ -351,7 +381,7 @@ typedef quater quat;
 				R = Rx * Ry * Rz;
 				break;
 			case ofbx::RotationOrder::SPHERIC_XYZ:
-				assert(false);
+				RANGE_ASSERT(false);
 				break;
 		}
 #else
@@ -620,19 +650,21 @@ void prepareMesh(int k)
 			const ofbx::Cluster *cluster = skin->getCluster(j);
 			int indices_count = cluster->getIndicesCount();
 			int weights_count = cluster->getWeightsCount();
-			assert(indices_count == weights_count);
+			RANGE_ASSERT(indices_count == weights_count);
 			if(weights_count > 0) {
 				const int *indices = cluster->getIndices();
 				const double *weights = cluster->getWeights();
 				const ofbx::Object* limb = cluster->getLink();
-				assert(limbMap.find(limb) != limbMap.end());
+				//RANGE_ASSERT(limbMap.find(limb) != limbMap.end());
+				RANGE_ASSERT(limb->limbIndex!=-1);
 				// Store the clusters and their corrseonding indices for skeleton extraction later
-				clusters_index.push_back(limbMap[limb]);
+				//clusters_index.push_back(limbMap[limb]);
+				clusters_index.push_back(limb->limbIndex);
 				clusters.push_back(cluster);
 				for(int k = 0; k < weights_count; ++k) {
 					int index = indices[k];
 					double weight = weights[k];
-					assert(index < geom->getVertexCount());
+					RANGE_ASSERT(index < geom->getVertexCount());
 
 					// Error may exist in float comparison. Assume that all weights are correct
 					//assert(0.0 <= weight && weight <= 1.0);
@@ -675,7 +707,7 @@ void traverseAll(const ofbx::Object *object, int depth)
 		case ofbx::Object::Type::ANIMATION_LAYER: typeLabel = "ANIM_LAYER"; break;
 		case ofbx::Object::Type::ANIMATION_CURVE: typeLabel = "ANIM_CURVE"; break;
 		case ofbx::Object::Type::ANIMATION_CURVE_NODE: typeLabel = "ANIM_CURVE_NODE"; break;
-		default: assert(false); break;
+		default: RANGE_ASSERT(false); break;
 	}
 	
 	if(object->getType() != ofbx::Object::Type::NODE_ATTRIBUTE) {
@@ -693,40 +725,38 @@ void traverseAll(const ofbx::Object *object, int depth)
 	}
 }
 
-void traverseLimbs(const ofbx::Object *limb, vector<const ofbx::Object*> &limbVec, map<const ofbx::Object*, int> &limbMap, vector<int> &limbParents)
+//#define FBX_DEBUG
+//void traverseLimbs(const ofbx::Object *limb, vector<const ofbx::Object*> &limbVec, map<const ofbx::Object*, int> &limbMap, vector<int> &limbParents)
+void traverseLimbs(const ofbx::Object *limb, vector<const ofbx::Object*> &limbVec, vector<int> &limbParents)
 {
 	if(limb->getType() != ofbx::Object::Type::LIMB_NODE) {
 		return;
 	}
 	
 	limbVec.push_back(limb);
-	limbMap[limb] = limbMap.size();
+#ifdef FBX_DEBUG
+	printf("limbVec %s :  %d %d\n",limb->name, limbVec.size()-1, limbMap.size()); 
+#endif
+	limb->limbIndex=limbVec.size()-1;
+	//limbMap[limb] = limbMap.size();
 	const ofbx::Object *parent = limb->getParent();
 	if(parent != nullptr && parent->getType() == ofbx::Object::Type::LIMB_NODE) {
-		limbParents.push_back(limbMap[parent]);
+#ifdef FBX_DEBUG
+		printf("parents %d %s -> %d %s\n", limbParents.size(), limb->name, limbMap[parent], parent->name);
+#endif
+		//limbParents.push_back(limbMap[parent]);
+		limbParents.push_back(parent->limbIndex);
 	} else {
 		limbParents.push_back(-1);
 	}
 	
 	int i = 0;
 	while(const ofbx::Object* child = limb->resolveObjectLink(i)) {
-		traverseLimbs(child, limbVec, limbMap, limbParents);
+		traverseLimbs(child, limbVec, limbParents);
 		++i;
 	}
 }
 
-inline void saveKey( int key_count, vectorn & vvals, vectorn& keyTime,
-		const float* xvals, const long long* key_time)
-{
-	keyTime.setSize(key_count);
-	vvals.setSize(key_count);
-	for(int ii=0; ii<key_count; ii++) 
-	{
-		keyTime[ii]=KEYTIMECONV(key_time[ii]);
-		vvals[ii]=xvals[ii];
-	}
-	ASSERT(key_count==1 || ABS(g_T-keyTime[keyTime.size()-1])<0.0001);
-}
 bool getAnim(const ofbx::IScene *scene, int ilimb, vectorn& keyTime,  matrixn& traj)
 {
 	// http://docs.autodesk.com/FBX/2014/ENU/FBX-SDK-Documentation/index.html?url=cpp_ref/class_fbx_pose.html,topicNumber=cpp_ref_class_fbx_pose_html3b4fd8fc-688e-43ec-b1df-56acb1cce550
@@ -763,6 +793,7 @@ bool getAnim(const ofbx::IScene *scene, int ilimb, vectorn& keyTime,  matrixn& t
 	vectorn positions[3];
 	{
 		int j=ilimb;
+		Msg::verify(j<limbVec.size(), "getAnim1");
 		//const ofbx::Cluster *cluster = clusters[j];
 		const ofbx::Object *limb = limbVec[j];
 		// limb has one or more children that are curve nodes.
@@ -778,11 +809,21 @@ bool getAnim(const ofbx::IScene *scene, int ilimb, vectorn& keyTime,  matrixn& t
 					continue;
 				}
 
-				const ofbx::AnimationCurveNode* node = (ofbx::AnimationCurveNode*)child;
+				const ofbx::AnimationCurveNode* node = dynamic_cast<const ofbx::AnimationCurveNode*>(child);
+				if(!node)
+				{
+					++i;
+					continue;
+				}
 				const ofbx::AnimationCurve* curveX = node->getCurve(0);
 				const ofbx::AnimationCurve* curveY = node->getCurve(1);
 				const ofbx::AnimationCurve* curveZ = node->getCurve(2);
 
+				if (!curveX)
+				{
+					++i;
+					continue;
+				}
 				ASSERT(curveX);
 				ASSERT(curveY);
 				ASSERT(curveZ);
@@ -842,7 +883,7 @@ bool getAnim(const ofbx::IScene *scene, int ilimb, vectorn& keyTime,  matrixn& t
 #ifdef VERBOSE
 		printf("limb%d: %d %d  :  %d %d %d     %d %d %d ",
 				ilimb, 
-				hasR, hasT,
+				hasT,
 				rotKeyTime[0].size(), 
 				rotKeyTime[1].size(), 
 				rotKeyTime[2].size(), 
@@ -867,8 +908,16 @@ bool getAnim(const ofbx::IScene *scene, int ilimb, vectorn& keyTime,  matrixn& t
 			mat4 R = toR(sampleCurve3D(rotKeyTime, rotations, t), ro);
 			mat4 T = toT(sampleCurve3D(transKeyTime, positions, t));
 #ifdef VERBOSE
-			printf("sampleRot %f %f %f\n", t, rotKeyTime[0], rotKeyTime[rotKeyTime.size()-1]);
-			printf("sampleTrans %f %f %f\n", t, transKeyTime[0], transKeyTime[transKeyTime.size()-1]);
+			if (rotKeyTime[0].size()>0 && transKeyTime[0].size()>0 )
+			{
+
+			printf("sampleRot %f %f %f\n", t, rotKeyTime[0][0], rotKeyTime[0][rotKeyTime[0].size()-1]);
+			printf("sampleTrans %f %f %f\n", t, transKeyTime[0][0], transKeyTime[0][transKeyTime[0].size()-1]);
+			}else
+			{
+				printf("sampleRot 0\n");
+			}
+
 #endif
 
 			mat4 Roff = toR(limb->getRotationOffset(), ro);
@@ -946,6 +995,44 @@ bool saveTexture(const ofbx::IScene* scene)
 	return true;
 }
 
+bool saveTexturesToMem(const ofbx::IScene* scene, TStrings& texture_names, std::vector<CImage*>& textures)
+{
+	cout << "=== Texture ===" << endl;
+
+	const ofbx::IElement* root = scene->getRootElement();
+	const ofbx::IElement* child = root->getFirstChild();
+	vector<const ofbx::IElement*> videos = find_element(root, "Video");
+
+	// The texture files are stored in fbx as Video element
+	for (auto video : videos) {
+		vector<const ofbx::IElement*> contents = find_element(video, "Content");
+		vector<const ofbx::IElement*> filenames = find_element(video, "Filename");
+		if (contents.size() != 0 && contents[0]->getFirstProperty() != nullptr) {
+			ofbx::DataView values = contents[0]->getFirstProperty()->getValue();
+			ofbx::DataView texture_name = filenames[0]->getFirstProperty()->getValue();
+			string name;
+			for (long i=0 ; i < texture_name.end - texture_name.begin; i++) {
+				name += static_cast<char>(*(texture_name.begin + i));
+			}
+			string path = FILENAME + "_texture.png";
+			size_t l = name.rfind('/', name.length());
+			if (l != string::npos) {
+				path = FILENAME + "_" + name.substr(l + 1, name.length() - l);
+				cout << "Extracting texture: " << name.substr(l + 1, name.length() - l) << endl;
+				if (TEXTURENAME.length() == 0) {
+					size_t s = path.rfind('/', path.length());
+					TEXTURENAME = path.substr(s + 1, path.length() - s);
+				}
+			}
+			long data_length = values.end - values.begin;
+
+			_saveTextureToMem(path.c_str(), data_length, values.begin + 4, texture_names, textures);
+		}
+	}
+
+	return true;
+
+}
 
 // https://www.oreilly.com/library/view/c-cookbook/0596007612/ch10s15.html
 string getFileName(const string& s)
@@ -1031,7 +1118,7 @@ void resolve_limb_nodes(const ofbx::IScene* scene) {
 				cout << i <<":" <<(int)child->getType() <<endl;
 				i++;
 			}
-			exit(0);
+			return;
 		}
 	}
 
@@ -1050,10 +1137,35 @@ void resolve_limb_nodes(const ofbx::IScene* scene) {
 	}
 
 	// Traverse hierarchy and store the skeleton structure for later use
-	traverseLimbs(root, limbVec, limbMap, limbParents);
-	assert(limbVec.size() == limbParents.size() && limbVec.size() == limbMap.size());
+	traverseLimbs(root, limbVec, limbParents);
+	RANGE_ASSERT(limbVec.size() == limbParents.size() );
+//	&& limbVec.size() == limbMap.size());
 }
 
+void getModelNames(const ofbx::IScene* scene, std::vector<string>& names){
+	std::list<const ofbx::Object*> nullNodes; 
+	const ofbx::Object* startNode=scene->getRoot();									//
+	
+	const ofbx::Object* root = nullptr; // root limb
+	while(!root)
+	{
+		root=findLimbNode(startNode, nullNodes);
+		if(!root)
+		{
+			if(nullNodes.size()>0)
+			{
+				for(auto i=nullNodes.begin();i!=nullNodes.end(); i++)
+					names.push_back((*i)->name);
+
+				startNode=nullNodes.front();
+				nullNodes.pop_front();
+			}
+			else
+				break;
+		}
+	}
+
+}
 
 int FBXmain1(const char *fn)
 {
@@ -1113,7 +1225,7 @@ int FBXmain1(const char *fn)
 
 
 	// Get sizes
-	assert(mesh_count == myMeshes.size());
+	RANGE_ASSERT(mesh_count == myMeshes.size());
 
 
 	// prepare anim
@@ -1185,9 +1297,16 @@ void cleanup()
 	
 	cout << "done" << endl;
 }
+void saveAll(TStrings& texture_names, std::vector<CImage*>& textures){
+
+	// Parse and save
+	saveTexturesToMem(scene, texture_names, textures);
+
+}
 };
 
 #include "FBXimporter.h"
+
 
 int FBXimporter::getMaterialCount(int imesh)
 {
@@ -1203,6 +1322,52 @@ vector3 FBXimporter::getDiffuseColor(int imesh, int imat)
 	const ofbx::Mesh *mesh = scene->getMesh(imesh);
 	auto c=mesh->getMaterial(imat)->getDiffuseColor();
 	return vector3(c.r, c.g, c.b);
+}
+TStrings FBXimporter::getMaterialPropertyTypes(int imesh, int imat)
+{
+	TStrings out;
+	_FBXimport& fbx_info=*((_FBXimport*)_data);
+	auto* scene=fbx_info.scene;
+	const ofbx::Mesh *mesh = scene->getMesh(imesh);
+	const ofbx::Material* mat=mesh->getMaterial(imat);
+	const ofbx::IElement* props = find_child(mat->element, "Properties70");
+	const ofbx::IElement* prop = props->getFirstChild();
+	while (prop )
+	{
+		if (!prop->getFirstProperty() 
+				|| prop->getFirstProperty()->getType() != ofbx::IElementProperty::Type::STRING) 
+		{
+			prop=prop->getSibling();
+			continue;
+		}
+
+		auto* pp=prop->getFirstProperty();
+		char tmp[32];
+		pp->getValue().toString(tmp);
+		if(tmp[0]!=0) out.pushBack(TString(tmp));
+		prop=prop->getSibling();
+	}
+	return out;
+}
+vectorn FBXimporter::getMaterialProperty(int imesh, int imat, const char* property_type)
+{
+	vectorn out;
+	out.reserve(4);
+	_FBXimport& fbx_info=*((_FBXimport*)_data);
+	auto* scene=fbx_info.scene;
+	const ofbx::Mesh *mesh = scene->getMesh(imesh);
+	const ofbx::Material* mat=mesh->getMaterial(imat);
+	ofbx::IElement* prop=find_property(mat->element, property_type);
+	if(!prop) return out;
+	auto* pp=prop->getFirstProperty();
+	while(pp)
+	{
+		if(pp->getType()==ofbx::IElementProperty::Type::DOUBLE) 
+			out.pushBack(pp->getValue().toDouble());
+		pp=pp->getNext();
+	}
+
+	return out;
 }
 
 vector3 FBXimporter::getSpecularColor(int imesh, int imat)
@@ -1240,21 +1405,24 @@ FBXimporter::FBXimporter(const char* filename)
 	END_TIMER2(FBXtotal);
 	_data=(void*)temp;
 }
-FBXimporter::		~FBXimporter()
-{
-	_FBXimport* temp=(_FBXimport*)_data;
-	temp->cleanup();
-	delete temp;
-}
 void FBXimporter::saveTextures()
 {
 	_FBXimport* temp=(_FBXimport*)_data;
 	temp->saveAll();
 }
+void FBXimporter::saveTexturesToMemoryBuffer()
+{
+	BEGIN_TIMER(FBXtexture);
+	_FBXimport* temp=(_FBXimport*)_data;
+	temp->saveAll(texture_names, textures);
+	END_TIMER2(FBXtexture);
+}
+
 
 int FBXimporter::getMeshCount()
 {
 	_FBXimport* fbx_info=(_FBXimport*)_data;
+	if(!fbx_info->scene) return 0;
 	return fbx_info->scene->getMeshCount();
 }
 
@@ -1266,23 +1434,70 @@ matrix4 FBXimporter::getMeshCurrPose(int imesh)
 	matrix4 transform_matrix = get_T_matrix(scene, mesh->name);
 	return transform_matrix;
 }
+TStrings FBXimporter::getModelNames()
+{
+
+	_FBXimport& fbx_info=*((_FBXimport*)_data);
+	auto* scene=fbx_info.scene;
+	std::vector<string> names;
+	fbx_info.getModelNames( scene,  names);
+
+	TStrings out;
+	out.resize(names.size());
+	for (int i=0; i<out.size(); i++)
+		out.set(i, names[i].c_str());
+	return out;
+}
+
+matrix4 FBXimporter::getModelCurrPose(const char* node_name)
+{
+	_FBXimport& fbx_info=*((_FBXimport*)_data);
+	auto* scene=fbx_info.scene;
+	matrix4 transform_matrix = get_T_matrix(scene, node_name);
+	return transform_matrix;
+}
+void FBXimporter::clearBindPose()
+{
+	_FBXimport& fbx_info=*((_FBXimport*)_data);
+	auto* scene=fbx_info.scene;
+
+	for(int ilimb=0; ilimb<fbx_info.limbParents.size(); ilimb++)
+	{
+		auto*limb = (ofbx::LimbNodeImpl*) fbx_info.limbVec[ilimb];
+		limb->has_bindpose=false;
+	}
+
+}
+int FBXimporter::countBindPoses(int imesh)
+{
+	_FBXimport& fbx_info=*((_FBXimport*)_data);
+	auto* scene=fbx_info.scene;
+	const ofbx::Mesh *mesh = scene->getMesh(imesh);
+	ofbx::Pose*  pose=(ofbx::Pose*)mesh->getPose();
+	if (!pose)
+		return 0;
+
+	return pose->updateLimbBindPoses();
+}
 bool FBXimporter::hasBindPose(int ilimb)
 {
 	_FBXimport& fbx_info=*((_FBXimport*)_data);
+		RANGE_ASSERT(ilimb<fbx_info.limbVec.size());
 	const auto*limb = (const ofbx::LimbNodeImpl*) fbx_info.limbVec[ilimb];
 	matrix4 m;
-	if(limb->bindpose)
+	if(limb->has_bindpose)
 		return true;
 	return false;
 }
 matrix4 FBXimporter::getBindPose(int ilimb)
 {
 	_FBXimport& fbx_info=*((_FBXimport*)_data);
+		RANGE_ASSERT(ilimb<fbx_info.limbVec.size());
 	const auto*limb = (const ofbx::LimbNodeImpl*) fbx_info.limbVec[ilimb];
 	matrix4 m;
-	if(limb->bindpose)
+	if(limb->has_bindpose)
 	{
-		ofbx::Matrix mm=limb->bindpose->getMatrix(limb->bindpose_idata);
+		ofbx::Matrix mm=limb->_bindpose;
 		m.transpose(*((matrix4*)(&mm)));
 	}
 	else
@@ -1330,7 +1545,7 @@ std::string FBXimporter::getMesh(int imesh, OBJloader::Mesh & mymesh)
 
 	// Assume that we are working with a triangulated array, so
 	// there is no index/element array.
-	assert(vertex_count == index_count);
+	RANGE_ASSERT(vertex_count == index_count);
 	int tri_count = vertex_count/3;
 	bool has_normals = geom->getNormals() != nullptr;
 	bool has_uvs = geom->getUVs() != nullptr;
@@ -1348,7 +1563,7 @@ std::string FBXimporter::getMesh(int imesh, OBJloader::Mesh & mymesh)
 	if(has_normals) {
 		const ofbx::Vec3* normals = geom->getNormals();
 		// This will fail if ofbx::LoadFlags::TRIANGULATE is not used
-		assert(geom->getIndexCount() == vertex_count);
+		RANGE_ASSERT(geom->getIndexCount() == vertex_count);
 		mymesh.resizeNormalBuffer(ni);
 		for(int i = 0; i < ni; ++i) {
 			const ofbx::Vec3 &n = normals[vertsUnique[i]];
@@ -1362,7 +1577,7 @@ std::string FBXimporter::getMesh(int imesh, OBJloader::Mesh & mymesh)
 	if(has_uvs) {
 		const ofbx::Vec2 *uvs = geom->getUVs();
 		// This will fail if ofbx::LoadFlags::TRIANGULATE is not used
-		assert(geom->getIndexCount() == vertex_count);
+		RANGE_ASSERT(geom->getIndexCount() == vertex_count);
 		mymesh.resizeUVbuffer(ni);
 		for (int i = 0; i < ni; ++i) {
 			const ofbx::Vec2 &uv = uvs[vertsUnique[i]];
@@ -1399,7 +1614,7 @@ void FBXimporter::getSkinnedMesh(int imesh, SkinnedMeshFromVertexInfo & skinned_
 		int i=vertsUnique[vi];
 		const _FBXimport::MyVertex &v = verts[i];
 		int influences = v.w.size();
-		assert(influences == v.i.size());
+		RANGE_ASSERT(influences == v.i.size());
 
 		auto& sv=skinned_mesh.vertices[vi];
 		sv.treeIndices=intvectornView(&(v.i[0]), v.i.size())+1;
@@ -1505,6 +1720,7 @@ void FBXimporter::getBoneNames(TStrings& out)
 {
 	_FBXimport& fbx_info=*((_FBXimport*)_data);
 	out.resize(fbx_info.limbParents.size());
+	RANGE_ASSERT(out.size()==fbx_info.limbVec.size());
 	for (int i=0; i<out.size(); i++)
 	{
 		out.set(i, fbx_info.limbVec[i]->name);
@@ -1647,3 +1863,278 @@ void MeshMerger::mergeMeshes(OBJloader::Mesh& outputmesh)
 	printf("vertex count: %d -> %d\n", tot_vertex_count, (int)_vertsUnique.rows());
 }
 
+#include "../../image/Image.h"
+FBXimporter::		~FBXimporter()
+{
+	_FBXimport* temp=(_FBXimport*)_data;
+	temp->cleanup();
+	delete temp;
+	for(int i=0; i<textures.size(); i++)
+		delete textures[i];
+}
+void _saveTextureToMem(const char* path, long data_length, const unsigned char* ptr, TStrings& texture_names, std::vector<CImage*>& textures)
+{
+	TString fn=path;
+	TString r5=fn.left(-4).right(6).toUpper();
+	if(r5=="NORMAL" || r5=="_GLOSS" || r5=="ECULAR")
+	{
+		printf("skipping loading %s\n", fn.ptr());
+		return;
+	}
+	texture_names.pushBack(path);
+	CImage* image=new CImage();
+	image->loadFromMemory(path, data_length, ptr);
+	//printf("res!!! %d %d\n", image->GetWidth(), image->GetHeight());
+	textures.push_back(image);
+}
+
+
+void FBXimporter::packTextures(BinaryFile& bf)
+{
+	int version=-2; // use a negative number. later versions: -2, -3, ...
+	bf.pack(texture_names);
+	for(int i=0; i<texture_names.size(); i++)
+	{
+		CImage& im=*textures[i];
+		bf.packInt(version);
+		bf.packInt(im.GetWidth());
+		bf.packInt(im.GetHeight());
+
+		for(int j=0; j<im.GetHeight(); j++)
+			bf.packArray((void*)(im.GetData()+j*im._stride),im._stride, 1);
+
+		if(im.getOpacityMap())
+		{
+			bf.packInt(1);
+			for(int j=0; j<im.GetHeight(); j++)
+				bf.packArray((void*)(im.getOpacityMap()+j*im.GetWidth()),im.GetWidth(), 1);
+
+		}
+		else
+			bf.packInt(0);
+	}
+	bf.packInt(0);
+}
+void FBXimporter::unpackTextures(BinaryFile& bf)
+{
+	bf.unpack(texture_names);
+	textures.resize(texture_names.size());
+	for(int i=0; i<texture_names.size(); i++)
+	{
+		int version=bf.unpackInt();
+		int w, h;
+		//printf("version %d\n", version);
+		if (version>=0)
+		{
+			w=version;
+			version=0;
+		}
+		else
+			w=bf.unpackInt();
+
+		h=bf.unpackInt();
+		//printf("res %d %d\n", w, h);
+
+		unsigned char *buffer=new unsigned char[w*h*3];
+		int stride=w*3;
+
+		for(int j=0; j<h; j++)
+			bf.unpackArray((void*)(buffer+j*stride),stride, 1);
+
+		CImage* im=new CImage();
+		if(w>0)
+			im->_adoptRawData(w,h,buffer,stride);
+		textures[i]=im;
+		if(version<0)
+		{
+			int hasOpacity=bf.unpackInt();
+			if(hasOpacity)
+			{
+				unsigned char *buffer=new unsigned char[w*h];
+				int stride=w;
+
+				for(int j=0;j<h; j++)
+					bf.unpackArray((void*)(buffer+j*stride),stride, 1);
+				if(w>0)
+					im->_opacityMap=buffer;
+			}
+		}
+		if(version==-1)
+			im->flipY();
+	}
+	Msg::verify(bf.unpackInt()==0," unpack texture error");
+}
+
+int FBXimporter::getAnimCount()
+{
+	_FBXimport& fbx_info=*((_FBXimport*)_data);
+	auto* scene=fbx_info.scene;
+	return scene->getAnimationStackCount();
+}
+std::string FBXimporter::getAnimName(int ianim)
+{
+	_FBXimport& fbx_info=*((_FBXimport*)_data);
+	auto* scene=fbx_info.scene;
+	const ofbx::AnimationStack* stack=scene->getAnimationStack(ianim);
+	return std::string(stack->name);
+}
+vectorn FBXimporter::getAnimInfo(int ianim)
+{
+	_FBXimport& fbx_info=*((_FBXimport*)_data);
+	auto* scene=fbx_info.scene;
+	const ofbx::AnimationStack* stack=scene->getAnimationStack(ianim);
+	vectorn out(3);
+	auto* layer=stack->resolveObjectLink(0);
+	int i = 0;
+	int key_count = 0; // key count for this limb
+	const ofbx::Object* argNode=NULL; 
+	while(const ofbx::Object* child = layer->resolveObjectLink(i)) {
+		if(child->getType() == ofbx::Object::Type::ANIMATION_CURVE_NODE) {
+			// ignoring scale node
+			if(strcmp(child->name, "S") == 0) { ++i; continue; }
+
+			const ofbx::AnimationCurveNode* node = dynamic_cast<const ofbx::AnimationCurveNode*>(child);
+			if(!node) { ++i; continue; }
+			const ofbx::AnimationCurve* curveX = node->getCurve(0);
+			if (!curveX) { ++i; continue; }
+			if (curveX->getKeyCount()>key_count)
+			{
+				key_count = curveX->getKeyCount();
+				argNode=child;
+			}
+		}
+		++i;
+	}
+	out[0]=key_count;
+	if(key_count>1)
+	{
+		const ofbx::AnimationCurveNode* node = dynamic_cast<const ofbx::AnimationCurveNode*>(argNode);
+		const long long* key_time;
+		const ofbx::AnimationCurve* curveX = node->getCurve(0);
+		key_time = curveX->getKeyTime();
+		out[1]=KEYTIMECONV(key_time[key_count-1]-key_time[key_count-2]);
+		out[2]=KEYTIMECONV(key_time[key_count-1]);
+	}
+	return out;
+}
+
+void FBXimporter::getAnim2(int ianim, int g_nFrames, double g_T, int ilimbnode, vectorn& keyTime, matrixn& traj)
+{
+	_FBXimport& fbx_info=*((_FBXimport*)_data);
+	auto* scene=fbx_info.scene;
+	const ofbx::AnimationStack* stack=scene->getAnimationStack(ianim);
+	auto* layer=stack->resolveObjectLink(ofbx::Object::Type::ANIMATION_LAYER, NULL, 0);
+	//printf("%s %d\n", layer->name, layer->getType());
+	int i = 0;
+	int key_count = 0; // key count for this limb
+	vectorn rotKeyTime[3];
+	vectorn transKeyTime[3];
+	vectorn rotations[3];
+	vectorn positions[3];
+	while(const ofbx::Object* child = layer->resolveObjectLink(i)) {
+		if(child->getType() == ofbx::Object::Type::ANIMATION_CURVE_NODE) {
+			auto* limb=child->getParent();
+			if(limb->getType()!=ofbx::Object::Type::LIMB_NODE) {++i;continue; }
+			if(limb!=fbx_info.limbVec[ilimbnode]) { ++i; continue; }
+			// ignoring scale node
+			if(strcmp(child->name, "S") == 0) { ++i; continue; }
+
+			const ofbx::AnimationCurveNode* node = dynamic_cast<const ofbx::AnimationCurveNode*>(child);
+
+			if(!node) { ++i; continue; }
+
+			const ofbx::AnimationCurve* curveX = node->getCurve(0);
+			const ofbx::AnimationCurve* curveY = node->getCurve(1);
+			const ofbx::AnimationCurve* curveZ = node->getCurve(2);
+
+			if (!curveX) { ++i; continue; }
+
+			ASSERT(curveX);
+			ASSERT(curveY);
+			ASSERT(curveZ);
+			const long long* key_time;
+			if (curveX != nullptr) {
+				key_count = curveX->getKeyCount();
+				key_time = curveX->getKeyTime();
+				const float* xvals = xvals = curveX->getKeyValue();
+				if(strcmp(child->name,"R")==0)
+					saveKey(key_count,  rotations[0], rotKeyTime[0], xvals, key_time);
+				else if(strcmp(child->name,"T")==0)
+					saveKey(key_count,  positions[0], transKeyTime[0], xvals, key_time);
+				else {
+					ASSERT(false);
+				}
+			}
+			if (curveY != nullptr) {
+				key_count = curveY->getKeyCount();
+				key_time = curveY->getKeyTime();
+				const float* yvals = yvals = curveY->getKeyValue();
+				if(strcmp(child->name,"R")==0)
+					saveKey(key_count,  rotations[1], rotKeyTime[1], yvals, key_time);
+				else if (strcmp(child->name,"T")==0)
+					saveKey(key_count,  positions[1], transKeyTime[1], yvals, key_time);
+				else {
+					ASSERT(false);
+				}
+			}
+			if (curveZ != nullptr) {
+				key_count = curveZ->getKeyCount();
+				key_time = curveZ->getKeyTime();
+				const float* zvals = curveZ->getKeyValue();
+				if(strcmp(child->name,"R")==0)
+					saveKey(key_count, rotations[2], rotKeyTime[2], zvals, key_time);
+				else if(strcmp(child->name,"T")==0)
+					saveKey(key_count,  positions[2], transKeyTime[2], zvals, key_time);
+				else {
+					ASSERT(false);
+				}
+			}
+		}
+		++i;
+	}
+
+	key_count=g_nFrames;
+	double g_frameTime=g_T/double(g_nFrames-1);
+	auto& limb=fbx_info.limbVec[ilimbnode];
+		keyTime.setSize(key_count);
+
+		bool hasT=transKeyTime[0].size()>2 ;
+		if (transKeyTime[0].size()==2 && 
+				!_FBXimport::MyVertex::vec3Eq( sampleCurve3D(transKeyTime, positions, 0), sampleCurve3D(transKeyTime, positions, keyTime.back())))
+			hasT=true;
+
+		bool useFreeJoint=hasT || ilimbnode==0; // free joints
+
+		if (useFreeJoint)
+			traj.resize(key_count, 7);
+		else 
+			traj.resize(key_count, 4);
+
+		//printf("%d frames\n", g_nFrames);
+		for(int k = 0; k < key_count; ++k) {
+
+			double t=sop::map(k, 0, key_count-1, 0, g_T);
+			keyTime[k]=t;
+
+			ofbx::RotationOrder ro = limb->getRotationOrder();
+			matrix4 R = _FBXimport::toR(sampleCurve3D(rotKeyTime, rotations, t), ro);
+			matrix4 T = _FBXimport::toT(sampleCurve3D(transKeyTime, positions, t));
+
+			matrix4 Roff = _FBXimport::toR(limb->getRotationOffset(), ro);
+			matrix4 Rp = _FBXimport::toR(limb->getRotationPivot(), ro);
+			matrix4 Rpre = _FBXimport::toR(limb->getPreRotation(), ro);
+			matrix4 Rpost = _FBXimport::toR(limb->getPostRotation(), ro);
+			matrix4 Soff = _FBXimport::toS(limb->getScalingOffset());
+			matrix4 Sp = _FBXimport::toS(limb->getScalingPivot());
+			matrix4 S = _FBXimport::toS(limb->getLocalScaling());
+
+			matrix4 E =  T * Roff * Rp * Rpre * R * inverse(Rpost) * inverse(Rp) * Soff * Sp * S * inverse(Sp);
+
+			transf tf=E;
+			if(useFreeJoint)
+				traj.row(k).setTransf(0, tf);
+			else 
+				traj.row(k).setQuater(0, tf.rotation);
+		}
+
+}

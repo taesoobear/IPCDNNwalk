@@ -90,7 +90,9 @@ public:
 	vector3 screenToWorldXZPlane(float x, float y, float height=0.0);
 	void screenToWorldLine(float x, float y, vector3& lineStart, vector3& lineEnd);
 	void screenToWorldRay(float x, float y, Ray& ray) const;
-	void worldToScreen(vector3 const& w, float& x, float& y);
+	void worldToScreen(vector3 const& w, float& x, float& y) const;
+	inline vector2 worldToScreen(vector3 const& w) const { float x,y; worldToScreen(w, x, y); return vector2((double)x, (double)y);}
+
 
 #ifndef NO_GUI
 	void volumeQuery(TStrings& nodeNames, float left, float top, float right, float bottom);

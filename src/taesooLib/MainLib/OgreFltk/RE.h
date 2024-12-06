@@ -65,6 +65,8 @@ namespace RE
 	int getGlobalMouseX();
 	int getGlobalMouseY();
 	bool useSeperateOgreWindow();
+	void buildEdgeList(const char* meshName);
+	int getOgreVersionMinor();
 
 	// do not delete the returned MotionLoader instance.
 	MotionLoader* motionLoader(const char* name);

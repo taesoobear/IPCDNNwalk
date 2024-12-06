@@ -262,7 +262,6 @@ void HingeJoint::InitNode()
 Effector::Effector(const vector3& localpos)
 :Node(localpos,  EFFECTOR )
 {
-	constraint=NULL;
 }
 void Effector::computeDeltaS(VectorRn &dS, Tree* tree)
 {
@@ -302,6 +301,7 @@ void Effector::calcJacobian(Tree* tree, MatrixRmn& J, int i, vector3 const& targ
 	}
 }
 
+/*
 RelativeConstraint::RelativeConstraint(const vector3& localpos)
 :Effector(localpos)
 {
@@ -347,7 +347,7 @@ void RelativeConstraint::calcJacobian(Tree* tree, MatrixRmn& J, int i_row, vecto
 	}
 #endif
 }
-
+*/
 /*
 void RelativeConstraint::calcJacobian(Node* m, MatrixRmn& J)
 {

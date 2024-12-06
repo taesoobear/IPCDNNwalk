@@ -113,13 +113,13 @@ Ogre::MovableObject	* createObject(const char* node_name, const char* typeName, 
 	}
 	else if(tn=="ColorWidthBillboardLineList")
 	{
-		vector3NView data=vec3ViewCol(_data);
 
 		if (thickness==0) thickness=0.7;
-		ColorWidthBillboardLineList * line=new ColorWidthBillboardLineList (TString(node_name)+"__cbbll", data.size()/3, thickness);
-		for(int i=0, ni=data.size()/4; i<ni; i++)
+		ColorWidthBillboardLineList * line=new ColorWidthBillboardLineList (TString(node_name)+"__cbbll", _data.rows(), thickness);
+		for(int i=0, ni=_data.rows(); i<ni; i++)
 		{
-			line->line(i, data[i*4], data[i*4+1], data[i*4+2], data[i*4+3][0]);
+			auto v=_data.row(i);
+			line->line(i, v.toVector3(0), v.toVector3(3), v.toVector3(6), v(9), v(10), v(11), v(12));
 		}
 		//line->setMaterialName(materialName);
 		return line;
@@ -194,8 +194,12 @@ Ogre::MovableObject	* createObject(const char* node_name, const char* typeName, 
 			}
 			quads->end();
 		}
+		if(materialName&& strlen(materialName)>0)
+			_setMaterial(quads, materialName);
 		return quads;
 	}
+	else 
+		Msg::error("unknown typename: %s", tn.ptr());
 	return NULL;
 }
 

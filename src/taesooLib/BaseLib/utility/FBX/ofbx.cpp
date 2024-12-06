@@ -7,6 +7,7 @@
 #include <numeric>
 #include <unordered_map>
 #include <vector>
+#include <iostream>
 
 
 namespace ofbx
@@ -440,6 +441,7 @@ Object::Object(const Scene& _scene, const IElement& _element)
 	, element(_element)
 	, is_node(false)
 	, node_attribute(nullptr)
+	  ,limbIndex(-1)
 {
 	auto& e = (Element&)_element;
 	if (e.first_property && e.first_property->next)
@@ -1329,6 +1331,7 @@ struct PoseImpl : Pose
 
 	bool postprocess(Scene* scene);
 
+	int updateLimbBindPoses();
 	struct Data
 	{
 		Matrix matrix;
@@ -1478,13 +1481,26 @@ bool PoseImpl::postprocess(Scene* scene)
 		else if(d.node && d.node->getType()==Object::Type::LIMB_NODE)
 		{
 			auto* limb=static_cast<LimbNodeImpl*>(d.node);
-			limb->bindpose = this;
-			limb->bindpose_idata=i;
+			bonePoses.resize(bonePoses.size()+1);
+			bonePoses.back().matrix=getMatrix(i);
+			bonePoses.back().limb=limb;
+
 		}
 	}
 	return true;
 }
 
+int PoseImpl::updateLimbBindPoses()
+{
+	int c=0;
+	for(int i=0; i<bonePoses.size(); i++){
+		auto& bp=bonePoses[i];
+		bp.limb->has_bindpose = true;
+		bp.limb->_bindpose=bp.matrix;
+		c++;
+	}
+	return c;
+}
 
 struct AnimationCurveNodeImpl : AnimationCurveNode
 {

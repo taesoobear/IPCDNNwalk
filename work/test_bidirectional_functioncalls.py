@@ -48,6 +48,21 @@ def main():
     print(c.ref().shape)
     print(c.ref())
 
+    mat=m.matrixn()
+    mat.resize(3,3)
+    mat.setAllValue(1.0)
+    # test dictionary conversion
+    lua.F('NAME.luaFunction4', { 'mat' :mat, 'hyper': c})
+    print(mat)
+
+    # test list conversion
+    lua.F('luaFunction5', [ mat, c])
+
+    # return values
+    mat1, mat2=lua.F('luaFunction6', mat, c)
+    print(mat1)
+    print(mat2)
+
     print('finished!')
 
 if __name__=="__main__":

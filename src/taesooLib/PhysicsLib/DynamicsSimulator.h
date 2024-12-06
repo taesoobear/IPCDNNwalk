@@ -213,6 +213,9 @@ namespace OpenHRP
 		virtual void getDQ(int ichara, vectorn& v) const;
 		inline vectorn getDQ(int ichara) const { vectorn v; getDQ(ichara, v); return v;}
 		virtual void setU(int ichara, const vectorn& in);
+
+		//   (wx, wy, wz, vx, vy, vz, dtheta1, dtheta2, ...,dthetaN). w, v is in the body coordinate.
+		inline void getBodyDQ(int ichara, vectorn & dq) const { vectorn dpose=getDPoseDOF(ichara); dq.setSize(dpose.size()-1); dq.range(0,3)=dpose.range(4,7) ; dq.range(3,6)=dpose.range(0,3) ; dq.range(6,dq.size())=dpose.range(7,dpose.size()); }
 		///////////////////////////////////////////////
 		// utilities
 		///////////////////////////////////////////////
@@ -225,8 +228,8 @@ namespace OpenHRP
 
 		int findCharacter(const char* _name) ;
 		VRMLloader & skeleton(int ichara) { RANGE_ASSERT(ichara<_characters.size()); return *_characters[ichara]->skeleton;}
-		std::string name(int ichara) const { RANGE_ASSERT(ichara<_characters.size()); return _characters[ichara]->name;}
 		const VRMLloader & skeleton(int ichara) const { RANGE_ASSERT(ichara<_characters.size()); return *_characters[ichara]->skeleton;}
+		std::string name(int ichara) const { RANGE_ASSERT(ichara<_characters.size()); return _characters[ichara]->name;}
 		int numSkeleton() const { return _characters.size();}
 	
 		// num DOFs including redundant coordinates (w)
@@ -250,6 +253,11 @@ namespace OpenHRP
 		void  calcInertia(int ichara,vectorn const& pose, vectorn& inertia) const;
 		virtual void drawLastContactForces(int ichara=0, vector3 const& draw_offset=::vector3(0,0,0)) const {}
 		virtual ::vector3 getContactForce(int ichar, int ibone) const {return vector3(-1,-1,-1);}
+
+
+		vectorn poseToSphericalQ(int ichara, vectorn const& posedof) const;
+		vectorn dposeToSphericalDQ(int ichara, vectorn const& dposeDOF) const;
+
 	protected:
 		vectorn& _getLastSimulatedPose(int ichara=0) const { 
 			return _characters[ichara]->_tempPose;

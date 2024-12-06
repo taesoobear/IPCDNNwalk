@@ -337,14 +337,14 @@ public:
 			
 			if(mNode[i].node[0]->IsJoint())
 			{
-				printf("node %d:%d:%s\n", mNode[i].node[0]->GetJointNum(), mNode[i].node[0]->GetParentJointNum(), (mNode[i].node[0]->GetS()+trans).output().ptr());
-				printf("NODE %d:%d:%s\n", mNode[i].back()->GetJointNum(), mNode[i].back()->GetParentJointNum(), (mNode[i].back()->GetS()+trans).output().ptr());
+				printf("node %d:%d:%s\n", mNode[i].node[0]->GetJointNum(), mNode[i].node[0]->GetParentJointNum(), (mNode[i].node[0]->GetS()+trans).output().c_str());
+				printf("NODE %d:%d:%s\n", mNode[i].back()->GetJointNum(), mNode[i].back()->GetParentJointNum(), (mNode[i].back()->GetS()+trans).output().c_str());
 			}
 			else
 			{
-				printf("efct %d:%d:%s\n", mNode[i].node[0]->GetEffectorNum(),mNode[i].node[0]->GetParentJointNum(), (mNode[i].node[0]->GetS()+trans).output().ptr());
+				printf("efct %d:%d:%s\n", mNode[i].node[0]->GetEffectorNum(),mNode[i].node[0]->GetParentJointNum(), (mNode[i].node[0]->GetS()+trans).output().c_str());
 			}
-			printf("bone %d:%s\n", mNode[i].bone->GetIndex(), mNode[i].bone->getTranslation().output().ptr());
+			printf("bone %d:%s\n", mNode[i].bone->GetIndex(), mNode[i].bone->getTranslation().output().c_str());
 		}
 	}
 

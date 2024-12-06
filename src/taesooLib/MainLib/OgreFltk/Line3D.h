@@ -138,7 +138,7 @@ public:
 	ColorWidthBillboardLineList(const char* name, int size, m_real thick=7.0): BillboardLineList(name, size, thick) {}
 	~ColorWidthBillboardLineList (){}
 
-	void line(int i, vector3 const& start, vector3 const & end, vector3 const & rgbcolor, m_real width, m_real tu1=0.0, m_real tu2=1.0);
+	void line(int i, vector3 const& start, vector3 const & end, vector3 const & rgbcolor, m_real width, m_real width2, m_real tu1=0.0, m_real tu2=1.0);
 };
 
 class QuadList: public DynamicRenderable

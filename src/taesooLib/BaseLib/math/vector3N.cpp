@@ -614,3 +614,32 @@ vectornView		vector3N::x() const
 		
 		return vectornView(&ptr[i],rows(), stride);
 	}
+
+
+				  vector3 vector3N::sampleRow(m_real criticalTime) const
+				  {
+					  vector3N const& in=*this;
+				vector3 out;
+				//!< 0 <=criticalTime<= numFrames()-1
+				// float 0 이 정확하게 integer 0에 mapping된다.
+				int a;
+				float t;
+				
+				a=(int)floor(criticalTime);
+				t=criticalTime-(float)a;
+				
+				if(t<0.005)
+				  out=in.row(a);
+				else if(t>0.995)
+				  out=in.row(a+1);
+				else
+				  {
+					if(a<0)
+					  out.interpolate(t-1.0, in.row(a+1), in.row(a+2));
+					else if(a+1>=in.rows())
+					  out.interpolate(t+1.0, in.row(a-1), in.row(a));
+					else
+					  out.interpolate(t, in.row(a), in.row(a+1));
+				  }
+				return out;
+				  }

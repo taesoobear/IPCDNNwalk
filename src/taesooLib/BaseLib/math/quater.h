@@ -172,7 +172,7 @@ public:
 		out.z = 0.5 * (- qy*x + qx*y + qw*z);
 		return out;
 	}
-	TString output(bool rotationVector=false);
+	std::string output(bool rotationVector=false);
 
 	friend std::ostream &operator << (std::ostream &os, const quater &s);
 };

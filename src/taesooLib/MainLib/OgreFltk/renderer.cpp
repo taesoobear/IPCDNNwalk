@@ -105,7 +105,11 @@ Ogre::Matrix4 BuildScaledOrthoMatrix(double left, double right, double bottom, d
 inline Ogre::Matrix4 BuildScaledOrthoMatrix(double zoom, double aspectRatio)
 {
 	double scale=500;
-	return BuildScaledOrthoMatrix(-scale/zoom, scale/zoom, -scale/aspectRatio/zoom, scale/aspectRatio/zoom, 0.5, 10000);
+	double dfar;
+	double dnear;
+	dfar= config.GetFloat("farClipDistance") * 10;
+	dnear=config.GetFloat("nearClipDistance");
+	return BuildScaledOrthoMatrix(-scale/zoom, scale/zoom, -scale/aspectRatio/zoom, scale/aspectRatio/zoom, dnear, dfar);
 }
 #endif
 
@@ -271,9 +275,9 @@ void OgreRenderer::Viewport::_init(OgreRenderer& renderer,int width, int height)
 	m_pViewpoint->setDefaultView();
 #else
 	FILE* fp;
-	VERIFY(fp=fopen("../Resource/viewpoint.txt","r"));
+	VERIFY(fp=fopen((renderer.mTaesooLib_path+"Resource/viewpoint.txt").c_str(),"r"));
 	m_pViewpoint->ReadViewPoint(fp);	
-//	m_pViewpoint->ReadViewPoint("../Resource/viewpoint.txt");	
+//	m_pViewpoint->ReadViewPoint((mTaesooLib_path+"Resource/viewpoint.txt");	
 	fclose(fp);
 	FileCloseForGetToken();
 #endif
@@ -315,9 +319,13 @@ void OgreRenderer::Viewport::setOrthographicMode(bool isOrtho)
 	printf("aspect Ratio %f\n", aspectRatio);
 	if(isOrtho)
 	{
+		m_pViewpoint-> m_fDepth*=4;// 카메라를 멀리 놓는다. (fog 세팅 바꿀 것.)
+		m_pViewpoint->UpdateVPosFromVHD();
+		changeView(*m_pViewpoint);
+		
 		mCam->setProjectionType(Ogre::PT_ORTHOGRAPHIC);
 		//	mCam->setPosition(Ogre::Vector3(0, 10000, 0));
-		m_real zoom=1;
+		m_real zoom=1.5;
 		m_pViewpoint->setZoom(zoom);
 		//	m_real zoom=m_pViewpoint->getZoom();
 		mCam->setCustomProjectionMatrix( true, BuildScaledOrthoMatrix(zoom, aspectRatio));
@@ -384,22 +392,24 @@ OgreRenderer::OgreRenderer()
 		mbScreenshot(false),
 		mbFixedTimeStep(false),
 		m_fTimeScaling(1.f),
-		mScreenshotPrefix("../dump/dump")
-{	
+		mScreenshotPrefix("../dump/dump"),
+		mTaesooLib_path	("../")
+{
+	_locateTaesooLib();
 #ifdef _MSC_VER // WINDOWS
 #if defined(_DEBUG)
-	_constructor("../Resource/ogreconfig_personal.txt", "../Resource/ogreconfig.txt","plugins_d.cfg", "ogre.cfg");
+	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig.txt").c_str(),(mPluginPath+"plugins_d.cfg").c_str(), (mPluginPath+"ogre.cfg").c_str());
 #else
-	_constructor("../Resource/ogreconfig_personal.txt", "../Resource/ogreconfig.txt","plugins.cfg", "ogre.cfg");
+	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig.txt").c_str(),(mPluginPath+"plugins.cfg").c_str(), (mPluginPath+"ogre.cfg").c_str());
 #endif
 #elif defined(__APPLE__) 
-	_constructor("../Resource/ogreconfig_personal.txt", "../Resource/ogreconfig_mac.txt","plugins_mac.cfg", "ogre_mac.cfg");
+	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig_mac.txt").c_str(),(mPluginPath+"plugins_mac.cfg").c_str(), (mPluginPath+"ogre_mac.cfg").c_str());
 #else // LINUX
 
 #if OGRE_VERSION_MINOR >= 12 || OGRE_VERSION_MAJOR>=13
-	_constructor("../Resource/ogreconfig_personal.txt", "../Resource/ogreconfig_linux12.txt", "plugins_linux12.cfg", "ogre_linux12.cfg");
+	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig_linux12.txt").c_str(), (mPluginPath+"plugins_linux12.cfg").c_str(), (mPluginPath+"ogre_linux12.cfg").c_str());
 #else
-	_constructor("../Resource/ogreconfig_personal.txt", "../Resource/ogreconfig_linux.txt", "plugins_linux.cfg", "ogre_linux.cfg");
+	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig_linux.txt").c_str(), (mPluginPath+"plugins_linux.cfg").c_str(), (mPluginPath+"ogre_linux.cfg").c_str());
 #endif
 #endif
 }
@@ -422,11 +432,22 @@ OgreRenderer::OgreRenderer(const char* fallback_configFileName, const char* conf
 		mbScreenshot(false),
 		mbFixedTimeStep(false),
 		m_fTimeScaling(1.f),
-		mScreenshotPrefix("../dump/dump")
+		mScreenshotPrefix("../dump/dump"),
+		mTaesooLib_path	("../")
 {
+	_locateTaesooLib();
 	_constructor(fallback_configFileName, configFileName, plugins_file, ogre_config);
 }
 
+void OgreRenderer::_locateTaesooLib()
+{
+	mTaesooLib_path=RE::taesooLibPath();
+	if( mTaesooLib_path=="work/taesooLib/")
+	{
+		mScreenshotPrefix="work/taesooLib/dump/dump";
+		mPluginPath="work/";
+	}
+}
 void OgreRenderer::_constructor(const char* fallback_configFileName, const char* configFileName, const char* plugins_file, const char* ogre_config)
 {
 	printf("loading %s\n", configFileName);
@@ -436,18 +457,32 @@ void OgreRenderer::_constructor(const char* fallback_configFileName, const char*
 	ASSERT(RE::g_pGlobals==NULL);
 	RE::g_pGlobals=new RE::Globals();
 	RE::g_pGlobals->pRenderer = this;    
-	m_pMotionManager=new MotionManager("../Resource/motion.lua");
+	m_pMotionManager=new MotionManager((mTaesooLib_path+"Resource/motion.lua").c_str());
 	m_fElapsedTime=0.f;
 	m_fCaptureFPS=30.f;
 	mbTimeStop=false;
 
+	if(mTaesooLib_path=="../")
+	{
 #if	OGRE_VERSION_MAJOR>=13
-	mResourceFile="../Resource/resources13.cfg";
+		mResourceFile=(mTaesooLib_path+"Resource/resources13.cfg").c_str();
 #elif OGRE_VERSION_MINOR>=12 
-	mResourceFile="../Resource/resources12.cfg";
+		mResourceFile=(mTaesooLib_path+"Resource/resources12.cfg").c_str();
 #else
-	mResourceFile="../Resource/resources.cfg";
+		mResourceFile=(mTaesooLib_path+"Resource/resources.cfg").c_str();
 #endif
+	}
+	else
+	{
+#if	OGRE_VERSION_MAJOR>=13
+		mResourceFile=(mTaesooLib_path+"Resource/resources13_relative.cfg").c_str();
+#elif OGRE_VERSION_MINOR>=12 
+		mResourceFile=(mTaesooLib_path+"Resource/resources12_relative.cfg").c_str();
+#else
+		mResourceFile=(mTaesooLib_path+"Resource/resources_relative.cfg").c_str();
+#endif
+
+	}
 
 #ifndef NO_OGRE
 #if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
@@ -643,7 +678,7 @@ void OgreRenderer::firstInit(void* handle, int width, int height)
 			delete mRoot;
 		}
 		mRoot=NULL;
-		throw std::runtime_error("");
+		throw std::runtime_error(e.getFullDescription());
 	}
 #endif
 }
@@ -1080,42 +1115,47 @@ void OgreRenderer::addNewViewport()
 
 
 }
-#define TEXTURE_MAX_RESOLUTION 256
-// Create the texture
-void OgreRenderer::createDynamicTexture(const char* name, CImage const& image)
+#define TEXTURE_MAX_RESOLUTION 2048
+int OgreRenderer::_getOgreTextureWidth(const char* texturename)
 {
 #ifndef NO_OGRE
-	int delta[TEXTURE_MAX_RESOLUTION];
+	Ogre::TexturePtr texture =Ogre::TextureManager::getSingleton().getByName(texturename);
+	if(texture.isNull())
+		return -1;
+	else
+		return texture->getWidth();
+#else
+	return -1;
+#endif
+}
+void OgreRenderer::_updateDynamicTexture(const char* texturename, CImage const& image, bool reuse)	
+{
+#ifndef NO_OGRE
 	int width=image.GetWidth();
 	int width2=TEXTURE_MAX_RESOLUTION;
 	while(width2>width) width2/=2;
 
-	Msg::verify(width2>=2, "??? resolution error");
-	//std::cout << width2<<std::endl;
-	//
-	//change bygth
-	//const char* texturename="DynamicTexture";
-	//Ogre::TexturePtr texture =Ogre::TextureManager::getSingleton().getByName(texturename);
-	
-	std::ostringstream nameStream;
-	nameStream << name << "Texture";
-	std::string nameString=nameStream.str();
-	const char* texturename=nameString.c_str();
+	if(width2<2)
+	{
+		Msg::msgBox( "??? resolution error %d.\n Retry after deleting *.texturecache in the fbx folder.", image.GetWidth());
+	}
 	Ogre::TexturePtr texture =Ogre::TextureManager::getSingleton().getByName(texturename);
-	if(texture.isNull())
+	if (!texture.isNull() && !reuse)
+		Ogre::TextureManager::getSingleton().remove(texturename);
+	if(!reuse || texture.isNull())
 		texture = Ogre::TextureManager::getSingleton().createManual(
 					texturename, // name
 					Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
 					Ogre::TEX_TYPE_2D,      // type
 					width2, width2,         // width & height
-					0,                // number of mipmaps
+					Ogre::MIP_UNLIMITED,                // number of mipmaps
 					Ogre::PF_BYTE_BGRA,     // pixel format
 					Ogre::TU_DEFAULT);      // usage; should be TU_DYNAMIC_WRITE_ONLY_DISCARDABLE for
 				//Ogre::TU_DYNAMIC_WRITE_ONLY_DISCARDABLE);      // usage; should be TU_DYNAMIC_WRITE_ONLY_DISCARDABLE for
 						  // textures updated very often (e.g. each frame)
 	else
 		width2=texture->getWidth();
-	 
+	
 	// Get the pixel buffer
 	Ogre::HardwarePixelBufferSharedPtr pixelBuffer = texture->getBuffer();
 	 
@@ -1126,43 +1166,73 @@ void OgreRenderer::createDynamicTexture(const char* name, CImage const& image)
 	 
 	Ogre::uint8* pDest = static_cast<Ogre::uint8*>(pixelBox.data);
 	 
-	// Fill in some pixel data. This will give a semi-transparent blue,
-	// but this is of course dependent on the chosen pixel format.
-	//
-	// nearest sampling
-	for(size_t i = 0; i < width2; i++)
-	{
-		int x=i*image.GetWidth()/width2;
-		if(x>=image.GetWidth()) x=image.GetWidth()-1; 
-		delta[i]=x;
-	}
-	for(size_t i = 0; i < width2-1; i++)
-		delta[i]=delta[i+1]-delta[i];
 
-	for (size_t j = 0; j < width2; j++)
+	if (image.getOpacityMap())
 	{
-		int y=j*image.GetHeight()/width2;
-		if(y>=image.GetHeight()) y=image.GetHeight()-1; 
-		
-		CPixelRGB8* c_line=image.GetPixel(0, y);
-		int* pdelta=&delta[0];
-
-		//std::cout << y <<"/"<<image.GetHeight()<<std::endl;
-		for(size_t i = 0; i < width2; i++)
+		int skip=image.GetWidth()/width2;
+		for (size_t j = 0; j < width2; j++)
 		{
-			*pDest++ = c_line->B; // B
-			*pDest++ = c_line->G ; // G
-			*pDest++ = c_line->R; // R
-			*pDest++ = 255; // A
-			c_line=c_line+*pdelta++;
+			int h=j*image.GetHeight()/width2;
+			//printf("%d %d\n", j,j);
+			if(h>image.GetHeight()-1) h=image.GetHeight()-1;
+			//CPixelRGB8* c_line=image.GetPixel(0, h);
+			CPixelRGB8* c_line=image.GetPixel(0, image.GetHeight()-h-1); // flip_y
+			const unsigned char* c_linea=image.getOpacity(0,image.GetHeight()-h-1); // flip_y
+
+			//std::cout << y <<"/"<<image.GetHeight()<<std::endl;
+			for(size_t i = 0; i < width2; i++)
+			{
+				*pDest++ = c_line->B; // B
+				*pDest++ = c_line->G ; // G
+				*pDest++ = c_line->R; // R
+				*pDest++ = *c_linea; // A
+				c_line+=skip;
+				c_linea+=skip;
+			}
 		}
 	 
 		pDest += pixelBox.getRowSkip() * Ogre::PixelUtil::getNumElemBytes(pixelBox.format);
 	}
+	else
+	{
+		int skip=image.GetWidth()/width2;
+		for (size_t j = 0; j < width2; j++)
+		{
+			int h=j*image.GetHeight()/width2;
+			//printf("%d %d\n", j,j);
+			if(h>image.GetHeight()-1) h=image.GetHeight()-1;
+			//CPixelRGB8* c_line=image.GetPixel(0, h);
+			CPixelRGB8* c_line=image.GetPixel(0, image.GetHeight()-h-1); // flip_y
+
+			//std::cout << y <<"/"<<image.GetHeight()<<std::endl;
+			for(size_t i = 0; i < width2; i++)
+			{
+				*pDest++ = c_line->B; // B
+				*pDest++ = c_line->G ; // G
+				*pDest++ = c_line->R; // R
+				*pDest++ = 255; // A
+				c_line+=skip;
+			}
+
+			pDest += pixelBox.getRowSkip() * Ogre::PixelUtil::getNumElemBytes(pixelBox.format);
+		}
+	}
 	 
 	// Unlock the pixel buffer
 	pixelBuffer->unlock();
+#endif
+}
+// Create the texture
+void OgreRenderer::createDynamicTexture(const char* name, CImage const& image)
+{
+#ifndef NO_OGRE
+	std::ostringstream nameStream;
+	nameStream << name << "Texture";
+	std::string nameString=nameStream.str();
+	const char* texturename=nameString.c_str();
 	 
+	_updateDynamicTexture( texturename,  image)	;
+
 	// Create a material using the texture
 	// change bygth
 	//	const char materialName[]=		"DynamicTextureMaterial"; // name
@@ -1181,77 +1251,14 @@ void OgreRenderer::createDynamicTexture(const char* name, CImage const& image)
 	}
 #endif
 }
-void OgreRenderer::createDynamicTexture(const char* name, CImage const& image, vector3 const& diffuseColor, vector3 const& specularColor)
+void OgreRenderer::createDynamicTexture(const char* name, CImage const& image, vector3 const& diffuseColor, vector3 const& specularColor, double shininess)
 {
 #ifndef NO_OGRE
-	int width=image.GetWidth();
-	int TEX_MAX_RESOLUTION=image.GetWidth();
-	int width2=TEX_MAX_RESOLUTION;
-	while(width2>width) width2/=2;
-
-	Msg::verify(width2>=2, "??? resolution error");
-	//std::cout << width2<<std::endl;
-	//
-	//change bygth
-	//const char* texturename="DynamicTexture";
-	//Ogre::TexturePtr texture =Ogre::TextureManager::getSingleton().getByName(texturename);
-	
 	std::ostringstream nameStream;
-	nameStream << name << "Texture";
+	nameStream << name << "Texture"<<image.GetWidth();
 	std::string nameString=nameStream.str();
 	const char* texturename=nameString.c_str();
-	Ogre::TexturePtr texture =Ogre::TextureManager::getSingleton().getByName(texturename);
-	if(texture.isNull())
-		texture = Ogre::TextureManager::getSingleton().createManual(
-					texturename, // name
-					Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-					Ogre::TEX_TYPE_2D,      // type
-					width2, width2,         // width & height
-					0,                // number of mipmaps
-					Ogre::PF_BYTE_BGRA,     // pixel format
-					Ogre::TU_DEFAULT);      // usage; should be TU_DYNAMIC_WRITE_ONLY_DISCARDABLE for
-				//Ogre::TU_DYNAMIC_WRITE_ONLY_DISCARDABLE);      // usage; should be TU_DYNAMIC_WRITE_ONLY_DISCARDABLE for
-						  // textures updated very often (e.g. each frame)
-	else
-		width2=texture->getWidth();
-	 
-	// Get the pixel buffer
-	Ogre::HardwarePixelBufferSharedPtr pixelBuffer = texture->getBuffer();
-	 
-	// Lock the pixel buffer and get a pixel box
-	pixelBuffer->lock(Ogre::HardwareBuffer::HBL_NORMAL); // for best performance use HBL_DISCARD!
-	//pixelBuffer->lock(Ogre::HardwareBuffer::HBL_DISCARD); // for best performance use HBL_DISCARD!
-	const Ogre::PixelBox& pixelBox = pixelBuffer->getCurrentLock();
-	 
-	Ogre::uint8* pDest = static_cast<Ogre::uint8*>(pixelBox.data);
-	 
-	//CImage  img2;
-	//img2.CopyFrom(image);
-	//Imp:: resize(img2, width2, width2);
-
-	for (size_t j = 0; j < width2; j++)
-	{
-		int h=j*image.GetHeight()/width2;
-		//printf("%d %d\n", j,j);
-		if(h>image.GetHeight()-1) h=image.GetHeight()-1;
-		//CPixelRGB8* c_line=image.GetPixel(0, h);
-		CPixelRGB8* c_line=image.GetPixel(0, image.GetHeight()-h-1); // flip_y
-
-		//std::cout << y <<"/"<<image.GetHeight()<<std::endl;
-		for(size_t i = 0; i < width2; i++)
-		{
-			*pDest++ = c_line->B; // B
-			*pDest++ = c_line->G ; // G
-			*pDest++ = c_line->R; // R
-			*pDest++ = 255; // A
-			c_line++;
-		}
-	 
-		pDest += pixelBox.getRowSkip() * Ogre::PixelUtil::getNumElemBytes(pixelBox.format);
-	}
-	 
-	// Unlock the pixel buffer
-	pixelBuffer->unlock();
+	_updateDynamicTexture(texturename, image);
 	 
 	// Create a material using the texture
 	// change bygth
@@ -1267,9 +1274,61 @@ void OgreRenderer::createDynamicTexture(const char* name, CImage const& image, v
 				materialName,
 		Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
 		material->getTechnique(0)->getPass(0)->createTextureUnitState(texturename);
-		//material->getTechnique(0)->getPass(0)->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
+		if(image.getOpacityMap())
+		{
+			material->getTechnique(0)->getPass(0)->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
+			material->getTechnique(0)->getPass(0)->setDepthWriteEnabled(false);
+		}
 		material->getTechnique(0)->setDiffuse(diffuseColor.x, diffuseColor.y, diffuseColor.z, 1.0);
 		material->getTechnique(0)->setSpecular(specularColor.x, specularColor.y, specularColor.z, 1.0);
+		material->getTechnique(0)->setShininess(shininess); 
+	}
+	else
+	{
+		material->getTechnique(0)->getPass(0)->removeTextureUnitState(0);
+		material->getTechnique(0)->getPass(0)->createTextureUnitState(texturename);
+		if(image.getOpacityMap())
+		{
+			material->getTechnique(0)->getPass(0)->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
+			material->getTechnique(0)->getPass(0)->setDepthWriteEnabled(false);
+		}
+		material->getTechnique(0)->setDiffuse(diffuseColor.x, diffuseColor.y, diffuseColor.z, 1.0);
+		material->getTechnique(0)->setSpecular(specularColor.x, specularColor.y, specularColor.z, 1.0);
+		material->getTechnique(0)->setShininess(shininess); 
+	}
+#endif
+}
+void OgreRenderer::_linkMaterialAndTexture(const char* materialName, const char* textureName)
+{
+#ifndef NO_OGRE
+	Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().getByName(materialName);
+	
+	if(material.isNull())
+	{
+		printf("%s not found\n", materialName);
+	}
+	else
+	{
+		material->getTechnique(0)->getPass(0)->removeTextureUnitState(0);
+		material->getTechnique(0)->getPass(0)->createTextureUnitState(textureName);
+	}
+#endif
+}
+void OgreRenderer::createMaterial(const char* name, vector3 const& diffuseColor, vector3 const& specularColor, double shininess)
+{
+#ifndef NO_OGRE
+	// Create a material that doesn't use any texture
+	const char* materialName=name; // name
+	Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().getByName(materialName);
+	
+	if(material.isNull())
+	{
+		material=Ogre::MaterialManager::getSingleton().create(
+				materialName,
+		Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+		material->getTechnique(0)->setDiffuse(diffuseColor.x, diffuseColor.y, diffuseColor.z, 1.0);
+		material->getTechnique(0)->setSpecular(specularColor.x, specularColor.y, specularColor.z, 1.0);
+		material->getTechnique(0)->setShininess(shininess); // overall better than the default value 1.0
 	}
 #endif
 }

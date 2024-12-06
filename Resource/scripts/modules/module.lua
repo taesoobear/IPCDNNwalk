@@ -13,7 +13,15 @@ function defineDerived(super, derivedClasses, functionNames)
 	end
 end
 
-
+if FltkMotionWindow then
+	FltkMotionWindow.addSkin_cpp=FltkMotionWindow.addSkin
+	function FltkMotionWindow:addSkin(skin)
+		if type(skin)=='table' then
+		else
+			self:addSkin_cpp(skin)
+		end
+	end
+end
 
 -- deprecated. use dbg.lunaType
 function lunaType(obj)
@@ -55,32 +63,112 @@ function assert(bVal)
    return bVal
 end
 
+if util.C3Dfile then
+	function util.C3Dfile:toTable()
+		local out={}
+		local data=self:data()
+		local points=hypermatrixn(data:nbFrames(), data:frame(0):getPoints():size(), 3)
+		for i=0, data:nbFrames()-1 do
+			points:page(i):assign(data:frame(i):getPoints():matView())
+		end
+
+		out.points=points
+
+		local group={}
+		local param=self:parameters()
+		for i=0, param:nbGroups()-1 do
+			local grp=param:group(i)
+			local grptable={ groupIdx=i}
+			group[grp:name()]=grptable
+			for j=0, grp:nbParameters()-1 do
+				local param=grp:parameter(j)
+				if param:type()==2 then -- INT
+					grptable[param:name()]=param:valuesAsInt()
+				elseif param:type()==4 then -- float
+					grptable[param:name()]=param:valuesAsDouble()
+				elseif param:type()==-1 then -- string
+					grptable[param:name()]=param:valuesAsString()
+				else
+					local paramtable={ parameterIdx=j}
+					grptable[param:name()]=paramtable
+				end
+			end
+		end
+
+		for k, v in pairs(group) do
+			assert(not out[k])
+			if k~='' then
+				out[k]=v
+			end
+		end
+		out._raw_data=self -- prevent garbage collection
+		return out
+	end
+end
 if util.NPYarray then
+	function util.NPZfile:toTable()
+		local out={}
+		local fn=self.filenames
+		for i=0, fn:size()-1 do
+			local k=fn(i)
+			out[k]=self(i):reshape()
+		end
+		out.raw_data=self
+		return out
+	end
 -- always returns a copy.
 function util.NPYarray:reshape(size1, size2, size3, size4)
+	if size1==nil then
+		size1=self:shape()
+	end
 
 	if dbg.lunaType(size1)=='intvectorn' then
 		if size1:size()>=2 then
 			size2=size1(1)
 			if size1:size()==3 then
 				size3=size1(2)
-			else
+			elseif size1:size()>3 then
 				assert(false)
 			end
 		end
-		size1=size1(0)
+		if size1:size()==0 then
+			size1=0
+		else
+			size1=size1(0)
+		end
 	end
 	assert(size4==nil) -- not supported yet
 
 	local from
 	if self:wordSize()==4 then
-		from=self:floatvec()
+		if self:typeCode()=='u' or self:typeCode()=='i' then
+			from=self:intvec()
+		else
+			from=self:floatvec()
+		end
+	elseif self:typeCode()=='U' or self:typeCode()=='S' then
+		from=self:stringvec()
+		return from
+	elseif self:wordSize()==1 then
+		if self:typeCode()=='b' then
+			from=self:intvec()
+		else
+			assert(false)
+		end
+	elseif self:wordSize()==0 then
+		return 'unknown'
 	else
 		assert(self:wordSize()==8)
-		from=self:doublevec()
+
+		if self:typeCode()=='u' or self:typeCode()=='i' then
+			from=self:intvec()
+		else
+			from=self:doublevec()
+		end
 	end
 
 	if size3 then
+		assert(not self:fortranOrder()) -- not implemented yet! (refer to size2 case)
 		assert(size1*size2*size3==self:numElts())
 		local out=hypermatrixn(size1, size2, size3)
 		local size23=size2*size3
@@ -91,15 +179,34 @@ function util.NPYarray:reshape(size1, size2, size3, size4)
 		end
 		return out
 	elseif size2 then
+		if self:fortranOrder() then
+			local temp=size2
+			size2=size1
+			size1=temp
+		end
 		assert(size1*size2==self:numElts())
-		local out=matrixn(size1, size2)
-		for i=0, size1-1 do
-			out:row(i):assign(from:range(size2*j, size2*(j+1)))
+		local out
+		if self:typeCode()=='u' or self:typeCode()=='i' then
+			out=intmatrixn(size1, size2)
+		else
+			out=matrixn(size1, size2)
+		end
+		for j=0, size1-1 do
+			out:row(j):assign(from:range(size2*j, size2*(j+1)))
+		end
+		if self:fortranOrder() then
+			return out:T()
 		end
 		return out
 	else
 		assert(size1==self:numElts())
-		local out=vectorn(size1)
+		local out
+
+		if self:typeCode()=='u' then
+			out=intvectorn(size1)
+		else
+			out=vectorn(size1)
+		end
 		out:assign(from)
 		return out
 	end
@@ -123,7 +230,7 @@ function setViewYUp(YUP)
 		local lightnode=osm:getSceneNode("LightNode")
 		lightnode:setOrientation(quater(1,0,0,0))
 		if not YUP then
-			lightnode:rotate(quater(math.rad(180), vector3(0,1,0)))
+			lightnode:rotate(quater(math.rad(90), vector3(1,0,0)))
 		end
 	end
 end
@@ -199,9 +306,37 @@ function LUAdelete(classInstance)
       classInstance:__finalize()
    end
 end
+Path=LUAclass()
+function Path.__init(self, str)
+	self.string=str
+end
+function Path:__index(key) 
+	if key=='parent' then
+		return Path(os.parentPath(self.string))
+	elseif key=='relative' then
+		return Path(os.absoluteToRelativePath(self.string))
+	else
+		return getmetatable(self)[key] 
+	end
+end
+function Path:__concat(b)
+	return Path(os.joinPath(self.string,b))
+end
+function Path:join( b)
+	return Path(os.joinPath(self.string,b))
+end
+function Path:addToPackagePath()
+	package.path=package.path..';'..self.relative.string..'/?.lua'
+end
+function Path:exists()
+	return os.isFileExist(self.string)
+end
+function Path:__tostring()
+	return self.string
+end
+Path.tostring=Path.__tostring
 
-
-function printTable_deprecated(t, bPrintUserData)
+function dbg.printTable_deprecated(t, bPrintUserData)
    
 
    for k,v in pairsByKeys(t) do
@@ -306,6 +441,25 @@ function isnan(t)
    return false
 end
 
+function RE.createTextureMaterial(imageFilename, materialName, diffuseColor, specularColor)
+	if not diffuseColor then
+		diffuseColor=vector3(1,1,1)
+	end
+	if not specularColor then
+		specularColor=vector3(0.1,0.1,0.1)
+	end
+	if type(diffuseColor)=='number' then
+		diffuseColor=vector3(diffuseColor, diffuseColor, diffuseColor)
+	end
+	if type(specularColor)=='number' then
+		specularColor=vector3(specularColor, specularColor, specularColor)
+	end
+	
+	local image=CImage()
+	image:Load(imageFilename)
+	-- this creates a material and a texture. 
+	RE.renderer():createDynamicTexture(materialName,image , diffuseColor, specularColor)
+end
 function RE.output(str, ...)
 	RE._output(str, util.mergeStringShort({...}),1)
 end
@@ -316,9 +470,13 @@ end
 
 RE.createMotionLoaderExt_cpp=RE.createMotionLoaderExt
 function RE.createMotionLoaderExt(filename)
-	if type(filename)=='table' then
-		assert(type(filename[1])=='string')
+	if type(filename)=='table' and not filename.zipFile then
+
 		local loader1=RE.createMotionLoaderExt(filename[1])
+		if #filename>1 then
+			local mot=RE.loadRawMotions(loader1, filename)
+			loader1.mMotion:assign(mot)
+		end
 		if filename.identity_pose then
 			local loader2=RE.createMotionLoaderExt(filename.identity_pose)
 			local T_pose=loader2.mMotion:pose(0):copy()
@@ -335,7 +493,27 @@ function RE.createMotionLoaderExt(filename)
 			loader2.mMotion:init(loader2)
 			loader2.mMotion:setMotionMap(mm)
 
-			return loader2
+			loader1=loader2
+		end
+		if filename.scale then
+			loader1.mMotion:scale(filename.scale)
+		end
+		if filename.translate then
+			loader1.mMotion:translate(filename.translate)
+		end
+
+		return loader1
+	elseif type(filename)=='table' then
+		local zipFile=filename.zipFile
+		assert(zipFile)
+		if filename.fileIndex then
+			assert(filename.fileName)
+			assert(filename.fileName:sub(-3):lower()=='bvh')
+			local content=zipFile:getFileContent(filename.fileIndex)
+			return MainLib.BVHLoader(content,'loadFromMemory')
+		elseif filename.fileName then
+			print('not implemented yet')
+			assert(false) -- search for the file. zipFile:getFileName(..
 		else
 			assert(false)
 		end
@@ -357,6 +535,8 @@ function RE.createMotionLoaderExt(filename)
 end
 
 -- returns a loader-compatible motion. (works only when the axes and bone names are mostly compatible. otherwise, use retargetting (such as correspondenceTools_GUI or angleRetargettingTool_GUI)
+-- motionFile can be a table like this. 
+--	{"../../Mixamo/fbx/Macarena Dance.fbx", identity_pose='../../Mixamo/fbx/T-Pose.fbx'},
 function RE.loadMotion(loader, motionFile)
 	if type(motionFile)=='string' and motionFile:sub(-5)=='.mot2' then
 		local mot=Motion(loader)
@@ -364,11 +544,12 @@ function RE.loadMotion(loader, motionFile)
 		return mot
 	else
 		local loader2=RE.createMotionLoaderExt(motionFile)
-		local motion=loader2.mMotion:getMotionMap():transferMotion(loader)
+		local motion=loader2.mMotion:getMotionMap():copyMotion(loader)
 		return motion
 	end
 end
--- motionFile can be a table like this
+-- input skel file can be anything (including nil), and a VRMLloader is created from it.
+-- motionFiles can be a table like this. 
 --{
 --		{"../../Mixamo/fbx/Macarena Dance.fbx", identity_pose='../../Mixamo/fbx/T-Pose.fbx'},
 --		"../../Mixamo/bvh/SittingDisbelief1.bvh", 
@@ -376,15 +557,38 @@ end
 --		"../../Mixamo/bvh/SittingDisbelief1.bvh",
 --		"../../Mixamo/bvh/SittingDisbelief2.bvh",
 --	}
-function RE.loadMotions(skelFile, motionFile)
+-- returns vrmlloader, motionDOFcontainer, motion
+--                          : contains a table named "files"
+function RE.loadMotions(skelFile, motionFiles)
 	require("subRoutines/WRLloader")
     local _loader
 	local info
+	if not skelFile then
+		assert(type(motionFiles)=='table')
+		if type(motionFiles[1])=='table' then
+			skelFile=copyTable(motionFiles[1])
+		else
+			skelFile={ motionFiles[1]}
+		end
+		skelFile.scale=motionFiles.scale
+	end
+
 	if type(skelFile)=='table' then
-		assert(skelFile[1]:sub(-4)=='.bvh' and skelFile.scale)
-		local l=RE.createMotionLoaderExt_cpp(skelFile[1])
-		l:scale(skelFile.scale, l.mMotion)
+		local l
+		if skelFile[1]:sub(-4)=='.bvh' and skelFile.scale then
+			l=RE.createMotionLoaderExt_cpp(skelFile[1])
+			l:scale(skelFile.scale, l.mMotion)
+		else
+			l=RE.createMotionLoaderExt(skelFile)
+			if skelFile.scale then
+				l:scale(skelFile.scale, l.mMotion)
+			end
+		end
 		_loader=l:toVRMLloader(skelFile.cylinderRadius)
+	elseif dbg.lunaType(skelFile)=='MotionLoader' then
+		_loader=skelFile:toVRMLloader()
+	elseif dbg.lunaType(skelFile)=='MainLib.VRMLloader' then
+		_loader=skelFile
 	elseif skelFile:sub(-4)=='.bvh' then
 		local l=RE.createMotionLoaderExt_cpp(skelFile)
 		_loader=l:toVRMLloader()
@@ -393,7 +597,7 @@ function RE.loadMotions(skelFile, motionFile)
 	end
 	local motionDOFcontainer -- contains all the MotionDOFs in the table
 	local motion -- only keeps the last instance of Motion
-	if type(motionFile)=='table' then
+	if type(motionFiles)=='table' then
 		local loader
 		info={}
 
@@ -406,7 +610,7 @@ function RE.loadMotions(skelFile, motionFile)
 				table.insert(info, {start=startFrame, v})
 			end
 		end
-		for i, v in ipairs(motionFile) do
+		for i, v in ipairs(motionFiles) do
 			if type(v)=='string' and v:sub(-5)=='.mot2' then
 				if i==1 then
 					loader=_loader:copy()
@@ -435,10 +639,10 @@ function RE.loadMotions(skelFile, motionFile)
 				end
 			end
 		end
-		if motionFile.scale then
-			loader:scale(motionFile.scale, loader.mMotion)
+		if motionFiles.scale then
+			loader:scale(motionFiles.scale, loader.mMotion)
 		end
-		motion=loader.mMotion:getMotionMap():transferMotion(_loader)
+		motion=loader.mMotion:getMotionMap():copyMotion(_loader)
 		motionDOFcontainer=MotionDOFcontainer(_loader.dofInfo, motion)
 		--for i=0, loader.mMotion:numFrames()-1 do
 		--	if loader.mMotion:isDiscontinuous(i) then
@@ -446,13 +650,59 @@ function RE.loadMotions(skelFile, motionFile)
 		--	end
 		--end
 		motionDOFcontainer.files=info
-	elseif motionFile then
-		motionDOFcontainer=MotionDOFcontainer(_loader.dofInfo, motionFile)
-		motionDOFcontainer.fileNames={0, motionFile}
+		motion:setConstraints(Motion.IS_DISCONTINUOUS, motionDOFcontainer.discontinuity)
+	elseif motionFiles then
+		motionDOFcontainer=MotionDOFcontainer(_loader.dofInfo, motionFiles)
+		motionDOFcontainer.fileNames={0, motionFiles}
 	end
 
-	motion:setConstraints(Motion.IS_DISCONTINUOUS, motionDOFcontainer.discontinuity)
 	return _loader, motionDOFcontainer, motion
+end
+
+
+-- create a concated motion as well as all the raw Motions. unlike RE.loadMotions, no motion-mapping is tried.
+function RE.loadRawMotions(loader, motionFiles)
+	local motionContainer -- contains all the "COMPATIBLE" Motions in the table
+	motionContainer=Motion()
+	motionContainer:initSkeleton(loader)
+
+	assert(type(motionFiles)=='table')
+
+	local info={}
+	local incompatibleLoaders={}
+	do
+
+		function packInfo(info, startFrame, filename, loader)
+			table.insert(info, {start=startFrame, filename, originalLoader=loader})
+		end
+		for i, v in ipairs(motionFiles) do
+			if type(v)=='string' and v:sub(-5)=='.mot2' then
+				error("use RE.loadMotions instead")
+			end
+			if math.fmod(i, 10)==1 then
+				print('loading '..tostring(i)..'/'..tostring(#motionFiles))
+			end
+
+			local loader2=RE.createMotionLoaderExt(v)
+			local prev=motionContainer:numFrames()
+			local compatible=true
+			if (loader:numBone()~=loader2:numBone()) then compatible =false end
+			for i=1, loader:numBone()-1 do
+				if (loader:bone(i):name():upper()~=loader2:bone(i):name():upper()) then
+					compatible=false
+				end
+			end
+			if compatible then
+				motionContainer:concat(loader2.mMotion)
+				motionContainer:setDiscontinuity(prev, true)
+				packInfo(info, prev, v, loader2)
+			else
+				table.insert(incompatibleLoaders, loader2)
+			end
+		end
+	end
+
+	return motionContainer, info
 end
 
 function RE.checkCtrlAndAlt(self, ev, button)
@@ -470,6 +720,107 @@ function RE.checkCtrlAndAlt(self, ev, button)
 	elseif ev=='KEYUP' and button=='65513' then
 		self.isAlt=false
 	end
+end
+
+-- mainlight colors, filllight colors. and shadow color.  see default values
+function RE.createLight(ambient, light1D, light1S, lightFD, lightFS, sc, _optionalNumMainLights, _optionalLightVariance) 
+	if not ambient then ambient=0.4 end
+	if not light1D then light1D=0.9 end
+	if not light1S then light1S=0.8 end
+	if not lightFD then lightFD=0.3 end
+	if not lightFS then lightFS=0.3 end
+	if not sc then sc=0.95 end
+	local f=io.open('../Resource/scripts/ogreConfig_personal.lua','r')
+	if f then
+		f:close()
+		dofile('../Resource/scripts/ogreConfig_personal.lua')
+	else
+		dofile('../Resource/scripts/ogreConfig.lua')
+	end
+	if not _optionalNumMainLights then _optionalNumMainLights =numMainLights end
+	if not _optionalLightVariance then _optionalLightVariance=0.02 end
+
+	numMainLights=_optionalNumMainLights
+	local lightVar=_optionalLightVariance
+
+
+	local rootnode =RE.ogreRootSceneNode()
+	if rootnode then
+		local lightnode=RE.createChildSceneNode(rootnode, "LightNode")
+		RE.ogreSceneManager():setAmbientLight(ambient, ambient, ambient)
+
+		if RE.getOgreVersionMinor()>=12 then
+
+			sc= math.pow(sc, 2/math.pow(numMainLights,0.8)) --heuristic to maintain shadow color
+			local function randomNormal()
+				return (math.random()-0.5)*2
+			end
+
+			assert(stencilShadow)
+
+			local lightOD=0.0
+			local lightOS=0.0
+			local highQualityRendering=false -- set this true for high quality render
+
+
+			if false and numMainLights>20 then
+				local function randomNormal()
+					while true do
+						local u = 2 * math.random() - 1;
+						local v = 2 * math.random() - 1;
+						local w = math.pow(u, 2) + math.pow(v, 2);
+						if w<1 then
+							local z = math.sqrt((-2 * math.log(w)) / w);
+							local x = u * z;
+							local y = v * z;
+							return x
+						end
+					end
+				end
+			end
+
+			RE.ogreSceneManager():setShadowColour(sc,sc,sc)
+
+
+			for i=1,numMainLights do
+				local light
+				if i==1 then
+					light=RE.ogreSceneManager():createLight("Mainlight")
+				else
+					light=RE.ogreSceneManager():createLight("Mainlight"..i)
+				end
+				light:setType("LT_DIRECTIONAL")
+
+				if RE.getOgreVersionMinor()==12 then
+					light:setDirection(-0.5+lightVar*(randomNormal()),-0.7,0.5+lightVar*(randomNormal()))
+					lightnode:attachObject(light)
+				else
+					local node=lightnode:createChildSceneNode("mainlightnode"..i)
+					node:setDirection(vector3(-0.5+lightVar*(randomNormal()),-0.7,0.5+lightVar*(randomNormal())))
+					node:attachObject(light)
+				end
+				if i==1 then
+					light:setDiffuseColour(light1D,light1D,light1D)
+					light:setSpecularColour(light1S,light1S,light1S)
+				else
+					light:setDiffuseColour(lightOD,lightOD,lightOD)
+					light:setSpecularColour(lightOS,lightOS,lightOS)
+				end
+				light:setCastShadows(true)
+
+			end
+			light=RE.ogreSceneManager():createLight("FillLight")
+			light:setType("LT_DIRECTIONAL")
+			light:setDirection(0.5,0.7,-0.5)
+			light:setDiffuseColour(lightFD,lightFD,lightFD)
+			light:setSpecularColour(lightFS,lightFS,lightFS)
+			light:setCastShadows(false)
+			lightnode:attachObject(light)
+		else
+			print('not supported')
+		end
+	end
+
 end
 
 -- for faster rendering
@@ -494,6 +845,13 @@ function RE.turnOffSoftShadows()
 		node:setDirection(vector3(-0.5,-0.7, 0.5))
 		node:attachObject(light)
 	end
+end
+
+function RE.turnOffShadows()
+	RE.ogreSceneManager():setShadowTechnique(0)
+end
+function RE.turnOnShadows()
+	RE.ogreSceneManager():setShadowTechnique(18)
 end
 TextArea=LUAclass()
 function TextArea:__init(overlayname, containername, textareaname,x,y,sx,sy ,fontsize)
@@ -859,6 +1217,9 @@ function dbg.drawLine2(objectlist, startpos, endpos, nameid, color , thickness)
    end
    objectlist:registerObject(nameid, "BillboardLineList",color or 'solidlightblue', lines:matView(), thickness or 0.5)
 end
+function dbg.drawLineM(objectlist, startpos, endpos, nameid, color , thickness)
+	dbg.drawLine2(objectlist, startpos*100, endpos*100, nameid, color, (thickness or 0.01)*100)
+end
 
 function dbg.drawLine(objectlist, startpos, endpos, nameid, color )
    local lines=vector3N() 
@@ -872,19 +1233,84 @@ function dbg.drawLine(objectlist, startpos, endpos, nameid, color )
    end
    objectlist:registerObject(nameid, "LineList", color or dbg.linecolor, lines:matView(),0)
 end
-
+function dbg.linesToArrows(lines, color, thickness, posScale)
+	local out=matrixn(lines:rows()/2, 13)
+	local color=dbg.colorToVec3(color or dbg.linecolor)
+	for c=0, out:rows()-1 do
+		local line=lines:row(c*2):toVector3()
+		local linee=lines:row(c*2+1):toVector3()
+		out:row(c):setVec3(0, line*posScale)
+		out:row(c):setVec3(3, linee*posScale)
+		out:row(c):setVec3(6, color)
+		out:row(c):set(9, thickness*posScale) -- width
+		out:row(c):set(10, 0) -- width
+		out:row(c):set(11, 0)  -- tu1
+		out:row(c):set(12, 0)  -- tu2
+	end
+	return out
+end
+function dbg.colorToVec3(color)
+	if type(color)=='string' then
+		if color=='solidred' then
+			return vector3(1,0,0)
+		elseif color=='solidgreen' then
+			return vector3(0,1,0)
+		elseif color=='solidblue' then
+			return vector3(0,0,1)
+		else
+			assert(false)
+		end
+	else
+		assert(dbg.lunaType(color)=='vector3')
+		return color
+	end
+end
 function dbg.drawTraj(objectlist, matrix, nameid, color, thickness, linetype)
 	if nameid==nil then
 		nameid=RE.generateUniqueName()
 	end
 	linetype=linetype or "LineList"
-	objectlist:registerObject(nameid, linetype, color or dbg.linecolor, matrix, thickness or 0)
+	if linetype=='ArrowsM' then
+		local c=color or dbg.linecolor
+		objectlist:registerObject(nameid, 'ColorWidthBillboardLineList', c, dbg.linesToArrows(matrix, c, thickness or 0, 100), 0)
+	elseif linetype=='Arrows' then
+		local c=color or dbg.linecolor
+		objectlist:registerObject(nameid, 'ColorWidthBillboardLineList', c, dbg.linesToArrows(matrix, c, thickness or 0, 1), 0)
+	else
+		objectlist:registerObject(nameid, linetype, color or dbg.linecolor, matrix, thickness or 0)
+	end
 end
 function dbg.timedDrawTraj(objectlist, time, matrix, color, thickness, linetype)
 	linetype=linetype or "LineList"
-	objectlist:registerObjectScheduled(time, linetype, color or dbg.linecolor, matrix, thickness or 0)
+	if linetype=='ArrowsM' then
+		local c=color or dbg.linecolor
+		objectlist:registerObjectScheduled(time, 'ColorWidthBillboardLineList', c, dbg.linesToArrows(matrix, c, thickness or 0,100), 0)
+	elseif linetype=='Arrows' then
+		local c=color or dbg.linecolor
+		objectlist:registerObjectScheduled(time, 'ColorWidthBillboardLineList', c, dbg.linesToArrows(matrix, c, thickness or 0,1), 0)
+	else
+		objectlist:registerObjectScheduled(time, linetype, color or dbg.linecolor, matrix, thickness or 0)
+	end
 end
 
+function dbg.timedDrawLine(objectlist, time, startpos, endpos, color )
+   local lines=vector3N() 
+   lines:setSize(2)
+   lines:at(0):assign(startpos)
+   lines:at(1):assign(endpos)
+   assert(startpos.x==startpos.x)
+   
+   objectlist:registerObjectScheduled(time, "LineList", color or dbg.linecolor, lines:matView(),0)
+end
+function dbg.timedDrawLineM(objectlist, time, startpos, endpos, color )
+   local lines=vector3N() 
+   lines:setSize(2)
+   assert(startpos.x==startpos.x)
+   lines:at(0):assign(startpos*100)
+   lines:at(1):assign(endpos*100)
+   
+   objectlist:registerObjectScheduled(time, "LineList", color or dbg.linecolor, lines:matView(),0)
+end
 
 -- four arrows like a red-cross mark
 function dbg.drawArrow2D(objectlist, pos, normal, nameid, scale)
@@ -1090,12 +1516,18 @@ function dbg.timedDraw(time, type, ...)
 	end
 	dbg['timedDraw'..type](dbg.objectList, time, ...)
 end
-function dbg.erase(type, name)
+function dbg.erase(type_name, name)
 	if dbg.objectList==nil then
 		dbg.objectList=Ogre.ObjectList()
 	end
 	dbg.objectList:erase(name)
 	dbg.g_activeBillboards[name]=nil
+
+	if type_name=='Text' then
+		name=name..'_mt'
+		dbg.objectList:erase(name)
+		dbg.g_activeBillboards[name]=nil
+	end
 end
 
 function dbg._namedDraw(type, ...)
@@ -1111,6 +1543,11 @@ function dbg._namedDraw(type, ...)
 	if type=="Sphere" then
 		local p={...}
 		pos=p[1]
+		nameid=p[2]
+		if p[3] then color=p[3] end
+	elseif type=="SphereM" then
+		local p={...}
+		pos=p[1]*100
 		nameid=p[2]
 		if p[3] then color=p[3] end
 	elseif type=='Axes' then
@@ -1154,8 +1591,9 @@ function dbg._namedDraw(type, ...)
 		else
 			mat=CT.mat(1,4, 0,0,1,1) -- blue
 		end
-		local obj=dbg.objectList:registerObject(nameid.."_mt", "MovableText", nameid, mat, 8)
-		if obj then obj:setPosition(pos.x, pos.y+20, pos.z) end
+		local fontSize=dbg.fontSize or 8
+		local obj=dbg.objectList:registerObject(nameid.."_mt", "MovableText", nameid, mat,fontSize)
+		if obj then obj:setPosition(pos.x, pos.y+15/8.0*fontSize, pos.z) end
 	end
 	return pos,nameid
 end
@@ -1249,14 +1687,33 @@ function dbg.drawQuads(objectList, name, mat, _materialName, _axis)
 	dbg.objectList:registerObject(name, "QuadList".._axis, _materialName, mat,0)
 end
 
+-- dbg.drawPoints(vector3N_or_mat_or_vec,"hihi", "redCircle")
+-- _thickness 1 == 1cm width
+function dbg.drawPoints(vec, name,  _materialName, _thickness)
+	dbg.drawPointClouds(nil, name, vec, _materialName, 'V', _thickness)
+end
+
+-- deprecated. use drawPoints instead.
 -- dbg.namedDraw('PointClouds', "hihi", CT.vec(1,2,3,4,5,6), "redCircle", "Z")
-function dbg.drawPointClouds(objectList, name, vec, _materialName, _axis)
-	local mat=matrixn(math.floor(vec:size()/3), 3)
-	print('pointClouds', mat:rows())
-	for i=0, mat:rows()-1 do
-		mat:row(i):assign(vec:toVector3(3*i))
+function dbg.drawPointClouds(objectList, name, vec, _materialName, _axis, _thickness)
+	if not _axis then _axis='V' end
+
+	local mat
+	if dbg.lunaType(vec):sub(1,7)=='vectorn' then
+		mat=matrixn(math.floor(vec:size()/3), 3)
+		for i=0, mat:rows()-1 do
+			mat:row(i):assign(vec:toVector3(3*i))
+		end
+	elseif vec.matView then
+		mat=vec:matView()
+	else
+		mat=vec
 	end
-	dbg.drawQuads(objectList, name, mat, _materialName, _axis)
+	if _axis=='V' then
+		dbg.drawBillboard(mat, name, _materialName, _thickness or 1, 'QuadListV'  )
+	else
+		dbg.drawQuads(objectList, name, mat, _materialName, _axis)
+	end
 end
 
 
@@ -1284,6 +1741,31 @@ function dbg.drawSphereM(objectList, pos, nameid, _materialName, _radius)
 	else
 		dbg.drawSphere(objectList, pos*100, nameid, _materialName)
 	end
+end
+-- uses meter unit instead of cm unit
+function dbg.drawArrowM(objectList, startpos, endpos, name, _thick, color)
+	if _thick then
+		dbg.drawArrow(objectList, startpos*100, endpos*100, name, _thick*100, color)
+	else
+		dbg.drawArrow(objectList, startpos*100, endpos*100, name, color)
+	end
+end
+function dbg.drawCircle(objectList, pos, nameid, _materialName, _scale)
+   if _scale==nil then
+      _scale=5 -- 5 cm
+   end
+
+   local comEntity
+   if _materialName~=nil then
+      comEntity=objectList:registerEntity(nameid, "sphere1010.mesh", _materialName)
+   else
+      comEntity=objectList:registerEntity(nameid, "sphere1010.mesh")
+   end
+
+   if comEntity then
+	   comEntity:setScale(_scale, _scale*0.1, _scale)
+	   comEntity:setPosition(pos.x, pos.y, pos.z)
+   end
 end
 function dbg.drawSphere(objectList, pos, nameid, _materialName, _scale)
    if _scale==nil then
@@ -1316,6 +1798,13 @@ function dbg.timedDrawSphere(objectList, time, pos, _materialName, _scale)
 	   comEntity:setScale(_scale, _scale, _scale)
 	   comEntity:setPosition(pos.x, pos.y, pos.z)
    end
+end
+function dbg.timedDrawSphereM(objectList, time, pos, _materialName, _scale)
+	if _scale then
+		dbg.timedDrawSphere(objectList, time, pos*100, _materialName, _scale*100)
+	else
+		dbg.timedDrawSphere(objectList, time, pos*100, _materialName)
+	end
 end
 
 function Ogre.ObjectList:registerMesh(mesh, id, option)
@@ -1418,6 +1907,12 @@ function matrix3:column(i)
 		return vector3(self._13, self._23, self._33)
 	end
 end
+function matrix3:M44()
+	local out=matrix4()
+	out:setRotation(self)
+	out:setTranslation(vector3(0,0,0), true)
+	return out
+end
 function matrix3:setColumn(i, v)
 	if i==0 then
 		self._11=v.x
@@ -1434,6 +1929,26 @@ function matrix3:setColumn(i, v)
 	end
 end
 
+function matrix4:toTable()
+	return {"__userdata", "matrix4", 
+	{ 
+		self._11, self._12, self._13, self._14,
+		self._21, self._22, self._23, self._24,
+		self._31, self._32, self._33, self._34,
+		self._41, self._42, self._43, self._44,
+	}
+	}
+end
+function matrix4.fromTable(t)
+	local out=matrix4()
+	out:setValue(unpack(t[3]))
+	return out
+end
+function matrix4:getRotation()
+	local out=quater()
+	out:setRotation(self)
+	return out
+end
 function matrix4:getTranslation()
    local out=vector3()
    out.x=self._14
@@ -1524,6 +2039,11 @@ function QuadraticFunctionHardCon:addSystem(w,A,b)
 	local index=intvectorn(n)
 	index:colon(0, n,1)
 
+	if type(b)=='number' then
+		assert(nc==1)
+		b=CT.vec(b)
+	end
+
 	assert(b:size()==nc)
 	local coef=vectorn(n+1)
 	for i=0, nc-1 do
@@ -1531,6 +2051,25 @@ function QuadraticFunctionHardCon:addSystem(w,A,b)
 		coef:set(n, b(i)*-1)
 		coef:rmult(math.sqrt(w))
 		self:addSquared(index, coef)
+	end
+end
+--- w*(Ax-b)^2 (only for selected rows)
+function QuadraticFunctionHardCon:addSystemSelectedRows(w,A,b, selected)
+	local n=A:cols()
+	local nc=A:rows()-- num constraints
+	local index=intvectorn(n)
+	index:colon(0, n,1)
+
+	assert(b:size()==nc)
+	assert(selected:size()==nc)
+	local coef=vectorn(n+1)
+	for i=0, nc-1 do
+		if selected(i) then
+			coef:range(0,n):assign(A:row(i))
+			coef:set(n, b(i)*-1)
+			coef:rmult(math.sqrt(w))
+			self:addSquared(index, coef)
+		end
 	end
 end
 
@@ -1573,8 +2112,22 @@ function QuadraticFunctionHardCon:solve()
 	local b=vectorn()
 	self:buildSystem(A,b)
 	local x_lambda=A:LeftDiv(b:column()):column(0)
-	return x_lambda:range(0, self.numVar)
+	return x_lambda:range(0, self.numVar):copy()
 end
+
+function QuadraticFunction:solve(nvar)
+	local A=matrixn()
+	local b=vectorn()
+	self:buildSystem(nvar, A,b)
+
+
+	local x=A:LeftDiv(b:column()):column(0)
+	return x:copy(), A, b
+end
+QuadraticFunction.addSystem=QuadraticFunctionHardCon.addSystem
+QuadraticFunction.addSystemSelectedRows=QuadraticFunctionHardCon.addSystemSelectedRows
+QuadraticFunction.addWeighted=QuadraticFunctionHardCon.addWeighted
+QuadraticFunction.add=QuadraticFunctionHardCon.add
 end
 
 -- when you want to use 0 index. DO NOT USE THIS CLASS IF POSSIBLE!!!
@@ -1707,7 +2260,7 @@ function RE.removeEntityByName(name)
 	end
 end
 function RE.createAutoSkin(skel, drawSkeleton)
-	if lunaType(skel)=="MainLib.VRMLloader" then
+	if dbg.lunaType(skel)=="MainLib.VRMLloader" then
 		return RE.createVRMLskin(skel, drawSkeleton)
 	end
 	return RE.createSkin(skel)
@@ -1865,13 +2418,31 @@ if USE_LUNA_GEN then
 	end
 	util.isFileExist=os.isFileExist
 
-	if util.PerfTimer2==nil then
-		util.PerfTimer2=LUAclass()
-		function util.PerfTimer2.__init() end
-		function util.PerfTimer2.reset() end
-		function util.PerfTimer2.start() end
-		function util.PerfTimer2.stop() end
-		function util.PerfTimer2.pause() end
+	util.PerfTimer2=LUAclass()
+	function util.PerfTimer2:__init() 
+		self.timer=util.Timer()
+		self.time=0
+		self.paused=false
+	end
+	function util.PerfTimer2:reset() 
+		self.time=0
+		self.paused=false
+	end
+	function util.PerfTimer2:start() 
+		self.paused=false
+		self.timer:start()
+	end
+	function util.PerfTimer2:stop() 
+		if not self.paused then
+			self:pause()
+		end
+		local time=self.time
+		self:reset()
+		return time
+	end
+	function util.PerfTimer2:pause() 
+		self.time=self.time+self.timer:stop2()/1e3
+		self.paused=true
 	end
 	function util.PerfTimer2:stopMsg(str)
 		RE.output(str, tostring(self:stop()))
@@ -1894,6 +2465,13 @@ if USE_LUNA_GEN then
 			self:set_old(i,c)
 		else
 			self:set(i," ")
+		end
+	end
+	function TStrings:gsub(a, b)
+		for i=0, self:size()-1 do
+			local str=self(i)
+			str=string.gsub(str, a,b)
+			self:set(i, str)
 		end
 	end
 	function CT.vec(...)
@@ -2265,6 +2843,16 @@ function math.clamp(i,a,b)
    return math.min(math.max(i,a),b)
 end
 
+function BoneForwardKinematics:translate(v)
+	self:localFrame(1).translation:radd(v)
+	self:forwardKinematics()
+end
+function BoneForwardKinematics:copy()
+	local other=BoneForwardKinematics(self:getSkeleton())
+	other:init()
+	other:assign(self)
+	return other
+end
 --[[
 function BoneForwardKinematics:assign(other)
    local pose=Posture()
@@ -2272,6 +2860,19 @@ function BoneForwardKinematics:assign(other)
    self:setPose(pose)
 end
 ]]
+function Bone:__tostring()
+	local out={}
+	table.insert(out, 'name: '..self:name())
+	table.insert(out, 'offset: '..tostring(self:getOffset()))
+	table.insert(out, 'translationalChannels: '..(self:getTranslationalChannels() or ''))
+	table.insert(out, 'rotationalChannels: '..(self:getRotationalChannels() or ''))
+	table.insert(out, 'startDOF: '..self:startT())
+	table.insert(out, 'numDOF: '..self:numChannels())
+	table.insert(out, 'treeIndex: '..self:treeIndex())
+	table.insert(out, 'rotJointIndex: '..self:rotJointIndex())
+	table.insert(out, 'transJointIndex: '..self:transJointIndex())
+	return table.concat(out,'\n')
+end
 
 function Bone:numChildren()
 	local b=self:childHead()
@@ -2388,6 +2989,24 @@ end
 
 
 python={}
+function python.setGlobal(varname, value)
+	assert(value)
+	_G[varname]=value
+end
+function python.identityFunction(value)
+	return value
+end
+function python.luaCall(varname, funcname, ...)
+	local obj=varname
+	if type(varname)=='string' then
+		obj=_G[varname]
+	end
+	assert(obj)
+	local func=obj[funcname]
+	assert(func)
+	local out=func(obj, ...)
+	return out
+end
 -- without type conversion.
 function python.F(modulename, funcname, ...)
 	-- works only in sample_python
@@ -2596,6 +3215,25 @@ function math.copy(valseq)
    return valseq:copy()
 end
 
+if shortvector3 then
+	function shortvector3:__tostring()
+		return string.format("(%.10g %.10g %.10g", self.x, self.y, self.z)
+	end
+end
+function vector3:maximum()
+	return math.max(self.x, self.y, self.z)
+end
+function vector3:scale(v)
+	if type(v)=='number' then
+		self.x=self.x*v
+		self.y=self.y*v
+		self.z=self.z*v
+	else
+		self.x=self.x*v.x
+		self.y=self.y*v.y
+		self.z=self.z*v.z
+	end
+end
 function vector3:__eq(b)
 	return self.x==b.x and self.y==b.y and self.z==b.z
 end
@@ -2632,11 +3270,40 @@ end
 function vector4:toLuaString()
 	return "vector4("..self.x..","..self.y..","..self.z..","..self.w..")"
 end
+function vectorn:plot()
+	if self:size()>300 then
+		print('too large')
+		return 
+	end
+	require("subRoutines/MatplotLib")
+	local plotter=MatplotLib()
+	local numSample=self:size()
+	local xfn=CT.colon(0,numSample)
+	plotter:figure{1, nsubfig={1,1}, subfig_size={3,3}} -- one by one plotting area.
+	plotter:add('grid(True)')
+	plotter:subplot(0,0)
+	plotter:plot(xfn, self)
+	if not dbg.plotIndex then
+		dbg.plotIndex=0
+	end
+	plotter:savefig('plot'..dbg.plotIndex..'.png')
+	dbg.plotIndex=dbg.plotIndex+1
+	plotter:close()
+end
+
 function vectorn:toLuaString()
-	return "CT.vec({"..tostring(self):sub(2,-2).."})"
+	local out={}
+	for j=0, self:size()-1 do
+		table.insert(out,string.format("%.3f",self(j))..", ")
+	end
+	return "CT.vec({"..table.concat(out,'').."})"
 end
 function intvectorn:toLuaString()
-	return "CT.ivec({"..tostring(self):sub(2,-2).."})"
+	local out={}
+	for j=0, self:size()-1 do
+		table.insert(out,string.format("%d",self(j))..", ")
+	end
+	return "CT.ivec({"..table.concat(out,'').."})"
 end
 function vector3:rdiv(v)
 	self:assign(self/v)
@@ -2659,6 +3326,12 @@ end
 function vectorn:isnan()
 	return	np.isnan(self)
 end
+function vectorn:shape()
+	return CT.ivec(self:size())
+end
+function matrixn:shape()
+	return CT.ivec(self:rows(), self:cols())
+end
 function matrixn:isnan()
 	for i=0, self:rows()-1 do
 		if self:row(i):isnan() then
@@ -2666,6 +3339,12 @@ function matrixn:isnan()
 		end
 	end
 	return false
+end
+function matrixn:reshape(n, m)
+	assert(n*m==self:rows()*self:cols())
+	local temp=vectorn()
+	temp:fromMatrix(self)
+	self:fromVector(m)
 end
 function vectorn.fromTable(t)
 	local bitv=vectorn()
@@ -2782,11 +3461,22 @@ function boolN:bitwiseOR(b,_)
 	out:_or(self, b)
 	return out
 end
-function boolN:bitwiseAND(b)
+function boolN:bitwiseAND(b,_)
 	assert(self:size()==b:size())
 	assert(_==nil)
 	local out=boolN()
-	out:_or(self, b)
+	out:_and(self, b)
+	return out
+end
+function boolN:__unm()
+	local out=boolN(self:size())
+	local I=self:runLengthEncode()
+	out:setAllValue(true)
+	for iseg=0, I:numInterval()-1 do
+		local si=I:startI(iseg)
+		local ei=I:endI(iseg)
+		out:range(si,ei):setAllValue(false)
+	end
 	return out
 end
 function vector4:copy()
@@ -2801,6 +3491,15 @@ function Mesh:copy()
    local a=Mesh()
    a:assignMesh(self)
    return a
+end
+-- triangle index:int, barycentric-coefficients:vector3
+function Mesh:samplePosition(ti, baryCoeffs)
+	local f=mesh:getFace(ti)
+	local v1=mesh:getVertex(f:vertexIndex(0))
+	local v2=mesh:getVertex(f:vertexIndex(1))
+	local v3=mesh:getVertex(f:vertexIndex(2))
+	local out2=v1*baryCoeffs.x+v2*baryCoeffs.y +v3*baryCoeffs.z
+	return out2
 end
 function Geometry:copy()
    local a=Geometry()
@@ -2928,7 +3627,6 @@ function matrixn:isSimilar(o)
 	mdiff:assign(self-o)
 	return mdiff:minimum()>-0.00001 and mdiff:maximum()<0.00001
 end
-
 function matrixn:__tostring()
 
 	local out={}
@@ -2936,19 +3634,7 @@ function matrixn:__tostring()
 	local a=self
 	local function printRow(i)
 		table.insert(out,"\n {["..i.."]={")
-		if a:cols()<10 then
-			for j=0, a:cols()-1 do
-				table.insert(out,string.format("%.3f",a(i,j))..", ")
-			end
-		else
-			for j=0, 4 do
-				table.insert(out,string.format("%.3f",a(i,j))..", ")
-			end
-			table.insert(out,'..., ')
-			for j=a:cols()-5, a:cols()-1 do
-				table.insert(out,string.format("%.3f",a(i,j))..", ")
-			end
-		end
+		table.insert(out, self:row(i):__tostring())
 		table.insert(out,"}")
 	end
 	if a:rows()<10 then
@@ -2997,6 +3683,9 @@ function hypermatrixn:__tostring()
 	return table.concat(out,'')
 end
 function MotionDOF:__tostring()
+	if self:numFrames()==0 then
+		return '{\n}\n'
+	end
 	return tostring(self:matView())
 end
 function matrixn:makeCyclic(ws)
@@ -3010,24 +3699,13 @@ function matrixn:makeCyclic(ws)
 end
 function intmatrixn:__tostring()
 
-	local out="{"
+	local out={}
+	table.insert(out, "{")
 	local a=self
 	local function printRow(i)
-		out=out.."\n {["..i.."]={"
-		if a:cols()<10 then
-			for j=0, a:cols()-1 do
-				out=out..string.format("%d",a(i,j))..", "
-			end
-		else
-			for j=0, 4 do
-				out=out..string.format("%d",a(i,j))..", "
-			end
-			out=out..'..., '
-			for j=a:cols()-5, a:cols()-1 do
-				out=out..string.format("%d",a(i,j))..", "
-			end
-		end
-		out=out.."}"
+		table.insert(out,"\n {["..i.."]={")
+		table.insert(out, self:row(i):__tostring())
+		table.insert(out,"}")
 	end
 	if a:rows()<10 then
 		for i=0,a:rows()-1 do
@@ -3042,8 +3720,9 @@ function intmatrixn:__tostring()
 			printRow(i)
 		end
 	end
+	table.insert(out, "\n}\n")
 
-	return out.."\n}\n"
+	return table.concat(out,'')
 end
 function matrixn:loadFromTextFile(fn)
 	local ctn=string.lines(util.readFile(fn))
@@ -3150,6 +3829,16 @@ end
 function matrixn:LeftDiv(b)
    return self:Inverse()*b
 end
+function matrixn:length()
+	return math.sqrt(self:squareSum())
+end
+function matrixn:squareSum()
+	local sum=0
+	for i=0, self:rows()-1 do
+		sum=sum+self:row(i):squareSum()
+	end
+	return sum
+end
 -- convenient
 -- a:sub(1,0,4,0)==a:range(1, a:rows(), 4, a:cols()) 
 -- a:sub(1,-3,4,0)==a:range(1, a:rows()-3, 4, a:cols()) 
@@ -3185,6 +3874,44 @@ function matrixn.concat(a,b) -- concat row
    return c
 end
 
+if Tensor then
+	Tensor.__slice=Tensor.slice
+	TensorView.__slice=Tensor.slice
+	function Tensor:slice(...)
+		local v={...}
+		if type(v[1])=='number' then
+			return self:__slice(CT.ivec(v))
+		end
+		return self:__slice(v[1])
+	end
+
+	function Tensor:toVec()
+		return self:slice_1d(CT.ivec(-1)):copy()
+	end
+	function Tensor:vecView()
+		return self:slice_1d(CT.ivec(-1))
+	end
+	function Tensor:row(i)
+		assert(self:shape():size()==2)
+		return self:slice_1d(CT.ivec(i,-1))
+	end
+	function Tensor:col(i)
+		assert(self:shape():size()==2)
+		return self:slice_1d(CT.ivec(-1,i))
+	end
+
+	function Tensor:__tostring()
+		local s=self:shape()
+		if s:size()==2 then
+			return 'Tensor (shape='..s:__tostring()..') :'..(self:toMat():__tostring())
+		elseif s:size()==1 then
+			return 'Tensor (shape='..s:__tostring()..') :'..(self:slice_1d(CT.ivec(-1)):__tostring())
+		else
+			return 'Tensor (shape='..s:__tostring()..')'
+		end
+	end
+	defineDerived(Tensor,{TensorView},{'__tostring', 'toVec','slice','vecView','row', 'col'})
+end
 function matrixn.__concat(a,b) -- concat col
    local c=matrixn()
    if a:rows()~=b:rows() then error("matrixn:__concat") end
@@ -3252,8 +3979,33 @@ end
 function hypermatrixn:set(index, v)
 	self:page(index.x):set(index.y, index.z, v)
 end
+function hypermatrixn:flattenAlongAxis(dim)
+	if dim==1 then
+		local out=matrixn(self:pages()*self:rows(), self:cols())
+		local nr=self:rows()
+		for i=0, self:pages()-1 do
+			for j=0, nr-1 do
+				out:row(i*nr+j):assign(self:page(i):row(j))
+			end
+		end
+		return out
+	else
+		-- not implemented yet
+		assert(false)
+	end
+end
 function hypermatrixn:__call(index)
 	return self:page(index.x)(index.y, index.z)
+end
+function hypermatrixn:dotProduct(v)
+	assert(self:cols()==v:size())
+	local out=matrixn(self:pages(), self:rows())
+	for i=0, self:pages()-1 do
+		for j=0, self:rows() -1 do
+			out:set(i,j, self:page(i):row(j):dotProduct(v))
+		end
+	end
+	return out
 end
 function hypermatrixn:shape()
 	return CT.ivec(self:pages(), self:rows(), self:cols())
@@ -3275,6 +4027,24 @@ function matrixn:__unm()
    t:rmult(-1)
 
    return t
+end
+
+function matrixn:dotProduct(other)
+	if other.pages then
+		-- hypermatrixn
+		assert(self:cols()==other:pages())
+		local out=hypermatrixn(self:rows(), other:rows(), other:cols())
+		for i=0, self:rows()-1 do
+			out:page(i):assign(self:row(i):dotProduct(other))
+		end
+		return out
+	elseif other.rows then
+		-- matrixn
+		return self*other
+	else
+		-- vectorn
+		return self*other:column():column(0):copy()
+	end
 end
   
 function matrixn:multAdiagB(matA, diagB)
@@ -3342,7 +4112,7 @@ function matrixn:linspace(a, b)
 		self:column(col):linspace(self(0, col), self(n-1, col))
 	end
 end
-defineDerived(matrixn, {matrixnView}, {"T", "isnan", "makeCyclic", "linspace", "calcDerivative_sub", "fromTable2D", "assign33", "isSimilar", "identity", "__tostring", "__div", "derivative", "fromTable", "toTable", "zero", "LeftDiv", "concat", "__concat", "Transpose", "Inverse", "__eq","pushBackUtil","copy", "setValues","__unm","multAdiagB","setSymmetric" ,"range_c", "sub","slice", "size","sample"})
+defineDerived(matrixn, {matrixnView}, {"length", "squareSum", "shape", "T", "dotProduct", "isnan", "makeCyclic", "linspace", "calcDerivative_sub", "fromTable2D", "assign33", "isSimilar", "identity", "__tostring", "__div", "derivative", "fromTable", "toTable", "zero", "LeftDiv", "concat", "__concat", "Transpose", "Inverse", "__eq","pushBackUtil","copy", "setValues","__unm","multAdiagB","setSymmetric" ,"range_c", "sub","slice", "size","sample"})
 defineDerived(intmatrixn, {intmatrixnView}, {"__tostring"})
 function vector3:__eq(b)
    local a=self
@@ -3404,7 +4174,7 @@ end
 function vectorn:sharpTransition(a, b, len)
    math.sharpTransition(self, a,b,len)
 end
-if not vectorn.setTransf then util.msgBox("rebuild! setTransf/toTransf have been moved to c++ but your binary doesn't have them") end
+if not MainLib.VRMLloader.setPosition then util.msgBox("rebuild! a function definition has been moved from lua to c++ but your binary doesn't have them") end
 --
 -- function vectorn:smoothClamp(mag)
 -- 	for i=0,self:size()-1 do
@@ -3467,6 +4237,12 @@ function vectorn:extract(index)
 end
 function vector3N:minimum()
 	return vector3(self:x():minimum(), self:y():minimum(), self:z():minimum())
+end
+function vector3N:__concat(other)
+	local out=vector3N(self:size()+other:size())
+	out:range(0, self:size()):assign(self)
+	out:slice(self:size(),0):assign(other)
+	return out
 end
 function vector3N:maximum()
 	return vector3(self:x():maximum(), self:y():maximum(), self:z():maximum())
@@ -3562,11 +4338,46 @@ function vectorn:copy()
    a:assign(self)
    return a
 end
+function floatvec:copy()
+   local a=floatvec()
+   a:assign(self)
+   return a
+end
 function intvectorn:asFloat()
 	local out=vectorn(self:size())
 	out:assign(self)
 	return out
 end
+function boolN:asFloat()
+	local out=vectorn(self:size())
+   for i=0, self:size()-1 do
+	   if self(i) then
+		   out:set(i, 1.0)
+	   else
+		   out:set(i, 0.0)
+	   end
+   end
+	return out
+end
+function boolN:asInt()
+	local out=intvectorn(self:size())
+   for i=0, self:size()-1 do
+	   if self(i) then
+		   out:set(i, 1)
+	   else
+		   out:set(i, 0)
+	   end
+   end
+	return out
+end
+function intvectorn:asBoolean()
+	local out=boolN(self:size())
+	for i=0, self:size()-1 do
+		out:set(i, self(i)~=0)
+	end
+	return out
+end
+vectorn.asBoolean=intvectorn.asBoolean
 function intvectorn:copy()
    local a=intvectorn(self:size())
    for i=0, self:size()-1 do
@@ -3653,19 +4464,31 @@ end
 boolN.concat=vectorn.concat
 boolN.__concat=vectorn.__concat
 
-function vectorn:slice(scol, ecol)
-	scol=scol or 0
-	ecol=ecol or 0
-	if scol<0 then
-		scol=self:size()+scol
-	end
-	if ecol<=0 then
-		ecol=self:size()+ecol
-	end
-	return self:range(scol, ecol)
+function vectorn:slice(scol, ecol, step)
+    scol=scol or 0
+    ecol=ecol or 0
+	step=step or 1
+    if step<0 then
+		if scol< 0 then
+		   scol=self:size()+scol
+		end
+		if ecol< 0 then -- taesooLib
+		   ecol=self:size()+ecol
+		end
+       return self:range(scol, ecol, step)
+    end
+
+    if scol< 0 then
+       scol=self:size()+scol
+    end
+    if ecol<= 0 then -- taesooLib
+       ecol=self:size()+ecol
+    end
+    return self:range(scol, ecol)
 end
 
 intvectorn.slice=vectorn.slice
+floatvec.slice=vectorn.slice
 
 function vectorn:sample(refTime)
 	local c=vectorn()
@@ -3676,8 +4499,61 @@ function vectorn:sample(refTime)
 	return c(0)
 end
 
-defineDerived(vectorn, {vectornView}, {"greater", "to_se3", "sample", "toLuaString", "isnan", "clamp","setTransf", "toTransf", "extract", "rank", "sharpTransition", "zero", "setValues", "__concat", "__eq", "back", "concat","copy","slice"})
-defineDerived(intvectorn, {intvectornView}, {"__concat", "__eq", "slice", "copy"})
+function vectorn:__tostring()
+	local a=self
+	local out={}
+	if a:size()<10 then
+		for j=0, a:size()-1 do
+			table.insert(out,string.format("%.3f",a(j))..", ")
+		end
+	else
+		for j=0, 4 do
+			table.insert(out,string.format("%.3f",a(j))..", ")
+		end
+		table.insert(out,'..., ')
+		for j=a:size()-5, a:size()-1 do
+			table.insert(out,string.format("%.3f",a(j))..", ")
+		end
+	end
+	return table.concat(out, '')
+end
+function intvectorn:__tostring()
+	local out={}
+	local a=self
+		if a:size()<10 then
+			for j=0, a:size()-1 do
+				table.insert(out,string.format("%d",a(j))..", ")
+			end
+		else
+			for j=0, 4 do
+				table.insert(out,string.format("%d",a(j))..", ")
+			end
+			table.insert(out,'..., ')
+			for j=a:size()-5, a:size()-1 do
+				table.insert(out,string.format("%d",a(j))..", ")
+			end
+		end
+	return table.concat(out, '')
+end
+
+vectorn.dotProduct_1d=vectorn.dotProduct
+function vectorn:dotProduct(other)
+	if other.pages then
+		-- hypermatrixn
+		return other:weightedAverage(self)
+	elseif other.rows then
+		-- matrixn
+		local temp=matrixn()
+		temp:multAtB(other, self:column())
+		return temp:column(0):copy()
+	else
+		return self:dotProduct_1d(other)
+	end
+end
+
+defineDerived(vectorn, {vectornView}, {"plot", "asBoolean", "shape", "dotProduct_1d", "dotProduct", "__tostring", "greater", "to_se3", "sample", "toLuaString", "isnan", "clamp","setTransf", "toTransf", "extract", "rank", "sharpTransition", "zero", "setValues", "__concat", "__eq", "back", "concat","copy","slice"})
+defineDerived(floatvec, {floatvecView}, {"copy","slice"})
+defineDerived(intvectorn, {intvectornView}, {"asFloat", "asBoolean", "__tostring", "__concat", "__eq", "slice", "copy"})
 
 function quaterN:concat(b)
 	local osize=self:size()
@@ -3738,6 +4614,12 @@ function vector2:__tostring()
 	return 'vector2('..self.x..', '..self.y..')'
 end
 
+function vector3:size()
+	return 3
+end
+function quater:size()
+	return 4
+end
 function vector3:copy()
    local a=vector3()
    a:assign(self)
@@ -3792,6 +4674,9 @@ function Pose:toTable()
 	return {"__userdata", "Pose", self.translations:matView():toTable(), self.rotations:matView():toTable()}
 end
 function Pose.fromTable(t)
+	if type(t)~='table' then
+		return t
+	end
 	local trans= matrixn.fromTable(t[3])
 	local rot=matrixn.fromTable(t[4])
 
@@ -3860,7 +4745,7 @@ function boolN:exportIntervals(fn)
 	local out=table.concat(out, '\n')
 	util.writeFile(fn, out)
 end
-defineDerived(boolN, {boolNView}, {"count", "exportIntervals", "bitwiseOR", "bitwiseAND", "runLengthEncode"})
+defineDerived(boolN, {boolNView}, {"asInt", "asFloat", "count", "exportIntervals", "bitwiseOR", "__unm", "bitwiseAND", "runLengthEncode"})
 
 function vector3N:__mul(o)
 	local out=vector3N(self:size())
@@ -3985,7 +4870,7 @@ function vector3N:drawLines(nameid, color, thickness, skinScale)
 end
 
 vector3N.slice=vectorn.slice
-defineDerived(vector3N, {vector3NView}, {'drawLines', 'transform', 'slice','toTable', 'fromTable', '__mul', 'MSE', 'scale', 'smooth', "copy", "__eq", "at","sample", "derivative", "__tostring"})
+defineDerived(vector3N, {vector3NView}, {'drawLines', 'transform', 'slice','toTable', 'fromTable', '__mul', 'MSE', 'scale', 'smooth', "copy", "__eq", "at","sample", "derivative", "__tostring","__concat"})
 
 function Ogre.SceneNode:transform(t)
    self:setOrientation(t.rotation)
@@ -4001,6 +4886,25 @@ function sop.smoothMap(i, ia,ib, oa,ob)
 	local o1=sop.clampMap(i, ia, ib, 0,1)
 	local o2=math.smoothTransition(o1)
 	return sop.map(o2, 0,1, oa, ob)
+end
+-- i \in [1,N]. 
+function sop.gridMap(i, N, maxX, maxZ)
+	assert(i<=N)
+	local gridSize=math.ceil(math.sqrt(N))
+	local c=1
+	for j=1,gridSize do
+		for k=1,gridSize do
+			if c==i then
+				return vector3(
+				sop.map(j, 1,gridSize, -maxX, maxX),
+				0,
+				sop.map(k, 1,gridSize, -maxZ, maxZ))
+			end
+			c=c+1
+
+		end
+	end
+	return vector3(0,0, 0)
 end
 -- slope == 0 only at a
 function sop.smoothMapA(i, ia, ib, oa, ob)
@@ -4659,19 +5563,26 @@ function MotionDOF:sample(i)
 	return row
 end
 function Motion:transform(t)
+	assert(dbg.lunaType(t)=='transf')
 	local function setRootTransf(pose, t)
 		pose.rotations(0):assign(t.rotation)
 		pose.translations(0):assign(t.translation)
 	end
-	local function rootTransf(pose)
-		local t=transf()
-		t.rotation:assign(pose.rotations(0))
-		t.translation:assign(pose.translations(0))
-		return t
-	end
 
 	for i=0, self:numFrames()-1 do
-		setRootTransf(self:pose(i), t*rootTransf(self:pose(i)))
+		setRootTransf(self:pose(i), t*self:pose(i):rootTransformation())
+	end
+end
+function Motion:translate(t)
+	for i=0, self:numFrames()-1 do
+		local pose=self:pose(i)
+		pose.translations(0):radd(t)
+	end
+end
+function Motion:scale(t)
+	for i=0, self:numFrames()-1 do
+		local pose=self:pose(i)
+		pose.translations(0):scale(t)
 	end
 end
 
@@ -4772,6 +5683,7 @@ function MotionDOF:resample(prevFrameRate, newFrameRate)
 
 	local timing=vectorn()
 	timing:linspace(0, e-s-1, e-s)
+	omot:matView():quatViewCol(3):align()
 	local curveFit=math.NonuniformSpline(timing, omot:matView():sub(s,e, 0, 0))
 
 	self:resize(newLen+1)
@@ -4911,16 +5823,23 @@ function MotionDOF:convertBodyVelToGlobal(dtheta)
 	end
 end
 
-function MainLib.VRMLloader:setPosition(pos)
 
-	local root=self:VRMLbone(1)
-	if root:getRotationalChannels()~=nil or root:getTranslationalChannels()~=nil then
-		util.msgBox('this function works only for wrl files having a fixed root joint')	
-	else
-		self:VRMLbone(1):setJointPosition(pos)
-		self:VRMLbone(1):getLocalFrame().translation:assign(pos)
-		self:fkSolver():forwardKinematics()
-	end
+function MainLib.VRMLloader:mergeRootBoneWithItsOnlyChild()
+	local loader=self
+
+	local poseOriginalI=loader:getPoseMap()
+	poseOriginalI.translations(0):assign(loader:bone(2):getFrame().translation)
+
+	assert(loader:bone(1):numChildren()==1)
+	local bone2name=loader:bone(2):name()
+	loader:VRMLbone(2):getOffsetTransform().translation:zero()
+	loader:VRMLbone(2):setJointAxes('')
+	loader:_initDOFinfo()
+	loader:removeBone(loader:bone(2))
+	loader:bone(1):getOffsetTransform().translation:zero()
+
+	loader:setPoseMap(poseOriginalI)
+	loader:bone(1):setName(bone2name)
 end
 
 function MainLib.VRMLTransform:jointType()
@@ -5026,6 +5945,80 @@ function MainLib.VRMLloader:calcTotalMass()
 	end
 	return mass
 end
+function MainLib.VRMLloader:convertToConvexes(useSpheres)
+	local loader=self
+	local function meshToSpheres(out, newmesh, decomp)
+		local nvoxel=decomp:numSurfaceVoxels()
+		local ndiv=4
+
+		local div=function(x) return math.floor(x/ndiv) end
+		local size=vector3(math.floor(decomp:getDimensions().x-1/ndiv)+1,
+		math.floor((decomp:getDimensions().y-1)/ndiv)+1,
+		math.floor((decomp:getDimensions().z-1)/ndiv)+1)
+		local newGrid=Image3D(size.x, size.y, size.z,0)
+
+
+		local timer=util.Timer()
+		timer:start()
+		for i=0, nvoxel-1 do
+			--voxelcenter(i):assign(decomp:getWorldPosition(decomp:getSurfaceVoxelIndex(i)) *scale+vector3(-offset_x,0,0))
+			local voxelIndex=decomp:getSurfaceVoxelIndex(i) -- 3D index
+			local Ix=div(voxelIndex.x)
+			local Iy=div(voxelIndex.y)
+			local Iz=div(voxelIndex.z)
+			newGrid:setPixel(Ix,Iy,Iz, 255)
+		end
+		print(timer:stop2()/1e6)
+		local geom=Geometry()
+		local s=decomp:getVoxelScale()*ndiv*0.5
+		local offset=math.floor(ndiv/2)
+		for i=0, size.x-1 do
+			for j=0, size.y-1 do
+				for k=0, size.z-1 do
+					if newGrid:getPixel(i,j,k)>0 then
+						local geom2=Geometry()
+						geom2:initEllipsoid(vector3(s,s,s))
+						local pos=decomp:getWorldPosition(vector3(
+						i*ndiv+offset,
+						j*ndiv+offset,
+						k*ndiv+offset))
+						geom2:rigidTransform(transf(quater(1,0,0,0), pos))
+						geom:merge(geom, geom2)
+					end
+				end
+			end
+		end
+		out:assign(geom)
+	end
+	for i=1, loader:numBone()-1 do
+		local bone=loader:VRMLbone(i)
+		if bone:hasShape() then
+			local mesh=bone:getMesh()
+			local res=8 -- for efficiency 
+			local maxConvex=8
+			local decomp=ConvexDecomp(mesh, true, res*res*res, maxConvex, 1)
+
+			local newmesh=Mesh()
+			for j=0, decomp:centroids():size()-1 do
+				newmesh:mergeMesh(newmesh, decomp:convex(j))
+			end
+			if newmesh:numVertex()>3 then
+				bone:createNewShape()
+				if useSpheres then
+					meshToSpheres(bone:getMesh(), newmesh, decomp)
+				else
+					bone:getMesh():assignMesh(newmesh)
+				end
+
+				--print(bone:getMesh():getVertex(0))
+				--print(bone:getMesh():numVertex(),
+				--g_skel:VRMLbone(ti):getMesh():numVertex())
+			else
+				bone:removeShape()
+			end
+		end
+	end
+end
 -- export current pose as an obj file
 function MainLib.VRMLloader:exportCurrentPose(fn)
 	local objFolder=string.sub(fn, 1, -5).."_sd"
@@ -5098,6 +6091,12 @@ function MotionLoader:copy()
 	-- todo : use memory file.
 	self:exportSkeleton('_temp.skl')
 	return MotionLoader('_temp.skl')
+end
+
+function MotionLoader:dofName(dofIndex)
+	local treeIndex=self.dofInfo:DOFtoBone(dofIndex)
+	local deltaDOFindex=self.dofInfo:startT(treeIndex)-dofIndex
+	return self:bone(treeIndex):name()..'_'..tostring(deltaDOFindex)
 end
 
 -- to enumerate all children of i-th bone, simply iterate from i+1 to childEnd(i). 
@@ -5346,8 +6345,6 @@ end
 function MotionDOFview:copy()
    return MotionDOF.copy(self)
 end
-MotionDOFview.removeDiscontinuity=MotionDOF.removeDiscontinuity
-MotionDOFview.exportMot=MotionDOF.exportMot
 
 MotionDOFcontainer=LUAclass()
 
@@ -5423,6 +6420,7 @@ function Motion:setConstraints( contype, con)
 		mot:setConstraint(i, contype, con(i))
 	end
 end
+defineDerived(Motion, {MotionView}, {"getConstraints", "setConstraints"})
 
 function MotionDOFcontainer.loadToTable(fn)
 	local out={}
@@ -5509,7 +6507,15 @@ function MotionDOFcontainer:copy()
 	out.conR=self.conR:copy()
 	return out
 end
+--param: dofInfo (or motionDOF), and (optional) filename
 function MotionDOFcontainer:__init(dofInfo, filename)
+	if dbg.lunaType(dofInfo)~='MotionDOFinfo' then
+		-- motionDOF is given as sole input
+		assert(dofInfo.dofInfo)
+		assert(filename==nil)
+		filename=dofInfo
+		dofInfo=dofInfo.dofInfo
+	end
    self.mot=MotionDOF(dofInfo)
    self.discontinuity=boolN()
    self.conL=boolN()
@@ -5577,6 +6583,7 @@ function MotionDOFcontainer:__init(dofInfo, filename)
 		motion:importBinary(filename)
 		self.mot:set(motion)
 	 else
+		 -- dof files
 	    local binaryFile=util.BinaryFile()
 	    binaryFile:openRead(filename)
 	    local version=binaryFile:unpackInt()
@@ -5991,6 +6998,12 @@ if Liegroup then
 		R:setFromQuaternion(self)
 		return R
 	end
+	function quater:M44()
+		local out=matrix4()
+		out:setRotation(self)
+		out:setTranslation(vector3(0,0,0), true)
+		return out
+	end
 
 end
 
@@ -6351,9 +7364,17 @@ function util.BinaryFile:unpackAny()
 		local v=vectorn()
 		self:_unpackSPVec(v)
 		return v
-	elseif type==14 then
+	elseif type==14 then -- TYPE_SPFLOATMN
 		local v=matrixn()
 		self:_unpackSPMat(v)
+		return v
+	elseif type==15 then -- TYPE_FLOATND
+		local v=Tensor()
+		self:_unpackTensor(v)
+		return v
+	elseif type==16 then -- TYPE_SPFLOATND
+		local v=floatTensor()
+		self:_unpackTensor(v)
 		return v
    elseif type==8 then -- util.BinaryFile.TYPE_STRING 
       out=self:_unpackStr()
@@ -6408,8 +7429,13 @@ function SaveTable:pickle_(root, fn)
   self._refToTable = {}
   local savecount = 0
   self:ref_(root)
-  local s = util.BinaryFile()
-  s:openWrite(fn, true) 
+  local s 
+  if type(fn)=='string' then
+	  s= util.BinaryFile()
+	  s:openWrite(fn, true) 
+  else
+	  s=fn
+  end
 
   while table.getn(self._refToTable) > savecount do
     savecount = savecount + 1
@@ -6441,7 +7467,9 @@ function SaveTable:pickle_(root, fn)
      end
      s:packInt(0)
   end
-  s:close()
+  if type(fn)=='string' then
+	  s:close()
+  end
 end
 
 function util.BinaryFile:packBool(b)
@@ -6466,6 +7494,11 @@ function util.BinaryFile:_packPickle(v)
       self:packInt(2)
 	  self:packBool(v)
   elseif type(v)=="userdata" then
+	  if v.pack then
+		  self:packInt(-1)
+		  self:pack(dbg.lunaType(v)) 
+		  v:pack(self)
+	  else
 	  local tn=dbg.lunaType(v)
 	  if tn=='quaterN' then
 		  self:packInt(6) -- quaterN
@@ -6488,6 +7521,7 @@ function util.BinaryFile:_packPickle(v)
 	 self:packInt(5)	-- vectorn or matrixn
       end
       self:pack(v)
+	  end
    elseif type(v)=="table" then assert(false) end
 end
 
@@ -6521,6 +7555,10 @@ function util.BinaryFile:_unpackPickle()
 	  v=transf()
 	  self:unpack(v.translation)
 	  self:unpack(v.rotation)
+  elseif type==-1 then
+	  local tn=self:unpackStr()
+	  v=_G[tn]()
+	  v:unpack(self)
    else
       v=self:unpackAny()
    end
@@ -6544,14 +7582,19 @@ end
 
 function SaveTable.unpickle_(fn)
 
- local s = util.BinaryFile(true) -- load to memory.
-  if not s:openRead(fn) then
-     print(fn)
-     if fineLog then fineLog("openReadFailed"..fn) end
---     error("openRead"..fn)
-  end
+ local s 
+ if type(fn)=='string' then
+	 s= util.BinaryFile(true) -- load to memory.
+	 if not s:openRead(fn) then
+		 print(fn)
+		 if fineLog then fineLog("openReadFailed"..fn) end
+		 --     error("openRead"..fn)
+	 end
+	 if fineLog then fineLog("openRead"..fn) end
+ else
+	 s=fn
+ end
 
-  if fineLog then fineLog("openRead"..fn) end
    
   local _tableToRef = {}
   local _refToTable = {}
@@ -6582,7 +7625,9 @@ function SaveTable.unpickle_(fn)
      end
   end
 
-  s:close()
+  if type(fn)=='string' then
+	  s:close()
+  end
   return _refToTable[1]
 end
 
@@ -6663,6 +7708,13 @@ function util.saveTable(tbl, filename)
    SaveTable:clone():pickle_(tbl, filename)
 end
 
+function util.BinaryFile:packTable(tbl)
+   SaveTable:clone():pickle_(tbl, self)
+end
+function util.BinaryFile:unpackTable()
+   return SaveTable.unpickle_(self)
+end
+
 -- example usage: util.saveTableToLua( { {1,3}, 10, vector3(), }, filename)
 function util.saveTableToLua(tbl, filename, _convert_to_native_table)
 	-- slow but the output file is a lua script.
@@ -6718,6 +7770,20 @@ function Viewpoint:fromTable(tbl)
 	self.vat:assign(tbl.vat)
 	self:update()     
 end
+function Viewpoint:lookAt(pose, skinScale)
+	skinScale=skinScale or 100
+
+	if pose.translations then
+		RE.viewpoint().vpos:assign(pose.translations(0)*skinScale+vector3(0,30,300))
+		RE.viewpoint().vat:assign(pose.translations(0)*skinScale)
+		RE.viewpoint():update()
+	else
+		RE.viewpoint().vpos:assign(pose:toVector3(0)*skinScale+vector3(0,30,300))
+		RE.viewpoint().vat:assign(pose:toVector3(0)*skinScale)
+		RE.viewpoint():update()
+	end
+
+end
 
 function Viewpoint:getAxes()
 	local v=self
@@ -6734,6 +7800,11 @@ function Viewpoint:getAxes()
 	z_axis:cross(x_axis, y_axis)
 	return x_axis, y_axis, z_axis
 end
+function Viewpoint:translate(v)
+	self.vpos:radd(v)
+	self.vat:radd(v)
+	self:update()
+end
 -- title의 글자수를 보고 적절히 위젯 크기를 조절하도록 수정할 예정.
 function FlLayout:addButton(title, on_screen_title)
 	if on_screen_title then
@@ -6746,10 +7817,18 @@ function FlLayout:addCheckButton(title, initialValue)
 	self:create('Check_Button', title, title)
 	self:widget(0):checkButtonValue(initialValue)
 end
-function FlLayout:addText(title)
+function FlLayout:addText(title, _optional_widgetId)
 	local lines=string.lines(title)
 	for i, v in ipairs(lines) do
-		self:create("Box", title..i, v, 0)
+		if _optional_widgetId then
+			if i==1 then
+				self:create("Box", _optional_widgetId, v, 0)
+			else
+				self:create("Box", _optional_widgetId..i, v, 0)
+			end
+		else
+			self:create("Box", title..i, v, 0)
+		end
 	end
 end
 function FlLayout:addFloatSlider(title, val, vmin, vmax)
@@ -6765,6 +7844,10 @@ function FlLayout:addFloatSlider(title, val, vmin, vmax)
 	self:widget(0):sliderRange(vmin, vmax)
 	self:widget(0):sliderStep((vmax-vmin)/20)
 	self:widget(0):sliderValue(val)
+end
+function FlLayout:addIntegerSlider(title, val, vmin, vmax)
+	self:addFloatSlider(title, val, vmin, vmax)
+	self:widget(0):sliderStep(1)
 end
 
 function FlLayout:updateFloatOptions(w)
@@ -6797,22 +7880,16 @@ function FlLayout:addMenu(w_id,tbl)
 	this:menuItems(tbl)
 end
 
-function MotionDOF:getMotionMap()
-	local out={}
-	out.dof=self:matView():copy()
-
-	out.dofInfo={}
-	local loader=self:skeleton()
-	for i=1, loader:numBone()-1 do
-		local bone=loader:bone(i)
-		local info={}
-		info.channels={bone:getRotationalChannels(), bone:getTranslationalChannels()}
-		info.dofIndex={bone:startT(), bone:startR(), bone:endR()}
-		out.dofInfo[i]=info
-	end
-	return out
+-- _optional_targetLoader를 지정하면 poseTransfer가 사용된다. 즉 targetLoader와 Motion:getSkeleton()이 이 함수를 실행하는 시점에 같은 자세라고 가정함. 
+function MotionDOF:getMotionMap(_optional_targetLoader)
+	local out=Motion(self)
+	return out:getMotionMap(_optional_targetLoader)
 end
 
+function MotionDOF:importMot(fn)
+	local motdofc=CMotionDOFcontainer(self.dofInfo, fn)
+	self:assign(motdofc.mot)
+end
 function MotionDOF:exportMot(fn)
 	local motdofc=CMotionDOFcontainer(self)
 	MotionDOFcontainer.exportMot(motdofc, fn)
@@ -6931,6 +8008,8 @@ function MotionMap:setPoseTransfer(targetLoader, use_srcLoader_identityPose)
 	end
 end
 
+-- this function uses PoseTransfer2. 
+-- if you simply want to copy joint angles, use copyMotion instead of transferMotion
 function MotionMap:transferMotion(targetLoader)
 	self:setPoseTransfer(targetLoader)
 	assert(dbg.lunaType(srcMotion, 'Motion')) -- MotionDOF is not supported yet.
@@ -6949,6 +8028,25 @@ function MotionMap:transferMotion(targetLoader)
 	end
 	return motion
 end
+function MotionMap:copyMotion(targetLoader)
+	self:setNoPoseTransfer(targetLoader)
+	assert(dbg.lunaType(srcMotion, 'Motion')) -- MotionDOF is not supported yet.
+	local motion=Motion(targetLoader)
+	motion:resize(self.mot:numFrames())
+	for i=0, self.mot:numFrames()-1 do
+		if math.fmod(i+1,10000)==0 then
+			print(i+1)
+		end
+		motion:pose(i):assign(self:pose(i))
+	end
+	if dbg.lunaType(self.mot)=='Motion' then
+		for i=0, self.mot:numFrames()-1 do
+			motion:pose(i):assignConstraintOnly(self.mot:pose(i))
+		end
+	end
+	return motion
+end
+
 
 function MotionMap:setNoPoseTransfer(targetLoader)
 	self.targetLoader=targetLoader
@@ -6997,6 +8095,13 @@ function MotionMap:setNoPoseTransfer(targetLoader)
 	self.newTI=newTI
 end
 
+function MotionUtil.PoseTransfer:__call(srcpose)
+	self:setTargetSkeleton(srcpose)
+	local pose=Pose()
+	self:target():getPose(pose)
+	return pose
+end
+
 function MotionMap:getTargetPose(srcpose)
 	if self.compatible then
 		local pose=Pose(self.targetLoader)
@@ -7040,6 +8145,7 @@ function MotionMap:pose(iframe)
 end
 
 
+-- _optional_targetLoader를 지정하면 poseTransfer가 사용된다. 즉 targetLoader와 Motion:getSkeleton()이 이 함수를 실행하는 시점에 같은 자세라고 가정함. 
 function Motion:getMotionMap(_optional_targetLoader)
 	local skel=self:skeleton()
 	local motionMap=MotionMap(skel)
@@ -7050,6 +8156,52 @@ function Motion:getMotionMap(_optional_targetLoader)
 	end
 	return motionMap
 end
+function MotionDOF:setMotionMap(motionMap)
+	local mot=Motion(self.dofInfo:skeleton())
+	mot:setMotionMap(motionMap)
+	self:set(mot)
+end
+function MotionDOF:setAllValue(v)
+	local tcode=dbg.lunaType(v)
+	if tcode:sub(1,7)=='vectorn' then
+		for i=0, self:numFrames()-1 do
+			self:row(i):assign(v)
+		end
+	else
+		matrixn.setAllValue(self, v)
+	end
+end
+
+function MotionDOF:slice(srow, erow)
+	if srow<0 then
+		srow=self:rows()+srow
+	end
+	if erow<=0 then
+		erow=self:rows()+erow
+	end
+	return self:range(srow, erow)
+end
+-- assumes that "self" and "new" starts from the same frame, 
+-- but "self" does not have too many remaining frames so needs to switch to the "new" motion.
+function MotionDOF:blendStitch(new, _optional_blend_startPosition)
+	local blend_startPosition=_optional_blend_startPosition or 0
+	local output=new:copy()
+	assert(self:rows()<=new:rows())
+	assert(blend_startPosition<self:rows())
+
+	for i=0, blend_startPosition-1 do
+		output:row(i):assign(self:row(i))
+	end
+	for i=blend_startPosition, self:rows()-1 do
+		local t=sop.smoothMap(i, blend_startPosition, self:rows()-1, 0, 1)
+		self.dofInfo:blend(output:row(i), self:row(i), new:row(i), t)
+	end
+	for i=self:rows(), new:rows()-1 do
+		output:row(i):assign(new:row(i))
+	end
+	return output
+end
+defineDerived(MotionDOF, {MotionDOFview}, {"removeDiscontinuity", "exportMot", "slice", "blendStitch","setAllValue"})
 
 function Motion:setMotionMap(motionMap)
 
@@ -7120,6 +8272,9 @@ function MotionLoader:getPoseMap(_optional_cache_prev)
 		end
 	end
 	return poseMap
+end
+function MotionLoader:setSamePoseUsingPoseMap(loader2)
+	self:setPoseMap(loader2:getPoseMap())
 end
 function MotionLoader:setPoseMap(poseMap, _optional_cacheIndex)
 	--self:updateInitialBone() -- this causes problems for the metaHuman or other characters that use strainge default poses. if this is necessary, call manually.
@@ -7206,6 +8361,7 @@ function MotionLoader:setVoca(bones)
 		["left_heel"]=MotionLoader.LEFTANKLE,
 		["left_ankle"]=MotionLoader.LEFTANKLE,
 		["left_ball"]=MotionLoader.LEFTTOES,
+		["left_toes"]=MotionLoader.LEFTTOES,
 		["left_collar"]=MotionLoader.LEFTCOLLAR,
 		["left_shoulder"]=MotionLoader.LEFTSHOULDER,
 		["left_elbow"]=MotionLoader.LEFTELBOW,
@@ -7215,6 +8371,7 @@ function MotionLoader:setVoca(bones)
 		["right_heel"]=MotionLoader.RIGHTANKLE,
 		["right_ankle"]=MotionLoader.RIGHTANKLE,
 		["right_ball"]=MotionLoader.RIGHTTOES,
+		["right_toes"]=MotionLoader.RIGHTTOES,
 		["right_collar"]=MotionLoader.RIGHTCOLLAR,
 		["right_shoulder"]=MotionLoader.RIGHTSHOULDER,
 		["right_elbow"]=MotionLoader.RIGHTELBOW,
@@ -7277,6 +8434,37 @@ function MotionLoader:toVRMLloader(param)
 	local cylinderRadius=param.cylinderRadius or 0.025
 	MotionUtil.exportVRMLforRobotSimulation(self, '_temp.wrl','unknown', cylinderRadius)
 	local loader= MainLib.VRMLloader('_temp.wrl')
+	if (loader:numBone()==self:numBone()) then
+		for i=2, loader:numBone()-1 do
+			loader:setChannels(loader:VRMLbone(i), 
+			self:bone(i):getTranslationalChannels() or '',
+			self:bone(i):getRotationalChannels() or ''
+			)
+		end
+		assert(loader.dofInfo:numDOF()==self.dofInfo:numDOF())
+		if self:bone(1):numChannels()==6 then
+			loader:setChannels(loader:VRMLbone(1), self:bone(1):getTranslationalChannels(), self:bone(1):getRotationalChannels())
+		end
+		assert(loader.dofInfo:numDOF()==self.dofInfo:numDOF())
+	else
+		-- usually BVH files.
+		assert(loader:numRotJoint()==self:numRotJoint())
+		assert(loader:numTransJoint()==1)
+		for j=1, loader:numRotJoint()-1 do
+			local boneA=MainLib.VRMLloader.upcast(loader:getBoneByRotJointIndex(j))
+			local boneB=self:getBoneByRotJointIndex(j)
+			local tc=boneB:getTranslationalChannels() or ''
+			if not param.preserveTranslationalJoints then
+				-- disable translation joints unless specified otherwise.
+				tc=''
+			end
+
+			loader:setChannels(boneA, 
+			tc,
+			boneB:getRotationalChannels() or ''
+			)
+		end
+	end
 	if param.useSpherical then
 		loader:changeAllMultiDOFjointsToSpherical()
 	end
@@ -7301,7 +8489,7 @@ function MotionLoader:__tostring()
 	return table.concat(out, '\n')
 end
 
-defineDerived(MotionLoader, {MainLib.VRMLloader, SkinnedMeshLoader}, {"__tostring", "pose", "toWRLtable", "getChildEnd", "toVRMLloader", "setVoca", "getPoseMap", "setPoseMap"})
+defineDerived(MotionLoader, {MainLib.VRMLloader, SkinnedMeshLoader}, {"getChildEnd", "dofName", "findBone", "__tostring", "pose", "toWRLtable", "getChildEnd", "exportBVH", "toVRMLloader", "setVoca", "getPoseMap", "setPoseMap","setSamePoseUsingPoseMap" })
 
 function Bone:startT()
 	return self:getSkeleton().dofInfo:startT(self:treeIndex())
@@ -7313,6 +8501,32 @@ end
 function SkinnedMeshFromVertexInfo:copy()
 	local other=SkinnedMeshFromVertexInfo(self)
 	return other
+end
+function SkinnedMeshFromVertexInfo:pack(bf)
+	bf:packInt(0) --version
+	bf:packInt(self:numVertex()) 
+	for i=0, self:numVertex()-1 do
+		bf:pack(self:treeIndices(i))
+		bf:pack(self:localPos(i))
+		bf:pack(self:weights(i))
+	end
+end
+function SkinnedMeshFromVertexInfo:unpack(bf)
+	assert(bf:unpackInt()==0) --version
+	self:resize(bf:unpackInt())
+	for i=0, self:numVertex()-1 do
+		bf:unpack(self:treeIndices(i))
+		bf:unpack(self:localPos(i))
+		bf:unpack(self:weights(i))
+	end
+end
+
+-- return { treeIndices, localpos, weights }
+function SkinnedMeshFromVertexInfo:getIKhandle(mesh, ti, baryCoeffs)
+	local info={ intvectorn(), vector3N(), vectorn()}
+	local f= mesh:getFace(ti)
+	self:getVertexInfo( f:vertexIndex(0), f:vertexIndex(1), f:vertexIndex(2),baryCoeffs, info[1], info[2], info[3]);
+	return info
 end
 
 -- when RE.motionPanelValid()==false
@@ -7605,6 +8819,133 @@ if MotionClustering then
 	end
 	function MotionClustering.PyClassify:groupIndex(i)
 		return self.grp(i)
+	end
+end
+
+
+if ThreadedScript then
+	-- threaded-call. returns immediately (the job runs on the background)
+	function ThreadedScript:blockingCall(...)
+		local args={...}
+
+		funcname=args[1]
+		local l=self
+		l:getglobal(funcname)
+		local ctop=l:gettop()-1
+
+		for i=2, #args do
+			l:pushAuto( args[i])
+		end
+		local temp=l:call(#args-1)
+		l:_getResults()
+	end
+	function ThreadedScript:pushAuto(v)
+		if type(v)=='table' then
+			self:pushTable(v)
+		else
+			self:push( v)
+		end
+	end
+	function ThreadedScript:pushTable(tbl)
+		local l=self
+        l:newtable()  -- push a lua table
+		for k, v in pairs(tbl) do
+            l:push(k) 
+			l:pushAuto(v)
+            l:settable(-3)
+		end
+	end
+	function ThreadedScript:__call(...)
+		local args={...}
+
+		funcname=args[1]
+		local l=self
+		l:getglobal(funcname)
+		local ctop=l:gettop()-1
+
+		for i=2, #args do
+			l:pushAuto(args[i])
+		end
+		l:threadedCall(#args-1)
+	end
+	function ThreadedScript:popUserdata( tn)
+		local l=self
+		if tn:sub(1,7)=='matrixn' then
+			return l:popmatrixn()
+		elseif tn=='Pose'then
+			return l:popPose()
+		elseif tn:sub(1,7)=='vectorn' then
+			return l:popvectorn()
+		elseif tn:sub(1,10)=='intvectorn' then
+			return l:popintvectorn()
+		elseif tn:sub(1,5)=='boolN' then
+			return l:popboolN()
+		elseif tn:sub(1,9)=='MotionDOF' then
+			return l:popMotionDOF()
+		elseif tn:sub(1,8)=='vector3N' then
+			return l:popVector3N()
+		elseif tn:sub(1,7)=='quaterN' then
+			return l:popQuaterN()
+		elseif tn=='vector3' then
+			return l:popvector3()
+		elseif tn=='quater' then
+			return l:popquater()
+		elseif tn:sub(-12)=='MotionLoader' then
+			return l:poploader()
+		elseif tn=='Motion' then
+			return l:popMotion()
+		elseif tn:sub(-10)=='VRMLloader' then
+			return l:popVRMLloader()
+		elseif tn:sub(-12)=='LoaderToTree' then
+			return l:popLoaderToTree()
+		elseif tn=='transf' then
+			return l:poptransf()
+		else
+			print('ThreadedScript.popUserdata: this case not implemented yet:', tn)
+			dbg.console()
+		end
+	end
+
+	function ThreadedScript:getResults()
+		self:waitUntilFinished()
+		return self:_getResults()
+	end
+	function ThreadedScript:_getResults()
+		local l=self
+		local numOut=l:gettop()-l:getPreviousTop()+1
+		if numOut>0 then
+			local out={}
+			for i=1, numOut do
+				tid=l:luaType(-1)
+				if tid==7 then -- userdata -> copy
+					tn=l:lunaType(-1)
+					table.insert(out,1, l:popUserdata(l,tn).copy())
+				elseif tid==0 then --nil
+					-- simply ignore
+				elseif tid==1 then --bool
+					table.insert(out,1, l:popboolean())
+				elseif tid==4 then -- string
+					table.insert(out,1, l:popstring())
+				elseif tid==3 then --number
+					table.insert(out,1, l:popnumber())
+				elseif tid==5 then -- table -> make a global backup in lua, and return a reference
+					res=l:popAuto(l, False) -- no stack cleanup for backup
+					table.insert(out,1, res) -- reference
+					var_name='out_'..RE.generateUniqueName()
+					-- backup to lua global to prevent garbage collection
+					if type(res)=='table' then
+						res.var_name=var_name 
+						l:set(var_name)
+					else
+						print('other cases not implemented yet')
+						l:printStack()
+						dbg.console()
+						return unpack(out)
+					end
+				end
+			end
+			return unpack(out)
+		end
 	end
 end
 -- multiple line strings are not indented correctly in emacs lua-mode. 

@@ -80,6 +80,7 @@ public:
 
   // always copy values
   void assign(const boolN& other);
+  int count(bool bVal=true) const;
 
   void operator=(const boolN& other)			{ assign(other);}
   void operator=(const boolNView& other)			{ assign(other);}
@@ -116,8 +117,8 @@ public:
   void setValue(int start, int end, bool bit);
 	void setAllValue(bool b);
 	void clearAll() 	{ setAllValue(false);}
-	int count() const;
   TString output() const;
+  TString shortOutput() const;
   boolNView range(int start, int end) const;
   void getRawData(intvectorn& out) const;
   int calcRawDataSize();

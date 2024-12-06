@@ -12,13 +12,13 @@ class Bone : public Node
 	int m_transJointIndex;
 	int m_voca;
 	MotionLoader* m_skeleton;
+protected:
 	TString m_transChannels;
 	TString m_rotChannels;
 	
 	// previously m_AnyrotAxis, m_AnyrotAngle
 	//임의의 축을 설정할 때(jointAxis = "A" , jointAxis2= vector4 값)angle, axis를 저장하는 변수들
 	vector3* m_rotAxes;//임의의 축을 설정할 때(jointAxis = "A" , jointAxis2= vector4 값)angle, axis를 저장하는 변수
-protected:
 	transf m_transfOrig; //!< translation후 rotation하는 matrix, initial posture를 저장한다. (BVH 파일에서는 translation만 갖고 있다.)
 
 	friend class MotionLoader;
@@ -48,6 +48,10 @@ public:
 	int getLocalTrans(vector3& trans, const double* dof);
 	int getLocalOri(quater& out, const double* dof);
 
+	// output goes into dof[0,1,...]
+	int setLocalTrans(const vector3& trans, double* dof) const;
+	int setLocalOri(const quater& rot, double* dof) const;
+
 	void setChannels(const char* translation_axis, const char* rotation_axis);
 	// channel with an arbitrary axis is marked as 'A'
 	void setArbitraryAxes(vector3* axisValue);
@@ -58,7 +62,7 @@ public:
 	TString const& getRotationalChannels() const;
 	TString const& getTranslationalChannels() const;
 
-	vector3 getArbitraryAxis(int i);
+	vector3 getArbitraryAxis(int i) const;
 	int numChannels() const;
 
 	m_real length() const;
@@ -119,6 +123,7 @@ public:
 	// filename: "~.skl" or "~.mot"  (.mot인경우 m_cPostureIP도 만들어진다.)
 	// option=="loadSkeletonOnly" or NULL
 	MotionLoader(const char* filename, const char* option=NULL);
+	MotionLoader(const std::string & filename, bool loadSkeletonOnly=false);
 	virtual ~MotionLoader();
 
 	inline void printHierarchy() { GetNode(0)->printHierarchy();}
@@ -146,8 +151,11 @@ public:
 	void setPose(const Posture& pose) const;
 	void getPose(Posture& pose) const;
 	void setPoseDOF(const vectorn& poseDOF) const;
+	// VRMLloader로 컨버젼 한 경우 등
+	void setPoseDOF_rotationOnly(const vectorn& poseDOF) const;
 	void setSphericalQ(const vectorn& q) const {fkSolver().setSphericalQ(q);}
 	void getPoseDOF(vectorn& poseDOF) const;
+	inline Posture pose() const { Posture p; getPose(p); return p;}
 	inline vectorn getPoseDOF() const { vectorn v; getPoseDOF(v); return v;}
 
 	// 모든 트리를 update하지 않고, 한개의 chain만 update한다.
@@ -311,6 +319,7 @@ public:
 	// results can be retrieved using
 	// this->target()->getPose(..)
 	void setTargetSkeleton(const Posture & srcposture);	
+	inline void setTargetSkeleton(const vectorn & srcposture)	{ setTargetSkeleton(mpSrcSkel->dofInfo.setDOF(srcposture));}
 
 	// The above function modifies only the orientations for reasons.
 	// if translations should also be matched, than call this function instead of the above one.

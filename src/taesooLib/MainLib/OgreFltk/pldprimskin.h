@@ -29,6 +29,11 @@ public:
 	virtual void SetPose(const Posture & posture, const MotionLoader& skeleton){}
 	virtual void setPoseDOF(const vectorn& poseDOF, MotionDOFinfo const& info);
 
+	// simplified API
+	virtual void setPose(const Posture & posture){}
+	virtual void setPoseDOF(const vectorn& poseDOF){}
+	virtual void setPoseDOFignoringTranslationalJoints(const vectorn& poseDOF){}
+
 	virtual void updateBoneLength(MotionLoader const& loader){}
 	void setSamePose(BoneForwardKinematics  const& in);
 	virtual void setPose(int iframe);

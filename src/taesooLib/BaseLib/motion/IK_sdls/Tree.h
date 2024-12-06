@@ -24,7 +24,7 @@ public:
 	void InsertChild_automatic(IK_sdls::Node* parent, IK_sdls::Node* child);
 
 	void InsertEffector(IK_sdls::Node* parent, IK_sdls::Effector* child);
-	void InsertRelativeConstraint(IK_sdls::Node* parent1, IK_sdls::Node* parent2, IK_sdls::RelativeConstraint* child);
+	//void InsertRelativeConstraint(IK_sdls::Node* parent1, IK_sdls::Node* parent2, IK_sdls::RelativeConstraint* child);
 	void RemoveAllEffectors();
 
 	// Accessors based on node numbers

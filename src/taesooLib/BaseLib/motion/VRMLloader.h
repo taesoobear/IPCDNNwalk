@@ -120,12 +120,13 @@ public:
 
 	TString getURL() const {return url;}
 	void setURL(const char* u) { url=u;}
-	
+	void setPosition(const vector3 & pos); // adjust the fixed root joint 
 	virtual TString getName() { return name;}
 
 	VRMLloader(OBJloader::Geometry const& mesh, bool useFixedJoint=false);
 	VRMLloader(OBJloader::Terrain *terrain);
 	VRMLloader(const char* vrmlFile);
+	VRMLloader(const std::string & vrmlFile);
 	VRMLloader(CTextFile& vrmlFile);
 	VRMLloader(VRMLloader const& other); // copy constructor
 	VRMLloader(MotionLoader const& skel, double cylinder_radius);

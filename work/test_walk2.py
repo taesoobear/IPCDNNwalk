@@ -63,8 +63,10 @@ def loadNN( fn, useDot):
         net2=torch.load('dot'+fn)
         _globals[1]=net2
 
-# note that the above functions are called from lua using a different python environment! 
+# note that the above functions are called from lua using a different python module (test_walk2 !=  __main__)
 # so _globals will also be different between main() and loadNN() 
+# to avoid this issue, you can put global variables in a seperate module (for example, test_walk2_globals.py)
+# see test_globals.py also.
 
 def main():
     #scriptFile= 'gym_walk/testPendulumOnlineControlWalkObstacle.lua'

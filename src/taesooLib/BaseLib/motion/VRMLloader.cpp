@@ -112,7 +112,7 @@ void VRMLTransform::printHierarchy(int depth)
 		Msg::print("%s : %d, R: %d, T: %d %s:%s ", NameId, treeIndex(), rotJointIndex(), transJointIndex(), getRotationalChannels().ptr(), getTranslationalChannels().ptr() );
 		Msg::print("startT: %d endR: %d ",getSkeleton().dofInfo.startT(treeIndex()), getSkeleton().dofInfo.endR(treeIndex()));
 		Msg::print("jointId: %d numJoints:%d ", HRPjointIndex(0), numHRPjoints());
-		Msg::print("offset: %s \n",getOffsetTransform().translation.output().ptr());
+		Msg::print("offset: %s \n",getOffsetTransform().translation.output().c_str());
 	}
 
 	for(Node *i=m_pChildHead; i!=NULL; i=i->m_pSibling)
@@ -279,7 +279,7 @@ static TString nameId(Bone& bone)
 
 static TString space(int level)
 {
-  static TString temp;
+  TString temp;
   temp.empty();
   temp.add("\n");
   for(int i=0; i<level; i++)
@@ -678,6 +678,10 @@ void VRMLloader::setChannels(Bone& bone, const char* translation_axis, const cha
 	{
 		b->mJoint->jointType=HRP_JOINT::ROTATE;
 		b->mJoint->jointAxis=TString(rotation_axis);
+	}
+	else if(bone.treeIndex()==1 && strlen(translation_axis)==3 && strlen(rotation_axis)==3)
+	{
+		b->mJoint->jointType=HRP_JOINT::FREE;
 	}
 	else
 	{
@@ -1305,11 +1309,16 @@ void VRMLTransform::initBones()
       ASSERT(mJoint);
       if(mJoint->jointType==HRP_JOINT::FREE)
 	{
-	  setChannels("XYZ", "ZXY");
+		if(getRotationalChannels().length()!=3)
+			m_rotChannels="ZYX";
+
+	  setChannels("XYZ", getRotationalChannels());
 	}
 	  else if (mJoint->jointType==HRP_JOINT::BALL)
 	  {
-		  setChannels("","ZXY");
+		if(getRotationalChannels().length()!=3)
+			m_rotChannels="ZYX";
+		  setChannels("",getRotationalChannels());
 	  }
       else if(mJoint->jointType==HRP_JOINT::ROTATE)
 	{
@@ -1862,6 +1871,27 @@ VRMLloader::VRMLloader(const char* filename)
     Msg::msgBox("error opening %s", filename);
   _importVRML(file);
 }
+VRMLloader::VRMLloader(const std::string & filename)
+ :MotionLoader()
+{
+  _frameRate=30;
+	_terrain=NULL;
+#ifdef TEST_MEMORYLEAK
+  Msg::msgBox("loader%s", filename.c_str());
+#endif 
+
+  url=filename.c_str();
+  if(!(url.right(4).toUpper()==".WRL"))
+  {
+	  BinaryFile bf(false, filename.c_str());
+	  _importBinary(bf);
+	  return;
+  }
+  CTextFile file;
+  if(!file.OpenReadFile(filename.c_str()))
+    Msg::msgBox("error opening %s", filename.c_str());
+  _importVRML(file);
+}
 VRMLloader::VRMLloader(CTextFile& vrmlFile)
 {
 	_frameRate=30;
@@ -2101,7 +2131,7 @@ void VRMLloader::printDebugInfo()
 
 			for(int j=0; j<mesh.numVertex(); j++)
 			{
-				Msg::print("%d: %s\n", j,mesh.getVertex(i).output().ptr());
+				Msg::print("%d: %s\n", j,mesh.getVertex(i).output().c_str());
 			}
 		}
 	}
@@ -2505,3 +2535,16 @@ int VRMLloader_subtree::subTreeindex(int fulltreeindex) const
 	return ii;
 }
 
+void VRMLloader::setPosition(const vector3 & pos)
+{
+	auto& root=VRMLbone(1);
+	if (root.getRotationalChannels().length()>0 ||
+			root.getTranslationalChannels().length()>0)
+		Msg::msgBox("VRMLloader::setPosition function works only for wrl files having a fixed root joint")	;
+	else
+	{
+		VRMLbone(1).setJointPosition(pos);
+		VRMLbone(1)._getLocalFrame().translation=pos;
+		fkSolver().forwardKinematics();
+	}
+}

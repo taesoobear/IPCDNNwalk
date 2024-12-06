@@ -5,6 +5,15 @@
 #include "hyperMatrixN.h"
 
 
+bool matrixn::isnan() const
+{
+	for (int i=0;i< rows(); i++)
+	{
+		if (row(i).isnan())
+			return true;
+	}
+	return false;
+}
 matrixn& matrixn::operator=(const matrixnView& other)		{ assign(other); return *this;}
 
 intmatrixn& intmatrixn::operator=(const intmatrixnView& other)		{ assign(other); return *this;}
@@ -352,6 +361,29 @@ matrixn&  matrixn::identity(int n)
 }
 
 
+TString matrixn::shortOutput() const
+{
+	TString out;
+	out.add("{");
+	auto& a=*this;
+	if (a.rows()<10 )
+	{
+		for (int i=0; i<a.rows(); i++)
+			out.add(" {[%d]=%s\n", i, a.row(i).shortOutput().ptr());
+	}
+	else
+	{
+		for (int i=0; i<5; i++)
+			out.add(" {[%d]=%s\n", i,a.row(i).shortOutput().ptr());
+		out.add("\n ...\n");
+		for (int i=a.rows()-5; i< a.rows(); i++)
+			out.add(" {[%d]=%s\n", i, a.row(i).shortOutput().ptr());
+	}
+	out.add("\n}\n");
+
+	//printf("%s\n", out.ptr());
+	return out;
+}
 
 TString matrixn::output(const char* formatString, int start, int end) const
 {
@@ -745,7 +777,50 @@ vector3NView matrixn::toVector3N() const
 {
 	return _column<vector3NView >(0);
 }
+
+void matrixn::sampleRow( m_real criticalTime, vectorn& out) const
+{
+matrixn const& in=*this;
+				out.setSize(in.cols());
+				//!< 0 <=criticalTime<= numFrames()-1
+				// float 0 이 정확하게 integer 0에 mapping된다.
+				int a;
+				float t;
+
+				a=(int)floor(criticalTime);
+				t=criticalTime-(float)a;
+
+				if(t<0.005)
+					out=in.row(a);
+				else if(t>0.995)
+					out=in.row(a+1);
+				else {
+					if(a<0)
+						v::interpolate(out, t-1.0, in.row(a+1), in.row(a+2));
+					else if(a+1>=in.rows())
+						v::interpolate(out, t+1.0, in.row(a-1), in.row(a));
+					else
+						v::interpolate(out, t, in.row(a), in.row(a+1));
+					}
+				}
 std::ostream& operator<< ( std::ostream& os, const matrixn& u )
 {
 	return (os << u.output().ptr());
+}
+matrixn matrixn::derivative(double frame_rate) const
+{
+   matrixn dsrc;
+   
+   dsrc.setSize(rows(), cols());
+   
+   for (int i=1; i< rows()-1; i++)
+   {
+	   dsrc.row(i).sub(row(i+1),row(i-1));
+	   dsrc.row(i)*=(frame_rate/2.0);
+   }
+   
+   // fill in empty rows
+   dsrc.row(0).assign(dsrc.row(1));
+   dsrc.row(dsrc.rows()-1).assign(dsrc.row(dsrc.rows()-2));
+   return dsrc;
 }

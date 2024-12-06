@@ -342,7 +342,7 @@ class SkinConstraintInfo: public MotionUtil::RelativeConstraint::ConstraintInfo
 class FastSkinConstraintInfo: public MotionUtil::RelativeConstraint::ConstraintInfo
 {
 	public:
-		VRMLloader const& loader;
+		MotionLoader const& loader;
 		IK_sdls::LoaderToTree* solver;
 		vector3 _gpos2;
 
@@ -357,7 +357,7 @@ class FastSkinConstraintInfo: public MotionUtil::RelativeConstraint::ConstraintI
 		vector3N _all_dS;
 		vector3N _all_dS_lpos;
 
-		FastSkinConstraintInfo(VRMLloader const& l, IK_sdls::LoaderToTree* s, int numMarkers) 
+		FastSkinConstraintInfo(MotionLoader const& l, IK_sdls::LoaderToTree* s, int numMarkers) 
 			:loader(l),solver(s)
 		{
 			_markerInfo.resize(numMarkers);
@@ -802,25 +802,25 @@ public:
 	}
 	// actually generalized velocity constraint so that the output is mass/inertia independent.
 	virtual bool _setMomentumConstraint(int i, vector3 const& ang, vector3 const& lin, double weight){
-		mConstraints[i].eType=MotionUtil::RelativeConstraint::MOMENTUM;
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
 		MomentumConstraintInfo* pInfo=new MomentumConstraintInfo((VRMLloader const&)mSkeleton,this);
+		mConstraints[i].setInfo(MotionUtil::RelativeConstraint::MOMENTUM, pInfo);
 		pInfo->desired_vel.setVec3(0, ang);
 		pInfo->desired_vel.setVec3(3, lin);
-		mConstraints[i].pInfo=pInfo;
 		mConstraints[i].weight=weight;
 		return true;
 	}
 	virtual bool _setEffectorYConstraint(int i, double weight, const vectorn& effectorWeights)
 	{
-		mConstraints[i].eType=MotionUtil::RelativeConstraint::OTHERS;
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
 		EEYConstraintInfo* pInfo=new EEYConstraintInfo((VRMLloader const&)mSkeleton,this, effectorWeights);
-		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].setInfo(MotionUtil::RelativeConstraint::OTHERS, pInfo);
 		mConstraints[i].weight=weight;
 		return true;
 	}
 	virtual bool _setPoseConstraint(int i, vectorn const& pose, double weight, int startBoneIndex=1, int endBoneIndex=INT_MAX)
 	{
-		mConstraints[i].eType=MotionUtil::RelativeConstraint::POSE;
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
 		setPoseDOF(mTree, mDofInfo, pose, mNode);
 		mTree.Compute();
 #ifdef _DEBUG
@@ -848,7 +848,7 @@ public:
 		getTheta(&x[0]);
 
 		PoseConstraintInfo* pInfo=new PoseConstraintInfo((VRMLloader const&)mSkeleton,this, x.range(startC, endC), startC );
-		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].setInfo(MotionUtil::RelativeConstraint::POSE, pInfo);
 		mConstraints[i].weight=weight; // by default.
 		return true;
 	}
@@ -857,38 +857,39 @@ public:
 		return true;
 	}
 	virtual bool _setOrientationConstraint(int i, Bone* bone, quater const& desired_ori, double weight) { 
-		mConstraints[i].eType=MotionUtil::RelativeConstraint::ROT;
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
 		ROTConstraintInfo* pInfo=new ROTConstraintInfo((VRMLloader const&)mSkeleton,this, bone, desired_ori);
-		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].setInfo(MotionUtil::RelativeConstraint::ROT, pInfo);
 		mConstraints[i].weight=weight;
 		return true;
 	}
 	virtual bool _setPositionConstraint(int i, Bone* bone, vector3 const&lpos, vector3 const& desired_pos, double wx, double wy, double wz) {
-		mConstraints[i].eType=MotionUtil::RelativeConstraint::OTHERS;
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
 		EEConstraintInfo* pInfo=new EEConstraintInfo((VRMLloader const&)mSkeleton,this, bone, lpos, desired_pos, wx, wy, wz);
-		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].setInfo(MotionUtil::RelativeConstraint::OTHERS, pInfo);
 		mConstraints[i].weight=1.0;
 		return true;
 	}
 
 	virtual bool _setSkinningConstraint(int i, intvectorn const& treeIndices, vector3N const& localpos, vectorn  const&weights, vector3 const& desired_pos) {
-		mConstraints[i].eType=MotionUtil::RelativeConstraint::OTHERS;
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
 		SkinConstraintInfo* pInfo=new SkinConstraintInfo((VRMLloader const&)mSkeleton,this, treeIndices, localpos, weights, desired_pos);
-		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].setInfo(MotionUtil::RelativeConstraint::OTHERS, pInfo);
 		mConstraints[i].weight=1.0;
 		return true;
 	}
 
 	virtual bool _setConstraintWeight(int i, double w){ 
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
 		mConstraints[i].weight=w;
 		return true;
 	}
 #if 1
 	// testing a faster version of the above function
 	virtual bool _setFastSkinningConstraint(int i, int numMarkers){
-		mConstraints[i].eType=MotionUtil::RelativeConstraint::OTHERS;
-		FastSkinConstraintInfo* pInfo=new FastSkinConstraintInfo((VRMLloader const&)mSkeleton,this, numMarkers);
-		mConstraints[i].pInfo=pInfo;
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
+		FastSkinConstraintInfo* pInfo=new FastSkinConstraintInfo(mSkeleton,this, numMarkers);
+		mConstraints[i].setInfo(MotionUtil::RelativeConstraint::OTHERS, pInfo);
 		mConstraints[i].weight=1.0;
 		return true;
 	}
@@ -903,49 +904,49 @@ public:
 	}
 #endif
 	virtual bool _setOrientationConstraint(int i, Bone* bone, quater const& desired_ori) { 
-		mConstraints[i].eType=MotionUtil::RelativeConstraint::ROT;
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
 		ROTConstraintInfo* pInfo=new ROTConstraintInfo((VRMLloader const&)mSkeleton,this, bone, desired_ori);
-		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].setInfo(MotionUtil::RelativeConstraint::ROT, pInfo);
 		mConstraints[i].weight=1.0;
 		return true;
 	}
 	virtual bool _setRelativeConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, double weight) 
 	{ 
-		mConstraints[i].eType=MotionUtil::RelativeConstraint::OTHERS;
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
 		RelativeConstraintInfo* pInfo=new RelativeConstraintInfo((VRMLloader const&)mSkeleton,this, bone1, lpos1, bone2, lpos2);
-		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].setInfo(MotionUtil::RelativeConstraint::OTHERS, pInfo);
 		mConstraints[i].weight=weight;
 		return true;
 	}
 	virtual bool _setRelativeConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, vector3 const& gdelta, double weight) 
 	{ 
-		mConstraints[i].eType=MotionUtil::RelativeConstraint::OTHERS;
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
 		RelativeConstraintInfo* pInfo=new RelativeConstraintInfo((VRMLloader const&)mSkeleton,this, bone1, lpos1, bone2, lpos2, gdelta);
-		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].setInfo(MotionUtil::RelativeConstraint::OTHERS, pInfo);
 		mConstraints[i].weight=weight;
 		return true;
 	}
 	virtual bool _setRelativeDistanceConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, double thr, double weight) 
 	{ 
-		mConstraints[i].eType=MotionUtil::RelativeConstraint::OTHERS;
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
 		RelativeDistanceConstraintInfo* pInfo=new RelativeDistanceConstraintInfo((VRMLloader const&)mSkeleton,this, bone1, lpos1, bone2, lpos2, thr);
-		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].setInfo(MotionUtil::RelativeConstraint::OTHERS, pInfo);
 		mConstraints[i].weight=weight;
 		return true;
 	}
 	virtual bool _setRelativeDistanceConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, vector3 const& delta, double thr, double weight) 
 	{ 
-		mConstraints[i].eType=MotionUtil::RelativeConstraint::OTHERS;
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
 		RelativeDistanceConstraintInfo* pInfo=new RelativeDistanceConstraintInfo((VRMLloader const&)mSkeleton,this, bone1, lpos1, bone2, lpos2, delta, thr);
-		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].setInfo(MotionUtil::RelativeConstraint::OTHERS, pInfo);
 		mConstraints[i].weight=weight;
 		return true;
 	}
 	virtual bool _setRelativeHalfSpaceConstraint(int i, Bone* bone1, vector3 const& lpos1, Bone* bone2, vector3 const& lpos2, vector3 const& global_normal, float idepth, double weight) 
 	{ 
-		mConstraints[i].eType=MotionUtil::RelativeConstraint::OTHERS;
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
 		RelativeHSConstraintInfo* pInfo=new RelativeHSConstraintInfo((VRMLloader const&)mSkeleton,this, bone1, lpos1, bone2, lpos2,global_normal, idepth);
-		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].setInfo(MotionUtil::RelativeConstraint::OTHERS, pInfo);
 		mConstraints[i].weight=weight;
 		return true;
 	}
@@ -956,6 +957,7 @@ public:
 		return _setRelativeConstraint(i, bone1, lpos1, bone2, vector3(0,0,0), 1);
 	}
 	virtual bool _setPlaneDistanceConstraint(int i, Bone* bone, vector3 const& lpos, vector3 const& global_normal, float idepth) {
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
 		mConstraints[i].eType=MotionUtil::RelativeConstraint::PLANE_DISTANCE;
 		mConstraints[i].bone1=bone;
 		mConstraints[i].localpos1=lpos;
@@ -966,13 +968,15 @@ public:
 		return true;
 	}	   
 	virtual bool _setDistanceConstraint(int i, Bone* bone, vector3 const& lpos, vector3 const& gpos, float targetDist) {
-		mConstraints[i].eType=MotionUtil::RelativeConstraint::OTHERS;
-		mConstraints[i].pInfo=new DistanceConstraintInfo((VRMLloader const&)mSkeleton,this, bone,lpos, gpos, targetDist );
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
+		auto* pInfo=new DistanceConstraintInfo((VRMLloader const&)mSkeleton,this, bone,lpos, gpos, targetDist );
+		mConstraints[i].setInfo(MotionUtil::RelativeConstraint::OTHERS, pInfo);
 		mConstraints[i].weight=1.0;
 		return true;
 	}
 	
 	virtual bool _setHalfSpaceConstraint(int i, Bone* bone, vector3 const& lpos, vector3 const& global_normal, float idepth) {
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
 		mConstraints[i].eType=MotionUtil::RelativeConstraint::HALF_SPACE;
 		mConstraints[i].bone1=bone;
 		mConstraints[i].localpos1=lpos;
@@ -980,18 +984,20 @@ public:
 		mConstraints[i].normal[1]=global_normal.y;
 		mConstraints[i].normal[2]=global_normal.z;
 		mConstraints[i].idepth=idepth;
+		mConstraints[i].weight=1.0;
 		return true;
 	}	   
 	virtual bool _setCOMConstraint(int i, vector3 const& com) { 
-		mConstraints[i].eType=MotionUtil::RelativeConstraint::COM;
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
 		COMConstraintInfo* pInfo=new COMConstraintInfo((VRMLloader const&)mSkeleton,this, com);
-		mConstraints[i].pInfo=pInfo;
+		mConstraints[i].setInfo(MotionUtil::RelativeConstraint::COM, pInfo);
 		mConstraints[i].weight=1.0;
 		return true;
 	}	   
 	virtual bool _setCOMConstraint(int i, vector3 const& com, double wx, double wy, double wz) {
-		mConstraints[i].eType=MotionUtil::RelativeConstraint::COM;
+		Msg::verify(mConstraints.size()>i, "_changeNumConstraints first!!!");
 		COMConstraintInfo* pInfo=new COMConstraintInfo((VRMLloader const&)mSkeleton,this, com, wx, wy, wz);
+		mConstraints[i].setInfo(MotionUtil::RelativeConstraint::COM, pInfo);
 		mConstraints[i].pInfo=pInfo;
 		mConstraints[i].weight=1.0;
 		return true;
@@ -1077,9 +1083,9 @@ public:
 		getTheta(m_x0);
 
 		/* Initialize constraints */
-		for(int ii=0; ii<_nonEffector_constraints.size(); ii++)
+		for(int ii=0; ii<mConstraints.size(); ii++)
 		{
-			MotionUtil::RelativeConstraint* n=_nonEffector_constraints[ii];
+			MotionUtil::RelativeConstraint* n=&mConstraints[ii];
 			if(n->eType>=MotionUtil::RelativeConstraint::MOMENTUM)
 				n->pInfo->initializeConstraint(pose, m_x);
 		}
@@ -1087,7 +1093,13 @@ public:
             Start the L-BFGS optimization; this will invoke the callback functions
             evaluate() and progress() when necessary.
          */
-        int ret = LBFGS::lbfgs(N, m_x, &fx, _evaluate, _progress, this, NULL);
+
+		LBFGS::lbfgs_parameter_t param;
+		LBFGS::lbfgs_parameter_init(&param);
+		param.linesearch = LBFGS::LBFGS_LINESEARCH_BACKTRACKING;
+		param.epsilon=1e-9;
+
+        int ret = LBFGS::lbfgs(N, m_x, &fx, _evaluate, _progress, this, &param);
 
 #ifdef _DEBUG
         /* Report the result. */
@@ -1110,6 +1122,76 @@ public:
     {
         return reinterpret_cast<FullbodyIK_MotionDOF_MultiTarget_lbfgs*>(instance)->evaluate(x, g, n, step);
     }
+
+	
+	/*  how to compute the gradient
+		-- plane distance constraint
+		objective function f =
+			sum_i | X(Q)' * normal + d0 |^2
+
+			= sum_i  (X(Q)' *normal +d0)*(X(Q)' *normal +d0)
+			= sum_i  ( X(Q)' * normal * normal' * X(Q) + 2*d0*X(Q)'*normal +d0*d0)
+
+		if we look at only one term f_i = X(Q)' * normal * normal' * X(Q) + -2*d0*X(Q)'*normal +d0*d0 :
+			df_i/dQ=2 X(Q)'*(normal*normal') *dX/dQ+   -- using proposition 13 of matrixCalculus.pdf (normal*normal' == A == A')
+					+ 2*d0*normal'* dX/dQ           -- using proposition 57
+
+		-- relative position
+
+		objective function = sum_i  |dS_i|^2 
+			= sum_i ((x1(q)-x2(q))^2 +(y1(q)-y2(q))^2+(z1(q)-z2(q)^2)
+
+		Jacobian1= dX1/dQ={ dx1/dq
+							dy1/dq
+							dz1/dq}
+
+
+		object gradient = sum_i df_i/dQ
+
+		If we look at only one term:
+			df/dQ = d(     X1(Q)-X2(Q))' (X1(Q)-X2(Q)) )/dQ
+				= 2 (X1(Q)-X2(Q))'(dX1/dQ-dX2/dQ)          -- using proposition 2 of matrixCalculus.pdf.
+	*/
+	double _calcObjectiveAndGradient(MotionUtil::RelativeConstraint* constraint, int N, double* g, const double *x){
+		double fx=0;
+		vector3 normal=vector3(constraint->normal[0], 
+				constraint->normal[1],
+				constraint->normal[2]);
+		Plane p(normal, -constraint->idepth);
+
+		int ti=constraint->bone1->treeIndex();
+		const transf& tf=getLastNode(ti)->globalFrame();
+		auto nS=tf*constraint->localpos1;
+
+		double d=p.distance(nS);
+		if (constraint->eType==MotionUtil::RelativeConstraint::PLANE_DISTANCE)
+			fx+=d*d;
+		else if(d>0) // MotionUtil::RelativeConstraint::HALF_SPACE; see NodeWrap.cpp also.
+			fx+=d*d;
+
+		bool hasLock=(mJacobianLock.size()==N);
+
+#ifdef USE_SIMPLE_BUT_SLOW_CODE
+		matrixn Jt;
+		calcJacobianTransposeAt(Jt, ti, constraint->localpos1);
+#endif
+
+		if(constraint->eType==MotionUtil::RelativeConstraint::PLANE_DISTANCE || d>0)
+		{
+#ifdef USE_SIMPLE_BUT_SLOW_CODE
+			for(int i=0; i<N; i++){
+				if(hasLock && mJacobianLock[i]) continue;
+
+				vector3 j=Jt.row(i).toVector3();
+				// plane distance
+				g[i]+=2.0*d*(normal%j);
+			}
+#else
+			updateGrad_S_JT(g, (2.0*d)*normal, ti, constraint->localpos1);
+#endif
+		}
+		return fx;
+	}
 	LBFGS::lbfgsfloatval_t evaluate(
         const LBFGS::lbfgsfloatval_t *x,
         LBFGS::lbfgsfloatval_t *g,
@@ -1128,7 +1210,7 @@ public:
 		mTree.Compute();
 		int nEffector = mTree.GetNumEffector();
 		int nJoint = mTree.GetNumJoint();
-		int nCon= _nonEffector_constraints.size();
+		int nCon= mConstraints.size();
 		int nRow = 3 * nEffector;
 		int nCol = nJoint;
 		
@@ -1142,34 +1224,14 @@ public:
 
 		LBFGS::lbfgsfloatval_t fx = 0.0;
 	
-		vectorn vec_dist(mTree.effectors.size());
-		vec_dist.setAllValue(0);
 		for(int ii=0; ii<mTree.effectors.size(); ii++)
 		{
 			n = mTree.effectors[ii];
 			int i = n->GetEffectorNum();
 			assert(i==ii);
-			if (n->constraint)
-			{
-				dS.SetTriple(ii, vector3(0,0,0));
-
-				Plane p(n->constraint->normal[0], 
-						n->constraint->normal[1], 
-						n->constraint->normal[2], 
-						n->constraint->idepth);
-				double d=p.distance(n->GetS());
-				vec_dist[ii]=d;
-				if (n->constraint->eType==MotionUtil::RelativeConstraint::PLANE_DISTANCE)
-					fx+=d*d;
-				else if(d>0) // MotionUtil::RelativeConstraint::HALF_SPACE; see NodeWrap.cpp also.
-					fx+=d*d;
-			}
-			else
-			{
-				// Compute the delta S value (differences from end effectors to target positions.
-				n->computeDeltaS(dS, &mTree);
-				fx+=mEffectorWeights(ii)*dS.GetTriple(ii).squaredLength();
-			}
+			// Compute the delta S value (differences from end effectors to target positions.
+			n->computeDeltaS(dS, &mTree);
+			fx+=mEffectorWeights(ii)*dS.GetTriple(ii).squaredLength();
 			n->calcJacobian(&mTree, Jend, i, n->GetS());
 		}
 
@@ -1230,6 +1292,24 @@ public:
 		*/
 
 		bool hasLock=(mJacobianLock.size()==N);
+		if (hasLock)
+		{
+			for(int ti=1; ti<mSkeleton.numBone(); ti++)
+			{
+				int sj=getVarIndex(ti);
+				int ej=getVarEndIndex(ti);
+				if(mJacobianLock(sj))
+				{
+					for(int i=sj; i<ej; i++)
+						getNode(ti,i-sj)->Freeze();
+				}
+				else
+				{
+					for(int i=sj; i<ej; i++)
+						getNode(ti,i-sj)->UnFreeze();
+				}
+			}
+		}
 		for(int i=0; i<N; i++){
 			if(hasLock && mJacobianLock[i]) continue;
 
@@ -1238,34 +1318,26 @@ public:
 				n=mTree.effectors[ii];
 				VectorR3 j;
 				Jend.GetTriple(ii, i, &j);
-				if(n->constraint)
-				{
-					vector3 normal(n->constraint->normal[0],
-							n->constraint->normal[1],
-							n->constraint->normal[2]);
-
-					if (n->constraint->eType==MotionUtil::RelativeConstraint::PLANE_DISTANCE)
-						// plane distance
-						g[i]+=2.0*(n->GetS()%normal)*(normal%j)
-							+ 2.0*n->constraint->idepth*(normal%j);
-					else if( vec_dist[ii]>0)
-						g[i]+=2.0*(n->GetS()%normal)*(normal%j)
-							+ 2.0*n->constraint->idepth*(normal%j);
-				}
-				else
-				{
-					// absolute or relative position
-					g[i]-= mEffectorWeights(ii)*2.0*dS.GetTriple(ii)%j;
-				}
+				// absolute position
+				g[i]-= mEffectorWeights(ii)*2.0*dS.GetTriple(ii)%j;
 			}	
 		}
 
-		for(int ii=0; ii<_nonEffector_constraints.size(); ii++)
+		for(int ii=0; ii<mConstraints.size(); ii++)
 		{
 			VRMLloader const& loader=(VRMLloader const&)mSkeleton;
-			MotionUtil::RelativeConstraint* n=_nonEffector_constraints[ii];
-			double f=n->pInfo->calcObjectiveAndGradient(N, g,x, n->weight);
-			fx+=f;
+			MotionUtil::RelativeConstraint* n=&mConstraints[ii];
+
+			if (n->eType>=MotionUtil::RelativeConstraint::MOMENTUM)
+			{
+				double f=n->pInfo->calcObjectiveAndGradient(N, g,x, n->weight);
+				fx+=f;
+			}
+			else
+			{
+				double f=_calcObjectiveAndGradient(n, N, g,x);
+				fx+=f;
+			}
 		}
 #endif
 
@@ -1334,7 +1406,6 @@ double EEYConstraintInfo::calcObjectiveAndGradient(int N, double* g, const doubl
 		n = mTree.effectors[ii];
 		int i = n->GetEffectorNum();
 		assert(i==ii);
-		if (!n->constraint)
 		{
 			vector3 ds=dS.GetTriple(ii);
 			if(ds.y<0)
@@ -1376,6 +1447,7 @@ double RelativeHSConstraintInfo::calcObjectiveAndGradient(int N, double* g, cons
 	if(f>0)
 	{
 		fx+=f*f*w;
+#ifdef USE_SIMPLE_BUT_SLOW_CODE
 
 		matrixn JT;
 		solver->calcJacobianTransposeAt(JT, bone1->treeIndex(), _lpos1);
@@ -1394,6 +1466,10 @@ double RelativeHSConstraintInfo::calcObjectiveAndGradient(int N, double* g, cons
 			if(hasLock && mJacobianLock[i]) continue;
 			g[i]-= (2.0*w)*(deltaS%_n-_idepth)*(_n%JT.row(i).toVector3(0));
 		}
+#else
+		solver->updateGrad_S_JT(g, -(2.0*f)*_n, bone1->treeIndex(), _lpos1);
+		solver->updateGrad_S_JT(g, (2.0*f)*_n, bone2->treeIndex(), _lpos2);
+#endif
 	}
 
 	return fx;

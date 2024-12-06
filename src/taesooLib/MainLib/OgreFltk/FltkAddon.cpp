@@ -17,6 +17,8 @@
 #define USE_NATIVE_FILE_CHOOSER
 #include <FL/Fl_Native_File_Chooser.H>
 #include <unistd.h>
+#else
+#include <unistd.h>
 #endif
 #else // NO_GUI
 
@@ -869,7 +871,7 @@ void fl_draw_CImage_scaleDown(int samplingRatio, const CImage& imagee, const TRe
 
 	for(int yy=0; yy<srcRect.Height(); yy++)
 	{
-		CPixelRGB8* pColor=&ptr[srcRect.top+yy][srcRect.left];
+		CPixelRGB8* pColor=&ptr[image.GetHeight()-1-(srcRect.top+yy)][srcRect.left];
 
 #ifdef USE_DOWNSAMPLE
 		for(int i=0; i<w; i+=3)
@@ -896,7 +898,9 @@ void fl_draw_CImage_scaleDown(int samplingRatio, const CImage& imagee, const TRe
 		}
 #endif
 
+		//fl_draw_image(buffer, x, y+(srcRect.Height()-1-yy), srcRect.Width()/samplingRatio, 1);
 		fl_draw_image(buffer, x, y+yy, srcRect.Width()/samplingRatio, 1);
+		//printf("%d %d\n", y+(srcRect.Height()-1-yy), srcRect.Height());
 	}
 }
 

@@ -5,51 +5,6 @@ gen_lua.enum_types[#gen_lua.enum_types+1]='OpenHRP::DynamicsSimulator::LinkDataT
 bindTargetPhysics={
 	classes={
 		{
-			ifndef='EXCLUDE_GMBS_SIM',
-			name='gmbs.RMatrix',
-			className='RMatrix',
-			ctors={ '()',
-			'(int nr, int nc)'},
-			memberFunctions={[[
-			RMatrix operator + (const RMatrix &m) const
-			RMatrix operator - (const RMatrix &m) const
-			RMatrix operator * (const RMatrix &m) const
-			]]},
-			wrapperCode=[[
-				static void assign(RMatrix& out, matrixn const& mat)
-				{
-					out.ReNew(mat.rows(), mat.cols());
-					for(int i=0; i<mat.rows(); i++)
-						for(int j=0; j<mat.cols(); j++)
-							out(i,j)=mat(i,j);
-
-				}
-				static matrixn toMat(RMatrix const& in)
-				{
-					matrixn out;
-					out.setSize(in.RowSize(), in.ColSize());
-
-					for(int i=0; i<out.rows(); i++)
-						for(int j=0; j<out.cols(); j++)
-							out(i,j)=in(i,j);
-					return out;
-				}
-			]],
-			staticMemberFunctions={[[
-				void assign(RMatrix& out, matrixn const& mat)
-				matrixn toMat(RMatrix const& in)
-				int Rank(const RMatrix &m);
-				double Det(RMatrix A);
-				RMatrix pInv(const RMatrix &A, double eps );								
-				RMatrix srInv(const RMatrix &A, double alpha);									
-				RMatrix Nullspace(const RMatrix &A, double eps );	
-				RMatrix Zeros(int r, int c);
-				RMatrix Ones(int r, int c);
-				RMatrix Rand(int r, int c);
-				RMatrix Eye(int r, int c );
-			]]}
-		},
-		{
 			name='Physics.InertiaCalculator',
 			className='InertiaCalculator',
 			decl='class InertiaCalculator;',
@@ -87,6 +42,7 @@ bindTargetPhysics={
 			
 		},
 		{
+			decl='#include "../PhysicsLib/DynamicsSimulator_QP.h"',
 			name='Physics.ContactBasis',
 			className='OpenHRP::DynamicsSimulator_QP::ContactBasis',
 			properties={'int ibody', 'int ibone', 'vector3 globalpos', 'vector3 relvel', 'vector3 normal', 
@@ -379,6 +335,7 @@ bindTargetPhysics={
 					int addModel(VRMLloader* loader); // returns characterIndex
 					int addObstacle(OBJloader::Geometry const& mesh); // returns characterIndex
 					VRMLloader* getModel(int ichar)  
+					int numModels() const 
 					void setMargin(int ilink, double margin);
 					void setMarginAll(vectorn const & margin);
 					void getMarginAll(vectorn & margin);
@@ -398,9 +355,14 @@ bindTargetPhysics={
 			   name='Physics.CollisionDetector_libccd',
 			   className='OpenHRP::CollisionDetector_libccd',
 			   inheritsFrom='OpenHRP::CollisionDetector',
+			   decl=[[
+			   namespace OpenHRP{
+				   vector2 testSphereBox(vector3 const& center, double r, transf const& box, vector3 const& box_size, vector3& pos, vector3& normal);
+			   }]],
 			   staticMemberFunctions={[[
 					bool OpenHRP::CollisionCheck(OpenHRP::CollisionDetector &s,OpenHRP::CollisionSequence & collisions, std::string chekmesh, std::string skipmesh);
-			]]},
+					vector2 OpenHRP::testSphereBox(vector3 const& center, double r, transf const& box, vector3 const& box_size, vector3& pos, vector3& normal);
+				]]},
 			},
 			{
 				name='Physics.DynamicsSimulator',
@@ -464,6 +426,10 @@ bindTargetPhysics={
 						*/
 						prim.setPose(s.getWorldState(ichara));
 					}
+					static void setPose(PLDPrimVRML& prim, Posture const& pose)
+					{
+						prim.setPose(pose);
+					}
 					]],
 					staticMemberFunctions={[[
 					static void setParameter2(const char* _what, bool value) @ setParameter
@@ -472,6 +438,7 @@ bindTargetPhysics={
 					static vector3 calcCOMvel(OpenHRP::DynamicsSimulator&s, int ichara) @ calculateCOMvel
 					static double calcTotalMass(OpenHRP::DynamicsSimulator&s, int ichara)
 					static void setPose(PLDPrimVRML& prim, OpenHRP::DynamicsSimulator& s, int ichara) 
+					static void setPose(PLDPrimVRML& prim, Posture const& pose)
 					]]},
 					memberFunctions={[[	
 					void drawLastContactForces();
@@ -547,8 +514,12 @@ bindTargetPhysics={
 					vectorn getQ(int ichara) const 
 					void setDQ(int ichara, vectorn const& v);
 					void getDQ(int ichara, vectorn& v) const;
+					void getBodyDQ(int ichara, vectorn& v) const;
 					vectorn getDQ(int ichara) const 
 					void setU(int ichara, const vectorn& in);
+
+					vectorn poseToSphericalQ(int ichara, vectorn const& posedof) const;
+					vectorn dposeToSphericalDQ(int ichara, vectorn const& dposeDOF) const;
 					]]},
 					enums={
 						{"EULER","(int)OpenHRP::DynamicsSimulator::EULER"},
@@ -565,83 +536,6 @@ bindTargetPhysics={
 				name='Physics.DynamicsSimulator_penaltyMethod',
 				className='OpenHRP::DynamicsSimulator_penaltyMethod',
 				inheritsFrom='OpenHRP::DynamicsSimulator',
-			},
-			{
-				ifndef='EXCLUDE_GMBS_SIM',
-				name='Physics.DynamicsSimulator_gmbs_penalty',
-				className='OpenHRP::DynamicsSimulator_gmbs_penalty',
-				inheritsFrom='OpenHRP::DynamicsSimulator_penaltyMethod',
-				--isLuaInheritable=true,
-				isExtendableFromLua=true,
-				ctors={'()'},
-				memberFunctions={[[
-				void calcJacobian(int ichar, int ibone, matrixn& jacobian);
-				Liegroup::dse3 calcMomentumCOMfromPoseUpper(int ichara, double t, vectorn const& poseFrom, vectorn const& poseTo)
-				Liegroup::dse3 calcMomentumCOMfromPoseLower(int ichara, double t, vectorn const& poseFrom, vectorn const& poseTo)
-				void addForceToBone(int ichara, VRMLTransform* b, vector3 const& localpos, vector3 const& force);
-				void test(const char* test, matrixn& out);
-				void calcBoneDotJacobian(int ichar, int ibone, vector3 const& localpos,matrixn& jacobian, matrixn& dotjacobian);
-				void calcBoneDotJacobian2(int ichar, int ibone, vector3 const& localpos,matrixn& jacobian, matrixn& dotjacobian);
-				void calcMassMatrix(int ichara, matrixn& M, vectorn& b) @ calcMassMatrix3
-				void getBodyVelocity(int chara, VRMLTransform* b, Liegroup::se3& V) const
-				]]}
-			},
-			{
-				ifndef='EXCLUDE_GMBS_SIM',
-				name='Physics.DynamicsSimulator_gmbs',
-				className='OpenHRP::DynamicsSimulator_gmbs',
-				inheritsFrom='OpenHRP::DynamicsSimulator',
-				ctors={'()','(bool)', '(const char*)'},
-				decl=[[
-				namespace OpenHRP {
-				class DynamicsSimulator_gmbs;
-				}
-				vector3 calcCOM2_gmbs(OpenHRP::DynamicsSimulator_gmbs&s, int ichara);
-				]],
-				staticMemberFunctions={[[
-				vector3 calcCOM2_gmbs(OpenHRP::DynamicsSimulator_gmbs&s, int ichara)
-				]]},
-				memberFunctions={[[
-				void setCollisionMargin(int ilinkpair, double a)
-				void setAllCollisionMargin(vectorn const& a)
-				void getAllCollisionMargin(vectorn & a)
-				Liegroup::dse3 calcMomentumGlobal(int ichara);
-				// ys start
-				void stepKinematicMuscle_integrate(vectorn const& ddq, double dt);
-				void stepKinematicMuscle_updateother();
-				// ys end
-				bool stepKinematic(vectorn const& ddq, vectorn const& tau, bool );
-				//ys
-				double calcKineticEnergy() const
-				vector3 calculateCOMacc(int ichara);
-				void getLCPmatrix(matrixn& A, vectorn& b);
-				void getLCPsolution(vectorn& out);
-				void calcContactJacobianAll(matrixn &J_all, matrixn & dotJ_all, matrixn& V_all, matrixn & dot_v_all, int link_pair_count, double invfrictionCoef);
-				void calcJacobian(int ichar, int ibone, matrixn& jacobian);
-				void calcDotJacobian(int ichar, int ibone, matrixn& dotjacobian);
-				void _calcDotBodyJacobian(int ichar, int ibone, matrixn& jacobian, matrixn& dotjacobian, bool update);
-				void calcCOMjacobian(int ichar, matrixn& jacobian);
-				void calcMomentumDotJacobian(int ichar, matrixn& jacobian, matrixn& dotjacobian)
-				Liegroup::dse3 calcMomentumCOMfromPoseUpper(int ichara, double t, vectorn const& poseFrom, vectorn const& poseTo)
-				Liegroup::dse3 calcMomentumCOMfromPoseLower(int ichara, double t, vectorn const& poseFrom, vectorn const& poseTo)
-				void calcInertiaUpper(int ichara,vectorn const& pose, vectorn& inertia) const
-				void calcInertiaLower(int ichara,vectorn const& pose, vectorn& inertia) const
-				void setInertia(int ichara, int ibone, vector3 const& localCOM, vector3 const& inertia);
-				void calcBoneDotJacobian(int ichar, int ibone, vector3 const& localpos,matrixn& jacobian, matrixn& dotjacobian);
-				void calcBoneDotJacobian2(int ichar, int ibone, vector3 const& localpos,matrixn& jacobian, matrixn& dotjacobian);
-				void calcCOMdotJacobian(int ichar, matrixn& jacobian, matrixn& dotjacobian);
-				void calcMassMatrix2(int ichara,matrixn&, vectorn& );
-				void calcMassMatrix3(int ichara,matrixn&, vectorn& );
-				void test(const char* test, matrixn& out);
-				void collectExternalForce(int ichara, vectorn & extForce)
-				// QP
-				void getContactBases(std::vector<OpenHRP::DynamicsSimulator_QP::ContactBasis>& basis, double invfrictionCoef) const;
-				void calcContactBasisAll(matrixn& v_all, matrixn & dot_v_all, int link_pair_count, double invfrictionCoef);
-				void calcContactBoneIndex(int link_pair_count, intvectorn& boneIndex);
-				int getNumContactLinkPairs();
-				void getLinkPairBodiesBones(intvectorn& ibodies, intvectorn& ibones) const;
-				void getBodyVelocity(int chara, VRMLTransform* b, Liegroup::se3& V) const
-				]]}
 			},
 			{
 				ifndef='EXCLUDE_AIST_SIM',
@@ -715,6 +609,7 @@ bindTargetPhysics={
 				int getSphericalState(int ichara, vectorn& q, vectorn& dq);
 				void setSphericalState(int ichara, const vectorn& q, const vectorn& dq);
 				void setTau(int ichara, const vectorn& tau);
+				void calcMomentumDotJacobian(int ichar, matrixn& jacobian, matrixn& dotjacobian);
 
 				void _calcMassMatrix(int ichara, matrixn& out, vectorn & b);
 				void _calcJacobianAt(int ichar, int ibone, matrixn& jacobian, vector3 const& localpos);
@@ -727,6 +622,8 @@ bindTargetPhysics={
 				void _stepKinematic(int ichara, vectorn const& QDDot);
 				void setStablePDparam(int ichara, const vectorn& kp, const vectorn& kd);
 				void calculateStablePDForces(int ichara, const vectorn& desired_q, vectorn& tau);
+				void setStablePDparam_dof(int ichara, const vectorn& kp, const vectorn& kd);
+				void calculateStablePDForces_dof(int ichara, const vectorn& desired_pose, const vectorn& desired_dpose, vectorn& tau)
 				]],
 			},
 			{
@@ -896,10 +793,6 @@ function generatePhysicsBind()
 		void FullbodyIK_UTPoser_setParam(MotionUtil::FullbodyIK_MotionDOF* solver, int numiter, double stepsize);
 	}
 
-	#ifndef EXCLUDE_GMBS_SIM
-	#include "GMBS_implementation/DynamicsSimulator_gmbs_penalty.h"
-	#include "GMBS_implementation/DynamicsSimulator_gmbs.h"
-	#endif
 	//#include "Bullet_implementation/btDynamicsSimulator_impl.h"
 	#include "CollisionDetector.h"
 	//#include "RMatrixLUA.h"
@@ -909,9 +802,6 @@ function generatePhysicsBind()
 	#include "../BaseLib/math/OperatorStitch.h"
 	#include "clapack_wrap.h"
 	#include "SDRE.h"
-	#ifndef EXCLUDE_GMBS_SIM
-	#include "GMBS_implementation/rmatrix3j.h"
-	#endif
 	class GrahamScan;
         #include "CollisionDetector/CollisionDetector_libccd.h"
 

@@ -11,6 +11,8 @@ extern "C" {
 }
 namespace OpenHRP {
 
+	// returns (collision, idepth)
+	vector2 testSphereBox(vector3 const& center, double r, transf const& box, vector3 const& box_size, vector3& pos, vector3& normal);
 	/**
 	 * CollisionDetector_libccd class
 	 */

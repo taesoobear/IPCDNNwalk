@@ -389,10 +389,11 @@ Ogre::PlaneBoundedVolumeListSceneQuery* FltkRenderer::createVolumeQuery(float le
 	return RE::renderer().viewport().mScene->createPlaneBoundedVolumeQuery(volList);
 }
 #endif
-void FltkRenderer::worldToScreen(vector3 const& w, float& x, float& y)
+void FltkRenderer::worldToScreen(vector3 const& w, float& x, float& y) const
 {
 #ifndef NO_GUI
-	Ogre::Vector4 res=ogreRenderer().viewport().mCam->getProjectionMatrix()*ogreRenderer().viewport().mCam->getViewMatrix()*Ogre::Vector4(w.x, w.y, w.z,1.0);
+	OgreRenderer& R=(const_cast<FltkRenderer*>(this))->ogreRenderer();
+	Ogre::Vector4 res=R.viewport().mCam->getProjectionMatrix()*R.viewport().mCam->getViewMatrix()*Ogre::Vector4(w.x, w.y, w.z,1.0);
 
 	res.x/=res.w;
 	res.y/=res.w;
@@ -741,6 +742,46 @@ void FltkRenderer::loop(Fl_Window& win)
 	}
 }
 
+namespace RE_ {
+	// returns false only when something went obviously wrong.
+	bool renderOneFrame(bool check)
+	{
+		if(!RE::rendererValid() ) return false;
+
+#ifndef NO_GUI
+		Fl_Window& win=RE::FltkRenderer();
+		if(check)
+		{
+			if (win.visible())
+			{
+				if (!Fl::check())
+					return false;	// returns immediately
+			}
+			else
+			{
+				if (!Fl::wait()) return false;	// waits until something happens
+			}
+			if(resizeNecessary)
+			{
+				resizeOgreWin(&RE::renderer(), win.w(), win.h());
+				resizeNecessary=false;
+			}
+			if (softKill) return false;
+		}
+#endif
+
+
+		RE::renderer().renderOneFrame();
+#ifdef _MSC_VER
+		//		::Sleep(10);
+#elif defined(__APPLE__) && !defined(NO_GUI)
+		usleep(10);
+#endif
+		return true;
+	}
+}
+
+
 
 void FltkRenderer::onCallback(Fl_Widget * pWidget, int userData)
 {
@@ -914,7 +955,14 @@ void FltkRenderer::onCallback(Fl_Widget * pWidget, int userData)
 
 		if (fl_color_chooser(0,r,g,b))
 		{
-			mOgreRenderer->viewport().mView->setBackgroundColour(Ogre::ColourValue(r,g,b,1.f));
+			auto c=Ogre::ColourValue(r,g,b,1.f);
+			mOgreRenderer->viewport().mView->setBackgroundColour(c);
+
+			bool bOrthographic=mOgreRenderer->viewport().m_pViewpoint->getOrthographicMode();	
+			if (bOrthographic)
+				RE::ogreSceneManager()->setFog(Ogre::FOG_LINEAR, c,0.0, 2800, 3800 );
+			else
+				RE::ogreSceneManager()->setFog(Ogre::FOG_LINEAR, c,0.0, 1600, 3500 );
 		}
 	}
 	else if(userData==Hash("TgSb"))

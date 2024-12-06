@@ -26,6 +26,7 @@ public:
 
 	~vector3N();
 
+	vector3 sampleRow(m_real criticalTime) const;
 	int rows() const						{ return size();}
 	vector3& row(int i) const			{ return value(i);}
 	vector3& operator[](int i) const	{ return row(i);}

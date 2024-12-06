@@ -38,6 +38,21 @@ namespace MotionUtil
 		vector3 localpos1;
 		double weight;
 		RelativeConstraint() { eType=RELATIVE_POSITION; bone1=NULL; bone2=NULL; localpos1=vector3(0,0,0); weight=1.0;}
+		void _dtor() // do not create descructor. this will be manually called
+		{
+			if(eType>=MotionUtil::RelativeConstraint::MOMENTUM)
+			{
+				delete pInfo;
+				pInfo=NULL;
+			}
+		}
+		void setInfo(int newType, ConstraintInfo* newinfo)
+		{
+			_dtor();
+
+			eType=newType;
+			pInfo=newinfo;
+		}
 		union {
 			struct {
 				// Used when eType==RELATIVE_POSITION

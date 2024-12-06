@@ -345,6 +345,21 @@ void PLDPrimSkel::SetPose(const Posture & posture, const MotionLoader& skeleton)
 	_drawConstraints(posture, skeleton);
 	UpdateBone();
 }
+void PLDPrimSkel::setPose(const Posture & posture)
+{
+	mChain->setPose(posture);
+	UpdateBone();
+}
+void PLDPrimSkel::setPoseDOF(const vectorn& poseDOF)
+{
+	mChain->setPoseDOF(poseDOF);
+	UpdateBone();
+}
+void PLDPrimSkel::setPoseDOFignoringTranslationalJoints(const vectorn& poseDOF)
+{
+	mChain->setPoseDOFignoringTranslationalJoints(poseDOF);
+	UpdateBone();
+}
 void PLDPrimSkel::getPose(Posture & posture)
 {
 	mChain->getPoseFromGlobal(posture);
@@ -1551,7 +1566,8 @@ PLDPrimThickLine::PLDPrimThickLine(MotionLoader* pBVHL, const OgreRenderer& rend
 	m_pSceneNode=renderer.viewport().mScene->getRootSceneNode()->createChildSceneNode();
 
 	_thickness=3; // 3cm
-	_materialName="solidblue";
+	//_materialName="solidblue";
+	_materialName="greyblue";
 	_lines=new BillboardLineList (RE::generateUniqueName(), mSkel->numBone()-2, _thickness);
 	for (int i=2; i<mSkel->numBone() ; i++)
 	{
@@ -1584,7 +1600,7 @@ int PLDPrimThickLine::FrameMove(float fElapsedTime)
 void PLDPrimThickLine::SetVisible(bool bVisible)
 {
   #ifndef NO_OGRE
-	mSceneNode->setVisible(bVisible);
+	m_pSceneNode->setVisible(bVisible);
 #endif
 }
 void PLDPrimThickLine::setMaterial(const char* mat)

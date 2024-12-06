@@ -87,8 +87,23 @@ function dbg.listLunaClasses(line)
 							end
 						end
 						out2=out2..'\n\n You can see a function signature by typing for example "'..usrCnam..'.'..lastFn..'()"!'
-						out2=out2..'\n Known bug: property names can be incorrectly displayed. "'
+						out2=out2..'\n Known bug: renamed members can be incorrectly displayed above. "'
 					end
+				end
+			end
+		end
+	end
+	if outp=='' then
+		if string.trimSpaces(usrCnam)~='' then
+			local line=usrCnam
+			local statement=string.gsub(line, '``', 'dbg._saveLocals')
+			statement=string.gsub(line, '`', 'dbg._saveLocals.')
+			dbg._saveLocals=dbg.locals(4+1,true)
+			local output={pcall(loadstring('return '..statement))}
+			if output[1]==false and output[2]=="attempt to call a nil value" then
+			else
+				if type(output[2])=='userdata' then
+					dbg.listLunaClasses('clist '..dbg.lunaType(output[2]))
 				end
 			end
 		end
@@ -150,6 +165,14 @@ function os.toWindowsFileName(file)
 		fn=string.sub(fn,2,2)..':'..string.sub(fn,3)
 	end
 	return fn
+end
+
+function os.dofile(file)
+	local isWin=os.isWindows()
+	if isWin then
+		return dofile(os.toWindowsFileName(file))
+	end
+	return dofile(file)
 end
 function os.fromWindowsFileName(file)
 	local fn=string.gsub(file, "\\","/")
@@ -446,9 +469,16 @@ function dbg.console(msg, stackoffset)
 					print(output[2])
 				else
 					printTable(output[2]) 
+					io.write('keys:\t')
+					local keys=table.keys(output[2])
+					for i, v in ipairs(keys) do
+						io.write(v..', ')
+					end
+					print()
 				end
 			elseif output[2] then
 				dbg.print(unpack(table.isubset(output, 2)))
+				print("Type: ",dbg.lunaType(output[2]))
 			elseif type(output[2])=='boolean' then
 				print('false')
 			end
@@ -875,6 +905,9 @@ function string.trimSpaces(s)
   function string.startsWith(a,b)
 	  return string.sub(a,1,string.len(b))==b
   end
+  function string.endsWith(a,b)
+	  return string.sub(a,-string.len(b))==b
+  end
 function os.capture(cmd, raw)
   local f = assert(io.popen(cmd, 'r'))
   local o,e=f:read('*a')
@@ -1162,6 +1195,13 @@ end
 function array.filter(func, ...)
     return zip_with_helper(filter_helper, func, ...)
 end
+-- c3dfiles=array.filterByPattern('.c3d$', files)
+function array.filterByPattern(pattern, ...)
+	local func=function(x)
+		return select(1,string.find(x, pattern)) 
+	end
+    return zip_with_helper(filter_helper, func, ...)
+end
 
 function array.enumToTable(e)
 	local out={}
@@ -1263,6 +1303,21 @@ function array:popFront()
 	end
 	self[#self]=nil
 	return out
+end
+
+function array:locate(value)
+	for i = 1, #self do
+		if self[i] == value then return i end
+	end
+	return -1
+end
+function table.findKey(tbl, value)
+	for k, v in pairs(tbl) do
+		if v==value then
+			return k
+		end
+	end
+	return nil
 end
 
 function array:pushBackIfNotExist(a)
@@ -1591,6 +1646,8 @@ function table.toHumanReadableString(t, spc)
 			return '"'..tostring(v)..'"'
 		elseif tv=="table" then
 			return table.toHumanReadableString(v,spc+4)
+		elseif tv=="function" then
+			return '"function"'
 		elseif tv=="userdata" then
 			if v.toLuaString then
 				return v:toLuaString()
@@ -1625,6 +1682,10 @@ function table.toHumanReadableString(t, spc)
 		elseif tk~="number" or k>N then	 
 			str_k='['..k..']='
 			table.insert(temp,spcc..str_k..packValue(v)..',\n')
+		elseif tk=='number' then
+			assert(k<=N)
+		else
+			dbg.console()
 		end
 	end
 	out=out..table.concat(temp,"")
@@ -1772,6 +1833,9 @@ function util.convertToLuaNativeTable(t)
 		result=t
 	end
 	return result
+end
+function util.toLuaString(t)
+	return table.toHumanReadableString(util.convertToLuaNativeTable(t))
 end
 
 function util.convertFromLuaNativeTable(t)
@@ -2086,15 +2150,19 @@ end
 
 function os.deleteFiles(mask)
 
+	local cmd
    if os.isUnix() then
-      os.execute("rm "..mask)
+	   cmd="rm "..mask
    else
-      os.execute("del "..os.toWindowsFileName(mask))
+	   cmd="del "..os.toWindowsFileName(mask)
    end
+   print(cmd)
+   os.execute(cmd)
 end
 
 -- 이거 아마도 원하는 함수가 아닐 듯. os.parentPath 를 대신 시도해보시오.
-function os.parentDir(currDir)
+function os._parentDir(currDir)
+	assert(currDir:sub(1,1)~='/')
 	if currDir=='' then
 		return '..'
 	elseif currDir:sub(1,2)=='..' then
@@ -2108,13 +2176,14 @@ function os.parentPath(dir)
 	end
 	return select(2, os.processFileName(dir))
 end
+os.parentDir=os.parentPath
 
 function os.relativeToAbsolutePath(folder,currDir)
 
 	if string.sub(folder, 1,1)~="/" then
 		currDir=currDir or os.currentDirectory()
 		while(string.sub(folder,1,3)=="../") do
-			currDir=os.parentDir(currDir)
+			currDir=os.parentPath(currDir)
 			folder=string.sub(folder,4)
 		end
 		while(string.sub(folder,1,2)=="./") do
@@ -2136,7 +2205,7 @@ function os.absoluteToRelativePath(folder, currDir) -- param1: folder or file na
 	currDir=currDir or os.currentDirectory()
 	local n_ddot=0
 	while string.sub(folder,1,#currDir)~=currDir and currDir~="" do
-		currDir=os.parentDir(currDir)
+		currDir=os.parentPath(currDir)
 		n_ddot=n_ddot+1
 	end
 	local str=""
@@ -2235,6 +2304,27 @@ function os.copyFiles(src, dest, ext) -- copy source files to destination folder
    end
 end
 
+function os.lsFiles(folderName)
+	if select(1,folderName:find('%*')) then
+		error('Error! os.lsFiles does not support wildcards! Use a filter instead!\n e.g.)   allfiles=os.lsFiles(".")\n         bvhfiles= array.filterByPattern(".bvh$", allfiles)')		
+		return {}
+	end
+
+	local files
+	if os.isUnix() then
+		files=os.capture('ls -1 "'..folderName..'"', true)
+	else
+		local cmd="dir /b/a:-D"..' "'..os.toWindowsFileName(folderName)..'" 2>nul'
+		files=os.capture(cmd, true)
+	end
+
+	local files=string.lines(files)
+	files=array.map(string.trimSpaces, files)
+	if files[#files]=='' then
+		files[#files]=nil
+	end
+	return files
+end
 function os._globWin32(attr, mask, ignorepattern)
 	local cmd="dir /b/a:"..attr..' "'..os.toWindowsFileName(mask)..'" 2>nul'
 	local cap=os.capture(cmd, true)
@@ -2592,5 +2682,8 @@ end
 function util.getScriptPath(level)
 	if not level then level=2 end
 	local currentPath=select(2, os.processFileName(debug.getinfo(level,'S').source:sub(2)))
+	if currentPath:sub(1,1)=='.' then
+		currentPath=os.relativeToAbsolutePath(currentPath)
+	end
 	return currentPath
 end

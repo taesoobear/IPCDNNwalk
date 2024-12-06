@@ -23,7 +23,7 @@ def handleRendererEvent(ev, button, x,y):
     return lua.handleRendererEvent(ev, button, x,y)
 
 def main():
-    scriptFile="../../taesooLib/Samples/scripts/RigidBodyWin/GUI_tools/WRLviewer.lua"
+    scriptFile="../lua/testPoses.lua"
     option=''
     if len(sys.argv)==2:
         scriptFile=sys.argv[1]
@@ -51,7 +51,9 @@ def main():
     if option[0:10]=='--dostring':
         m.getPythonWin().dostring(option[11:])
     m.getPythonWin().dofile(scriptFile)
-    m.getPythonWin().dostring('ctor()')
+    #m.getPythonWin().dostring('ctor()')
+    m.getPythonWin().getglobal('ctor')
+    m.getPythonWin().call(0,0)
 
     print("ctor finished")
 
@@ -65,7 +67,7 @@ def main():
     b=m.intvectorn()
     b.assign([1,2,3,4,5])
     lua.out(b)
-    c=np.mat('1 0 0; 0 1 0; 0 0 1')
+    c=np.asmatrix('1 0 0; 0 1 0; 0 0 1')
     print(c)
 
     m.startMainLoop() # this finishes when program finishes

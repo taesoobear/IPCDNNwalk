@@ -110,6 +110,13 @@ void CImagePixel::DrawHorizLine(int x, int y, int width, CPixelRGB8 color)
 	{
 		std::vector<CPixelRGB8 *> & inputptr=m_pCPP;
 	
+		if(x<0) return;
+		if(x>=m_pInput->GetWidth()) return;
+		if(y<0) return;
+		if(y>=m_pInput->GetHeight()) return;
+		if (x+width>=m_pInput->GetWidth())
+			width=m_pInput->GetWidth()-x-1;
+
 		for(int i=x; i<x+width; i++)
 		{
 			inputptr[y][i]=color;
@@ -123,6 +130,13 @@ void CImagePixel::DrawVertLine(int x, int y, int height, CPixelRGB8 color,bool b
 	if(bDotted) step=3;
 	std::vector<CPixelRGB8 *> & inputptr=(m_pCPP);
 
+		if(x<0) return;
+		if(x>=m_pInput->GetWidth()) return;
+		if(y<0) return;
+		if(y>=m_pInput->GetHeight()) return;
+		if (y+height>=m_pInput->GetHeight())
+			height=m_pInput->GetHeight()-y-1;
+
 	for(int j=y; j<y+height; j+=step)
 	{
 		inputptr[j][x]=color;
@@ -130,8 +144,23 @@ void CImagePixel::DrawVertLine(int x, int y, int height, CPixelRGB8 color,bool b
 }
 
 
-void CImagePixel::DrawBox(const TRect& rect, CPixelRGB8 sColor)
+void CImagePixel::DrawLineBox(const TRect& rect, CPixelRGB8 color)
 {
+	DrawHorizLine(rect.left, rect.top, rect.Width(), color);
+	DrawHorizLine(rect.left, rect.bottom-1, rect.Width(), color);
+	DrawVertLine(rect.left, rect.top, rect.Height(), color);
+	DrawVertLine(rect.right-1, rect.top, rect.Height(), color);
+}
+void CImagePixel::DrawBox(const TRect& _rect, CPixelRGB8 sColor)
+{
+	TRect rect=_rect;
+	if(rect.left> rect.right) std::swap(rect.left, rect.right);
+	if(rect.top> rect.bottom) std::swap(rect.top, rect.bottom);
+	if(rect.left<0) rect.left=0;
+	if(rect.top<0) rect.top=0;
+	if(rect.bottom>Height())rect.bottom=Height();
+	if(rect.right>Width())rect.right=Width();
+
 	{
 
 		std::vector<CPixelRGB8 *> & inputptr=m_pCPP;
@@ -150,16 +179,19 @@ void CImagePixel::DrawBox(const TRect& rect, CPixelRGB8 sColor)
 		// fast version
 		CPixelRGB8* aBuffer;
 		int width=rect.right-rect.left;
-		aBuffer=new CPixelRGB8[width];
-		for(int i=0; i<width; i++)
-			aBuffer[i]=sColor;
-		for(int j=rect.top; j<rect.bottom; j++)
+		if(width>0)
 		{
-			CPixelRGB8* ptr=inputptr[j];
+			aBuffer=new CPixelRGB8[width];
+			for(int i=0; i<width; i++)
+				aBuffer[i]=sColor;
+			for(int j=rect.top; j<rect.bottom; j++)
+			{
+				CPixelRGB8* ptr=inputptr[j];
 
-			memcpy(&ptr[rect.left],aBuffer, sizeof(CPixelRGB8)*(width));
+				memcpy(&ptr[rect.left],aBuffer, sizeof(CPixelRGB8)*(width));
+			}
+			delete[] aBuffer;
 		}
-		delete[] aBuffer;
 	}	
 }
 
@@ -395,7 +427,7 @@ void CImagePixel::DrawText(int x, int y, const char* str, bool bUserColorKey, CP
 		int code=(c-' ');
 		ASSERT(code>=0 && code<32*3);
 		int left=code%32*FONT_WIDTH ;
-		int top=code/32*FONT_HEIGHT;
+		int top=(2-code/32)*FONT_HEIGHT;
 		DrawSubPattern(x+i*FONT_WIDTH , y, patternPixel, TRect(left,top,left+FONT_WIDTH , top+FONT_HEIGHT), bUserColorKey, colorkey);
 	}
 }

@@ -113,12 +113,14 @@ PLDPrimVRML::PLDPrimVRML(VRMLloader* pVRMLL, bool bDrawSkeleton, const OgreRende
 
 PLDPrimVRML::~PLDPrimVRML()
 {
-  #ifndef NO_OGRE
-  if(mDrawSkel)
-    {
-      mDrawSkel->m_pSceneNode=NULL;
-      delete mDrawSkel;
-    }
+#ifndef NO_OGRE
+	if(mDrawSkel)
+	{
+		//RE::removeEntity(mDrawSkel->m_pSceneNode);
+		//mDrawSkel->m_pSceneNode=NULL;
+		delete mDrawSkel;
+		mDrawSkel=NULL;
+	}
   // mSceneNodes and their entities will be destroyed at ~AnimationObject();
 #endif
 }
@@ -138,6 +140,8 @@ void PLDPrimVRML::setPose(BoneForwardKinematics const& in)
 	*mChain=in;
 	_updateEntities(*mChain);
 
+  if(mDrawSkel)
+	  mDrawSkel->setSamePose(*mChain);
   	/*
 	static Posture pose;
 	in.getPoseFromLocal(pose);
@@ -150,6 +154,8 @@ void PLDPrimVRML::setPose(IK_sdls::LoaderToTree const& in)
 		mChain->_global(i)=in.globalFrame(i);
 	_updateEntities(*mChain);
 
+	if(mDrawSkel)
+		mDrawSkel->setSamePose(*mChain);
   	/*
 	static Posture pose;
 	in.getPoseFromLocal(pose);
@@ -167,6 +173,18 @@ void PLDPrimVRML::SetPose(const Posture & posture, const MotionLoader& skeleton)
     mDrawSkel->SetPose(posture, skeleton);
 #endif
 }
+void PLDPrimVRML::setPose(const Posture & posture)
+{
+	PLDPrimSkel::setPose(posture);
+#ifndef NO_OGRE
+  //_updateEntities((MotionLoader*)&skeleton);
+  _updateEntities(*mChain);
+
+  if(mDrawSkel)
+    mDrawSkel->setPose(posture);
+#endif
+}
+
 
 void PLDPrimVRML::setThickness(float thick)
 {

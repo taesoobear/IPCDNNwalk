@@ -35,6 +35,7 @@ public:
 	void setPose(const Posture& pose);
 	void setPoseDOF(const vectorn& poseDOF);
 	void setPoseDOFusingCompatibleDOFinfo(MotionDOFinfo const& dofInfo, const vectorn& poseDOF);
+	void setPoseDOFignoringTranslationalJoints(const vectorn& posedof_for_vrmlloader);
 
 	// for skeletons with spherical joints, get/setSphericalQ is often more convenient than getPoseDOF/setPoseDOF.
 	/* 
@@ -55,6 +56,10 @@ public:
 
 	void getPoseFromLocal(Posture& pose) const;
 	void getPoseDOFfromLocal(vectorn& poseDOF) const;
+	void getPoseDOFignoringTranslationalJoints(vectorn& poseDOF) const;
+	inline Posture getPose() { Posture pose; getPoseFromLocal(pose); return pose;}
+	inline vectorn getPoseDOF() { vectorn pose; getPoseDOFfromLocal(pose); return pose;}
+	inline vectorn getPoseDOFignoringTranslationalJoints() { vectorn pose; getPoseDOFignoringTranslationalJoints(pose); return pose;}
 
 	MotionLoader const& getSkeleton() const		{return *m_skeleton;}
 

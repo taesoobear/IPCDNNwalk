@@ -97,6 +97,7 @@ struct RGB565
 };
 
 #ifdef _MSC_VER
+#include <windows.h>
 bool ScreenshotNew(LPCTSTR FileName, HDC SurfDC, int Width, int Height);
 #endif
 #endif

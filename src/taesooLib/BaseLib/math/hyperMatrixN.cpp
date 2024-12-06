@@ -310,3 +310,12 @@ void hypermatrixn::clean()
 			resize(page(), rows(), cols());
 	}
 }*/
+matrixn hypermatrixn::weightedAverage(const vectorn & page_weights) const
+{
+	auto& self=*this;
+	matrixn out(self.rows(), self.cols());
+	out.setAllValue(0.0);
+	for(int i=0; i<pages(); i++)
+		out+=self.page(i)*page_weights(i);
+	return out;
+}

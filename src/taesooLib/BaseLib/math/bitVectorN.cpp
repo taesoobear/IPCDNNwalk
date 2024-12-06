@@ -106,6 +106,14 @@ _boolN_worker& _boolN_worker::operator=( _boolN_worker const& a)
 	return c;
 }
 
+int boolN::count(bool bVal) const
+{
+	int count=0;
+	for (int i=0; i<size(); i++)
+		if ((*this)(i)==bVal )
+			count++;
+	return count;
+}
 void boolN::operator=( vectorn const& a)
 {
 	boolN &c = (*this);
@@ -613,13 +621,6 @@ void boolN::resize(int n)
 	_start=0;
 	_end=_vec->size();
 }
-int boolN::count()	const
-{
-	int count=0;
-	for (int i=0; i<size(); i++)
-		if((*this)(i)) count++;
-	return count;
-}
 void boolN::assign(const boolN& other) 
 {
 
@@ -688,6 +689,22 @@ TString boolN::output() const
 	}
 	id+="]";
 	return id;
+}
+TString boolN::shortOutput() const
+{
+	if (size()>10 )
+	{
+		TString id;
+		id+="[";
+		for(int i=0; i<5; i++)
+			id.add("%1d", ((int)(*this)[i]));
+		id.add(" ... ");
+		for(int i=size()-5; i<size(); i++)
+			id.add("%1d", ((int)(*this)[i]));
+		id+="]";
+		return id;
+	}
+	return output();
 }
 void boolN::getRawData(intvectorn& out) const
 {

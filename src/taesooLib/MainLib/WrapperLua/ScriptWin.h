@@ -26,6 +26,8 @@ protected:
 	void _loadScript(const char* script, const char* scriptstring=NULL);
 
 	void getglobal(lunaStack& l, const char* func);
+	// returns false if nil.
+	bool getglobalNoException(lunaStack& l, const char* func);
 public:
 
 	ScriptWin(int x, int y, int w, int h, MotionPanel& mp,FltkRenderer& renderer, const char* defaultScript, const char* _defaultScriptFolder);

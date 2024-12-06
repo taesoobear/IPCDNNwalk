@@ -30,6 +30,7 @@ clean:
 	rm -rf MainLib/build_*
 	rm -rf PhysicsLib/build_*
 	rm -rf ClassificationLib/build_*
+	cd Samples/classification;make clean;
 
 install_dependencies_only_for_ubuntu12.04:
 	sudo apt-get install libatlas-base-dev libdevil-dev libfontconfig-dev libfltk1.1-dev libdevil-dev libfreeimage-dev liblua5.1-dev libpng12-dev  lua5.1 cmake g++ libxml2-dev libogre-dev libgsl0-dev libncurses5-dev 
@@ -83,36 +84,21 @@ install_dependencies_only_for_ubuntu20and21:
 	if test -d /usr/lib/x86_64-linux-gnu/OGRE; then sudo cp /usr/lib/x86_64-linux-gnu/OGRE/* /usr/local/lib/OGRE/ ; fi
 	echo "Read wiki  : section fbx to ogre mesh"
 
-install_dependencies_intelmac:
-	brew install fltk eigen gsl lua@5.1
-	pip3 install wxPython
-	ln -s /usr/local/bin/lua5.1 /usr/local/bin/lua
-	cd ..;git clone ssh://students@calab.hanyang.ac.kr:8022/~/ogre-1.12.5.git;cd ogre-1.12.5; make macbuild
-	echo "1. Build all in the xcode by first selecting the build target by clicking the button on the right side of the play button, and then clicking the play button"
-	echo "2. Important!!!! Now open a finder and manually copy all frameworks in build/lib/macosx/Release/ to /Applications/OgreSDK/lib/macosx/Release/!!!"
-	echo "You cannot use cp. You have to use finder. cp -Rp might work but I didn't try. cp -R does not work."
-	echo "3. copy build/sdk/include/OGRE to /usr/local/include/"
-	echo "4. install ois manually (https://github.com/wgois/OIS)"
-	echo "5. cp libfreetype*.dylib to /usr/local/lib"
-	echo "6. cp ogre-1.12.5/RenderSystems/GLSupport/include/OSX/*.h /usr/local/include"
-	echo "7. If this doesn't work, try copying all frameworks directly to /System/Library/Frameworks using finder."
 	
-install_dependencies_m1mac:
-	brew install fltk eigen gsl lua@5.1 ctags
+install_dependencies_mac:
+	brew install fltk eigen gsl ctags
+	# NOTE: Use lua 5.1.5 compiled from source
+	# NOTE: Make a symbolic link of lua.pc at /usr/local/lib/pkgconfig 
 	pip3 install wxPython
-	ln -s /opt/homebrew/bin/lua5.1 /opt/homebrew/bin/lua
-	cd ..;git clone ssh://students@calab.hanyang.ac.kr:8022/~/ogre-13.4.3.git;cd ogre-13.4.3; make macbuild
-	echo "1. Build all in the xcode by first selecting the build target, and then clicking the play button"
-	echo "2. Important!!!! Now open a finder and manually copy all frameworks in build/lib/macosx/Release/ to /Applications/OgreSDK/lib/macosx/Release/!!!"
-	echo "You cannot use cp. You have to use finder. cp -Rp might work but I didn't try. cp -R does not work."
-	echo "3. copy build/sdk/include/OGRE to /usr/local/include/"
-	echo "4. install ois manually (https://github.com/wgois/OIS)"
-	echo "5. cp libfreetype*.dylib to /usr/local/lib"
-	echo "6. cp ogre-13.4.3/RenderSystems/GLSupport/include/OSX/*.h /usr/local/include"
-	echo "7. If this doesn't work, try copying all frameworks directly to /System/Library/Frameworks using finder."
+	echo "when building ogre-13.4.3"
+	echo "0. if make macbuild fails, retry after rebooting!"
+	echo "1. Build all in the xcode (build/OGRE.xcode) by first selecting the build target (ALL_BUILD - Release) by clicking the button on the right side of the play button, and then clicking the play button"
+	echo "2. Important!!!! in the ogre-13.4.3 folder, make install_mac"
 
 symlink_mac:
 	ln -s /Applications/OgreSDK/lib/macosx/Release Frameworks
+	# NOTE: Use the line below if you have placed OgreSDK in /opt folder instead of /Applications folder.
+	# ln -s /opt/OgreSDK/lib/macosx/Release Frameworks
 symlink:
 	sudo rm -f /usr/lib/OGRE
 	if test -d /usr/lib/i386-linux-gnu/OGRE-1.7.4; then sudo ln -s /usr/lib/i386-linux-gnu/OGRE-1.7.4 /usr/lib/OGRE ;fi

@@ -13,11 +13,11 @@ include_directories (${BaseLib_SOURCE_DIR})
 include_directories (${BaseLib_SOURCE_DIR}/unix)
 
 if(WIN32)
-   	if(NoDevil)
-		add_definitions(-DNO_DEVIL)
+	if(NoFreeImage)
 		add_definitions(-DNO_FREEIMAGE)
-		message("nodevil?okay. many functionalities won't work.")
+		set(IMAGE_LIBS )
 	else()
+		set (IMAGE_LIBS "${ROOT_DIR}/windows_dependencies/FreeImage/Dist/x64/FreeImage.lib")
 	include_directories (
 		${TAESOOLIB_DIR}/../windows_dependencies/eigen-3.4.0/
 		${BaseLib_SOURCE_DIR}/../dependencies/libxml2-2.7.3.win32/include
@@ -25,7 +25,6 @@ if(WIN32)
 		)
 	link_directories (
 		${BaseLib_SOURCE_DIR}/image/FreeImage/Dist
-		${BaseLib_SOURCE_DIR}/../../dependencies/DevIL-SDK-x86-1.7.8/lib
 		)
 	endif()
 else()
@@ -222,6 +221,7 @@ set(math
 "./math/tvector.h"
 "./math/vectorn.cpp"
 "./math/vectorn.h"
+"./math/tensor.hpp"
 "./math/floatvec.cpp"
 "./math/floatvec.h"
 "./math/quater.cpp"

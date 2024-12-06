@@ -49,19 +49,22 @@ protected:
 	void assignRef(const _tvectorn<T,T_base>& other);
 	template <class vecViewType>
 	vecViewType _range(int start, int end, int step)
-	{
-		RANGE_ASSERT(start>=0);
-		RANGE_ASSERT(end<=n);
-		int nSize;
+    {
+        RANGE_ASSERT(start>=0);
+        RANGE_ASSERT(end<=n);
+        int nSize;
 
-		if(step==1)
-			nSize=(end-start);
-		else
-			nSize=(end-start+1)/step;
+        if (start > end)
+		{
+			RANGE_ASSERT(step<0);
+            nSize=(end-start+ step+1)/step;
+		}
+        else
+            nSize=(end-start+ step-1)/step;
 
-		RANGE_ASSERT(nSize>=0);
-		return vecViewType(ptr+start*stride, nSize, step*stride);
-	}
+        RANGE_ASSERT(nSize>=0);
+        return vecViewType(ptr+start*stride, nSize, step*stride);
+    }
 
 	template <class matViewType>
 	matViewType _column() const

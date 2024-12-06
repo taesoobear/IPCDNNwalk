@@ -20,6 +20,7 @@ class transf
     friend transf       operator* ( transf const&, transf const& );
     friend vector3       operator* ( transf const& , vector3 const&);
 
+	transf project2D() const;
     // constructors
     transf() {};
     transf( quater const& a, vector3 const& b ) { rotation=a; translation=b; }
@@ -40,6 +41,8 @@ class transf
 	vector3 encode2D() const;
 	void decode2D(vector3 const& in);
 	void align2D(transf const& other);
+
+
 
 	// coordinate frame
 	quater& orientation()				{ return rotation;}

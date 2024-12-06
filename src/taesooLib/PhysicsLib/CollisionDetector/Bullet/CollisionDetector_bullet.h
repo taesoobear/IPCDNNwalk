@@ -49,6 +49,7 @@ namespace OpenHRP {
 
 		virtual bool isSignedDistanceSupported() { return true;}
 		virtual double calculateSignedDistance(int iloader, int ibody, vector3 const& position, vector3& normal);
+		virtual bool getLocalBoundingBoxSize(int charIndex, int ibone, vector3& localSize);
 	};
 }
 

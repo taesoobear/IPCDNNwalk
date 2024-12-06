@@ -67,12 +67,53 @@ public:
 		RANGE_ASSERT(index>=0 && index<pages()); 
 		return  data.row(index).matView(rows(), cols());
 	}
+	inline double& operator()(int index, int j, int k) 
+	{
+		RANGE_ASSERT(index>=0 && index<pages()); 
+		return data.row(index)(j*cols()+k);
+	}
+	inline const double& operator()(int index, int j, int k)  const
+	{
+		RANGE_ASSERT(index>=0 && index<pages()); 
+		return data.row(index)(j*cols()+k);
+	}
+	// extract
+	inline matrixn row(int index) const {
+		matrixn out(pages(), cols());
+		for(int i=0; i<pages(); i++)
+			for(int j=0; j<cols(); j++)
+				out(i,j)=(*this)(i,index, j);
+
+		return out;
+	}
+	inline void setRow(int index, matrixn const& in) {
+		matrixn out(pages(), cols());
+		for(int i=0; i<pages(); i++)
+			for(int j=0; j<cols(); j++)
+				(*this)(i,index, j)=in(i,j);
+	}
+	// extract
+	inline matrixn column(int index) const {
+		matrixn out(pages(), rows());
+		for(int i=0; i<pages(); i++)
+			for(int j=0; j<rows(); j++)
+				out(i,j)=(*this)(i,j,index);
+
+		return out;
+	}
+	inline void setColumn(int index, matrixn const& in) {
+		matrixn out(pages(), rows());
+		for(int i=0; i<pages(); i++)
+			for(int j=0; j<rows(); j++)
+				(*this)(i,j,index)=in(i,j);
+	}
 	matrixnView operator[](int index) const		{ return page(index);}
 
 	hypermatrixn&  assign(hypermatrixn const& other);
 	hypermatrixn&  operator=(hypermatrixn const& other)	{ return assign(other);};
 
 	void each(const m1::_op& op, const hypermatrixn& other);
+	matrixn weightedAverage(const vectorn & page_weights) const;
 };
 
 

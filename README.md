@@ -68,7 +68,9 @@ How to run FlexLoco 2020
 
 How to run AdaptiveSRB 2023
 =
-  This section will be updated soon.
+```
+  cd work; make walk 
+```
 
 
 How to build ogre 3D from source codes (Linux) 

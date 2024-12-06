@@ -215,7 +215,7 @@ void FileCloseForGetTokenCLang()
 char * GetTokenCLang(FILE *file)
 {
 
-	// 엽기 코딩 되어있으니.. 특수한 경우에만 사용할 것..
+	// deprecated.
 	static char buffCLang[4096];
 	static char buffToken[1000];
 	char *token=NULL;
@@ -251,8 +251,8 @@ NEWTOKEN:
 		if(buffCLang[i]=='/')
 		{
 			if(buffCLang[i+1]=='/') {g_nCurPos=-1; goto NEWLINE;}
-			else if(buffCLang[i+1]=='*' && !bComment) { bComment=true; }	//주석 시작
-			else if(bComment && i>1 && buffCLang[i-1]=='*') { bComment=false; startPos=i+1; }	//주석 끝
+			else if(buffCLang[i+1]=='*' && !bComment) { bComment=true; }	// start comment
+			else if(bComment && i>1 && buffCLang[i-1]=='*') { bComment=false; startPos=i+1; }	//end comment
 		}
 		if(bComment) continue;
 		else if(buffCLang[i]==';' || buffCLang[i]=='(' || buffCLang[i]==')' || buffCLang[i]=='}' || buffCLang[i]=='{' || buffCLang[i]=='*'
@@ -301,7 +301,7 @@ void FindAndSubstitute(char *source, char *pattern, char *output)
 	{
 		if(source[i]==pattern[pi])
 		{
-			// 끝까지 같으면
+			// if end
 			if(pi==patLen-1)
 			{
 				for(int temp=0;temp<patLen;temp++)
@@ -528,7 +528,6 @@ bool createDirectory(const char *PathToCreate)
 		ret=GetFileAttributes(Path);
 		if (ret==-1)
 		{
-			// 파일이 없으면
 			if (GetLastError()==ERROR_FILE_NOT_FOUND)
 				AllOk = CreateDirectory(Path,NULL)==TRUE;
 			else
@@ -584,4 +583,19 @@ TString RE::generateUniqueName()
 	nId++;
 
 	return name;
+}
+std::string RE::taesooLibPath()
+{
+	static char taesooLib_path[100];
+	static int located=0;
+	if (!located)
+	{
+		if( !IsFileExist("plugins.cfg"))
+			located=1;
+		else
+			located=2;
+	}
+	if(located==1)
+		return std::string("work/taesooLib/");
+	return std::string("../");
 }

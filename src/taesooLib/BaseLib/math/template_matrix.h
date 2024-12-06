@@ -153,6 +153,7 @@ public:
 	void    resize( int, int );	// 빈자리는 0으로 채움 , 원래 데이타 유지.
 	void _getPrivate(T*& buffer2, int & stride2, int& n2, int& m2, int& on2) const;
 	inline int _getStride() const { return stride;}
+	inline T* _data() const { return buffer;}
 
 	// reference가 value로 카피된다. reference를 받아오고 싶으면, assignRef를 사용할 것.
 	_tmat<T>&  assign( _tmat<T> const&);

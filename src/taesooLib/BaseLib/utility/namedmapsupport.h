@@ -8,6 +8,8 @@
 
 #pragma warning (disable: 4800)
 
+// 만약 binary_function관련 에러가 나기 시작하면 : std::binar_function ...을 모두 삭제할 것
+// backward compatibility가 걱정되서 남겨놓은 상태.
 struct ltstr: std::binary_function<const std::string&, const std::string&  , bool>
 {
 	bool operator()(const std::string &_X, const std::string &_Y) const

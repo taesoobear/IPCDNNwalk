@@ -6,8 +6,10 @@ class Parser
 {
 public:
 	/// bTextMode인 경우, text file형태로 저장한다.
-	Parser(const char* filename, const char* seperator=" ,\r\t\n", bool bToUpper=false);
+	Parser(const char* filename=NULL, const char* seperator=" ,\r\t\n", bool bToUpper=false);
 	virtual ~Parser();
+	void openFromMemory(const char* content);
+	void openFile(const char* filename);
 
 	// seperator로 구분된 token을 return한다. #으로 시작하는 line은 주석으로 간주한다.
 	TString getToken();

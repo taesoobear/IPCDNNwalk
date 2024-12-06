@@ -22,6 +22,7 @@ class MotionDOFcontainer
 		MotionDOF mot; // mot can be converted from and to an instance of Motion. See MotionDOF.h
 		boolN discontinuity, conL, conR;
 		MotionDOFcontainer(MotionDOFinfo const& info, const char* filename);
+		MotionDOFcontainer(MotionDOFinfo const& info, const std::string& filename);
 		MotionDOFcontainer(MotionDOFinfo const& info);
 		MotionDOFcontainer(MotionDOF const& mot);
 

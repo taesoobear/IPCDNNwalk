@@ -29,7 +29,7 @@ public:
 	CImage* createPanel();		//! Create a dynamic panel(you can edit the content of this panel). return empty image. you can create the image by calling CImage::Create(...)
 	void addPanel(const bitvectorn& bits, CPixelRGB8 color);
 	void addPanel(const bitvectorn& bits, CPixelRGB8 color, int startFrame);
-	void addPanel(const intvectorn& indexes, const char* colormapfile="../Resource/default/colormap.bmp", TStrings* translationTable=NULL);
+	void addPanel(const intvectorn& indexes, const char* colormapfile=NULL,TStrings* translationTable=NULL);
 	void addPanel(const vectorn& input);
 	void addPanel(const vectorn& input, double fmin, double fmax);
 	void addPanel(const matrixn& input);
@@ -66,8 +66,8 @@ public:
 		virtual void finalize(const char* label, int original_iframe, int dragged_frame){}
 	};
 
-	void connectSelectUI(SelectUI& ui)		{mUI=&ui;}
-	void disconnectSelectUI(SelectUI& ui)	{mUI=NULL;}
+	void connectSelectUI(SelectUI& ui);
+	void disconnectSelectUI(SelectUI& ui);
 	// Fl_Window::
 	virtual void draw();
 	virtual int handle(int ev);
@@ -112,11 +112,11 @@ private:
 	// Frame selection 관련 끝.
 	/////////////////////////////////////////////////////
 
-	SelectUI* mUI;
+	std::list<SelectUI*> m_aSelectUI;
 	void drawPanel( int cur_frame, int y);
 	void drawPanel( CImage* pSource, int xoffset, int screenY, int deltaY);
 	void drawState(int cur_frame);
-	void updateRange();
+	int updateRange();
 
 	FltkMotionWindow* mpTarget;
 	// UI
@@ -136,6 +136,8 @@ private:
 	void projectAxisPos();
 
 	boolN m_abCutState;
+private:
+	void _panelAdded();
 };
 #endif
 
@@ -156,7 +158,8 @@ public:
 
 	virtual void init(MotionPanel* pPanel, const char* label, int height=1, int maxValue=3);
 	virtual void release(MotionPanel* pPanel){
-		_impl->release(pPanel);
+		if(_impl)
+			_impl->release(pPanel);
 	}
 	virtual void drawBoxColormap(int start, int end, int colormapValue)
 	{

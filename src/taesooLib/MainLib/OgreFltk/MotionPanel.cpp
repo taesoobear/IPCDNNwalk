@@ -656,6 +656,15 @@ int FltkMotionWindow::playFrom(int iframe)
 	return 1;
 }
 FlMenu* FltkScrollPanel_mMenu;
+void FltkScrollPanel::connectSelectUI(SelectUI& ui)
+{
+	m_aSelectUI.remove(&ui);
+	m_aSelectUI.push_back(&ui);
+}
+void FltkScrollPanel::disconnectSelectUI(SelectUI& ui)
+{
+	m_aSelectUI.remove(&ui);
+}
 
 FltkScrollPanel::FltkScrollPanel(int x, int y, int w, int h, FltkMotionWindow* pTarget)
 : Fl_Double_Window(x,y,w,h),
@@ -714,7 +723,6 @@ mSamplingRatio(1)
 	connect(&m_bDrawState, Hash("DrwS"));
 	pTarget->connect(*this);
 	mpTarget=pTarget;
-	mUI=NULL;
 
 	m_nCurrFrame=0;
 	mLeft=-1*((w-20)/2);
@@ -754,12 +762,12 @@ void FltkScrollPanel::endSelection()
 	int minx=MIN(x1,x2);
 	int maxx=MAX(x1,x2);
 
-	if(mUI)
+	for(auto ui=m_aSelectUI.begin(); ui!=m_aSelectUI.end(); ++ui)
 	{
 		if(minx==maxx)
-			mUI->click(minx);
+			(*ui)->click(minx);
 		else
-			mUI->selected(minx, maxx+1);
+			(*ui)->selected(minx, maxx+1);
 	}
 	Msg::print2("selection [%d, %d] end", minx, maxx);
 }
@@ -845,11 +853,14 @@ int FltkScrollPanel::handle(int ev)
 					// middle button
 					int panelY;
 					int panel=_findPanel(Fl::event_y(), &panelY);
-					if(panel!=-1 && mUI)
+					if(panel!=-1 )
 					{
 						int adjustedStart, adjustedEnd;
 						int iframe=_screenXtoFrame(push_x);
-						bool res=mUI->startDragging(m_aSource[panel]->mLabel, iframe, adjustedStart, adjustedEnd);
+
+						bool res=false;
+						for(auto ui=m_aSelectUI.begin(); ui!=m_aSelectUI.end(); ++ui)
+							res|=(*ui)->startDragging(m_aSource[panel]->mLabel, iframe, adjustedStart, adjustedEnd);
 						if(res)
 						{
 							defineOverlayRect(adjustedStart, panelY,
@@ -895,19 +906,22 @@ int FltkScrollPanel::handle(int ev)
 				// middle button
 				int panelY;
 				int panel=_findPanel(Fl::event_y(), &panelY);
-				Msg::verify(mUI, "sp???");
 				int originalframe=_screenXtoFrame(push_x);
 				int iframe=_screenXtoFrame(Fl::event_x());
 				int adjustedStart, adjustedEnd;
 
 				if(panel!=-1 )
 				{
-					mUI->dragging(m_aSource[panel]->mLabel, originalframe, iframe, adjustedStart, adjustedEnd);
+					for(auto ui=m_aSelectUI.begin(); ui!=m_aSelectUI.end(); ++ui)
+						(*ui)->dragging(m_aSource[panel]->mLabel, originalframe, iframe, adjustedStart, adjustedEnd);
 					mRect.top=panelY;
 					mRect.bottom=panelY+m_aSource[panel]->mImage->GetHeight();
 				}
 				else
-					mUI->dragging(NULL, originalframe, iframe, adjustedStart, adjustedEnd);
+				{
+					for(auto ui=m_aSelectUI.begin(); ui!=m_aSelectUI.end(); ++ui)
+						(*ui)->dragging(NULL, originalframe, iframe, adjustedStart, adjustedEnd);
+				}
 
 				mRect.left=adjustedStart;
 				mRect.right=adjustedEnd;
@@ -945,16 +959,19 @@ int FltkScrollPanel::handle(int ev)
 				// middle button
 				int panelY;
 				int panel=_findPanel(Fl::event_y(), &panelY);
-				Msg::verify(mUI, "sp???");
 				int originalframe=_screenXtoFrame(push_x);
 				int iframe=_screenXtoFrame(Fl::event_x());
 
 				if(panel!=-1 )
 				{
-					mUI->finalize(m_aSource[panel]->mLabel, originalframe, iframe);
+					for(auto ui=m_aSelectUI.begin(); ui!=m_aSelectUI.end(); ++ui)
+						(*ui)->finalize(m_aSource[panel]->mLabel, originalframe, iframe);
 				}
 				else
-					mUI->finalize(NULL, originalframe, iframe);
+				{
+					for(auto ui=m_aSelectUI.begin(); ui!=m_aSelectUI.end(); ++ui)
+						(*ui)->finalize(NULL, originalframe, iframe);
+				}
 
 				clearOverlayRect();
 				redraw();
@@ -976,7 +993,8 @@ int FltkScrollPanel::handle(int ev)
 
 							printf("panel selected\n");
 
-							if(mUI) mUI->panelSelected(mSelectedPanel, _screenXtoFrame(push_x));
+							for(auto ui=m_aSelectUI.begin(); ui!=m_aSelectUI.end(); ++ui)
+								(*ui)->panelSelected(mSelectedPanel, _screenXtoFrame(push_x));
 							return 1;
 						}
 					}
@@ -989,10 +1007,16 @@ int FltkScrollPanel::handle(int ev)
 	return Fl_Double_Window::handle(ev);
 }
 
+void FltkScrollPanel::_panelAdded()
+{
+	int sum=updateRange();
+	m_sliderScroll.value(MAX(0,sum-m_targetRect.Height()));
+	redraw();
+}
 void FltkScrollPanel::addPanel(CImage* pImage)
 {
 	m_aSource.push_back(new Panel(CImageProcessor::Clone(pImage), false));
-	redraw();
+	_panelAdded();
 }
 static bool comparePanel(FltkScrollPanel::Panel* a, FltkScrollPanel::Panel* b)
 {
@@ -1040,6 +1064,7 @@ void FltkScrollPanel::changeXpos(CImage* pImage, int xpos)
 
 void FltkScrollPanel::setLabel(const char* label)
 {
+	//printf("set %s %d\n", label, m_aSource[m_aSource.size()-1]->mImage->GetHeight());
 	m_aSource[m_aSource.size()-1]->mLabel=label;
 }
 
@@ -1087,7 +1112,7 @@ void FltkScrollPanel::addPanel(const char* filename)
   m_aSource.back()=new Panel();
 	if(!m_aSource[m_aSource.size()-1]->mImage->Load(filename))
 		Msg::error("add panel failed %s!", filename);
-	redraw();
+	_panelAdded();
 }
 
 void FltkScrollPanel::addPanel(const vectorn& input)
@@ -1121,7 +1146,7 @@ void FltkScrollPanel::addPanel(const intvectorn& bits, const char* colormapfile,
 	m_aSource.push_back(new Panel(CImageProcessor::DrawChart(bits,colormapfile), false));
 	if(translationTable)
 		m_aSource.push_back(new Panel(CImageProcessor::DrawChartText(bits, translationTable),false));
-	redraw();
+	_panelAdded();
 }
 
 
@@ -1129,14 +1154,14 @@ void FltkScrollPanel::addPanel(const intvectorn& bits, const char* colormapfile,
 void FltkScrollPanel::addPanel(const bitvectorn& bits, CPixelRGB8 color)
 {
 	m_aSource.push_back(new Panel(CImageProcessor::DrawChart(bits, color),false));
-	redraw();
+	_panelAdded();
 }
 void FltkScrollPanel::addPanel(const bitvectorn& bits, CPixelRGB8 color, int startFrame)
 {
 	Panel* p=new Panel(CImageProcessor::DrawChart(bits, color), false);
 	p->xoffset=startFrame;
 	m_aSource.push_back(p);
-	redraw();
+	_panelAdded();
 }
 
 int FltkScrollPanel::_screenXtoFrame(int screenX)
@@ -1160,10 +1185,12 @@ int FltkScrollPanel::_findPanel(int mouseY, int* panelY)
 
 			for(int j=i; j<m_aSource.size(); j++)
 			{
+				//printf("panel %d:%d\n", j, screenY); 
 				if(screenY > m_targetRect.bottom) return 1;
 				TRect rectDest=m_targetRect;
 				rectDest.top=screenY+m_targetRect.top;
-				rectDest.bottom=rectDest.top+m_aSource[i]->mImage->GetHeight();
+				rectDest.bottom=rectDest.top+m_aSource[j]->mImage->GetHeight();
+				//printf("rect %d, %d, %d, %s\n", rectDest.top, rectDest.bottom, mouseY, m_aSource[j]->mLabel.ptr());
 				if(rectDest.top<=mouseY && mouseY <rectDest.bottom)
 				{
 					if(panelY) *panelY=rectDest.top;
@@ -1176,7 +1203,7 @@ int FltkScrollPanel::_findPanel(int mouseY, int* panelY)
 	}
 	return -1;
 }
-void FltkScrollPanel::updateRange()
+int FltkScrollPanel::updateRange()
 {
 	m_targetRect.left=0;
 	m_targetRect.right=w()-20;
@@ -1190,8 +1217,13 @@ void FltkScrollPanel::updateRange()
 	for(int i=0; i<m_aSource.size(); i++)
 		sum+=m_aSource[i]->mImage->GetHeight();
 
-	m_sliderScroll.range(0,MAX(0,sum-m_targetRect.Height()));
+	int slider_h=MAX(0,sum-m_targetRect.Height());
+	m_sliderScroll.range(0,slider_h);
+	m_sliderScroll.slider_size(
+			MIN(0.98, (double)m_targetRect.Height()/(double)sum)
+			);
 
+	return sum;
 }
 
 inline static int _getAxisPos(int currFrame, int mLeft, int mSamplingRatio)
@@ -1579,7 +1611,7 @@ MotionPanel::MotionPanel(int x, int y, int w, int h)
 		cry+=20*mScaleFactor;
 	m_menuMotion.initChoice(crx,cry, (100+80)*mScaleFactor, 20*mScaleFactor);
 
-	int nitem=77;
+	int nitem=78;
 	m_menuOp.size(nitem);
 
 	int item=0;
@@ -1641,6 +1673,7 @@ MotionPanel::MotionPanel(int x, int y, int w, int h)
 	m_menuOp.item(item++, "Capture (jpeg sequence)", FL_CTRL+'c', Hash("capture"));
 	m_menuOp.item(item++, "Convert captured data", 0, Hash("Convert captured data"));
 	m_menuOp.item(item++, "Save current viewpoint", 0, Hash("Save current viewpoint"));
+	m_menuOp.item(item++, "Print current viewpoint", 0, Hash("Print current viewpoint"));
 	m_menuOp.item(item++, "Show output (render window)", FL_CTRL+FL_ALT+'o', Hash("OgreTraceManager"));
 	m_menuOp.item(item++, "SetCaptureFPS", 0, Hash("SetCaptureFPS"));
 	m_menuOp.endSubMenu(item++);
@@ -1727,6 +1760,10 @@ void MotionPanel::onCallback(Fl_Widget* pWidget, int userdata)
 			saveViewpoint(script);
 			fclose(script);
 		}
+	}
+	else if(userdata==Hash("Print current viewpoint"))
+	{
+			saveViewpoint(stdout);
 	}
 	else if(userdata==Hash("capture"))
 	{
@@ -2374,7 +2411,7 @@ void MotionPanel::onCallback(Fl_Widget* pWidget, int userdata)
 			while (window->visible())
 				Fl::wait();
 
-			Msg::msgBox("translation %s", temp_v.output().ptr());
+			Msg::msgBox("translation %s", temp_v.output().c_str());
 
 			MotionUtil::translate(currMotion(), temp_v);
 		}
@@ -2649,7 +2686,9 @@ void FltkScrollSelectPanel_impl::init(MotionPanel* pPanel, const char* label, in
 	if(isCreated())	release(pPanel);
 	mImage=pPanel->scrollPanel()->createPanel();
 	pPanel->scrollPanel()->setLabel(label);
-	create(mImage, pPanel->motionWin()->getNumFrame(), 16*height, maxValue, "../Resource/default/colormap.bmp");
+	auto cm=Imp::defaultColormapFile();
+	create(mImage, pPanel->motionWin()->getNumFrame(), 16*height, maxValue, 
+			cm.c_str());
 	clear(0, pPanel->motionWin()->getNumFrame());
 }
 
@@ -2683,7 +2722,8 @@ void FltkScrollSelectPanel_impl::drawFrameLines(intvectorn const& frames)
 
 	for(int i=0; i<frames.size(); i++)
 	{
-		cip.DrawVertLine(frames(i),0, cip.Height(), CPixelRGB8 (255,255,255));
+		if(frames(i)<cip.Width())
+			cip.DrawVertLine(frames(i),0, cip.Height(), CPixelRGB8 (255,255,255));
 	}
 }
 

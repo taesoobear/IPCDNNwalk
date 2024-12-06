@@ -94,6 +94,8 @@ public:
 
 	// returns faceIndex  or -1
 	int pickBarycentric(const OBJloader::Mesh &mesh, vector3 & baryCoeffs, vector3& pickPos);
+	// returns faceIndex  or -1. input vertexPositions are used instead of mesh.getVertex
+	int pickBarycentric(const OBJloader::Mesh& mesh, const vector3N& vertexPositions, vector3 & baryCoeffs, vector3 & pickPos);
 
 };
 

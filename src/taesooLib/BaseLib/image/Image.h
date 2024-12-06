@@ -128,23 +128,27 @@ class CImage
 private:
 	Int2D _size;
 
-	int _id;
-	static int __uniqueID;
-	bool _flipped;// undoing devil's dirty trick
-
 public:
-	// only for use in Imp
-	int _getILid()	const	{return _id;}
 	uchar* _dataPtr;
 	int _stride;
+	uchar* _opacityMap;
+
+	void _setDataFlipY(int width, int height, uchar* dataPtr, int stride);
+	void _adoptRawData(int width, int height, uchar* dataPtr, int stride)
+	{
+		_size.x=width; _size.y=height;
+		_dataPtr=dataPtr; _stride=stride;
+		_opacityMap=NULL;
+	}
+
 public:
 
 	CImage();
 	virtual ~CImage();
 	int GetWidth() const ;
 	int GetHeight() const ;
+	void flipY();
 
-	void SetData(int width, int height, uchar* dataPtr, int stride);
 	// assumes RGB8 format.
 	bool Create(int width, int height);
 
@@ -153,13 +157,20 @@ public:
 	uchar* GetData()				{ return _dataPtr;}
 	bool IsDataNull()				{ return _dataPtr==NULL;}
 
+	/// usually NULL
+	uchar* getOpacityMap() { return _opacityMap;}
+	const uchar* getOpacityMap() const { return _opacityMap;}
+	bool loadFromMemory(const char* filename, long data_length, const unsigned char* ptr);
 	bool Load(const char* filename);
 	bool Save(const char* filename) const;
+	/// doesn't save opacity at the moment.
 	bool save(const char* filename, int BPP) const;
+	bool saveOpacity(const char* filename) const;
 
 	CPixelsView GetHorizLine(int i)
 	{
-		return CPixelsView(_dataPtr+_stride*(GetHeight()-i-1), GetWidth(), 3);
+		//return CPixelsView(_dataPtr+_stride*(GetHeight()-i-1), GetWidth(), 3);
+		return CPixelsView(_dataPtr+_stride*i, GetWidth(), 3);
 	}
 
 	CPixelsView GetVertLine(int i)
@@ -167,10 +178,15 @@ public:
 		return CPixelsView(_dataPtr+3*i, GetHeight(), _stride);
 	}
 
-	// slow. use GetHorizLine when pixels are sequencially accessible.
 	CPixelRGB8 * GetPixel(int i, int j) const
 	{
-		return (CPixelRGB8*)(_dataPtr+_stride*(GetHeight()-j-1)+i*3);
+		//return (CPixelRGB8*)(_dataPtr+_stride*(GetHeight()-j-1)+i*3);
+		return (CPixelRGB8*)(_dataPtr+_stride*j+i*3);
+	}
+	uchar * getOpacity(int i, int j) const
+	{
+		//return const_cast<uchar*>(_opacityMap+GetWidth()*(GetHeight()-j-1)+i);
+		return const_cast<uchar*>(_opacityMap+GetWidth()*j+i);
 	}
 
 	void GetVertLine(int i, CPixels& out);

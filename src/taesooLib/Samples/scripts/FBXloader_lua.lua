@@ -142,12 +142,22 @@ function FBXloader.motionLoaderFromScript(script)
 				b:getOffsetTransform().translation:assign(bone.LclTranslation[2])
 			end
 		end
+		local function findRT(curves, startIndex)
+			if not curves[2] then return false end
+			for i=startIndex, #curves do 
+				local tid=curves[i][2]
+				if tid=='R' or tid=='T' then
+					return true
+				end
+			end
+			return false
+		end
 
 		if bone.curves[1] and bone.curves[2] and bone.curves[1][2]=="T" and bone.curves[2][2]=="R" then
 			loader:insertJoint(b, "RT")
-		elseif bone.curves[1] and not bone.curves[2] and bone.curves[1][2]=="R" then
+		elseif bone.curves[1] and not findRT(bone.curves,2) and bone.curves[1][2]=="R" then
 			loader:insertJoint(b, "R")
-		elseif bone.curves[1] and not bone.curves[2] and bone.curves[1][2]=="T" then
+		elseif bone.curves[1] and not findRT(bone.curves,2) and bone.curves[1][2]=="T" then
 			loader:insertJoint(b, "T")
 		elseif #bone.curves>0 then
 			for ic, curve in ipairs(bone.curves) do

@@ -18,7 +18,6 @@ import numpy as np
 def main():
 
     lua.init_console()
-    
     # now you can use lua funtions.
     # test lua-python interfacing
     lua.out(3)
@@ -59,14 +58,6 @@ def main():
     f[1,1]=23
     print(e.ref())
 
-    # low-level apis
-    l=m.getPythonWin()
-    l.dostring('g_dataset={ 1,2,3}')
-
-    # out=g_dataset[2]
-    l.getglobal('g_dataset')
-    l.replaceTop(2)
-    print('the second element in the table is ', l.popnumber())  # other types are also supported l.popmatrixn()  
 
     
     print('Starting python console. Type "cont" to finish.')
@@ -78,7 +69,10 @@ def main():
     v=m.vectorn()
     v.assign([1,2,3,4,5])
     lua.out(v)
+    print(v.ref())
     v.set(0,4)
+    lua.out(v)
+    v.ref()[0]=3
     lua.out(v)
     ...
     """)

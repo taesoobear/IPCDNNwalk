@@ -23,13 +23,17 @@ namespace BaseLib {
 class BitArray;
 }
 class hypermatrixn;
+class floatvec;
 
+class Tensor;
+class floatTensor;
 /// Type을 저장한다.
 class BinaryFile
 {
 public:
 	BinaryFile(bool bReadToMemory=false);
 	BinaryFile(bool bWrite, const char* filename);
+	BinaryFile(bool bWrite, const std::string & filename);
 	virtual ~BinaryFile();
 	bool openWrite(const char *fileName, bool singlePrecisionMode=false);
 	bool openRead(const char *fileName);
@@ -41,6 +45,7 @@ public:
 	void pack(const char *str);
 	void pack(const TString& str) { pack(str.ptr());}
 	void pack(const vectorn& vec);
+	void pack(const floatvec& vec);
 	void pack(const vector3& vec);
 	void pack(const quater& vec);
 	void pack(const intvectorn& vec);
@@ -54,6 +59,8 @@ public:
 	void pack(const matrix4& mat);
 	void pack(const BaseLib::BitArray& bits);
 	void pack(const hypermatrixn& mat3d);
+	void pack(const Tensor& matnd);
+	void pack(const floatTensor& matnd);
 
 
 	void unpack(BaseLib::BitArray& bits);
@@ -80,6 +87,8 @@ public:
 	void unpack(vector3N& mat);
 	void unpack(matrix4& mat);
 	void unpack(hypermatrixn& mat3d);
+	void unpack(Tensor& matnd);
+	void unpack(floatTensor& matnd);
 
 
 	// without type checking
@@ -90,6 +99,7 @@ public:
 	void _packSPFloat(float num);
 	void _unpackSPFloat(float & num);
 	
+	// used in lua (when implementing unpackAuto()
 	int _unpackInt()	{ int num; _unpackInt(num); return num;}
 	double _unpackFloat()	{ double num; _unpackFloat(num); return num;}
 	float _unpackSPFloat()	{ float num; _unpackSPFloat(num); return num;}
@@ -99,11 +109,13 @@ public:
 	void _unpackSPVec(vectorn& vec);
 	void _unpackMat(matrixn& mat);
 	void _unpackSPMat(matrixn& mat);
+	void _unpackTensor(floatTensor& mat);
+	void _unpackTensor(Tensor& mat);
 	void _unpackBit(boolN& vec);
 	virtual void _packArray(void *buffer, int count, size_t size);
 	virtual void _unpackArray(void *buffer, int count, size_t size);
 
-	enum { TYPE_INT, TYPE_FLOAT, TYPE_FLOATN, TYPE_INTN, TYPE_BITN, TYPE_FLOATMN, TYPE_INTMN, TYPE_BITMN, TYPE_STRING, TYPE_STRINGN, TYPE_ARRAY , TYPE_EOF, TYPE_SPFLOAT, TYPE_SPFLOATN, TYPE_SPFLOATMN };
+	enum { TYPE_INT, TYPE_FLOAT, TYPE_FLOATN, TYPE_INTN, TYPE_BITN, TYPE_FLOATMN, TYPE_INTMN, TYPE_BITMN, TYPE_STRING, TYPE_STRINGN, TYPE_ARRAY , TYPE_EOF, TYPE_SPFLOAT, TYPE_SPFLOATN, TYPE_SPFLOATMN , TYPE_FLOATND, TYPE_SPFLOATND};
 
 	inline FILE*& _getFilePtr() { return m_pFile;}
 	int getFrameNum(int numOfData);

@@ -798,7 +798,33 @@ void quaterN::hermite(int discontinuity)
 		row(i)=herm.row(i-1);
 	}
 }
-
+      quater quaterN::sampleRow( m_real criticalTime) const
+{
+quaterN const& in=*this;
+	quater out;
+	//!< 0 <=criticalTime<= numFrames()-1
+	// float 0 이 정확하게 integer 0에 mapping된다.
+	int a;
+	float t;
+	
+	a=(int)floor(criticalTime);
+	t=criticalTime-(float)a;
+	
+	if(t<0.005)
+	  out=in.row(a);
+	else if(t>0.995)
+	  out=in.row(a+1);
+	else
+	  {
+	    if(a<0)
+	      out.safeSlerp(in.row(a+1), in.row(a+2), t-1.0);
+	    else if(a+1>=in.rows())
+	      out.safeSlerp(in.row(a-1), in.row(a), t+1.0);
+	    else
+	      out.safeSlerp( in.row(a), in.row(a+1),t);
+	  }
+	return out;
+      }
 namespace v
 {
 	void c0stitch(vectorn& v, int discontinuity);

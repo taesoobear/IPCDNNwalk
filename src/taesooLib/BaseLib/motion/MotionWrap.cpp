@@ -56,6 +56,11 @@ MotionDOFcontainer::MotionDOFcontainer(MotionDOFinfo const& info, const char* fn
 {
 	loadMotion(fn);
 }
+MotionDOFcontainer::MotionDOFcontainer(MotionDOFinfo const& info, const std::string& fn)
+	:mot(info)
+{
+	loadMotion(fn.c_str());
+}
 MotionDOFcontainer::MotionDOFcontainer(MotionDOFinfo const& info)
 	:mot(info)
 {

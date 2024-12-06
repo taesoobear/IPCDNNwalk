@@ -95,16 +95,7 @@ include_directories (
 	)
 
 if(WIN32)
-	if(NoDevil)
-		set(NoFreeImage TRUE)
-		set(IMAGE_LIBS )
-	else()
-		set(IMAGE_LIBS
-			DevIL
-			ILU
-			freeimage
-			)
-	endif()
+	# settings are already in BaseLib/CMakeLists.txt 
 else()
 	if(NoDevil)
 		if(NoFreeImage)

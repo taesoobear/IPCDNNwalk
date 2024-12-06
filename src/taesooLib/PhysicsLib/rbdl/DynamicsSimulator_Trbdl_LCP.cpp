@@ -1,6 +1,7 @@
 
 #include "stdafx.h"
 #include "DynamicsSimulator_Trbdl_LCP.h"
+#include "BodyInfo.h"
 #include "../../MainLib/OgreFltk/RE.h"
 #include "../../MainLib/OgreFltk/pldprimskin.h"
 #include "LCPsolver.h"

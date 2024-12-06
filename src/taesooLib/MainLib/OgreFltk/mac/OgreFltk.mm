@@ -11,7 +11,7 @@ return ((Fl_Gl_Window*) win)->context();
 #import <OgreOSXCocoaView.h> // located in ogre-13.4.3 -> copy to /usr/local/include/OGRE/
 #define __glew_h__
 #include <OgreOSXCocoaWindow.h>// located in ogre-13.4.3 -> copy to /usr/local/include/OGRE/
-using namespace Ogre;
+//using namespace Ogre;
 
 
 #if OGRE_VERSION_MINOR >= 12 || OGRE_VERSION_MAJOR>=13
@@ -152,9 +152,17 @@ void setMacRenderConfig( void* handle, Ogre::NameValuePairList &misc)
 	Fl_Window* win=(Fl_Window*)(handle);
 	NSWindow* nsWindow = (NSWindow*)fl_xid(win);
 	NSView* view = nsWindow.contentView;
+
+#if 1
+	unsigned long windowHandle = reinterpret_cast<unsigned long>(view);
+	Ogre::String winHandle = Ogre::StringConverter::toString(windowHandle);
+	// assign the NSWindow pointer to the parentWindowHandle parameter
+	misc.insert(std::make_pair("externalWindowHandle", winHandle));
+#else
 	misc["externalWindowHandle"] = Ogre::StringConverter::toString((unsigned long)view);
 	//((Fl_Window*)(handle))->make_current();
 
 	//misc["currentGLContext"]=Ogre::String("True");  
 	misc["externalGLContext"] = Ogre::StringConverter::toString((unsigned long)getOpenGLContext(win));
+#endif
 }

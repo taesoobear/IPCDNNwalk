@@ -1033,7 +1033,33 @@ void RE::usleep(int usec)
 extern ConfigTable config;
 OgreRenderer* RE::_createRenderer(int& w, int &rw)
 {
-	auto* renderer=new OgreRenderer();
+	OgreRenderer* renderer=NULL;
+	try {
+		renderer=new OgreRenderer();
+	}
+#ifndef NO_OGRE
+	catch( Ogre::Exception& e ) 
+	{
+		std::cout<<e.getFullDescription().c_str()<<std::endl;
+
+		Msg::msgBox(e.getFullDescription().c_str());
+
+	}	
+#endif
+	catch(std::exception& e)
+	{
+		std::cout<<e.what()<<std::endl;
+		Msg::msgBox("c++ error : %s", e.what());
+		ASSERT(0);
+	}
+	catch(char * error)
+	{
+		Msg::msgBox("%s", error);
+	}
+	catch(const char* error)
+	{
+		Msg::msgBox("%s", error);
+	}
 	if (!config.Find("renderer_width"))
 		return renderer;
 	int DEFAULT_RENDERER_WIDTH=config.GetInt("renderer_width");
@@ -1044,4 +1070,29 @@ OgreRenderer* RE::_createRenderer(int& w, int &rw)
 		w=DEFAULT_WIDTH;
 	}
 	return renderer;
+}
+
+void RE::buildEdgeList(const char* meshName)
+{
+#ifndef NO_GUI
+	Ogre::String groupName = Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME;
+	// Get mesh (load if required)
+	Ogre::MeshPtr pmesh = Ogre::MeshManager::getSingleton().load(meshName, groupName);
+	pmesh->freeEdgeList();
+	//pmesh->prepareForShadowVolume();
+	pmesh->buildEdgeList();
+	//pmesh-> setAutoBuildEdgeLists(true);
+	//pmesh->load();
+#endif
+}
+int RE::getOgreVersionMinor()
+{
+#ifdef NO_GUI
+	return 7;
+#else
+#if OGRE_VERSION_MAJOR>=13 
+	return OGRE_VERSION_MAJOR;
+#endif
+	return OGRE_VERSION_MINOR;
+#endif
 }

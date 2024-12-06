@@ -12,6 +12,7 @@
 BoneForwardKinematics::BoneForwardKinematics(MotionLoader* pskel)
 :m_skeleton(pskel)
 {	
+	init();
 }
 
 void BoneForwardKinematics::forwardKinematics()
@@ -54,6 +55,7 @@ void BoneForwardKinematics::init()
 {
 	m_local.resize(m_skeleton->numBone());
 	m_global.resize(m_skeleton->numBone());
+	if(m_skeleton->numBone()==0) return;
 	m_local[0].identity();
 	m_global[0].identity();
 
@@ -65,7 +67,7 @@ void BoneForwardKinematics::init()
 
 void BoneForwardKinematics::operator=(BoneForwardKinematics const& other)
 {
-	ASSERT(getSkeleton().numBone()==other.getSkeleton().numBone());
+	RANGE_ASSERT(getSkeleton().numBone()==other.getSkeleton().numBone());
 
 	for(int i=0,ni=getSkeleton().numBone(); i<ni; i++)
 	{
@@ -136,7 +138,106 @@ void BoneForwardKinematics::setPoseDOFusingCompatibleDOFinfo(MotionDOFinfo const
 	RANGE_ASSERT(start==dof.size());
 	forwardKinematics();
 }
+void BoneForwardKinematics::setPoseDOFignoringTranslationalJoints(const vectorn& dof)
+{
+	// thread unsafe equivalent: setPose(m_skeleton->dofInfo.setDOF(poseDOF));	
+	MotionDOFinfo const& dofInfo=m_skeleton->dofInfo;
+	MotionLoader* skeleton=&dofInfo.skeleton();
+	
+	int start=0;
+	for(int i=1; i<skeleton->numBone(); i++)
+	{
+		Bone& bone=skeleton->bone(i);
+		if(bone.transJointIndex()!=-1 && i==1)
+		{
+			vector3& trans=m_local[bone.treeIndex()].translation;
+			int nc=bone.getLocalTrans(trans, &dof[start]);
+			start+=nc;
+		}
 
+		int ri=bone.rotJointIndex();
+		if(ri==-1) continue;
+
+		quater& rotation=m_local[bone.treeIndex()].rotation;
+		if(dofInfo.hasQuaternion(i))
+		{
+			rotation=dof.toQuater(start);
+			start+=4;
+		}
+
+		if(dofInfo.hasAngles(i))
+		{
+			int nc=bone.getLocalOri(rotation, &dof[start]);
+			start+=nc;
+		}
+	}
+	if(start!=dof.size())
+		Msg::error("size doesn't match %d %d\n", start, dof.size());
+	forwardKinematics();
+}
+
+void BoneForwardKinematics::getPoseDOFignoringTranslationalJoints(vectorn& dof)const
+{
+	// thread unsafe equivalent: setPose(m_skeleton->dofInfo.setDOF(poseDOF));	
+	MotionDOFinfo const& dofInfo=m_skeleton->dofInfo;
+	MotionLoader* skeleton=&dofInfo.skeleton();
+	if(dof.size()==0)
+	{
+		int start=0;
+		for(int i=1; i<skeleton->numBone(); i++)
+		{
+			Bone& bone=skeleton->bone(i);
+			if(bone.transJointIndex()!=-1 && i==1)
+			{
+				int nc=bone.getTranslationalChannels().length();
+				start+=nc;
+			}
+
+			int ri=bone.rotJointIndex();
+			if(ri==-1) continue;
+
+			if(dofInfo.hasQuaternion(i))
+				start+=4;
+
+			if(dofInfo.hasAngles(i))
+			{
+				int nc=bone.getRotationalChannels().length();
+				start+=nc;
+			}
+		}
+		dof.setSize(start);
+	}
+	
+	int start=0;
+	for(int i=1; i<skeleton->numBone(); i++)
+	{
+		Bone& bone=skeleton->bone(i);
+		if(bone.transJointIndex()!=-1 && i==1)
+		{
+			const vector3& trans=m_local[bone.treeIndex()].translation;
+			int nc=bone.setLocalTrans(trans, &dof[start]);
+			start+=nc;
+		}
+
+		int ri=bone.rotJointIndex();
+		if(ri==-1) continue;
+
+		const quater& rotation=m_local[bone.treeIndex()].rotation;
+		if(dofInfo.hasQuaternion(i))
+		{
+			dof.setQuater(start, rotation);
+			start+=4;
+		}
+
+		if(dofInfo.hasAngles(i))
+		{
+			int nc=bone.setLocalOri(rotation, &dof[start]);
+			start+=nc;
+		}
+	}
+	if(start!=dof.size())
+		Msg::error("size doesn't match %d %d\n", start, dof.size());
+}
 void BoneForwardKinematics::setSphericalQ(const vectorn& q)
 {
 	MotionDOFinfo& dofInfo=m_skeleton->dofInfo;

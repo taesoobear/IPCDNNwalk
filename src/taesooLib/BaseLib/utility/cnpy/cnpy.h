@@ -24,8 +24,8 @@
 namespace cnpy {
 
     struct NpyArray {
-        NpyArray(const std::vector<size_t>& _shape, size_t _word_size, bool _fortran_order) :
-            shape(_shape), word_size(_word_size), fortran_order(_fortran_order)
+        NpyArray(const std::vector<size_t>& _shape, size_t _word_size, bool _fortran_order, char _type) :
+            shape(_shape), word_size(_word_size), fortran_order(_fortran_order), type(_type)
         {
             num_vals = 1;
             for(size_t i = 0;i < shape.size();i++) num_vals *= shape[i];
@@ -60,6 +60,7 @@ namespace cnpy {
         size_t word_size;
         bool fortran_order;
         size_t num_vals;
+		char type;
     };
    
     using npz_t = std::map<std::string, NpyArray>; 
@@ -67,8 +68,8 @@ namespace cnpy {
     char BigEndianTest();
     char map_type(const std::type_info& t);
     template<typename T> std::vector<char> create_npy_header(const std::vector<size_t>& shape);
-    void parse_npy_header(FILE* fp,size_t& word_size, std::vector<size_t>& shape, bool& fortran_order);
-    void parse_npy_header(unsigned char* buffer,size_t& word_size, std::vector<size_t>& shape, bool& fortran_order);
+    char parse_npy_header(FILE* fp,size_t& word_size, std::vector<size_t>& shape, bool& fortran_order);
+    char parse_npy_header(unsigned char* buffer,size_t& word_size, std::vector<size_t>& shape, bool& fortran_order);
     void parse_zip_footer(FILE* fp, uint16_t& nrecs, size_t& global_header_size, size_t& global_header_offset);
     npz_t npz_load(std::string fname);
     NpyArray npz_load(std::string fname, std::string varname);
@@ -97,7 +98,7 @@ namespace cnpy {
             //file exists. we need to append to it. read the header, modify the array size
             size_t word_size;
             bool fortran_order;
-            parse_npy_header(fp,word_size,true_data_shape,fortran_order);
+            char type=parse_npy_header(fp,word_size,true_data_shape,fortran_order);
             assert(!fortran_order);
 
             if(word_size != sizeof(T)) {
@@ -235,13 +236,13 @@ namespace cnpy {
         npz_save(zipname, fname, &data[0], shape, mode);
     }
 
-    template<typename T> std::vector<char> create_npy_header(const std::vector<size_t>& shape) {  
+    inline std::vector<char> _create_npy_header(char typeID, size_t sizeofT, const std::vector<size_t>& shape) {  
 
         std::vector<char> dict;
         dict += "{'descr': '";
         dict += BigEndianTest();
-        dict += map_type(typeid(T));
-        dict += std::to_string(sizeof(T));
+        dict += typeID;
+        dict += std::to_string(sizeofT);
         dict += "', 'fortran_order': False, 'shape': (";
         dict += std::to_string(shape[0]);
         for(size_t i = 1;i < shape.size();i++) {
@@ -265,44 +266,112 @@ namespace cnpy {
 
         return header;
     }
+    template<typename T> std::vector<char> create_npy_header(const std::vector<size_t>& shape) {  
+
+		return _create_npy_header(map_type(typeid(T)), sizeof(T), shape);
+    }
 
 
 }
 
+#include "../TypeString.h"
 class NPYarray {
 	cnpy::NpyArray _array;
 	intvectorn _shape;
+	void _updateShape()
+	{
+		_shape.setSize(_array.shape.size());
+		for( int i=0; i<_array.shape.size(); i++)
+			_shape[i]=_array.shape[i];
+		if(_shape.size()==0)
+		{
+			_shape.setSize(1);
+			_shape[0]=numElts();
+		}
+	}
 	public:
 		NPYarray(const char* filename) { 
 			_array= cnpy::npy_load(std::string (filename));
-			_shape.setSize(_array.shape.size());
-			for( int i=0; i<_array.shape.size(); i++)
-				_shape[i]=_array.shape[i];
+			_updateShape();
 		}
 		NPYarray(cnpy::NpyArray const& array)
 		{
 			_array= array;
-			_shape.setSize(_array.shape.size());
-			for( int i=0; i<_array.shape.size(); i++)
-				_shape[i]=_array.shape[i];
+			_updateShape();
 		}
 		NPYarray(const char* zipfile, const char* filename) { 
 			_array= cnpy::npz_load(std::string(zipfile), std::string (filename));
-			_shape.setSize(_array.shape.size());
-			for( int i=0; i<_array.shape.size(); i++)
-				_shape[i]=_array.shape[i];
+			_updateShape();
 		}
 		virtual ~NPYarray(){}
 		int numBytes() const { return (int) _array.num_bytes();}
 		const intvectorn & shape() { return _shape;}
 		int wordSize() { return (int)_array.word_size;}
 		int numElts() { return (int)_array.num_vals;}
+		std::string typeCode() { std::string c; c="a"; c[0]=_array.type; return c;}
+		bool fortranOrder() { return _array.fortran_order;}
+		intvectorn _temp;
+		intvectornView intvec() { 
+			if(wordSize()==4)
+				return intvectornView(_array.data<int>(), numElts(), 1);
+			else
+			{
+				_temp.resize(numElts());
+				for(int i=0; i<numElts(); i++)
+				{
+					_temp[i]=(int)(_array.data<long long>()[i]);
+				}
+				return _temp;
+			}
+		}
 		floatvecView floatvec() { RANGE_ASSERT(wordSize()==4); return floatvecView(_array.data<float>(), numElts(), 1);}
 		vectornView doublevec() { RANGE_ASSERT(wordSize()==8); return vectornView(_array.data<double>(), numElts(), 1);}
+		TStrings* stringvec()  {
+			TStrings *temp=new TStrings();
 
-		static void npz_save(std::string zipname, std::string fname, hypermatrixn const& mat);
-		static void npz_save(std::string zipname, std::string fname, matrixn const& mat);
-		static void npz_save(std::string zipname, std::string fname, vectorn const& mat);
+			if(_shape.size()>0){
+				temp->resize(_shape(0));
+				if(typeCode()=="S")
+				{
+					int w=wordSize();
+
+					int n=_shape(0);
+					char *tempa=new char[w+1];
+					tempa[w]=0;
+					for(int i=0,n=_shape(0); i<n; i++)
+					{
+						for(int j=0; j<w; j++)
+							tempa[j]=_array.data<char>()[i*w+j];
+
+						temp->set(i, tempa);
+					}
+					delete[] tempa;
+				}
+				else
+				{
+					// unicode (UTF32 but here we assume ANSI.)
+					int w=wordSize()/4;
+
+					int n=_shape(0);
+					char *tempa=new char[w+1];
+					tempa[w]=0;
+					for(int i=0,n=_shape(0); i<n; i++)
+					{
+						for(int j=0; j<w; j++)
+							tempa[j]=_array.data<char>()[i*w*4+j*4];
+
+						temp->set(i, tempa);
+					}
+					delete[] tempa;
+				}
+			}
+			return temp;
+		}
+
+		static void npz_save(std::string zipname, std::string fname, hypermatrixn const& mat, std::string mode = "w");
+		static void npz_save(std::string zipname, std::string fname, matrixn const& mat, std::string mode = "w");
+		static void npz_save(std::string zipname, std::string fname, vectorn const& vec, std::string mode = "w");
+		static void npz_save(std::string zipname, std::string fname, TStrings const& vec, std::string mode = "w");
 };
 class NPZfile {
 	cnpy::npz_t _npzfile;

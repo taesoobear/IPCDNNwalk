@@ -21,7 +21,7 @@ static void loadOBJ_unpack(TString const& t, intvectorn& typecode, OBJloader::Fa
 	tn[0]=-1;
 	tn.push_back(t.length());
 
-	//ASSERT(typecode.size()==tn.size()-1);
+	//RANGE_ASSERT(typecode.size()==tn.size()-1);
 
 	bool faceLoadError = false;
 
@@ -37,7 +37,7 @@ static void loadOBJ_unpack(TString const& t, intvectorn& typecode, OBJloader::Fa
 		else
 		{
 			int n=atoi(t.subString(tn[i]+1, tn[i+1]).ptr());
-			ASSERT(n!=0);
+			RANGE_ASSERT(n!=0);
 			if(typecode_offset + i >= typecode.size()){
 				faceLoadError = true;
 				continue;
@@ -152,6 +152,12 @@ void OBJloader::Mesh::addVertices(vector3N const& vertices)
 	for(int i=startIndex; i<numVertex(); i++)
 		getVertex(i)=vertices(i-startIndex);
 }
+void OBJloader::Mesh::getVertices(vector3N & vertices)
+{
+	vertices.setSize(numVertex());
+	for(int i=0; i<numVertex(); i++)
+		vertices(i)=getVertex(i);
+}
 void OBJloader::Mesh::addNormals(vector3N const& normals)
 {
 	int startIndex=numNormal();
@@ -227,12 +233,12 @@ static void rearrangeFaces(OBJloader::Mesh& mesh, int startFace, bitvectorn & co
 
 			if(connectedFaces(firstFill)!=false) {
 				puts("rearrange faces 2");
-				ASSERT(false);
+				RANGE_ASSERT(false);
 				return;
 			}
 			if(connectedFaces(curr)!=true) {
 				puts("rearrange faces 3");
-				ASSERT(false);
+				RANGE_ASSERT(false);
 				return;
 			}
 			connectedFaces.setAt(firstFill);
@@ -246,13 +252,19 @@ static void rearrangeFaces(OBJloader::Mesh& mesh, int startFace, bitvectorn & co
 }
 void OBJloader::Mesh::pack(BinaryFile& bf) const
 {
-	int version=2;
+	int version=3;
 	bf.packInt(version);
 
 	if(version==0) return;
 	bf.packInt(numVertex());
 	bf.packInt(numNormal());
 	bf.packInt(numFace());
+
+	if (version>=3)
+	{
+		bf.packInt(numTexCoord());
+		bf.packInt(numColor());
+	}
 
 	int num_verts=numVertex();
 	int num_normal=numNormal();
@@ -274,6 +286,33 @@ void OBJloader::Mesh::pack(BinaryFile& bf) const
 		bf.packInt(getFace(i).normalIndex(1));
 		bf.packInt(getFace(i).normalIndex(2));
 	}
+	if (version>=3)
+	{
+		int nt=numTexCoord();
+		for(int i=0; i<nt; i++)
+		{
+			bf.packFloat(getTexCoord(i)(0));
+			bf.packFloat(getTexCoord(i)(1));
+		}
+		int nc=numColor();
+		for(int i=0; i<nc; i++)
+		{
+			bf.packFloat(getColor(i)(0));
+			bf.packFloat(getColor(i)(1));
+			bf.packFloat(getColor(i)(2));
+			bf.packFloat(getColor(i)(3));
+		}
+		for(int i=0; i<num_face; i++)
+		{
+			bf.packInt(getFace(i).texCoordIndex(0));
+			bf.packInt(getFace(i).texCoordIndex(1));
+			bf.packInt(getFace(i).texCoordIndex(2));
+
+			bf.packInt(getFace(i).colorIndex(0));
+			bf.packInt(getFace(i).colorIndex(1));
+			bf.packInt(getFace(i).colorIndex(2));
+		}
+	}
 }
 void OBJloader::Mesh::unpack(BinaryFile& bf)
 {
@@ -289,13 +328,20 @@ void OBJloader::Mesh::_unpackMeshVersion(int version, BinaryFile& bf)
 {
 	if (version==0)
 		OBJloader::createBox(*this,5, 5, 5);
-	else if(version==2)
+	else if(version>=2)
 	{
 		int num_verts=bf.unpackInt();
 		int num_normal=bf.unpackInt();
 		int num_face=bf.unpackInt();
+		int num_texCoord=0;
+		int num_color=0;
+		if(version>=3)
+		{
+			num_texCoord=bf.unpackInt();
+			num_color=bf.unpackInt();
+		}
 		//printf("%d %d %d\n", num_verts, num_normal, num_face);
-		resize(num_verts,num_normal,0,0,num_face);
+		resize(num_verts,num_normal,num_texCoord,num_color,num_face);
 		for(int i=0; i<num_verts; i++)
 			bf.unpack(getVertex(i));
 		for(int i=0; i<num_normal; i++)
@@ -314,6 +360,36 @@ void OBJloader::Mesh::_unpackMeshVersion(int version, BinaryFile& bf)
 			int fi3=bf.unpackInt();
 			getFace(i).setIndex(fi1,fi2,fi3, Buffer::NORMAL);
 		}
+		if (version>=3)
+		{
+			int nt=numTexCoord();
+			for(int i=0; i<nt; i++)
+			{
+				getTexCoord(i)(0)=bf.unpackFloat();
+				getTexCoord(i)(1)=bf.unpackFloat();
+			}
+			int nc=numColor();
+			for(int i=0; i<nc; i++)
+			{
+				getColor(i)(0)=bf.unpackFloat();
+				getColor(i)(1)=bf.unpackFloat();
+				getColor(i)(2)=bf.unpackFloat();
+				getColor(i)(3)=bf.unpackFloat();
+			}
+			for(int i=0; i<num_face; i++)
+			{
+				int fi1=bf.unpackInt();
+				int fi2=bf.unpackInt();
+				int fi3=bf.unpackInt();
+				getFace(i).setIndex(fi1,fi2,fi3, Buffer::TEXCOORD);
+
+				fi1=bf.unpackInt();
+				fi2=bf.unpackInt();
+				fi3=bf.unpackInt();
+				getFace(i).setIndex(fi1,fi2,fi3, Buffer::COLOR);
+			}
+		}
+
 	}
 	else
 		Msg::error("unknown Mesh file format");
@@ -382,6 +458,14 @@ void OBJloader::Mesh::_loadObj(CTextFile& file)
 		else if(token=="g")
 		{
 			TString groupname=file.GetToken();
+			if(groupname=="Mesh")
+				groupname=file.GetToken();
+			printf("group %s\n", groupname.ptr());
+			continue;
+		}
+		else if(token=="Mesh")
+		{
+			// last group is a mesh
 			continue;
 		}
 		else if(token=="o")
@@ -1074,7 +1158,7 @@ void OBJloader::convertTerrainToBMP(const char* filename, int sizeX,int sizeY, c
 {
 	int sx=1;
 	int sy=1;
-	ASSERT(sizeof(short)==2);
+	RANGE_ASSERT(sizeof(short)==2);
 	Raw2Bytes image;
 	image.setSize(sizeY, sizeX);
 	FILE* file=fopen(filename, "rb");
@@ -1122,14 +1206,14 @@ void OBJloader::convertTerrainFromBMP(const char* filename, const char* outfile)
 		}
 	}
 
-	ASSERT(sizeof(short)==2);
+	RANGE_ASSERT(sizeof(short)==2);
 	FILE* file=fopen(outfile, "wb");
 	fwrite( (void*)(&image(0,0)), sizeof(short), sizeX*sizeY, file);
 }
 
 void OBJloader::createTerrain(Mesh& mesh, const char* filename, int sizeX, int sizeY, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ)
 {
-	ASSERT(sizeof(short)==2);
+	RANGE_ASSERT(sizeof(short)==2);
 	Raw2Bytes image;
 	image.setSize(sizeY, sizeX);
 	FILE* file=fopen(filename, "rb");
@@ -1361,32 +1445,32 @@ int Mesh::numColor() const
 
 vector3& Mesh::getVertex(int i)
 {
-	ASSERT(i>=0 && i<numVertex());
+	RANGE_ASSERT(i>=0 && i<numVertex());
 	return m_array[Buffer::VERTEX].ref3(i);
 }
 vector3 const& Mesh::getVertex(int i) const
 {
-	ASSERT(i>=0 && i<numVertex());
+	RANGE_ASSERT(i>=0 && i<numVertex());
 	return m_array[Buffer::VERTEX].ref3(i);
 }
 vector3& Mesh::getNormal(int i)
 {
-	ASSERT(i>=0 && i<numNormal());
+	RANGE_ASSERT(i>=0 && i<numNormal());
 	return m_array[Buffer::NORMAL].ref3(i);
 }
 vector3 const& Mesh::getNormal(int i) const
 {
-	ASSERT(i>=0 && i<numNormal());
+	RANGE_ASSERT(i>=0 && i<numNormal());
 	return m_array[Buffer::NORMAL].ref3(i);
 }
 vector2& Mesh::getTexCoord(int i)
 {
-	ASSERT(i>=0 && i<numTexCoord());
+	RANGE_ASSERT(i>=0 && i<numTexCoord());
 	return m_array[Buffer::TEXCOORD].ref2(i);
 }
 vector2 const& Mesh::getTexCoord(int i) const
 {
-	ASSERT(i>=0 && i<numTexCoord());
+	RANGE_ASSERT(i>=0 && i<numTexCoord());
 	return m_array[Buffer::TEXCOORD].ref2(i);
 }
 
@@ -1415,8 +1499,8 @@ void Mesh::merge(Mesh const& a, Mesh const& b)
 		return;
 	}
 	
-	ASSERT(a.numFace()&&b.numFace());
-	ASSERT(a.numVertex()&& b.numVertex());
+	RANGE_ASSERT(a.numFace()&&b.numFace());
+	RANGE_ASSERT(a.numVertex()&& b.numVertex());
 	bool useNormal=a.numNormal()!=0 && b.numNormal()!=0;
 	bool useTexCoord=a.numTexCoord()!=0 && b.numTexCoord()!=0;
 	bool useColor=a.numColor()!=0 && b.numColor()!=0;
@@ -1653,7 +1737,7 @@ OBJloader::Mesh::MergeInfo* OBJloader::Mesh::mergeVertices(std::vector<std::pair
 
 Face::Face()
 {
-	ASSERT(Buffer::NUM_BUFFER==4);
+	RANGE_ASSERT(Buffer::NUM_BUFFER==4);
 	indexes[0]=_tvector<int,4>(-1,-1,-1,-1);
 	indexes[1]=_tvector<int,4>(-1,-1,-1,-1);
 	indexes[2]=_tvector<int,4>(-1,-1,-1,-1);
@@ -1725,7 +1809,7 @@ FaceEdge MeshConnectivity::prev(FaceEdge const& fe) const
 	if(!(out.isNull() || out.source(mMesh)==fe.source(mMesh)))
 	{
 		puts("MeshConnectivity::prev");
-		ASSERT(false);
+		RANGE_ASSERT(false);
 	}
 	return out;
 }
@@ -1830,8 +1914,8 @@ EdgeConnectivity::EdgeConnectivity(Mesh const& mesh)
 			int v1=mesh.getFace(i).vi(fe);
 			int v2=mesh.getFace(i).vi((fe+1)%3);
 
-			ASSERT(v1>=0 && v1<mesh.numVertex());
-			ASSERT(v2>=0 && v2<mesh.numVertex());
+			RANGE_ASSERT(v1>=0 && v1<mesh.numVertex());
+			RANGE_ASSERT(v2>=0 && v2<mesh.numVertex());
 
 			nodeT s=mMeshGraph.findNode(v1);
 			nodeT t=mMeshGraph.findNode(v2);
@@ -2080,6 +2164,12 @@ void SkinnedMeshFromVertexInfo::calcVertexPositions(MotionLoader const& loader, 
 		((SkinnedMeshFromVertexInfo&)*this)._calcVertexPosition(loader, i, mesh.getVertex(i));
 
 }
+void SkinnedMeshFromVertexInfo::calcVertexPositions(BoneForwardKinematics const& fkSolver, OBJloader::Mesh& mesh) const
+{
+	Msg::verify(mesh.numVertex()==vertices.size(), "#vertex does not match");
+	for (int i=0; i<mesh.numVertex(); i++)
+		((SkinnedMeshFromVertexInfo&)*this)._calcVertexPosition(fkSolver, i, mesh.getVertex(i));
+}
 void SkinnedMeshFromVertexInfo::calcVertexNormals(MotionLoader const& loader,quaterN const& bindpose_global, vector3N const& localNormal, OBJloader::Mesh& mesh) const
 {
 	Msg::verify(mesh.numVertex()==vertices.size(), "#vertex does not match");
@@ -2102,6 +2192,28 @@ void SkinnedMeshFromVertexInfo::calcVertexNormals(MotionLoader const& loader,qua
 		normal.normalize();
 	}
 
+}
+void SkinnedMeshFromVertexInfo::calcVertexNormals(BoneForwardKinematics const& fkSolver,quaterN const& bindpose_global, vector3N const& localNormal, OBJloader::Mesh& mesh) const
+{
+	Msg::verify(mesh.numVertex()==vertices.size(), "#vertex does not match");
+	Msg::verify(mesh.numNormal()==mesh.numVertex(), "seperate normal indices are not supported!");
+	quaterN delta(bindpose_global.size());
+	for(int i=1; i<fkSolver.numBone(); i++)
+	{
+		quater q;
+		q.inverse(bindpose_global(i));
+		delta(i)=fkSolver.global(i).rotation*q;
+	}
+
+	for (int vertexIndex=0; vertexIndex<mesh.numVertex(); vertexIndex++)
+	{
+		auto& vi=vertices[vertexIndex];
+		auto& normal=mesh.getNormal(vertexIndex);
+		normal.zero();
+		for (int j=0; j < vi.weights.size(); j++)
+			normal+=(delta(vi.treeIndices(j))* (localNormal(vertexIndex))*vi.weights(j));
+		normal.normalize();
+	}
 }
 void SkinnedMeshFromVertexInfo::calcLocalVertexPositions(MotionLoader const& loader, OBJloader::Mesh const& mesh)
 {
