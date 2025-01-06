@@ -6,7 +6,6 @@ import torch.nn.functional as F
 from gym_gang.distributions import Bernoulli, Categorical, DiagGaussian
 from gym_gang.utils import init
 
-
 class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.size(0), -1)
@@ -24,8 +23,8 @@ class Policy(nn.Module):
                 base = MLPBase
             else:
                 raise NotImplementedError
-
-        self.base = base(obs_shape[0], **base_kwargs)
+        num_outputs_ = action_space.shape[0]
+        self.base = base(obs_shape[0],num_outputs_, **base_kwargs)
 
         if action_space.__class__.__name__ == "Discrete":
             num_outputs = action_space.n
@@ -59,6 +58,7 @@ class Policy(nn.Module):
             action = dist.mode()
         else:
             action = dist.sample()
+            action.clamp_(-1.0, 1.0)
 
         action_log_probs = dist.log_probs(action)
         dist_entropy = dist.entropy().mean()
@@ -194,9 +194,29 @@ class CNNBase(NNBase):
 
         return self.critic_linear(x), x, rnn_hxs
 
+init_s_ = lambda m: init(
+    m,
+    nn.init.orthogonal_,
+    lambda x: nn.init.constant_(x, 0),
+    nn.init.calculate_gain("sigmoid"),
+)
+init_r_ = lambda m: init(
+    m,
+    nn.init.orthogonal_,
+    lambda x: nn.init.constant_(x, 0),
+    nn.init.calculate_gain("relu"),
+)
+init_t_ = lambda m: init(
+    m,
+    nn.init.orthogonal_,
+    lambda x: nn.init.constant_(x, 0),
+    nn.init.calculate_gain("tanh"),
+)
+
+
 #this!!
 class MLPBase(NNBase):
-    def __init__(self, num_inputs, recurrent=False, hidden_size=64):
+    def __init__(self, num_inputs,action_size, recurrent=False, hidden_size=64):
         super(MLPBase, self).__init__(recurrent, num_inputs, hidden_size)
         if recurrent:
             num_inputs = hidden_size
@@ -205,14 +225,14 @@ class MLPBase(NNBase):
                                constant_(x, 0), np.sqrt(2))
 
         self.actor = nn.Sequential(
-            init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
-            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
+            init_t_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
+            init_t_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
 
         self.critic = nn.Sequential(
-            init_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
-            init_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
+            init_t_(nn.Linear(num_inputs, hidden_size)), nn.Tanh(),
+            init_t_(nn.Linear(hidden_size, hidden_size)), nn.Tanh())
 
-        self.critic_linear = init_(nn.Linear(hidden_size, 1))
+        self.critic_linear = init_t_(nn.Linear(hidden_size, 1))
 
         self.train()
 

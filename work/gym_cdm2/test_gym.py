@@ -10,11 +10,13 @@ import pdb # use pdb.set_trace() for debugging
 sys.path.append(os.getcwd())
 sys.path.append('gym_cdm2')
 
-from gym_gang.envs import VecPyTorch, make_vec_envs
+#from gym_gang.envs import VecPyTorch, make_vec_envs
+from stable_baselines3.common.env_util import make_vec_env
 from gym_gang.utils import get_render_func, get_vec_normalize
+from stable_baselines3.common.vec_env.vec_normalize import VecNormalize
 import libmainlib as m
 import luamodule as lua  # see luamodule.py
-import gym
+import gymnasium
 import gym_cdm2
 
 #_globals={} -> moved to settings.py. this way all the strange bugs related to global variables go away.
@@ -58,33 +60,34 @@ def main():
         help='whether to use a non-deterministic policy')
     parser.add_argument(
             '--device',
-            default='cuda',
+            default='cpu',
             help='cpu or cuda')
     parser.add_argument(
             '--sep',
             action='store_true',
             default=False,
             help='whether to use a windowed-mode')
+    parser.add_argument(
+            '--testMode',
+            action='store_true',
+            default=True,
+            help='whether to use a test mode')
     args = parser.parse_args()
 
     args.det = not args.non_det
-    # global 변수는 반드시 settings 모듈에 저장할 것. 그럼 아무 문제 없음.
-    gym_cdm2.luaEnv._createMainWin(args.env_name, 'gym_cdm2/spec/'+args.env_name+'.lua', 'isMainloopInLua=true', args)
+    args.device='cpu'
+    args.testMode=True
+
+    gym_cdm2.luaEnvGymnasium._createMainWin(args.env_name, 'gym_cdm2/spec/'+args.env_name+'.lua', 'isMainloopInLua=true')
     print('ctor finished')
 
     print('env start',args.env_name, args.seed)
 
     #device cpu to cuda
-    env = make_vec_envs(
-        args.env_name,
-        args.seed + 1000,
-        1,
-        None,
-        None,
-        device=args.device,
-        testMode=True,
-        allow_early_resets=False)
-
+    #env = make_vec_envs( args.env_name, args.seed + 1000, 1, None, None, device=args.device, testMode=True, allow_early_resets=False)
+    env = make_vec_env(args.env_name, n_envs=1, env_kwargs={'args':args})
+    env = VecNormalize(env, norm_obs=True, norm_reward=False)
+    #env = VecPyTorch(env, args.device)
     print('env generated')
     # save necessary variables into a global module (settings)
 
@@ -94,14 +97,15 @@ def main():
     render_func = get_render_func(env)
 
     # We need to use the same statistics for normalization as used in training
-    actor_critic, ob_rms = \
+    actor_critic, obs_rms = \
                 torch.load(os.path.join(args.load_dir, args.env_name + ".pt"))
+
 
     print('load finished', args.env_name)
     vec_norm = get_vec_normalize(env)
     if vec_norm is not None:
-        vec_norm.eval()
-        vec_norm.ob_rms = ob_rms
+        vec_norm.obs_rms = obs_rms
+        vec_norm.obs_rms_orig = obs_rms
 
     recurrent_hidden_states = torch.zeros(1, actor_critic.recurrent_hidden_state_size)
     masks = torch.zeros(1, 1)
@@ -136,7 +140,7 @@ def envStep():
     #print('before', recurrent_hidden_states, obs)
     with torch.no_grad():
         value, action, _, recurrent_hidden_states = actor_critic.act(
-            obs, recurrent_hidden_states, masks, deterministic=_args.det)
+            torch.from_numpy(obs.astype(np.float32)), recurrent_hidden_states, masks, deterministic=_args.det)
 
     #print('after', recurrent_hidden_states, action)
     # Obser reward and next obs

@@ -4,7 +4,8 @@ import os
 import torch
 import torch.nn as nn
 
-from gym_gang.envs import VecNormalize
+#from gym_gang.envs import VecNormalize
+from stable_baselines3.common.vec_env.vec_normalize import VecNormalize
 
 
 # Get a render function

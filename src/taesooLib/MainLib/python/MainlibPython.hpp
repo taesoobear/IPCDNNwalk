@@ -152,7 +152,7 @@ void startMainLoop();
 PythonExtendWin* getPythonWin();
 #ifdef NO_GUI
 // for multi-threading
-PythonExtendWin* getAdditionalPythonWin(PythonExtendWin* parent, int worker_id);
+//PythonExtendWin* getAdditionalPythonWin(PythonExtendWin* parent, int worker_id);
 #endif
 
 static void showBoundingBox(Ogre::SceneNode* node, bool bValue)
@@ -593,7 +593,7 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("startMainLoop", startMainLoop)
 		.def("getPythonWin", getPythonWin, RETURN_REFERENCE)
 #ifdef NO_GUI
-		.def("getAdditionalPythonWin", getAdditionalPythonWin, RETURN_REFERENCE)
+		//.def("getAdditionalPythonWin", getAdditionalPythonWin, RETURN_REFERENCE)
 #endif
 		.def("map", &sop::map)
 		.def("clamp", [](double i, double a, double b){ return MIN(MAX(i,a), b);})

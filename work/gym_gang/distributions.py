@@ -37,8 +37,8 @@ class FixedNormal(torch.distributions.Normal):
     def log_probs(self, actions):
         return super().log_prob(actions).sum(-1, keepdim=True)
 
-    def entrop(self):
-        return super.entropy().sum(-1)
+    def entropy(self):
+        return super().entropy().sum(-1)
 
     def mode(self):
         return self.mean
@@ -80,7 +80,25 @@ class DiagGaussian(nn.Module):
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0))
 
-        self.fc_mean = init_(nn.Linear(num_inputs, num_outputs))
+        init_s_ = lambda m: init(
+            m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0),
+            nn.init.calculate_gain("sigmoid"),
+        )
+        init_t_ = lambda m: init(
+            m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0),
+            nn.init.calculate_gain("tanh"),
+        )
+        init_r_ = lambda m: init(
+            m,
+            nn.init.orthogonal_,
+            lambda x: nn.init.constant_(x, 0),
+            nn.init.calculate_gain("relu"),
+        )
+        self.fc_mean = nn.Sequential(init_t_(nn.Linear(num_inputs,num_outputs)),nn.Tanh())
         self.logstd = AddBias(torch.zeros(num_outputs))
 
     def forward(self, x):

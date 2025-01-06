@@ -842,7 +842,7 @@ def _push(l, arg, tempvar):
     elif isinstance(arg, ArgumentProcessor):
         arg.push(l)
     elif isinstance(arg, bool):
-        l.pushBoolean(arg)
+        l.push(arg)
     elif isinstance(arg, dict):
         l.newtable()  # push a lua table
         for k, v in arg.items():

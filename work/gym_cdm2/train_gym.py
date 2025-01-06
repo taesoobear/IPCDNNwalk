@@ -4,7 +4,7 @@ import os
 import time
 from collections import deque
 import pdb
-import gym
+import gymnasium
 import numpy as np
 import torch
 import torch.nn as nn
@@ -15,10 +15,13 @@ sys.path.append(os.getcwd())
 from gym_gang import algo, utils
 from gym_gang.algo import gail
 from gym_gang.arguments import get_args
-from gym_gang.envs import make_vec_envs
+#from gym_gang.envs import make_vec_envs
+from stable_baselines3.common.env_util import make_vec_env, SubprocVecEnv
 from gym_gang.model import Policy
 from gym_gang.storage import RolloutStorage
-from gym_gang.evaluation import evaluate
+from stable_baselines3.common.vec_env.vec_normalize import VecNormalize
+from gym_gang.envs import VecPyTorch
+#from gym_gang.evaluation import evaluate
 
 import settings
 settings.useConsole=True
@@ -70,6 +73,8 @@ def main():
 
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
+    args.scriptFile='gym_cdm2/spec/'+args.env_name+'.lua'
+
 
     writer = SummaryWriter(comment="ppo"+"\nenv_name " + args.env_name + "\nbatch size "+str(args.num_steps)+"\nmini batch size "+ str(args.num_mini_batch)
            +"\nlearning rate "+ str(args.lr) +"\nclip "+ str(args.clip_param))
@@ -86,9 +91,13 @@ def main():
 
     torch.set_num_threads(1)
     device = torch.device("cuda:0" if args.cuda else "cpu")
+    args.device=device
     #device="cpu"
-    envs = make_vec_envs(args.env_name, args.seed, args.num_processes,
-                         args.gamma, args.log_dir, device,args.testMode, False)
+    #envs = make_vec_envs(args.env_name, args.seed, args.num_processes, args.gamma, args.log_dir, device,args.testMode, False)
+    envs = make_vec_env(args.env_name, seed=args.seed, n_envs=args.num_processes, vec_env_cls=SubprocVecEnv,env_kwargs={'args':args})
+    envs = VecNormalize(envs, norm_obs=True, norm_reward=False, gamma=args.gamma)
+    envs = VecPyTorch(envs, args.device)
+
     actor_critic = Policy(
         envs.observation_space.shape,
         envs.action_space,
@@ -220,7 +229,7 @@ def main():
 
             torch.save([
                 actor_critic,
-                getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
+                getattr(utils.get_vec_normalize(envs), 'obs_rms', None)
             ], os.path.join(save_path, args.env_name + ".pt"))
         #3600 = 1 minute
         if writer != None and (time.time()-start)%3600*30>time_interval:
@@ -233,7 +242,7 @@ def main():
 
             torch.save([
                 actor_critic,
-                getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
+                getattr(utils.get_vec_normalize(envs), 'obs_rms', None)
             ], os.path.join(save_path, args.env_name +str(time_interval) +".pt"))
 
         if writer !=None and current_reward>best_reward:
@@ -246,7 +255,7 @@ def main():
 
             torch.save([
                 actor_critic,
-                getattr(utils.get_vec_normalize(envs), 'ob_rms', None)
+                getattr(utils.get_vec_normalize(envs), 'obs_rms', None)
             ], os.path.join(save_path, args.env_name +"("+str(best_reward) +")"+".pt"))
             print('best case episode update', best_reward)
 
@@ -278,8 +287,8 @@ def main():
 
         if (args.eval_interval is not None and len(episode_rewards) > 1
                 and j % args.eval_interval == 0):
-            ob_rms = utils.get_vec_normalize(envs).ob_rms
-            evaluate(actor_critic, ob_rms, args.env_name, args.seed,
+            obs_rms = utils.get_vec_normalize(envs).obs_rms
+            evaluate(actor_critic, obs_rms, args.env_name, args.seed,
                      args.num_processes, eval_log_dir, device)
 
 

@@ -890,9 +890,9 @@ function step(_python_iframe_unused, action)
 	timer2:stopMsg('step2')
 	timer1:start()
 	if done_ then		
-		return step_state,1 , step_reward
+		return step_state,1 , step_reward,0
 	else
-		return step_state,0 , step_reward
+		return step_state,0 , step_reward,0
 	end
 end
 
