@@ -1,0 +1,49 @@
+//================================================================================
+//         SPHERICAL JOINT FOR MULTIBODY SYSTEM
+// 
+//                                                               junggon@gmail.com
+//================================================================================
+
+#ifndef _GMBS_GEOMETRIC_JOINT_SPHERICAL_
+#define _GMBS_GEOMETRIC_JOINT_SPHERICAL_
+
+#include "gjoint.h"
+#include "gcoordinate.h"
+#include "liegroup.h"
+#include "rmatrix3j.h"
+
+
+enum CoordinateChartForSphericalJoint { EULER_ZYX = 0, EULER_ZYZ = 1 };
+
+//=============================================================
+//                 GJointSpherical
+//=============================================================
+class GJointSpherical: public GJoint
+{
+public:
+	GCoordinate coordinates[3];		// built-in coordinates
+
+	int coord_chart;				// type of coordinate chart (EULER_ZYX, EULER_ZYZ)
+	bool b_fixed_coord_chart;		// set true to fix current coordinate chart, default = false.
+
+public:
+	GJointSpherical();
+	~GJointSpherical() {}
+
+public:
+	bool isConstantScrew() { return false; }
+
+	void update_short();
+	void update();
+
+	void _validateCoordinateChart();			// changes coordinate chart if needed 
+	void _update_short_for_reversed_joint();	// modify T, inv_T, S for reversed joint
+	void _update_for_reversed_joint();			// modify T, inv_T, S, dS, Sdq, dSdq, Sddq, DSdqDt for reversed joint
+
+	RMatrix get_DSDq(GCoordinate *pCoordinate_);
+	RMatrix get_DdSDq(GCoordinate *pCoordinate_);
+};
+
+
+#endif
+

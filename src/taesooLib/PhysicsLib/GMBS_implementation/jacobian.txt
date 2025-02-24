@@ -1,0 +1,8 @@
+
+RJ dtheta= dx
+
+R dJ/dT dtheta + R J ddtheta=ddx
+
+or
+
+R (dJ/dT dtheta + R J ddtheta) + dR (J dtheta)=ddx
