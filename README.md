@@ -10,7 +10,9 @@ How to build (Linux)
 
   1. First, install necessary dependencies. This probably installs more than actually necessary:
 ```
-  sudo apt-get install python-gtk2 libeigen3-dev libsuitesparse-dev libfontconfig-dev libfltk1.1-dev libdevil-dev libfreeimage-dev liblua5.1-dev  lua5.1 cmake g++ libxml2-dev libncurses5-dev libois-dev libboost-all-dev libf2c2-dev libogre-1.9-dev
+	sudo apt install libfltk1.3-dev libreadline-dev  wxpython-tools
+	cd lua-5.1.5; make install_linux 
+	cd ogre-next; make linuxbuild
 ```
   
   2. Install the system-provided ogre library to /usr/lib/OGRE:
