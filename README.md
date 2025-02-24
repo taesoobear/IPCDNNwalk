@@ -65,10 +65,11 @@ make macbuild
 How to run FlexLoco 2020
 = 
 ```
-  pip3 install torch python3-tk gym
+  pip3 install torch python3-tk gymnasium
   cd work; python3 test_walk2.py gym_walkCDM/testWalkV2_FA.lua
 ```
-   Choose the opengl renderer if asked to choose one.
+   Choose the opengl or metal renderer if asked to choose one.
+  Also, on Linux, choose 1920x1080 resolution.
    Now, click the play button, and adjust the slider bars for speed/orientation. Also, you can change the motion type by clicking the button.
 
 How to run AdaptiveSRB 2023
