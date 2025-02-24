@@ -524,6 +524,51 @@ material solidwhitepoint
       }
    }
 }
+material Point5
+{
+   technique
+   {
+      pass
+      {
+         point_sprites on
+         point_size 5
+			diffuse vertexcolour
+			ambient vertexcolour
+			 specular vertexcolour
+			 lighting off
+      }
+   }
+}
+material Point10
+{
+   technique
+   {
+      pass
+      {
+         point_sprites on
+         point_size 10
+			diffuse vertexcolour
+			ambient vertexcolour
+			 specular vertexcolour
+			 lighting off
+      }
+   }
+}
+material Point20
+{
+   technique
+   {
+      pass
+      {
+         point_sprites on
+         point_size 20
+			diffuse vertexcolour
+			ambient vertexcolour
+			 specular vertexcolour
+			 lighting off
+      }
+   }
+}
 material solidwhite
 {
 	receive_shadows off
@@ -571,6 +616,23 @@ material solidblue
 		        texture_unit 
             		{
 				colour_op_ex source1 src_manual src_current 0 0 1
+		        }
+		}
+	}
+}
+material greyblue 
+{
+	receive_shadows off
+	technique
+	{
+		pass
+		{
+			lighting off		
+			// Texture unit 0
+		        texture_unit 
+            		{
+				//colour_op_ex source1 src_manual src_current 0.41 0.46 0.53
+				colour_op_ex source1 src_manual src_current 0.21 0.36 0.43
 		        }
 		}
 	}
@@ -633,6 +695,25 @@ material solidred
 	{
 		pass
 		{	
+			lighting off		
+			// Texture unit 0
+		        texture_unit 
+            		{
+				colour_op_ex source1 src_manual src_current 1 0 0
+		        }
+
+		}
+	}
+}
+material solidred_noztest
+{
+	cast_shadow off
+	technique
+	{
+		pass
+		{	
+			depth_check off 
+			depth_write off
 			lighting off		
 			// Texture unit 0
 		        texture_unit 
@@ -729,6 +810,40 @@ material redToOrange
             texture_unit
             {
                 texture redToOrange.png
+		tex_address_mode clamp
+            }
+        }
+    }
+}
+material colormap
+{
+    technique
+    {
+        pass
+        {
+	   
+	    lighting off
+            //scene_blend alpha_blend
+            texture_unit
+            {
+                texture colormap.jpg
+		tex_address_mode clamp
+            }
+        }
+    }
+}
+material colormap_shaded
+{
+    technique
+    {
+        pass
+        {
+	   
+			shading gouraud
+            //scene_blend alpha_blend
+            texture_unit
+            {
+                texture colormap.jpg
 		tex_address_mode clamp
             }
         }
