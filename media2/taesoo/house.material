@@ -1,0 +1,1932 @@
+}
+hlms  city/VMtl01 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl02 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl03 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl04 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl05 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl06 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl07 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl08 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl09 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl10 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl11 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl12 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl13 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl14 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl15 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl16 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl17 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl18 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl19 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl20 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.BMP
+}
+hlms  city/VMtl21 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.BMP
+}
+hlms  city/VMtl22 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.BMP
+}
+hlms  city/VMtl23 pbs 
+{
+			diffuse 0.6 0.6 0.894118
+	specular 0 0 0
+}
+hlms  city/VMtl24 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl25 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.BMP
+}
+hlms  city/VMtl26 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl27 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.BMP
+}
+hlms  city/VMtl28 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.BMP
+}
+hlms  city/VMtl29 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.BMP
+}
+hlms  city/VMtl30 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl31 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl32 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl33 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl34 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl35 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl36 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl37 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl38 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl39 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl40 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl41 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl42 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl43 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl44 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl45 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl46 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl47 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl48 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl49 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl50 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl51 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl52 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl53 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl54 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl55 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl56 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl57 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl58 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl59 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl60 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl61 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl62 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl63 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl64 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl65 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl66 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl67 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl68 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl69 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl70 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl71 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  city/VMtl72 pbs 
+{
+			diffuse 0.498039 0.498039 0.498039
+	specular 0 0 0
+	diffuse_map CITY.JPG
+}
+hlms  h11/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h11/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h11/VMtl03 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h11/VMtl04 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h11/VMtl05 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h11/VMtl06 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h12/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h12/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h12/VMtl03 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h12/VMtl04 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h12/VMtl05 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h12/VMtl06 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h12/VMtl07 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h12/VMtl08 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h12/VMtl09 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h12/VMtl10 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h13/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h13/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h13/VMtl03 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h13/VMtl04 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h14/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h15/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h15/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h15/VMtl03 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h15/VMtl04 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h15/VMtl05 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h15/VMtl06 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h15/VMtl07 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h15/VMtl08 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h16/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h16/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h17/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h21/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h21/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h21/VMtl03 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h21/VMtl04 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h21/VMtl05 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h21/VMtl06 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h21/VMtl07 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h21/VMtl08 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h22/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h22/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h22/VMtl03 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h22/VMtl04 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h22/VMtl05 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h22/VMtl06 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h22/VMtl07 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h22/VMtl08 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h23/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h23/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h23/VMtl03 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h24/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h24/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h25/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h25/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h25/VMtl03 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h26/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h26/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h26/VMtl03 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h26/VMtl04 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h26/VMtl05 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h26/VMtl06 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h26/VMtl07 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h27/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h27/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h27/VMtl03 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h27/VMtl04 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h27/VMtl05 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h27/VMtl06 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h27/VMtl07 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h27/VMtl08 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h27/VMtl09 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h27/VMtl10 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h27/VMtl11 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h27/VMtl12 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h31/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h31/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h31/VMtl03 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h31/VMtl04 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h31/VMtl05 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h31/VMtl06 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h31/VMtl07 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h32/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h32/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h32/VMtl03 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h33/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map xwall.DDS
+}
+hlms  h34/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house1.DDS
+}
+hlms  h35/VMtl01 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h35/VMtl02 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h35/VMtl03 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h35/VMtl04 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h35/VMtl05 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h35/VMtl06 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h35/VMtl07 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h36/VMtl01 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h37/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h41/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h41/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h41/VMtl03 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h41/VMtl04 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h41/VMtl05 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h41/VMtl06 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h41/VMtl07 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h42/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h42/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h42/VMtl03 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h42/VMtl04 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h42/VMtl05 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h42/VMtl06 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h42/VMtl07 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h42/VMtl08 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h42/VMtl09 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h42/VMtl10 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h42/VMtl11 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h42/VMtl12 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h43/VMtl01 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h43/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h43/VMtl03 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h43/VMtl04 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h43/VMtl05 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h43/VMtl06 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h44/VMtl01 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h44/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h45/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h45/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h45/VMtl03 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h45/VMtl04 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h45/VMtl05 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h45/VMtl06 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h45/VMtl07 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h45/VMtl08 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h45/VMtl09 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h45/VMtl10 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h45/VMtl11 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h45/VMtl12 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h46/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h47/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h47/VMtl02 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h47/VMtl03 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h47/VMtl04 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h47/VMtl05 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h47/VMtl06 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h47/VMtl07 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h47/VMtl08 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h47/VMtl09 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h47/VMtl10 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h47/VMtl11 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h47/VMtl12 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h47/VMtl13 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h47/VMtl14 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h47/VMtl15 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h47/VMtl16 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h47/VMtl17 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h51/VMtl01 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h51/VMtl02 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h51/VMtl03 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h51/VMtl04 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h51/VMtl05 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h52/VMtl01 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h52/VMtl02 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h52/VMtl03 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h53/VMtl01 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h53/VMtl02 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h53/VMtl03 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h54/VMtl01 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h54/VMtl02 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h54/VMtl03 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h54/VMtl04 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h55/VMtl01 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h55/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h56/VMtl01 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h56/VMtl02 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house3.DDS
+}
+hlms  h56/VMtl03 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h56/VMtl04 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h56/VMtl05 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h56/VMtl06 pbs 
+{
+			diffuse 0.980392 0.968628 0.968628
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h57/VMtl01 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house3.DDS
+}
+hlms  h61/VMtl01 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house3.DDS
+}
+hlms  h61/VMtl02 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house3.DDS
+}
+hlms  h62/VMtl01 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house3.DDS
+}
+hlms  h63/VMtl01 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house3.DDS
+}
+hlms  h64/VMtl01 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house3.DDS
+}
+hlms  h64/VMtl02 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map house3.DDS
+}
+hlms  h65/VMtl01 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h65/VMtl02 pbs 
+{
+			diffuse 0.992157 0.984314 0.984314
+	specular 0 0 0
+	diffuse_map house2.DDS
+}
+hlms  h66/VMtl01 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map road1.DDS
+}
+hlms  h67/VMtl01 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map road2.DDS
+}
+hlms  h_skybox/VMtl01 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_bk2.DDS
+}
+hlms  h_skybox/VMtl02 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_fr2.DDS
+}
+hlms  h_skybox/VMtl03 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_fr4.DDS
+}
+hlms  h_skybox/VMtl04 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_fr1.DDS
+}
+hlms  h_skybox/VMtl05 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_fr3.DDS
+}
+hlms  h_skybox/VMtl06 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_rt2.DDS
+}
+hlms  h_skybox/VMtl07 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_rt4.DDS
+}
+hlms  h_skybox/VMtl08 pbs 
+{
+			diffuse 0.984314 0.984314 0.992157
+	specular 0 0 0
+	diffuse_map h_rt1.DDS
+}
+hlms  h_skybox/VMtl09 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_rt3.DDS
+}
+hlms  h_skybox/VMtl10 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_lf2.DDS
+}
+hlms  h_skybox/VMtl11 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_lf4.DDS
+}
+hlms  h_skybox/VMtl12 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_lf1.DDS
+}
+hlms  h_skybox/VMtl13 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_lf3.DDS
+}
+hlms  h_skybox/VMtl14 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_bk4.DDS
+}
+hlms  h_skybox/VMtl15 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_bk1.DDS
+}
+hlms  h_skybox/VMtl16 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_bk3.DDS
+}
+hlms  h_skybox/VMtl17 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_up1.DDS
+}
+hlms  h_skybox/VMtl18 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_up3.DDS
+}
+hlms  h_skybox/VMtl19 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_up2.DDS
+}
+hlms  h_skybox/VMtl20 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_up4.DDS
+}
+hlms  h_skybox/VMtl21 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_dn1.DDS
+}
+hlms  h_skybox/VMtl22 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_dn3.DDS
+}
+hlms  h_skybox/VMtl23 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_dn2.DDS
+}
+hlms  h_skybox/VMtl24 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map h_dn4.DDS
+}
+hlms  mountin/VMtl01 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map sheet2.DDS
+}
+hlms  mountin/VMtl02 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map sheet3.DDS
+}
+hlms  mountin/VMtl03 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map sheet1.DDS
+}
+hlms  mountin/VMtl04 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map sheet4.DDS
+}
+hlms  mountin/VMtl05 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass1.DDS
+}
+hlms  mountin/VMtl06 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass2.DDS
+}
+hlms  mountin/VMtl07 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass5.DDS
+}
+hlms  mountin/VMtl08 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass3.DDS
+}
+hlms  mountin/VMtl09 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass7.DDS
+}
+hlms  mountin/VMtl10 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass8.DDS
+}
+hlms  mountin/VMtl11 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass4.DDS
+}
+hlms  mountin/VMtl12 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass6.DDS
+}
+hlms  mountin/VMtl13 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass3.DDS
+}
+hlms  mountin/VMtl14 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass5.DDS
+}
+hlms  mountin/VMtl15 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass8.DDS
+}
+hlms  mountin/VMtl16 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass6.DDS
+}
+hlms  mountin/VMtl17 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass7.DDS
+}
+hlms  mountin/VMtl18 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass1.DDS
+}
+hlms  mountin/VMtl19 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass4.DDS
+}
+hlms  mountin/VMtl20 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass2.DDS
+}
+hlms  mountin/VMtl21 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass3.DDS
+}
+hlms  mountin/VMtl22 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass1.DDS
+}
+hlms  mountin/VMtl23 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass2.DDS
+}
+hlms  mountin/VMtl24 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass5.DDS
+}
+hlms  mountin/VMtl25 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass7.DDS
+}
+hlms  mountin/VMtl26 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass8.DDS
+}
+hlms  mountin/VMtl27 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass4.DDS
+}
+hlms  mountin/VMtl28 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass6.DDS
+}
+hlms  mountin/VMtl29 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map pan.DDS
+}
+hlms  mountin/VMtl30 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map shedow.DDS
+}
+hlms  mountin/VMtl31 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass13.DDS
+}
+hlms  mountin/VMtl32 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass11.DDS
+}
+hlms  mountin/VMtl33 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass10.DDS
+}
+hlms  mountin/VMtl34 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass9.DDS
+}
+hlms  mountin/VMtl35 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass12.DDS
+}
+hlms  mountin/VMtl36 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass14.DDS
+}
+hlms  mountin/VMtl37 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass15.DDS
+}
+hlms  mountin/VMtl38 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map grass16.DDS
+}
+hlms  mountin/VMtl39 pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map fog.DDS
+}

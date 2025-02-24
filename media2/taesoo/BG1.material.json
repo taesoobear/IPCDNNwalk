@@ -1,0 +1,140 @@
+{
+	"samplers" :
+	{
+		"Samplerblock_Wrap1" :
+		{
+			"min" : "anisotropic",
+			"mag" : "anisotropic",
+			"mip" : "anisotropic",
+			"u" : "wrap",
+			"v" : "wrap",
+			"w" : "wrap",
+			"miplodbias" : 0,
+			"max_anisotropic" : 1,
+			"compare_function" : "disabled",
+			"border" :[1, 1, 1, 1],
+			"min_lod" : -3.40282e+038,
+			"max_lod" : 3.40282e+038
+		}
+	},
+
+	"macroblocks" :
+	{
+		"Macroblock_1" :
+		{
+			"scissor_test" : false,
+			"depth_check" : true,
+			"depth_write" : true,
+			"depth_function" : "less_equal",
+			"depth_bias_constant" : 0,
+			"depth_bias_slope_scale" : 0,
+			"cull_mode" : "clockwise",
+			"polygon_mode" : "solid"
+		}
+	},
+
+	"blendblocks" :
+	{
+		"Blendblock_1" :
+		{
+			"alpha_to_coverage" : false,
+			"blendmask" : "rgba",
+			"separate_blend" : false,
+			"src_blend_factor" : "one",
+			"dst_blend_factor" : "zero",
+			"blend_operation" : "add"
+		}
+	},
+
+	"pbs" : 
+	{
+		"Ground_Sand" :
+		{
+			"macroblock" : "Macroblock_1",
+			"blendblock" : "Blendblock_1",
+			"shadow_const_bias" : 0.01,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [0.745, 0.745, 0.576],
+				"texture" : "SAND3.JPG",
+				"sampler" : "Samplerblock_Wrap1"
+			},
+			"specular" :
+			{
+				"value" : [0.9, 0.9, 0.9],
+				"_unused_texture" : "Rocks_Spec.tga",
+				"sampler" : "Samplerblock_Wrap1"
+			},
+			"fresnel" :
+			{
+				"value" : 0.1,
+				"mode" : "coeff",
+				"sampler" : "Samplerblock_Wrap1"
+			},
+			"normal" :
+			{
+				"value" : 0.1,
+				"texture" : "Rocks_Normal.tga",
+				"sampler" : "Samplerblock_Wrap1"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "metal_bumpy_squares_roughness.png",
+				"sampler" : "Samplerblock_Wrap1"
+			},
+			"reflection" :
+			{
+				"texture" : "SaintPetersBasilica.dds",
+				"sampler" : "Samplerblock_Wrap1"
+			}
+		
+		},
+		"Stones_Benedeti" :
+		{
+			"macroblock" : "Macroblock_1",
+			"blendblock" : "Blendblock_1",
+			"shadow_const_bias" : 0.01,
+			"workflow" : "specular_ogre",
+			"diffuse" :
+			{
+				"value" : [0.745, 0.745, 0.576],
+				"texture" : "BENEDETI.JPG",
+				"sampler" : "Samplerblock_Wrap1"
+			},
+			"specular" :
+			{
+				"value" : [0.9, 0.9, 0.9],
+				"_unused_texture" : "Rocks_Spec.tga",
+				"sampler" : "Samplerblock_Wrap1"
+			},
+			"_unused_fresnel" :
+			{
+				"value" : 0.1,
+				"mode" : "coeff",
+				"sampler" : "Samplerblock_Wrap1"
+			},
+			"normal" :
+			{
+				"value" : 1,
+				"_unused_texture" : "Rocks_Normal.tga",
+				"texture" : "BENEDETI.JPG",
+				"sampler" : "Samplerblock_Wrap1"
+			},
+			"roughness" :
+			{
+				"value" : 1,
+				"texture" : "metal_bumpy_squares_roughness.png",
+				"sampler" : "Samplerblock_Wrap1"
+			},
+			"reflection" :
+			{
+				"texture" : "SaintPetersBasilica.dds",
+				"sampler" : "Samplerblock_Wrap1"
+			}
+		
+		}
+	}
+}
+

@@ -1,0 +1,157 @@
+
+hlms body____Standard__ pbs
+{
+	
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 
+
+			diffuse_map body2.jpg
+}
+hlms rr_01____Standard__ pbs
+{
+			diffuse 1 1 1
+			specular 0 0 0
+
+			diffuse_map rr_01.jpg
+}
+hlms leg____Standard__ pbs
+{
+	
+			//shading gouraud
+
+			diffuse 1 1 1
+			specular 0 0 0
+
+			diffuse_map leg.jpg
+}
+hlms rr_arms____Standard__ pbs
+{
+            diffuse 1.0 1.0 1.0
+			specular 0.2 0.2 0.2
+			diffuse_map arms.jpg
+}
+
+hlms rr_arms2 pbs
+{
+            diffuse 1.0 1.0 1.0
+			specular 0 0 0
+			diffuse_map arms2.jpg
+}
+// muaythai1
+hlms Material_#1039/rr_arms pbs
+{
+    
+            diffuse 1.0 0.9 0.7 
+			specular 0.1 0.1 0.1
+			roughness 0.7
+            diffuse_map arms.jpg 
+}
+hlms Material_#1039/19_-_Default pbs
+{
+            diffuse 1.0 0.9 0.7 
+			specular 0.1 0.1 0.1
+			roughness 0.7
+            diffuse_map rr_01.jpg 
+}
+hlms Material_#1039/22_-_Default pbs
+{
+    
+            diffuse 2 1.8 1.5
+			specular 0 0 0
+			//specular 0.1 0.1 0.1
+			//roughness 0.7
+            diffuse_map leg.jpg 
+}
+hlms Material_#1039/Material_#1021 pbs
+{
+    
+            diffuse 1.0 1.0 1.0
+            specular 0.3 0.3 0.3 
+			roughness 0.7
+            diffuse_map body2.jpg 
+}
+
+
+
+hlms Material_#1039/03_-_Default pbs
+{
+    
+            diffuse  1 1 1
+            specular 0.5 0.5 0.5
+			roughness 0.1
+            diffuse_map globe.jpg 
+}
+
+hlms Material_#1038/rr_arms pbs
+{
+    
+            diffuse 1.0 1.0 1.0
+			specular 0.1 0.1 0.1
+			roughness 0.7
+            diffuse_map arms2.jpg 
+}
+hlms body2 pbs
+{
+	
+//shading gouraud
+
+			diffuse 0.40000 0.40000 0.40000 
+
+			diffuse_map body3.jpg
+}
+hlms rr_02 pbs
+{
+	
+			//shading gouraud
+
+			ambient 0.70000 0.70000 0.70000
+			diffuse 0.40000 0.40000 0.40000 
+
+			diffuse_map rr_02.jpg
+}
+hlms leg2 pbs
+{
+	
+			//shading gouraud
+
+			diffuse 1 1 1
+			specular 0 0 0
+
+			diffuse_map leg2.jpg
+}
+
+hlms Material_#1038/Material_#1021 pbs
+{
+    
+            ambient 0.7 0.7 0.7
+            diffuse 0.4 0.4 0.4
+            diffuse_map body3.jpg 
+}
+
+
+hlms Material_#1038/22_-_Default pbs
+{
+    
+            diffuse 1 1 1
+			specular 0 0 0
+            diffuse_map leg2.jpg 
+}
+
+hlms Material_#1038/19_-_Default pbs
+{
+    
+            ambient 0.7 0.7 0.7
+            diffuse 0.4 0.4 0.4
+            diffuse_map rr_02.jpg 
+}
+
+hlms Material_#1038/03_-_Default pbs
+{
+    
+            diffuse  1 1 1
+            specular 0.5 0.5 0.5
+			roughness 0.1
+            diffuse_map globe.jpg 
+}
+

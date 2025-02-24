@@ -1,0 +1,235 @@
+hlms  Boy01_diffuse.jpg pbs 
+{
+			diffuse 0.8 0.8 0.8
+			specular 0.5 0.5 0.5 
+	diffuse_map Aj_Boy01_diffuse.jpg
+}
+hlms  Boy01_FacialAnimMap.png pbs 
+{
+			diffuse 0.8 0.8 0.8
+	depth_write false
+	scene_blend alpha_blend
+	specular 0 0 0
+	diffuse_map Aj_Boy01_FacialAnimMap.png
+}
+hlms  Elvis_FaceAnimMap.png pbs 
+{
+			diffuse 0.8 0.8 0.8
+	depth_write false
+	scene_blend alpha_blend
+	specular 0 0 0
+	diffuse_map BigVegas_Elvis_FaceAnimMap.png
+}
+hlms  FatElvis_diffuse.jpg pbs 
+{
+			diffuse 0.8 0.8 0.8
+	specular 0 0 0
+	diffuse_map BigVegas_FatElvis_diffuse.jpg
+}
+hlms  Ch43_1001_Diffuse.png pbs 
+{
+			diffuse 1.0 1.0 1.0
+			specular 1 1 1 
+	roughness 0.5
+	diffuse_map Ch43_nonPBR_Ch43_1001_Diffuse.png
+	specular_map Ch43_nonPBR_Ch43_1001_Specular.png
+}
+hlms  Eared_Crank_Diffuse.tga pbs 
+{
+			diffuse 0.588235 0.588235 0.588235
+			specular 0 0 0 
+	diffuse_map Eared_Crank_Diffuse.png
+}
+hlms  Ch14_1001_Diffuse.png pbs 
+{
+			diffuse 0.8 0.8 0.8
+			specular 0.5 0.5 0.5 
+	diffuse_map Mousey_Ch14_1001_Diffuse.png
+}
+hlms  Body_robot_low_BaseColor.tga pbs 
+{
+			diffuse 1 1 1
+	specular 0.5 0.5 0.5
+	//Valid values are in range (0; inf]; but the range (0; 1] is physically correct.
+	roughness 0.3
+	diffuse_map Body_robot_low_BaseColor.png
+}
+hlms  xbotdummyMat0 pbs 
+{
+			diffuse 0.6696 0.241846 0.210924
+			specular 0.487175 0.487175 0.487175 
+}
+hlms  xbotdummyMat1 pbs 
+{
+			diffuse 0.266667 0.0996231 0.0808118
+			specular 0.299138 0.299138 0.299138 
+}
+hlms  LPBP_Atlas.png pbs 
+{
+			diffuse 0.588235 0.588235 0.588235
+			specular 0 0 0 
+	diffuse_map LPBP_Atlas.png
+}
+hlms  luke_dummyMat0 pbs 
+{
+			diffuse 0 0.141176 0.141176
+	depth_write false
+	scene_blend alpha_blend
+			specular 0 0 0 
+}
+hlms  color_scheme.jpg pbs 
+{
+			diffuse 0.780392 0.662745 0.513726
+			specular 0 0 0 
+	diffuse_map color_scheme.jpg
+}
+hlms  luke_dummyMat1 pbs 
+{
+			diffuse 0.313726 0.258824 0.196078
+			specular 0 0 0 
+}
+hlms  luke_dummyMat2 pbs 
+{
+			diffuse 0 0 0
+			specular 0 0 0 
+}
+hlms  luke_dummyMat3 pbs 
+{
+			diffuse 0.447059 0.247059 0.211765
+			specular 0 0 0 
+}
+hlms  luke_dummyMat4 pbs 
+{
+			diffuse 0.231373 0.498039 0.639216
+			specular 0 0 0 
+}
+hlms  luke_dummyMat5 pbs 
+{
+			diffuse 0.882353 0.882353 0.882353
+			specular 0 0 0 
+}
+hlms  luke_dummyMat6 pbs 
+{
+			diffuse 0.27451 0.231373 0.168627
+			specular 0 0 0 
+}
+hlms  luke_dummyMat7 pbs 
+{
+			diffuse 0 0.141176 0.141176
+	depth_write false
+	scene_blend alpha_blend
+			specular 0 0 0 
+}
+hlms  luke_dummyMat8 pbs 
+{
+			diffuse 0 0 0
+			specular 0 0 0 
+}
+hlms  MocapSuit02_diffuse.png pbs 
+{
+	diffuse 1 1 1
+	specular 0 0 0
+	diffuse_map passive_marker_man_MocapSuit02_diffuse.png
+}
+hlms  pmm_dummyMat0 pbs 
+{
+			diffuse 0.8 0.8 0.8
+			specular 0.636362 0.636362 0.636362 
+}
+hlms  pmm_dummyMat1 pbs 
+{
+			diffuse 0.8 0.8 0.8
+			specular 0.636362 0.636362 0.636362 
+}
+hlms  puppydummyMat0 pbs 
+{
+			diffuse 0.8 0.8 0.8
+	specular 0 0 0
+	diffuse_map T_Puppy_Beagle_BC.png
+}
+hlms  puppydummyMat1 pbs 
+{
+			diffuse 0.1 0.1 0.1
+}
+hlms  puppydummyMat2 pbs 
+{
+			diffuse 0.8 0.8 0.8
+	specular 0 0 0
+	diffuse_map T_Puppy_Beagle_BC.png
+}
+hlms  puppydummyMat3 pbs 
+{
+			diffuse 0.8 0.8 0.8
+	specular 0 0 0
+	diffuse_map T_Puppy_Beagle_BC.png
+}
+hlms  rabbit-skinn.png pbs 
+{
+			diffuse 0.8 0.8 0.8
+			specular 0 0 0  
+	diffuse_map rabbit-skinn.png
+}
+hlms  robot_blue_man_low_Blue_Robot_man_BaseColor.png pbs 
+{
+			diffuse 0.8 0.8 0.8
+			specular 0.2 0.2 0.2 
+	diffuse_map "man_BaseColor.png"
+}
+hlms  eye_D.tga pbs 
+{
+			diffuse 0.588235 0.588235 0.588235
+			specular 0 0 0 
+	diffuse_map eye_D.png
+}
+hlms  Hair_D.tga pbs 
+{
+			diffuse 0.588235 0.588235 0.588235
+			specular 0 0 0 
+	depth_write false
+	scene_blend alpha_blend
+	diffuse_map Hair_D.png
+}
+hlms  Civilian3_D_Color.tga pbs 
+{
+			diffuse 0.588235 0.588235 0.588235
+			specular 0 0 0  
+	depth_write false
+	scene_blend alpha_blend
+	diffuse_map Civilian3_D_Color.png
+}
+hlms  Head_D.tga pbs 
+{
+			diffuse 0.588235 0.588235 0.588235
+			specular 0 0 0  
+	diffuse_map Head_D.png
+}
+hlms  dummyMat0 pbs 
+{
+			diffuse 0 0 0
+			specular 0 0 0 
+}
+hlms  dummyMat1 pbs 
+{
+			diffuse 1 1 1
+			specular 0 0 0 
+	depth_write false
+	scene_blend alpha_blend
+}
+hlms  dummyMat2 pbs 
+{
+			diffuse 1 1 1
+			specular 0 0 0 
+	depth_write false
+	scene_blend alpha_blend
+}
+hlms  dummyMat3 pbs 
+{
+			diffuse 1 1 1
+			specular 0 0 0 
+}
+hlms  Hand_D.tga pbs 
+{
+			diffuse 0.588235 0.588235 0.588235
+			specular 0 0 0 
+	diffuse_map Hand_D.jpg
+}
