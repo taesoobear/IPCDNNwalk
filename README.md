@@ -11,51 +11,54 @@ How to build (Linux)
   1. First, install necessary dependencies. This probably installs more than actually necessary:
 ```
 	sudo apt install libfltk1.3-dev libreadline-dev  wxpython-tools
-	cd lua-5.1.5; make install_linux 
-	cd ogre-next; make linuxbuild
+	cd dependenceies/lua5.1; make install_linux 
+  mkdir ogre-next-source;  cd ogre-next-source; git clone https://github.com/OGRECave/ogre-next.git; cd ogre-next; git checkout -b v2-3 remotes/origin/v2-3
+	cd dependenceies/ogre-next; cp -rf ../ogre-next-source/ogre-next/* . 
 ```
-  
-  2. Install the system-provided ogre library to /usr/lib/OGRE:
+  Then you need to apply the patch file in the dependencies/ogre-next as follows (untested). 
 ```
-  sudo ln -s /usr/lib/x86_64-linux-gnu/OGRE-1.9.0 /usr/lib/OGRE 
+    cd dependences/ogre-next;patch -p0 < ogre-v2.3.patch
 ```
+   2. Now you can build ogre-next:
+```
+   cd dependencies/ogre-next
+make linuxbuild
+```
+  3.  Also install python3 and pip3 (versions do not matter.)
 
-  3. Install more dependencies (after reading src/Makefile carefully):
+  4. Now, build this project.
 ```
-  cd src; make install_dependencies
-```
-
-  4. Now, build it.
-```
+	pip3 install stable-baselines3 torch numpy gymnasium
   cd src; make
 ```
-
-  This should work on ubuntu 18 and 20.
-  If this does not work, please remove the system-provided libogre-1.9-dev, and install ogre3D-1.12 from source (see below), and retry the above steps (2-).
-	(There are a few linux distros that provide libogre-1.9-dev which is broken.)
+  This should work on any versions of ubuntu.
 
 How to build (Mac)
 =
   1. First, install necessary dependencies:
 ```
-  brew install fltk eigen gsl cmake lua@5.1
+  brew install fltk eigen gsl cmake 
   pip3 install wxPython
-  (intel mac)
-  cd /usr/local/bin; ln -s lua5.1 lua
-  (m1 mac)
-	ln -s /opt/homebrew/bin/lua5.1 /opt/homebrew/bin/lua
+	cd dependenceies/lua5.1; make install_macosx 
+  mkdir ogre-next-source;  cd ogre-next-source; git clone https://github.com/OGRECave/ogre-next.git; cd ogre-next; git checkout -b v2-3 remotes/origin/v2-3
+	cd dependenceies/ogre-next; cp -rf ../ogre-next-source/ogre-next/* . 
 ```
 
-  2. Then, build Ogre 13.4 or Ogre 1.12 from sources (see below).
+  Then you need to apply the patch file in the dependencies/ogre-next as follows (untested). 
+```
+	cd dependences/ogre-next/ogre-next-deps/src/freetype/src;git checkout -f gzip/zconf.h;patch -p1 gzip/zconf.h < ../../../../zconf.patch
+    cd dependences/ogre-next;patch -p0 < ogre-v2.3.patch
+```
+   2. Now you can build ogre-next:
+```
+   cd dependencies/ogre-next
+make macbuild
+```
+3.   Also install python3 and pip3 (versions do not matter.)
 
-  3. Install more dependencies (after reading src/Makefile carefully):
+  4. Now, build this project.
 ```
-  cd src; make install_dependencies_mac
-```
-
-  4. Now, build it.
-```
-  cd src; make mac
+  cd src; make 
 ```
   FYI, most linker and compiler settings are in src/taesoolib/Samples/Common_baselib.cmake and Common_mainlib.cmake files.
 
@@ -74,45 +77,4 @@ How to run AdaptiveSRB 2023
   cd work; make walk 
 ```
 
-
-How to build ogre 3D from source codes (Linux) 
-=
-This is usually unnecessary because the ogre3d in the APT works well.
-```
-  sudo apt-get install libgles2-mesa-dev libxt-dev libxaw7-dev nvidia-cg-toolkit libsdl2-dev doxygen
-  mkdir -p build;cd build; cmake ..
-  cd build;make
-  cd build; sudo make install
-```
-
-How to build ogre 3D-13.4.3 from source codes (Mac)
-=
-```
-  brew install cmake sdl2 doxygen freeimage pkgconfig libzzip
-  mkdir -p build;cd build; cmake -G Xcode .. 
-  cd build; xed .
-```
-
-
- 1. Build "build-all" in the xcode after manually selecting the release build target. 
- 2. Build "install" in the xcode again after manually selecting the release build target. 
- 3. Install ois and ogre manually as below (https://github.com/wgois/OIS)
-
-```
-  git clone https://github.com/wgois/OIS.git
-  cd OIS;cmake -H. -B./build; cd ./build; make; sudo make install
-  sudo mkdir -p /usr/local/include/OGRE
-  sudo mkdir -p /usr/local/include/OGRE/Overlay
-  sudo mkdir -p /usr/local/include/OGRE/Bites
-  sudo cp -rf OgreMain/include/* /usr/local/include/OGRE
-  sudo cp -rf Components/Overlay/include/*  /usr/local/include/OGRE/Overlay
-  sudo cp -rf Components/Bites/include/*  /usr/local/include/OGRE/Bites
-  sudo cp -rf RenderSystems/GLSupport/include/OSX/OgreOSXCocoa*.h  /usr/local/include/OGRE
-  sudo cp -rf RenderSystems/GLSupport/include/*.h  /usr/local/include/OGRE
-  sudo cp -rf build/include/* /usr/local/include/OGRE
-  sudo cp -rf build/include/OgreBites* /usr/local/include/OGRE/Bites
-  mkdir -p  /Applications/OgreSDK/lib/macosx/Release
-  cp -Rp build/lib/macosx/Release/* /Applications/OgreSDK/lib/macosx/Release
-  sudo cp -Rp build/lib/macosx/Release/*.framework /Library/Frameworks/
-```
 
