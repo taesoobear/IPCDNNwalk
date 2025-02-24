@@ -52,6 +52,7 @@ public:
 	void lookAtRH(const vector3& eye, const vector3& at, const vector3& up);
 	void setProjection(m_real fovx, m_real fovy, m_real Z_near, m_real Z_far); 
 	void setScaling(m_real sx, m_real sy, m_real sz);
+	void setScaling(const vector3 & v, bool bPreserveTranslation=false);
 	
 	void setTransform(const quater& rot, const vector3& trans);
 	void setTransform(const vector3& position, const vector3& scale, const quater& orientation);

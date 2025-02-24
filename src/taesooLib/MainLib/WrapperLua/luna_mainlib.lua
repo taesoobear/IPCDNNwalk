@@ -68,8 +68,10 @@ bindTargetBaseLib={
 			void _calcVertexPosition( MotionLoader const& loader, int vertexIndex, vector3& out);
 			void calcVertexPositions(MotionLoader const& loader, OBJloader::Mesh& mesh) const;
 			void calcVertexPositions(BoneForwardKinematics const& fkSolver, OBJloader::Mesh& mesh) const;
+			void calcVertexPositions(ScaledBoneKinematics const& fkSolver, OBJloader::Mesh& mesh) const;
 			void calcVertexNormals(MotionLoader const& loader,quaterN const& bindpose_global, vector3N const& localNormal, OBJloader::Mesh& mesh) const
 			void calcVertexNormals(BoneForwardKinematics const& fkSolver, quaterN const& bindpose_global, vector3N const& local_normal, OBJloader::Mesh& mesh) const;
+			void calcVertexNormals(ScaledBoneKinematics const& fkSolver,quaterN const& bindpose_global, vector3N const& localNormal, OBJloader::Mesh& mesh) const
 			void calcLocalVertexPositions(MotionLoader const& loader, OBJloader::Mesh const& mesh);
 			void resize(int numVertex) 
 			intvectorn& treeIndices(int vertexIndex)
@@ -125,6 +127,35 @@ bindTargetBaseLib={
 			]]}
 		},
 		{
+			luaname='Physics.ContactInfo2D',
+			cppname='ContactInfo',
+			ifdef='USE_GJKEPA2D',
+			decl=[[#include "../../BaseLib/math/GJK_EPA_2D/ConvexShape.h"]],
+			properties=[[
+			vector2 posA
+			vector2 posB
+			vector2 normal
+			double depth
+			]]
+		},
+		{
+			luaname='Physics.ConvexShape2D',
+			cppname='ConvexShape',
+			ifdef='USE_GJKEPA2D',
+			ctors=[[
+			(const vector2N& local_vertices)
+			]],
+			memberFunctions={[[
+			bool ContainsPoint(const vector2& point) @ containsPoint
+			void SetPosition(const vector2& newPos) @ setPosition
+			void setTransform(double orientation,  const vector2& newPos);
+			ContactInfo testIntersection(const ConvexShape& other) const;
+			vector2 getPosition() const 
+			vector2 getPoint(int i) const 
+			int numPoints() const 
+			]]}
+		},
+		{
 			luaname='util.NPYarray',
 			cppname='NPYarray',
 			decl=[[
@@ -170,6 +201,123 @@ bindTargetBaseLib={
 			]],
 			properties=[[
 			TStrings filenames
+			]],
+		},
+		{
+			luaname='util.C3Dfile',
+			cppname='ezc3d::c3d',
+			ifdef="USE_EZC3D",
+			decl=[[#include "../../dependencies/ezc3d/include/ezc3d/ezc3d.h"]],
+			ctors=[[(const char*)]],
+			memberFunctions={[[
+			const ezc3d::ParametersNS::Parameters& parameters() const;
+			const ezc3d::DataNS::Data& data() const;
+			]]}
+		},
+		{
+			luaname='util.C3dParameters',
+			cppname='ezc3d::ParametersNS::Parameters',
+			ifdef="USE_EZC3D",
+			decl=[[#include "../../dependencies/ezc3d/include/ezc3d/Parameters.h"]],
+			memberFunctions={[[
+			void print() const;
+			bool isMandatory( const std::string& groupName);
+			bool isMandatory( const std::string& groupName, const std::string& parameterName);
+			int nbGroups() const;
+			bool isGroup( const std::string& groupName) const;
+			int groupIdx( const std::string& groupName) const;
+			const ezc3d::ParametersNS::GroupNS::Group& group( int idx) const;
+			]]}
+		},
+		{
+			luaname='util.C3dData',
+			cppname='ezc3d::DataNS::Data',
+			ifdef="USE_EZC3D",
+			decl=[[#include "../../dependencies/ezc3d/include/ezc3d/Data.h"]],
+			memberFunctions={[[
+			void print() const;
+			int nbFrames() const;
+			const ezc3d::DataNS::Frame& frame(int idx) const;
+			]]}
+		},
+		{
+			luaname='util.C3dFrame',
+			cppname='ezc3d::DataNS::Frame',
+			ifdef="USE_EZC3D",
+			decl=[[
+			#include "../../dependencies/ezc3d/include/ezc3d/Frame.h"
+			]],
+			wrapperCode=[[
+			inline static vector3N getPoints(const ezc3d::DataNS::Frame & f)
+			{
+				auto& points=f.points();
+				int np=(int)points.nbPoints();
+				vector3N out(np);
+				for(int ii=0; ii<np; ii++)
+				{
+                    out(ii).x=points.point(ii).x(); out(ii).y=points.point(ii).y(); out(ii).z=points.point(ii).z();
+				}
+				return out;
+			}
+			]],
+			memberFunctions=[[
+			]],
+			staticMemberFunctions=[[
+			vector3N getPoints(const ezc3d::DataNS::Frame& frame)
+			]]
+		},
+		{
+			luaname='util.C3dGroup',
+			cppname='ezc3d::ParametersNS::GroupNS::Group',
+			ifdef="USE_EZC3D",
+			decl=[[#include "../../dependencies/ezc3d/include/ezc3d/Group.h"]],
+			memberFunctions=[[
+			bool isEmpty() const;
+			void print() const;
+			const std::string name() const;
+			const std::string description() const;
+			int nbParameters() const;
+			bool isParameter( const std::string& parameterName) const;
+			int parameterIdx(const std::string& parameterName) const;
+			const ezc3d::ParametersNS::GroupNS::Parameter& parameter(int idx) const;
+			]]
+		},
+		{
+			luaname='util.C3dParameter',
+			cppname='ezc3d::ParametersNS::GroupNS::Parameter',
+			ifdef="USE_EZC3D",
+			wrapperCode=[[
+			inline static TStrings valuesAsString(ezc3d::ParametersNS::GroupNS::Parameter const &p)
+			{
+				const auto& v= p.valuesAsString();
+				TStrings out;
+				out.resize(v.size());
+				for (int i=0; i<v.size(); i++)
+					out.set(i, v[i].c_str());
+				return out;
+			}
+			inline static vectornView valuesAsDouble(ezc3d::ParametersNS::GroupNS::Parameter const &p)
+			{
+				const auto &v=p.valuesAsDouble();
+				return vectornView(&v[0], v.size());
+
+			}
+			inline static intvectornView valuesAsInt(ezc3d::ParametersNS::GroupNS::Parameter const &p)
+			{
+				const auto &v=p.valuesAsInt();
+				return intvectornView(&v[0], v.size());
+			}
+			]],
+			memberFunctions=[[
+			void print();
+			const std::string name() const;
+			const std::string description() const;
+			int type() const;
+			]],
+			staticMemberFunctions=[[
+			TStrings valuesAsString(ezc3d::ParametersNS::GroupNS::Parameter const &f)
+			vectornView valuesAsDouble(ezc3d::ParametersNS::GroupNS::Parameter const &f)
+			intvectornView valuesAsInt(ezc3d::ParametersNS::GroupNS::Parameter const &f)
 			]],
 		},
 		{
@@ -363,7 +511,16 @@ bindTargetBaseLib={
 			]]
 
 		},
-		
+		{
+			name='vecVectorn',
+			className='TGL::Graph::vecVectorn',
+			ctors={'()'},
+			memberFunctions=[[
+			int size() const 
+			void resize(int n) const 
+			vectorn& operator[](int i) @ __call
+			]]
+		},
 		{ 
 			name='util.Edge',
 			className='TGL::Graph::Edge',
@@ -543,6 +700,7 @@ bindTargetBaseLib={
 			memberFunctions=
 			{
 				[[
+				void parseString(int n_reserve, const std::string &source);
 				void setAt( intvectorn const& columnIndex, intvectorn const& value);
 				void findIndex(intvectorn const& source, int value);
 				void findIndex(boolN const& source, bool value);
@@ -745,6 +903,7 @@ bindTargetBaseLib={
 				}
 				inline static void _unpackVRMLloader(BinaryFile& bf, VRMLloader* pLoader)
 				{
+					Msg::verify(bf.readable(), "unpackVRMLloader error");
 					pLoader->_importBinary(bf);
 				}
 				inline static void _pack(BinaryFile& bf, Posture& pose)
@@ -913,6 +1072,39 @@ bindTargetBaseLib={
     vector3       operator* ( transf const& , vector3 const&);
 				]]
 			},
+		},
+		{
+			name='vector2N',
+			decl=[[#include "../../BaseLib/math/tvector.h"]],
+			ctors=
+			{
+				'()',
+				'(int)',
+				'(const vector2N&)',
+			},
+			memberFunctions=
+			[[
+			void bubbleOut(int start, int end)
+			int size() const @ rows
+			int size() const
+			void setSize(int)
+			void resize(int)
+			void reserve(int)
+			vector2NView range(int,int)
+			vector2NView range(int,int,int)
+			void assign(vector2N const&)
+			vector2& at(int) @ row
+			vector2& at(int) 
+			vector2& at(int) @ __call
+			void setAllValue(vector2)
+			void pushBack(vector2 const& o)
+			vectornView x()
+			vectornView y()
+			vectornView		column(int i) const				
+			]],
+		},
+		{
+			name='vector2NView', inheritsFrom='vector2N',
 		},
 		{
 			name='vector3N',
@@ -1209,6 +1401,7 @@ bindTargetBaseLib={
 			},
 			memberFunctions=
 				[[
+				void parseString(int n_reserve, const std::string &source);
 				bool isnan() const
 				m_real at(int i) @ __call
 				void resample(vectorn const& vec, int numSample);
@@ -2070,8 +2263,8 @@ bindTargetBaseLib={
 					,
 				},
 		{
-			ifdef='INCLUDE_VOXELGRAPH',
-			--decl='#include "../../BaseLib/utility/VoxelGraph.h"',
+			decl='#include "../../BaseLib/utility/VoxelGraph.h"',
+			ifdef='USE_VOXELGRAPH',
 			luaname='shortvector3', --necessary
 			cppname='VoxelGraph::shortvector3',
 			ctors=  -- constructors 
@@ -2112,8 +2305,8 @@ bindTargetBaseLib={
 			]],
 		},
 		{
-			ifdef='INCLUDE_VOXELGRAPH',
 			decl='class Image3D;',
+			ifdef='USE_VOXELGRAPH',
 			luaname='Image3D', --necessary
 			cppname='VoxelGraph::Image3D',
 			ctors=  -- constructors 
@@ -2127,8 +2320,13 @@ bindTargetBaseLib={
 			]],
 		},
 		{
-			ifdef='INCLUDE_VOXELGRAPH',
-			name='VoxelGraph::CoordinateToNodeIndex',
+			luaname='Int3D',
+			ifdef='USE_VOXELGRAPH',
+			cppname='VoxelGraph::CoordinateToNodeIndex',
+			ctors=  -- constructors 
+			{
+				'(int x, int y, int z, int t)',
+			},
 			wrapperCode=[[
 			inline static int get(VoxelGraph::CoordinateToNodeIndex* self, VoxelGraph::shortvector3 const& v)
 			{
@@ -2138,20 +2336,26 @@ bindTargetBaseLib={
 			{
 				return self->getPixel(v.x, v.y, v.z);
 			}
+			inline static void set(VoxelGraph::CoordinateToNodeIndex* self, vector3 const& v, int v2)
+			{
+				self->setPixel(v.x, v.y, v.z, v2);
+			}
 			]],
 			staticMemberFunctions=[[
 			int get(VoxelGraph::CoordinateToNodeIndex* self, VoxelGraph::shortvector3 const& v) @ __call
 			int get(VoxelGraph::CoordinateToNodeIndex* self, vector3 const& v) @ __call
+			void set(VoxelGraph::CoordinateToNodeIndex* self, vector3 const& v, int v2)
 			]],
 			memberFunctions=
 			[[
 			void setPixel(int x, int y, int z, int value) 
 			int getPixel(int x, int y, int z) const 
+			int getPixel(int x, int y, int z) const  @__call
 			]],
 		},
 		{
-			ifdef='INCLUDE_VOXELGRAPH',
 			luaname='vec_shortvector3',
+			ifdef='USE_VOXELGRAPH',
 			className='std::vector<VoxelGraph::shortvector3>',
 			ctors={'()'},
 			memberFunctions=[[
@@ -2161,8 +2365,8 @@ bindTargetBaseLib={
 			]]
 		},
 		{
-			ifdef='INCLUDE_VOXELGRAPH',
 			decl='class VoxelGraph;',
+			ifdef='USE_VOXELGRAPH',
 			name='VoxelGraph',
 			ctors={'(int ndim_x, int ndim_y, int ndim_z, VoxelGraph::Image3D* filter)'},
 			properties={
@@ -2540,6 +2744,114 @@ bindTargetBaseLib={
 					Bone* getKneeBone(int i) const 
 					Bone* getAnkle(int i) const 
 				]]}
+
+				},
+				{
+					name='Optimize',
+					className='Optimize_lunawrapper',
+					decl=[[
+					#include "../../BaseLib/math/optimize.h"
+					class Optimize_lunawrapper;
+					]],
+					isLuaInheritable=true,
+					isExtendableFromLua=true,
+					globalWrapperCode=[[
+					class Optimize_lunawrapper: public Optimize, public luna_wrap_object
+					{
+						public:
+						Optimize_lunawrapper() :Optimize() { }
+
+						virtual double objectiveFunction(vectorn const& pos)
+						{
+							lunaStack l(_L);
+							if(pushMemberFunc<Optimize_lunawrapper>(l,"_objectiveFunction")){
+								l.push<vectorn>(pos);
+								l.call(2,1);
+								double out;
+								l>>out;
+								return out;
+							} 
+							return 0;
+						}
+					};
+					]],
+					ctor='()',
+					memberFunctions=[[
+					virtual double objectiveFunction(vectorn const& pos)
+					void optimize(vectorn const& initialSolution)
+					vectorn& getResult()
+					void init(double stepSize, int ndim, double max_step, double grad_step, Optimize::Method & method)
+
+					void _initSquareTerms(int ndim);
+					double _updateSquareTermsGradient(vectorn const& pos, vectorn& gradient);
+					void addSquared(intvectorn const& index, vectorn const& coef);
+					]]
+				},
+				{
+					name='OptimizeAnalytic',
+					decl=[[
+					#include "../../BaseLib/math/optimize.h"
+					class OptimizeAnalytic;
+					]],
+					isLuaInheritable=true,
+					isExtendableFromLua=true,
+					globalWrapperCode=[[
+					class OptimizeAnalytic: public Optimize, public luna_wrap_object
+					{
+						public:
+						OptimizeAnalytic() :Optimize() { }
+
+						virtual double gradientFunction(vectorn const& _pos, vectorn& gradient)
+						{
+							lunaStack l(_L);
+							if(pushMemberFunc<OptimizeAnalytic>(l,"_gradientFunction")){
+								l.push<vectorn>(_pos);
+								l.push<vectorn>(gradient);
+								l.call(3,1);
+								double out;
+								l>>out;
+								return out;
+							} 
+							return 0;
+						}
+						virtual double objectiveFunction(vectorn const& pos)
+						{
+							lunaStack l(_L);
+							if(pushMemberFunc<OptimizeAnalytic>(l,"_objectiveFunction")){
+								l.push<vectorn>(pos);
+								l.call(2,1);
+								double out;
+								l>>out;
+								return out;
+							} 
+							return 0;
+						}
+					};
+					]],
+					ctor='()',
+					memberFunctions=[[
+					virtual double objectiveFunction(vectorn const& pos)
+					virtual double gradientFunction(vectorn const& _pos, vectorn& gradient);
+					void optimize(vectorn const& initialSolution)
+					vectorn& getResult()
+					void init(double stepSize, int ndim, double max_step, double grad_step, Optimize::Method & method)
+
+					void _initSquareTerms(int ndim);
+					double _updateSquareTermsGradient(vectorn const& pos, vectorn& gradient);
+					void addSquared(intvectorn const& index, vectorn const& coef);
+					]]
+				},
+				{
+					name='Optimize.Method'
+				},
+				{
+					luaname='Optimize.LBFGS_METHOD',
+					cppname='LBFGS_METHOD',
+					super='Optimize.Method',
+					ctor=[[
+					()
+					(double epsilon)
+					]]
 				},
 				{
 					name='LimbIKsolverHybrid',
@@ -2595,6 +2907,7 @@ bindTargetBaseLib={
 					CImage* Imp::DrawChart(const matrixn& matrix, int chart_type, float min, float max);
 					CImage* Imp::DrawChart(const matrixn& matrix, int chart_type, float min, float max, float horizLine);
 					void Imp::ChangeChartPrecision(int precision);
+					void Imp::ChangeBoolChartPrecision(int precision);
 					void Imp::DefaultPrecision();
 					]]}
 				},
@@ -2989,11 +3302,12 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 	}
 	virtual void OnFrameChanged(FltkMotionWindow* win, int i)
 	{
-		lunaStack l(_L);
+		LUAwrapper l(_L);
+		l.registerErrorFunc();
 		if(pushMemberFunc<EventReceiver_lunawrapper>(l,"onFrameChanged")){
 			l.push<FltkMotionWindow>(win);
 			l<<(double)i;
-			l.call(3,0);
+			l.pcall(3,0);
 		} 
 	}
 	virtual int FrameMove(float fElapsedTime)
@@ -3056,13 +3370,16 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 				'(const OBJloader::Mesh& mesh, const char* ogreMeshName, bool buildEdgeList, bool dynamicUpdate, bool useNormal, bool useTexCoord)',
 				'(const OBJloader::Mesh& mesh, const char* ogreMeshName, bool buildEdgeList, bool dynamicUpdate, bool useNormal, bool useTexCoord, bool useColor)'
 			},
-			memberFunctions={[[
+			memberFunctions=[[
 			void updatePositions();
+			void updatePositions(const vector3N& vertices);
 			void updatePositionsAndNormals();
-			Ogre::Entity* createEntity(const char* entityName);
-			Ogre::Entity* createEntity(const char* entityName, const char* materialName);
-			Ogre::Entity* getLastCreatedEntity() const
-			]] }
+			Ogre::Item* createEntity(const char* entityName);
+			Ogre::Item* createEntity(const char* entityName, const char* materialName);
+			Ogre::Item* getLastCreatedEntity() const
+			void setBuildEdgeList(bool value)
+			bool isDynamic()
+			]],
 		},
 		{
 			name='Mesh',
@@ -3104,11 +3421,16 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 				void transform(matrix4 const& b);
 				void resize(int numVertex, int numFace);
 				void resize(int numVertex, int numNormal, int numTexCoord, int numColor, int numFace);
+				void resizeIndexBuffer(int numFace);
+				void resizeVertexBuffer(int n) 
+				void resizeNormalBuffer(int n) 
+				void resizeUVbuffer(int n) 
 				void pack(BinaryFile& bf);
 				void unpack(BinaryFile& bf);
 				void calculateVertexNormal();
 				void removeFaces(intvectorn const& faceIndices);
 				void addVertices(vector3N const& vertices);
+				void getVertices(vector3N & vertices);
 				void addNormals(vector3N const& normals);
 				void addFaces(intmatrixn const& faces);
 				void resizeIndexBuffer(int numFace);
@@ -3234,6 +3556,15 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 				{"PLANE", "(int)OBJloader::Element::PLANE"},
 				{"SPHERE", "(int)OBJloader::Element::SPHERE"},
 			},
+			wrapperCode=
+			[[
+			inline static std::string getMaterial(OBJloader::Element const& a) { return a.material;}
+			inline static void setMaterial(OBJloader::Element & a, const char* mat) { a.material=mat;}
+			]],
+			staticMemberFunctions=[[
+			std::string getMaterial(OBJloader::Element const& a) 
+			void setMaterial(OBJloader::Element & a, const char* mat) 
+			]],
 		},
 		{
 			name='Geometry',
@@ -3245,6 +3576,11 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 				
 			]],
 			memberFunctions=[[
+			void _addVertices(const vectorn& vertices);
+			void _addNormals(const vectorn& vertices);
+			void _addTexCoords(const vectorn& vertices);
+			void _addSubMesh(int vstart, int nstart, int texstart, int VERTEX_OFFSET, int NORMAL_OFFSET, int TEXCOORD_OFFSET, const intvectorn& all_indices);
+			void _addSubMeshPosNormal(int vstart, int nstart, int VERTEX_OFFSET, int NORMAL_OFFSET, const intvectorn& all_indices) ;
 			int numElements() 
 			OBJloader::Element const& element(int i)
 			void mergeAllElements();
@@ -3325,6 +3661,115 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 		{
 			name='GlobalUI',
 			inheritsFrom='LUAwrapper::Worker',
+		},
+		{
+			decl=[[class lunaStack;]],
+			name='lunaStack'
+		},
+		{
+			decl='class LuaScript;',
+			name='LuaScript',
+			ifdef='USE_THREADEDSCRIPT',
+			ctors={'()', },
+			memberFunctions=[[
+			int luaType(int i)  
+			std::string lunaType(int i)
+			bool next( int index)
+			void pushvalue(int index)
+			void pushnil()
+			void newtable()
+			void settable(int index) 
+			void getglobal(const char* key)
+			void _setglobal(const char* key)
+			void getglobalNoCheck(const char* key)
+			void replaceTop(const char* key)
+			void insert(int index)
+			void replaceTop(int index)
+			void getglobal(const char* key1, const char* key2)
+			void getglobalNoCheck(const char* key1, const char* key2)
+			void getMemberFunc( const char* name)
+			void releaseScript();
+			void initLuaEnvironment();
+			void loadScript(const char* script);
+			void loadScript(const char* script, const char* scriptstring);
+			void dostring(const char* str);
+			void dofile(const char* str);
+
+			void call(int numIn, int numOut) 
+			void call(int numIn) 
+			matrixn* popmatrixn()
+			MotionDOF* popMotionDOF()
+			VRMLloader* popVRMLloader()
+			hypermatrixn* pophypermatrixn()
+			Tensor* popTensor()
+			vectorn* popvectorn()
+			intvectorn* popintvectorn()
+			matrixn* checkmatrixn()
+			hypermatrixn* checkhypermatrixn()
+			Tensor* checkTensor()
+			vectorn* checkvectorn()
+			intvectorn* checkintvectorn()
+			double popnumber()
+			std::string popstring()
+			bool popboolean()
+			int popint()
+			bool isnil(int i) 
+			bool isLuaReady() 
+			int gettop()
+			int getPreviousTop()
+			void saveCurrentTop() 
+			void pop()
+			void set(std::string const& key) 
+			void push(FlLayout::Widget & w) 
+			void push(boolN & w) 
+			void push( double a)		    	
+			void push( bool a)		    	
+			void push( std::string const &a)	
+			void printStack()
+			void push(vector3 & w) 
+			void push(quater & w) 
+			void push(transf & w) 
+			void push(matrix4 & w) 
+			void push(quaterN & w) 
+			void push(vector3N & w) 
+			void push(intvectorn & w) 
+			void push(vectorn & w) 
+			void push(VRMLloader & w) 
+			void push(MotionDOF & w) 
+			void push(MotionLoader & w) 
+			void push(Bone & w) 
+			void push(PLDPrimSkin & w) 
+			void push(FlLayout & w) 
+			void push(matrixn & w) 
+			void push(hypermatrixn & w) 
+			void push(Tensor & w) 
+			void push(Posture & w) 
+			]],
+		},
+		{
+			decl='class ThreadedScript;',
+			ifdef='USE_THREADEDSCRIPT',
+			name='ThreadedScript',
+			inheritsFrom='LuaScript',
+			ctors={'()', },
+			memberFunctions=[[
+			void threadedCall(int numIn) 
+			void waitUntilFinished()
+			]]
+		},
+		{
+			decl='class ThreadScriptPool;',
+			name='ThreadScriptPool',
+			ifdef='USE_THREADEDSCRIPT',
+			ctors={'()', '(int)'},
+			memberFunctions=[[
+			void queueJob(const char* job);
+			void start();
+			void stop();
+			bool busy();
+			int numThreads() 
+			LuaScript* env(int i)
+			]],
 		},
 		{
 			name='FlLayout',
@@ -3762,15 +4207,9 @@ name='Ogre.Light',
 
 			static void setDirection(Ogre::Light* light, m_real x, m_real y, m_real z)
 			{
-				#if OGRE_VERSION_MAJOR<13
-				light->setDirection(Ogre::Vector3(x,y,z));
-				#endif
 			}
 			static void setPosition(Ogre::Light* light, m_real x, m_real y, m_real z)
 			{
-				#if OGRE_VERSION_MAJOR<13
-				light->setPosition(x,y,z);
-				#endif
 			}
 			static void setDiffuseColour(Ogre::Light* light, m_real x, m_real y, m_real z)
 			{light->setDiffuseColour(Ogre::ColourValue(x,y,z));}
@@ -3791,46 +4230,50 @@ staticMemberFunctions={[[
 			memberFunctions=[[
 				Ogre::Bone* getBone(short boneIndex);
 				short getNumBones(void) const;
-				void _updateTransforms(void);
+				void resetToPose() @ _updateTransforms
+				void setManualBone(Ogre::Bone* bone, bool isManual)
+				bool isManualBone( Ogre::Bone *bone );
 			]]
 		},
 		{ 
 			name='Ogre.Entity',
+			cppname='Ogre::v1::Entity',
 			ifndef='NO_GUI',
 			inheritsFrom='Ogre::MovableObject',
 			wrapperCode=[[
-				static void setNormaliseNormals(Ogre::Entity& e)
+				static void setNormaliseNormals(Ogre::v1::Entity& e)
 				{
 					// do nothing.
 				}
-				static void setNormaliseNormals(Ogre::Entity& e, bool a)
+				static void setNormaliseNormals(Ogre::v1::Entity& e, bool a)
 				{
 					// do nothing.
 				}
 
-				static void setMaterialName(Ogre::Entity& e, const char* matName)
+				static void setMaterialName(Ogre::v1::Entity& e, const char* matName)
 				{
 #ifndef NO_OGRE
 					e.setMaterialName(matName);
 #endif
 				}
-				static void getBoundingBox(Ogre::Entity& e, vector3& min, vector3& max)
+				static void getBoundingBox(Ogre::v1::Entity& e, vector3& min, vector3& max)
 				{
 #ifndef NO_OGRE
-					Ogre::AxisAlignedBox aabb;
-					aabb=e.getBoundingBox();
+					Ogre::Aabb aabb;
+					//aabb=e.getBoundingBox();
+					aabb=e.getWorldAabb();
 					min=ToBase(aabb.getMinimum());
 
 					max=ToBase(aabb.getMaximum());
 #endif
 				}
-				static void setRenderingDistance (Ogre::Entity& e, double dist)
+				static void setRenderingDistance (Ogre::v1::Entity& e, double dist)
 				{
 #ifndef NO_OGRE
 					e.setRenderingDistance(dist);
 #endif
 				}
-				static void setRenderQueueGroup(Ogre::Entity& e, int queueid)
+				static void setRenderQueueGroup(Ogre::v1::Entity& e, int queueid)
 				{
 #ifndef NO_OGRE
 					e.setRenderQueueGroup((Ogre::uint8) queueid);
@@ -3838,66 +4281,91 @@ staticMemberFunctions={[[
 				}
 			]],
 			staticMemberFunctions={[[
-				void setNormaliseNormals(Ogre::Entity& e)
-				void setNormaliseNormals(Ogre::Entity& e, bool )
-				void setMaterialName(Ogre::Entity& e, const char* matName)
-				void getBoundingBox(Ogre::Entity& e, vector3& min, vector3& max)
-				void setRenderQueueGroup(Ogre::Entity& e, int queueid)
-				void setRenderingDistance (Ogre::Entity& e, double dist)
+				void setNormaliseNormals(Ogre::v1::Entity& e)
+				void setNormaliseNormals(Ogre::v1::Entity& e, bool )
+				void setMaterialName(Ogre::v1::Entity& e, const char* matName)
+				void getBoundingBox(Ogre::v1::Entity& e, vector3& min, vector3& max)
+				void setRenderQueueGroup(Ogre::v1::Entity& e, int queueid)
+				void setRenderingDistance (Ogre::v1::Entity& e, double dist)
 			]]},
 			memberFunctions={[[
-				Ogre::SkeletonInstance* getSkeleton()
+			]]},
+		},
+		{ 
+			name='Ogre.Item',
+			cppname='Ogre::Item',
+			ifndef='NO_GUI',
+			inheritsFrom='Ogre::MovableObject',
+			wrapperCode=[[
+				static void setNormaliseNormals(Ogre::Item& e)
+				{
+				}
+				static void setNormaliseNormals(Ogre::Item& e, bool a)
+				{
+				}
+				static void setMaterialName(Ogre::Item& e, const char* matName)
+				{
+					//e.setDatablock(Ogre::IdString(matName));
+					e.setDatablockOrMaterialName(matName);
+				}
+			]],
+			staticMemberFunctions={[[
+				void setNormaliseNormals(Ogre::Item& e)
+				void setNormaliseNormals(Ogre::Item& e, bool )
+				void setMaterialName(Ogre::Item& e, const char* matName)
+			]]},
+			memberFunctions={[[
+				Ogre::SkeletonInstance* getSkeletonInstance() @ getSkeleton
 			]]},
 		},
 		{
 			name='Ogre.Overlay',
+			cppname='Ogre::v1::Overlay',
 			ifndef='NO_GUI',
 			wrapperCode=[[
-			inline static void setChildPosition(Ogre::Overlay* overlay, const char* name, int x, int y)
+			inline static void setChildPosition(Ogre::v1::Overlay* overlay, const char* name, int x, int y)
 			{
-#if OGRE_VERSION_MINOR<9 || OGRE_VERSION_MAJOR>=13
-				Ogre::OverlayElement* pElt=overlay->getChild(name);
-#else
-				Ogre::OverlayContainer* pElt=overlay->getChild(name);
-#endif
+				//Ogre::OverlayElement* pElt=overlay->getChild(name);
+				Ogre::v1::OverlayContainer* pElt=overlay->getChild(name);
 				pElt->setPosition(x,y);
 			}
 			]],
 			memberFunctions={[[
 			void setZOrder(ushort zorder);
 			ushort getZOrder(void) const;
-			void add2D(Ogre::OverlayContainer* cont);
+			void add2D(Ogre::v1::OverlayContainer* cont);
 			void show(void);
 			void hide(void);
 			bool isVisible()
 			]]},
 			staticMemberFunctions=[[
-			void setChildPosition(Ogre::Overlay* o, const char* name, int x, int y)
+			void setChildPosition(Ogre::v1::Overlay* o, const char* name, int x, int y)
 			]],
 		},
 		{
 			name='Ogre.OverlayElement',
+			cppname='Ogre::v1::OverlayElement',
 			ifndef='NO_GUI',
 			wrapperCode=[[
-			static void setCaption(Ogre::OverlayElement* p, const char* caption)
+			static void setCaption(Ogre::v1::OverlayElement* p, const char* caption)
 			{
 				p->setCaption(caption);
 			}
 
-			static void setMaterialName(Ogre::OverlayElement* p, const char* c)
+			static void setMaterialName(Ogre::v1::OverlayElement* p, const char* c)
 			{
 				p->setMaterialName(c);
 			}
 
-			static void setParameter(Ogre::OverlayElement* p, const char* c, const char* d)
+			static void setParameter(Ogre::v1::OverlayElement* p, const char* c, const char* d)
 			{
 				p->setParameter(c,d);
 			}
 			]],
 			staticMemberFunctions={[[
-			static void setCaption(Ogre::OverlayElement* p, const char* caption)
-			static void setMaterialName(Ogre::OverlayElement* p, const char* c)
-			static void setParameter(Ogre::OverlayElement* p, const char* c, const char* d)
+			static void setCaption(Ogre::v1::OverlayElement* p, const char* caption)
+			static void setMaterialName(Ogre::v1::OverlayElement* p, const char* c)
+			static void setParameter(Ogre::v1::OverlayElement* p, const char* c, const char* d)
 			]]},
 			memberFunctions=[[
 			void setPosition(int, int);
@@ -3905,10 +4373,11 @@ staticMemberFunctions={[[
 		},
 		{
 			name='Ogre.OverlayContainer',
+			cppname='Ogre::v1::OverlayContainer',
 			ifndef='NO_GUI',
-			inheritsFrom='Ogre::OverlayElement',
+			inheritsFrom='Ogre::v1::OverlayElement',
 			memberFunctions={[[
-			void addChild(Ogre::OverlayElement* elem);
+			void addChild(Ogre::v1::OverlayElement* elem);
 			void setPosition(int, int);
 			]]}
 		},
@@ -4088,25 +4557,100 @@ staticMemberFunctions={[[
 		{ 
 			name='Ogre.Bone',
 			ifndef='NO_GUI',
-			inheritsFrom='Ogre::Node',
+			wrapperCode=[[
+			static void setOrientation(Ogre::Bone* pNode, m_real w, m_real x, m_real y, m_real z)
+			{OGRE_VOID(pNode->setOrientation(ToOgre(quater(w, x,y,z))));}
+			static void setOrientation(Ogre::Bone* pNode, quater const& q)
+			{OGRE_VOID(pNode->setOrientation(ToOgre(q)));}
+			static void setPosition(Ogre::Bone* pNode, vector3 const& q)
+			{OGRE_VOID(pNode->setPosition(ToOgre(q)));}
+			static quater getOrientation(Ogre::Bone* pNode)
+			{
+#if !defined (NO_GUI)                                         
+				return ToBase(pNode->getOrientation());
+#else
+				return quater(1,0,0,0);
+#endif
+			}
+			static std::string getName(Ogre::Bone* pNode)
+			{
+#if !defined (NO_GUI)                                         
+				return std::string(pNode->getName());
+#else
+				return std::string("unknown");
+#endif
+			}
+			static vector3 getPosition(Ogre::Bone* pNode)
+			{
+#if !defined (NO_GUI)                                         
+				return ToBase(pNode->getPosition());
+#else
+				return vector3(0,0,0);
+#endif
+			}
+			static vector3 getScale(Ogre::Bone* pNode)
+			{
+#if !defined (NO_GUI)                                         
+				return ToBase(pNode->getScale());
+#else
+				return vector3(1,1,1);
+#endif
+			}
+			static vector3 _getFullTransformPosition(Ogre::Bone* pNode)
+			{
+#if !defined (NO_GUI)                                         
+				OGRE_ALIGNED_DECL( Ogre::Matrix4, boneMat, OGRE_SIMD_ALIGNMENT );
+				pNode->_getFullTransformUpdated().store(&boneMat);
+				return ToBase(boneMat.getTrans());
+#else
+				return vector3(1,1,1);
+#endif
+			}
+			static void setScale(Ogre::Bone* pNode, m_real x, m_real y, m_real z)
+			{OGRE_VOID(pNode->setScale(Ogre::Vector3(x,y,z)));}
+			static void setScale(Ogre::Bone* pNode, vector3 const& t)
+			{OGRE_VOID(pNode->setScale(Ogre::Vector3(t.x,t.y,t.z)));}
+			static void setScaleAndPosition(Ogre::Bone* pNode, vector3 const& s, vector3 const& t)
+			{OGRE_VOID(pNode->setScale(ToOgre(s));pNode->setPosition(ToOgre(t)));}
+			]],
+			staticMemberFunctions=[[
+			static void setOrientation(Ogre::Bone* pNode, m_real w, m_real x, m_real y, m_real z)
+			static void setOrientation(Ogre::Bone* pNode, quater const& q)
+			static quater getOrientation(Ogre::Bone* pNode)
+			static std::string getName(Ogre::Bone* pNode)
+			static vector3 getScale(Ogre::Bone* pNode)
+			static vector3 getPosition(Ogre::Bone* pNode)
+			static void setPosition(Ogre::Bone* pNode, vector3 const& t)
+			static void setScale(Ogre::Bone* pNode, m_real x, m_real y, m_real z)
+			static void setScale(Ogre::Bone* pNode, vector3 const& t)
+			static void setScaleAndPosition(Ogre::Bone* pNode, vector3 const& s, vector3 const& t)
+			static vector3 _getFullTransformPosition(Ogre::Bone* pNode)
+			]],
 			memberFunctions=[[
-				void setManuallyControlled(bool manuallyControlled);
+				//void setManuallyControlled(bool manuallyControlled);
+				Ogre::Bone* getParent(void) const                                
+				void setInheritScale(bool inherit)
+				void setInheritOrientation(bool inherit)
 			]]
 		},
 		{ 
 			name='Ogre.SceneNode',
 			inheritsFrom='Ogre::Node',
 			wrapperCode=[[ static void resetToInitialState(Ogre::SceneNode* pNode)
-			{OGRE_VOID(pNode->resetToInitialState());}
+			{OGRE_VOID(RE::resetToInitialState(pNode));}
 			static void removeAndDestroyChild(Ogre::SceneNode* pNode, const char* name)
-			{OGRE_VOID(pNode->removeAndDestroyChild(name));}
+			{
+				Msg::error("removeAndDestroyChild");
+			}
 			static void showBoundingBox(Ogre::SceneNode* node, bool bValue)
 			{
 #ifndef NO_OGRE
 			if(node->getName()!="BackgroundNode")
 			{
-				Ogre::Node::ChildNodeIterator it=node->getChildIterator();
 
+
+				/* todo2
+				Ogre::Node::ChildNodeIterator it=node->getChildIterator();
 				while(it.hasMoreElements())
 				{
 					Ogre::Node* childnode=it.getNext();
@@ -4116,6 +4660,7 @@ staticMemberFunctions={[[
 						showBoundingBox(childsceneNode, bValue);
 				};
 				node->showBoundingBox(bValue);
+				*/
 			}
 #else 
 					return ;
@@ -4129,7 +4674,9 @@ staticMemberFunctions={[[
 #endif
 			}
 			static Ogre::SceneNode* createChildSceneNode(Ogre::SceneNode* pNode, const char* name)
-			{OGRE_PTR(return pNode->createChildSceneNode(name));}
+			{
+				return RE::createChildSceneNode(pNode, name);
+			}
 			static Ogre::SceneNode* createChildSceneNode2(Ogre::SceneNode* pNode)
 			{OGRE_PTR(return pNode->createChildSceneNode());}
 			static void translate(Ogre::SceneNode* pNode, vector3 const& t)
@@ -4181,7 +4728,7 @@ static void setPosition(Ogre::SceneNode* pNode, m_real x, m_real y, m_real z)
 			static void setOrientation(Ogre::SceneNode* pNode, m_real w, m_real x, m_real y, m_real z)
 			static void setOrientation(Ogre::SceneNode* pNode, quater const& q)
 
-			Ogre::Entity* RE::getEntity(Ogre::SceneNode* node) @ getEntity
+			Ogre::Item* RE::getItem(Ogre::SceneNode* node) @ getEntity
 			]]},
 			memberFunctions={[[
 			void attachObject(Ogre::MovableObject* ); @ ;ifndef=NO_OGRE;
@@ -4213,14 +4760,14 @@ static void setPosition(Ogre::SceneNode* pNode, m_real x, m_real y, m_real z)
 				pmgr->setFog(Ogre::FOG_NONE,Ogre::ColourValue(0,0,0), 0, 0, 0);
 #endif
 			}
-			static Ogre::Entity* createEntity(Ogre::SceneManager* pmgr, const char* id, const char* mesh)
+			static Ogre::Item* createEntity(Ogre::SceneManager* pmgr, const char* id, const char* mesh)
 			{
 #ifndef NO_OGRE
 				BEGIN_OGRE_CHECK
-					return pmgr->createEntity(id,mesh);
+				return RE::_createEntity(mesh);
 				END_OGRE_CHECK
 #else 
-					return NULL;
+				return NULL;
 #endif
 			}
 
@@ -4228,7 +4775,7 @@ static void setPosition(Ogre::SceneNode* pNode, m_real x, m_real y, m_real z)
 			{
 #ifndef NO_OGRE
 				BEGIN_OGRE_CHECK
-					return pmgr->getSceneNode(id);
+	return RE::getSceneNode(id);
 				END_OGRE_CHECK
 #else 
 					return NULL;
@@ -4241,6 +4788,7 @@ static void setPosition(Ogre::SceneNode* pNode, m_real x, m_real y, m_real z)
 #ifndef NO_OGRE
 			if(node->getName()!="BackgroundNode")
 			{
+				/* todo2
 				Ogre::Node::ChildNodeIterator it=node->getChildIterator();
 
 				while(it.hasMoreElements())
@@ -4252,6 +4800,7 @@ static void setPosition(Ogre::SceneNode* pNode, m_real x, m_real y, m_real z)
 						showBoundingBox(childsceneNode, bValue);
 				};
 				node->showBoundingBox(bValue);
+				*/
 			}
 #else 
 					return ;
@@ -4262,7 +4811,9 @@ static void setPosition(Ogre::SceneNode* pNode, m_real x, m_real y, m_real z)
 			{
 #ifndef NO_OGRE
 				BEGIN_OGRE_CHECK
-					return pmgr->createLight(id);
+					Ogre::Light* l= pmgr->createLight();
+					//l->setPowerScale(Ogre::Math::PI);
+					return l;
 
 				END_OGRE_CHECK
 #else 
@@ -4275,7 +4826,8 @@ static void setPosition(Ogre::SceneNode* pNode, m_real x, m_real y, m_real z)
 			{
 #ifndef NO_OGRE
 				BEGIN_OGRE_CHECK
-					return pmgr->getLight(id);
+					Msg::error("lights are now unnamed");
+					return NULL;
 
 				END_OGRE_CHECK
 #else 
@@ -4283,77 +4835,32 @@ static void setPosition(Ogre::SceneNode* pNode, m_real x, m_real y, m_real z)
 #endif
 
 
-			}
-			static Ogre::Entity* getEntity(Ogre::SceneManager* pmgr, const char* id)
-			{
-#ifndef NO_OGRE
-				BEGIN_OGRE_CHECK
-					return pmgr->getEntity(id);
-				END_OGRE_CHECK
-#else 
-					return NULL;
-#endif
 			}
 
 			static void setAmbientLight(Ogre::SceneManager* pmgr, m_real x, m_real y, m_real z)
-			{OGRE_VOID(pmgr->setAmbientLight(Ogre::ColourValue(x,y,z)));}
+            {OGRE_VOID(pmgr->setAmbientLight(Ogre::ColourValue(x,y,z), Ogre::ColourValue(x,y,z), Ogre::Vector3(0.f, 1.f, 0.f)));}
 			static void setShadowColour(Ogre::SceneManager* pmgr, m_real x, m_real y, m_real z)
 			{OGRE_VOID(pmgr->setShadowColour(Ogre::ColourValue(x,y,z)));}
 
 			static void setSkyBox(Ogre::SceneManager* pmgr, bool enable, const char* materialName)
-			{OGRE_VOID(pmgr->setSkyBox(enable, materialName));}
+			{}
 			static bool hasSceneNode(Ogre::SceneManager* pmgr, const char * name) 
 			{
 #if !defined (NO_GUI)                                         
-				return pmgr->hasSceneNode(Ogre::String(name));
+                return (bool)RE::getSceneNode(name);
 #else
 				return true;
 #endif
 			}
-			static void setRenderqueueOverlay(Ogre::SceneManager* pmgr,Ogre::Entity* roEntity, ushort groupID)
-			{
-				//Ogre::RenderQueue render_q;
-				//Ogre::SceneManager::MovableObjectIterator iterator=
-			//		pmgr->getMovableObjectIterator("Entity");
-				//while(iterator.hasMoreElements())
-				{
-					//Ogre::Entity* e = static_cast<Ogre::Entity*>(iterator.getNext());
-					//if(e->getName()!="testEntity")
-					{
-						//render_q.addRenderable(e,Ogre::RENDER_QUEUE_BACKGROUND);
-						//e->getSubEntity(0)->getMaterial()->setDepthCheckEnabled(false);
-						//e->getSubEntity(0)->getMaterial()->setDepthWriteEnabled(false);
-						//e->setRenderQueueGroup(Ogre::RENDER_QUEUE_OVERLAY);
-					}
-					//else
-					{
-						//render_q.addRenderable(e,Ogre::RENDER_QUEUE_MAX);
-					}
-					//printf("Entity Name: %s\n",e->getName().c_str());
-					//printf("RenderQueueGroupID:%d \n",e->getRenderQueueGroup());
-				}
-				//roEntity->getSubEntity(0)->getMaterial()->setDepthCheckEnabled(false);
-				//roEntity->getSubEntity(0)->getMaterial()->setDepthWriteEnabled(false);
-				//roEntity->setRenderQueueGroup(groupID);
-			}
 			static int getShadowTechnique(Ogre::SceneManager* pmgr)
 			{
-#if !defined (NO_GUI)                                         
-				return pmgr->getShadowTechnique();
-#else
 				return 18;
-#endif
 			}
 			static void setShadowTechnique(Ogre::SceneManager* pmgr, int i)
 			{
-#if !defined (NO_GUI)                                         
-				pmgr->setShadowTechnique((Ogre::ShadowTechnique )i);
-#endif
 			}
 			]],
 			memberFunctions=[[
-            void setShadowTextureSize(int size);
-            void setShadowTextureCount(int count);
 			]],
 			staticMemberFunctions={[[
 			static int getShadowTechnique(Ogre::SceneManager* pmgr)
@@ -4361,17 +4868,15 @@ static void setPosition(Ogre::SceneNode* pNode, m_real x, m_real y, m_real z)
 			static void setFog(Ogre::SceneManager* pmgr, double r, double g, double b, double a, double min, double max)
 			static void setFogExponential(Ogre::SceneManager* pmgr, double r, double g, double b, double a, double min, double max)
 			static void setFogNone(Ogre::SceneManager* pmgr)
-			static Ogre::Entity* createEntity(Ogre::SceneManager* pmgr, const char* id, const char* mesh)
+			static Ogre::Item* createEntity(Ogre::SceneManager* pmgr, const char* id, const char* mesh)
 			static void setAmbientLight(Ogre::SceneManager* pmgr, m_real x, m_real y, m_real z)
 			static void setShadowColour(Ogre::SceneManager* pmgr, m_real x, m_real y, m_real z)
 			static Ogre::SceneNode* getSceneNode(Ogre::SceneManager* pmgr, const char* id)
 			static Ogre::Light* createLight(Ogre::SceneManager* pmgr, const char* id)
 			static Ogre::Light* getLight(Ogre::SceneManager* pmgr, const char* id)
-			static Ogre::Entity* getEntity(Ogre::SceneManager* pmgr, const char* id)
 			static void setSkyBox(Ogre::SceneManager* pmgr, bool enable, const char* materialName)
 			static bool hasSceneNode(Ogre::SceneManager* pmgr, const char * name) 
 			static void showBoundingBox(Ogre::SceneNode* node, bool bValue)
-			static void setRenderqueueOverlay(Ogre::SceneManager* pmgr,Ogre::Entity* roEntity, ushort groupID)
 							  ]]},
 		},
 		{
@@ -4559,44 +5064,70 @@ inheritsFrom='MotionDOF'
 		},
 		{
 			name='BoneForwardKinematics',
-ctors={'(MotionLoader*)'},
-wrapperCode=[[
+			ctors={'(MotionLoader*)'},
+			wrapperCode=[[
 			static transf& localFrame(BoneForwardKinematics& fk, int i){ return fk._local(i);}
 			static transf& localFrame(BoneForwardKinematics& fk, Bone& bone){ return fk._local(bone);}
 			static transf& globalFrame(BoneForwardKinematics& fk, int i){ return fk._global(i);}
 			static transf& globalFrame(BoneForwardKinematics& fk, Bone& bone){return fk._global(bone);}
-]],
-staticMemberFunctions={[[
+			]],
+			staticMemberFunctions={[[
 			transf& localFrame(BoneForwardKinematics& fk, int i)
 			transf& localFrame(BoneForwardKinematics& fk, Bone& bone)
 			transf& globalFrame(BoneForwardKinematics& fk, int i)
 			transf& globalFrame(BoneForwardKinematics& fk, Bone& bone)
-]]},
-memberFunctions={[[
-	void init();
-	int numBone() const;
-	void forwardKinematics();
-	void inverseKinematics();
-	void inverseKinematicsExact();
-	void updateBoneLength(MotionLoader const& loader);
-	void operator=(BoneForwardKinematics const& other);
-	void setPose(const Posture& pose);
-	void setPoseDOF(const vectorn& poseDOF);
-	void setPoseDOFusingCompatibleDOFinfo(MotionDOFinfo const& dofInfo, const vectorn& poseDOF);
-	void setPoseDOFignoringTranslationalJoints(const vectorn& posedof_for_vrmlloader);
-	void getPoseDOFignoringTranslationalJoints(vectorn& posedof_for_vrmlloader);
-	void setSphericalQ(const vectorn& q);
-	void setChain(const Posture& pose, const Bone& bone);
-	void setChain(const Bone& bone);
-	void getPoseFromGlobal(Posture& pose) const;
-	void getPoseDOFfromGlobal(vectorn& poseDOF) const;
-	void getPoseFromLocal(Posture& pose) const;
-	void getPoseDOFfromLocal(vectorn& poseDOF) const;
-	MotionLoader const& getSkeleton() const		
-	Posture getPose() 
-	vectorn getPoseDOF() 
-	vectorn getPoseDOFignoringTranslationalJoints() 
-]]}
+			]]},
+			memberFunctions={[[
+			void init();
+			int numBone() const;
+			void forwardKinematics();
+			void inverseKinematics();
+			void inverseKinematicsExact();
+			void updateBoneLength(MotionLoader const& loader);
+			void operator=(BoneForwardKinematics const& other);
+			void setPose(const Posture& pose);
+			void setPoseDOF(const vectorn& poseDOF);
+			void setPoseDOFusingCompatibleDOFinfo(MotionDOFinfo const& dofInfo, const vectorn& poseDOF);
+			void setPoseDOFignoringTranslationalJoints(const vectorn& posedof_for_vrmlloader);
+			void getPoseDOFignoringTranslationalJoints(vectorn& posedof_for_vrmlloader);
+			void setSphericalQ(const vectorn& q);
+			void setChain(const Posture& pose, const Bone& bone);
+			void setChain(const Bone& bone);
+			void getPoseFromGlobal(Posture& pose) const;
+			void getPoseDOFfromGlobal(vectorn& poseDOF) const;
+			void getPoseFromLocal(Posture& pose) const;
+			void getPoseDOFfromLocal(vectorn& poseDOF) const;
+			MotionLoader const& getSkeleton() const		
+			Posture getPose() 
+			vectorn getPoseDOF() 
+			vectorn getPoseDOFignoringTranslationalJoints() 
+			]]}
+		},
+		{
+			luaname='util.ScaledBoneKinematics',
+			cppname='ScaledBoneKinematics',
+			ctors={'(MotionLoader*)'},
+			memberFunctions={[[
+			void init();
+			int numBone() const;
+			matrix4& _local(int i) @ localFrame
+			matrix4& _local(Bone& bone) @ localFrame
+			matrix4& _global(int i) @ globalFrame
+			matrix4& _global(Bone& bone) @ globalFrame
+			quater & localRot(int i) const			
+			const matrix4 & localScale(int i) const			
+			quater & globalRot(int i) const		
+			void forwardKinematics();
+			void updateBoneLength(MotionLoader const& loader);
+			void operator=(BoneForwardKinematics const& other);
+			void operator=(ScaledBoneKinematics const& other);
+			void setScale(const vector3N& scale);
+			void setLengthScale(const vectorn& scale);
+			void setPose(const Posture& pose);
+			void setPoseDOF(const vectorn& poseDOF);
+			void setPoseDOFusingCompatibleDOFinfo(MotionDOFinfo const& dofInfo, const vectorn& poseDOF);
+			MotionLoader const& getSkeleton() const		
+			]]}
 		},
 		{ 
 			name='FrameSensor'
@@ -4660,7 +5191,7 @@ memberFunctions={[[
 			void drawAxes(transf const& tf, const char* nameid, double scale);
 			Ogre::SceneNode* registerEntity(const char* node_name, const char* filename);
 			Ogre::SceneNode* registerEntity(const char* node_name, const char* filename, const char* materialName);
-			Ogre::SceneNode* registerEntity(const char* node_name, Ogre::Entity* pObject);
+			Ogre::SceneNode* registerEntity(const char* node_name, Ogre::Item* pObject);
 			Ogre::SceneNode* registerObject(const char* node_name, Ogre::MovableObject* pObject);
 			Ogre::SceneNode* registerObject(const char* node_name, const char* typeName, const char* materialName, matrixn const& data);
 			Ogre::SceneNode* registerObject(const char* node_name, const char* typeName, const char* materialName, matrixn const& data, m_real thickness);
@@ -4771,6 +5302,7 @@ memberFunctions={[[
 				void SetPose(const Posture & posture, const MotionLoader& skeleton) @ _setPose
 				void setPoseDOF(const vectorn& poseDOF, MotionDOFinfo const& info); @ _setPoseDOF
 				void setSamePose(BoneForwardKinematics  const& in)
+				void setSamePose(ScaledBoneKinematics const& in);
 
 				bool GetVisible() const; @ getVisible
 				void SetVisible(bool bVisible); @ setVisible
@@ -4809,20 +5341,6 @@ memberFunctions={[[
 			staticMemberFunctions={[[
 						static PLDPrimSkin* downcast(PLDPrimVRML* skin)
 						]]},
-		},
-		{
-			name='PLDPrimOgreSkin',
-			inheritsFrom='PLDPrimSkin',
-			properties={
-				'quaterN m_aLocalRotOrig',
-				'quaterN m_aRotOrigComb',
-				'quaterN m_aInvRotOrigComb',
-				'quaterN m_aBindPose',
-			},
-			memberFunctions={[[
-				int getOgreBoneIndex(int ibone) const;
-				int parentRotJointIndex(int iRotJoint) const;
-			]]},
 		},
 		{
 			name='Pose',
@@ -5187,17 +5705,13 @@ inheritsFrom='LUAwrapper::Worker',
 		{
 			ifndef='NO_OGRE',
 			decl=[[
-			#ifndef NO_OGRE
-			#include "../OgreFltk/TraceManager.h"
-			#endif
+			class OgreTraceManager;
 			]],
 			name='OgreTraceManager',
 			memberFunctions=[[
 			void eraseAll();
 			void hideOutputs();
 			void showOutputs();
-			int createTextArea( double width, double height, double top, double left, int fontSize, const char* caption);
-			void setCaption(int iElement, const char* caption);
 			void setVisible(int iElement, bool visible);
 			]];
 
@@ -5240,7 +5754,7 @@ inheritsFrom='LUAwrapper::Worker',
 			inline static void setDimensions(Viewpoint& view, double left, double top, double width, double height)
 			{
 #ifndef NO_OGRE
-				RE::renderer().viewport().mView->setDimensions(left,top, width, height);
+				//todo2 RE::renderer().viewport().mView->setDimensions(left,top, width, height);
 #endif
 			}
 			inline static void setFOVy(Viewpoint& view, m_real degree)
@@ -5312,7 +5826,7 @@ inheritsFrom='LUAwrapper::Worker',
 			static void setBackgroundColour(OgreRenderer::Viewport & v,CPixelRGB8 c)
 			{
 #ifndef NO_OGRE
-				v.mView->setBackgroundColour(Ogre::ColourValue(c.R/255.f, c.G/255.f, c.B/255.f, 1.f));
+				//todo2 v.mView->setBackgroundColour(Ogre::ColourValue(c.R/255.f, c.G/255.f, c.B/255.f, 1.f));
 #endif
 			}
 			]],
@@ -5330,6 +5844,7 @@ inheritsFrom='LUAwrapper::Worker',
 			name='OgreRenderer',
 			memberFunctions={
 		[[
+		void setupShadowNode(bool useESM) @ ;ifndef=NO_OGRE;
 	void screenshot(bool b);
 	void setScreenshotMotionBlur(int n);
 	void setScreenshotPrefix(const char* prefix);
@@ -5343,8 +5858,14 @@ inheritsFrom='LUAwrapper::Worker',
 	void removeFrameMoveObject(FrameMoveObject* pFMO);
 	void addAfterFrameMoveObject(FrameMoveObject* pFMO);
 	void removeAfterFrameMoveObject(FrameMoveObject* pFMO);
+	int _getOgreTextureWidth(const char* texturename);
+	void _updateDynamicTexture(const char* textureName, CImage const& image);	
+	void _updateDynamicTexture(const char* textureName, CImage const& image, bool reuse);	
+	void _linkMaterialAndTexture(const char* materialName, const char* textureName);
 	void createDynamicTexture(const char* name, CImage const& image);
 	void createDynamicTexture(const char* name, CImage const& image, vector3 const& diffuseColor, vector3 const& specular_color);	
+	void createDynamicTexture(const char* name, CImage const& image, vector3 const& diffuseColor, vector3 const& specular_color, double shininess);	
+	void createMaterial(const char* name, vector3 const& diffuseColor, vector3 const& specular_color, double shininess);
 	void createRenderTexture(const char* type, int width, int height, bool useCurrentViewport, const char* name);
 	void updateRenderTexture(const char* param);
 	void setMaterialParam(const char* mat, const char* paramName, double param_value)
@@ -5363,8 +5884,12 @@ inheritsFrom='LUAwrapper::Worker',
 				'(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, const char* convfilename, bool bCurrPoseAsBindPose)',
 				'(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, TStrings const& bonesA, TStrings const& bonesB, bool bCurrPoseAsBindPose)',
 			},
+			properties=[[
+			intvectorn targetIndexAtoB
+			]],
 			memberFunctions={[[
 			void setTargetSkeleton(const Posture & srcposture);	
+			void setTargetSkeleton(const vectorn & srcposture);	
 			void setTargetSkeletonBothRotAndTrans(const Posture& srcposture);
 			MotionLoader* source() 
 			MotionLoader* target()
@@ -5379,6 +5904,13 @@ inheritsFrom='LUAwrapper::Worker',
 				'(MotionLoader* loaderA, MotionLoader* loaderB)',
 				'(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, const char* convfilename, double posScaleFactor )',
 			},
+			properties=[[
+			intvectorn rAtoB_additionalAindices
+			intvectorn rAtoB_additionalBindices
+			intvectorn targetIndexAtoB
+			intvectorn BtoA
+			intvectorn parentIdx;
+			]],
 			memberFunctions={[[
 			void _setTargetSkeleton();
 			void setTargetSkeleton(const Posture & srcposture);	
@@ -5772,7 +6304,8 @@ memberFunctions={[[
 									"(MotionLoader const&,double)",
 									"(OBJloader::Geometry const&, bool useFixedRoot)",
 									"(OBJloader::Terrain* terrin)",
-									"(CTextFile& vrmlFile)"
+									"(CTextFile& vrmlFile)",
+									"(VRMLloader const& other, int newRootIndex, bool bFreeRootJoint)"
 								},
 								staticMemberFunctions={[[
 								VRMLTransform* upcast(Bone& bone)
@@ -5830,31 +6363,6 @@ memberFunctions={[[
 										void convertDQexceptRoot(vectorn const& dq, vectorn& src_dq) const;
 										]]}
 									},
-							{
-								decl='class SkinnedMeshLoader;',
-								ifndef='NO_GUI',
-								name='SkinnedMeshLoader',
-								inheritsFrom='MotionLoader',
-								ctors={
-									"(const char*)",
-									"(const char*, bool)",
-									"(const char*, bool,bool)",
-								},
-								memberFunctions={ [[
-								void getInfo(SkinnedMeshFromVertexInfo& vi) const;
-								double getDerivedScale(int treeIndex)
-								double getBindingPoseInverseScale(int treeIndex)
-								void getVertexInfo(int vertIdx, intvectorn& treeIndices,  vector3N& localpos, vectorn &weights)
-								void reorderVertices()
-								void loadMesh(const char* fn);
-								OBJloader::Mesh& getCurrMesh();
-								void gotoBindPose();
-								virtual void sortBones(MotionLoader const& referenceSkeleton);
-								void setCurPoseAsBindPose();
-								void setPose(Posture& pose);
-								void retrieveAnimatedMesh(OBJloader::Mesh& mesh);
-								]] },
-							},
 
 	},
 	modules={
@@ -5866,9 +6374,9 @@ memberFunctions={[[
 				void exportBVH(Motion const& mot, const char* filename, int start, int end);
 				void upsample(Motion& out, const Motion& in, int nSuperSample);
 				void downsample(Motion& out, const Motion& in, int nDownSample);
-				void setKneeDampingCoef_RO(double ro);
 				intvectorn findChildren(MotionLoader& skeleton, int rootTreeIndex);
 			}
+			#include "../../BaseLib/motion/IKSolver.h"
 			]],
 			functions={[[
 			void MotionUtil::exportVRML(Motion const& mot, const char* filename, int start, int end)
@@ -5878,9 +6386,14 @@ memberFunctions={[[
 			void MotionUtil::upsample(Motion& out, const Motion& in, int nSuperSample);
 			void MotionUtil::downsample(Motion& out, const Motion& in, int nDownSample);
 			void MotionUtil::setKneeDampingCoef_RO(double ro)
+			double MotionUtil::getKneeDampingCoef_RO();
+			void MotionUtil::setMaxLengthAdjustmentRatio(double mr);
+			double MotionUtil::getMaxLengthAdjustmentRatio();
 			void MotionUtil::timewarpingLinear(Motion& out, const Motion& in, const vectorn& timewarpFunction);
 			Motion* MotionUtil::untimewarpingLinear(const Motion& timewarpedMotion, const vectorn& timewarpFunction);
 			intvectorn MotionUtil::findChildren(MotionLoader& skeleton, int rootTreeIndex);
+			void MotionUtil::limbIK_1DOFknee( const vector3& goal, const vector3& sh, const vector3& v1, const vector3& v2, const vector3& v3, const vector3& v4, quater& qq1, quater& qq2, vector3 const& axis, bool kneeDamping)
+			double MotionUtil::limbIK_1DOFknee( const vector3& goal, const vector3& sh, const vector3& v1, const vector3& v2, const vector3& v3, const vector3& v4, quater& qq1, quater& qq2, vector3 const& axis, bool kneeDamping, double kneeDampingConstant, bool lengthAdjust )
 			]]}
 		},
 		{
@@ -5894,9 +6407,9 @@ memberFunctions={[[
 			namespace='Ogre',
 			ifndef='NO_GUI',
 			functions={[[
-			Ogre::OverlayContainer* Ogre::createContainer(int x, int y, int w, int h, const char* name) ;
-			Ogre::OverlayElement* createTextArea_(const char* name, double width, double height, double top, double left, int fontSize, const char* caption, bool show); @ createTextArea
-			Ogre::Overlay* createOverlay_(const char* name); @ createOverlay
+			Ogre::v1::OverlayContainer* Ogre::createContainer(int x, int y, int w, int h, const char* name) ;
+			Ogre::v1::OverlayElement* createTextArea_(const char* name, double width, double height, double top, double left, int fontSize, const char* caption, bool show); @ createTextArea
+			Ogre::v1::Overlay* createOverlay_(const char* name); @ createOverlay
 			void destroyOverlay_(const char* name); @ destroyOverlay
 			void destroyOverlayElement_(const char* name); @ destroyOverlayElement
 			void destroyAllOverlayElements_(); @ destroyAllOverlayElements
@@ -5959,46 +6472,24 @@ memberFunctions={[[
 		{
 			namespace='RE',
 			wrapperCode=[[
-				inline static Ogre::Entity* RE_createPlane2(const char* id, m_real width, m_real height, int xsegment, int ysegment)
+				inline static Ogre::Item* RE_createPlane2(const char* id, m_real width, m_real height, int xsegment, int ysegment)
 				{
 					return RE::createPlane(id,width,height,xsegment,ysegment,1,1);
 				}
-				inline static PLDPrimOgreSkin* RE_createOgreSkin(const Motion& m) 
-				{
-					return (PLDPrimOgreSkin*) RE::createOgreSkin(m) ;
-				}
-				inline static PLDPrimOgreSkin* RE_createOgreSkin2(const MotionLoader& skel, Ogre::Entity* entity, const char* mappingTable, bool bCurrPoseAsBindPose, double scale=1) 
-				{
-					return (PLDPrimOgreSkin*) RE::createOgreSkin(skel, entity, mappingTable, bCurrPoseAsBindPose, scale) ;
-				}
-				inline static void RE_buildEdgeList(const char* meshName)
-				{
-                    #ifndef NO_GUI
-					Ogre::String groupName = Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME;
-					// Get mesh (load if required)
-					Ogre::MeshPtr pmesh = Ogre::MeshManager::getSingleton().load(meshName, groupName);
-					pmesh->freeEdgeList();
-					//pmesh->prepareForShadowVolume();
-					pmesh->buildEdgeList();
-					//pmesh-> setAutoBuildEdgeLists(true);
-					//pmesh->load();
-					#endif
-				}
-				inline static int RE_getOgreVersionMinor()
+				inline static bool hasGUI()
 				{
 					#ifdef NO_GUI
-					return 7;
+					return false;
 					#else
-#if OGRE_VERSION_MAJOR>=13 
-						return OGRE_VERSION_MAJOR;
-#endif
-					return OGRE_VERSION_MINOR;
+					return true;
 					#endif
 				}
 			]],
 			functions=
 			{
 				[[
+				std::string RE::taesooLibPath()
+				bool hasGUI()
 				void RE::usleep(int usec);
 				Ogre::SceneManager* RE::ogreSceneManager();
 				void RE_outputRaw(const char* key, const char* output, int i); @ _output
@@ -6015,7 +6506,7 @@ memberFunctions={[[
 				OgreTraceManager* RE::createTraceManager();@;ifndef=NO_GUI;
 
 				FrameSensor* RE::createFrameSensor();
-				TString RE::generateUniqueName();
+				TString RE::generateUniqueName(); 
 				static void RE_::remove(PLDPrimSkin* p)
 				Ogre::SceneNode* RE::createEntity(const char* id, const char* filename)
 				Ogre::SceneNode* RE::createEntity(const char* id, const char* filename, const char* materialName)
@@ -6024,9 +6515,9 @@ memberFunctions={[[
 				void RE::removeEntity(const char*)
 				void RE::setMaterialName(Ogre::SceneNode* pNode, const char* mat);
 				void RE::moveEntity(Ogre::SceneNode*, quater const&, vector3 const&)
-				Ogre::Entity* RE::createPlane(const char* id, m_real width, m_real height, int xsegment, int ysegment, int texSegx, int texSegy)
-				Ogre::Entity* RE_createPlane2(const char* id, m_real width, m_real height, int xsegment, int ysegment) @ createPlane
-				Ogre::Entity* RE::createTerrain(const char* id, const char* filename, int imageSizeX, int imageSizeY, m_real sizeX, m_real sizeZ, m_real heightMax, int ntexSegX, int ntexSegZ);
+				Ogre::Item* RE::createPlane(const char* id, m_real width, m_real height, int xsegment, int ysegment, int texSegx, int texSegy)
+				Ogre::Item* RE_createPlane2(const char* id, m_real width, m_real height, int xsegment, int ysegment) @ createPlane
+				Ogre::Item* RE::createTerrain(const char* id, const char* filename, int imageSizeX, int imageSizeY, m_real sizeX, m_real sizeZ, m_real heightMax, int ntexSegX, int ntexSegZ);
 				void RE_::setBackgroundColour(m_real r, m_real g, m_real b)
 				static Viewpoint* RE_::getViewpoint() @ viewpoint
 				static Viewpoint* RE_::getViewpoint(int) @ viewpoint
@@ -6037,9 +6528,6 @@ memberFunctions={[[
 				FltkRenderer& RE::FltkRenderer();
 				void RE_::renderOneFrame(bool check)
 				PLDPrimVRML* RE::createVRMLskin(VRMLloader*pTgtSkel, bool bDrawSkeleton) @ ;adopt=true; 
-				PLDPrimOgreSkin* RE_createOgreSkin(const Motion&) @  createOgreSkin ;adopt=true;
-				PLDPrimOgreSkin* RE_createOgreSkin2(const MotionLoader& skel, Ogre::Entity* entity, const char* mappingTable, bool bCurrPoseAsBindPose) @ createOgreSkin ;adopt=true;
- 				PLDPrimOgreSkin* RE_createOgreSkin2(const MotionLoader& skel, Ogre::Entity* entity, const char* mappingTable, bool bCurrPoseAsBindPose,double scale) @ createOgreSkin ;adopt=true;
 				int RE::getOgreVersionMinor() 
 				void RE::buildEdgeList(const char* meshName) 
 				void ::loadPose(Posture& pose, const char* fn) 
@@ -6050,7 +6538,6 @@ memberFunctions={[[
 				Ogre::SceneNode* RE::createChildSceneNode(Ogre::SceneNode* parent, const char* child_name);
 				]],
 				{"PLDPrimSkin* RE::createSkin(const Motion&)", adopt=true},
-				{"PLDPrimSkin* RE::createOgreSkin(const Motion&)", adopt=true},
 				{"PLDPrimSkin* RE::createSkin(const MotionLoader&)", adopt=true},
 				{"PLDPrimSkin* RE::createSkin(const Motion&, RE::PLDPrimSkinType type)", adopt=true},
 				{"PLDPrimSkin* RE::createSkin(const MotionLoader&, RE::PLDPrimSkinType type)", adopt=true},
@@ -6197,9 +6684,12 @@ namespace Ogre
 {
 	class MovableObject;
 	class Entity;
+	namespace v1{
 	class Overlay;
 	class OverlayElement;
 	class OverlayContainer;
+}
+	class Bone;
 	class SceneNode;
 	class SceneManager;
 }
@@ -6210,6 +6700,7 @@ class EdgeConnectivity;
 class Element;
 class Geometry;
 class MeshToEntity;
+class MeshToEntity2;
 class MeshEntity;
 class TriangleMesh;
 class MeshLineStrip;
@@ -6226,6 +6717,7 @@ class Motion;
 class MotionDOF;
 class MotionDOFview;
 class BoneForwardKinematics;
+class ScaledBoneKinematics;
 class FrameSensor;
 class AnimationObject;
 class Posture;
@@ -6287,7 +6779,6 @@ write(
 #include "../MainLib/Ogre/intersectionTest.h"
 #include "../BaseLib/motion/FullbodyIK_MotionDOF.h"
 #include "../MainLib/OgreFltk/VRMLloader.h"
-#include "../MainLib/OgreFltk/OgreMotionLoader.h"
 #include "../MainLib/OgreFltk/VRMLloaderView.h"
 #include "../MainLib/OgreFltk/GlobalUI.h"
 #include "../MainLib/OgreFltk/FltkRenderer.h"
@@ -6308,6 +6799,9 @@ write(
 #include <FL/Fl_Browser.H>
 #endif
 #ifndef NO_OGRE
+#ifdef None
+#undef  None
+#endif
 #include <Ogre.h>
 
 #define OGRE_VOID(x) x
@@ -6332,30 +6826,30 @@ int FlGenShortcut(const char* s);
 #define BEGIN_OGRE_CHECK try {
 #define END_OGRE_CHECK	} catch ( Ogre::Exception& e ) {Msg::msgBox(e.getFullDescription().c_str());}
 
-#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
-#include "Overlay/OgreOverlay.h"
-#include "Overlay/OgreOverlayManager.h"
-#include "Overlay/OgreOverlayContainer.h"
-#include "Overlay/OgreOverlayElement.h"
-#else
+#include "OgreOverlay.h"
+#include "OgreOverlayManager.h"
 #include "OgreOverlayContainer.h"
 #include "OgreOverlayElement.h"
-#endif
 #include <OgreEntity.h>
+#include <OgreItem.h>
+#include <Animation/OgreSkeletonInstance.h>
 #include <OgreAxisAlignedBox.h>
 
+#ifndef NO_OGRE
+#include "../OgreFltk/TraceManager.h"
+#endif
 namespace Ogre
 {
 
-	Ogre::OverlayContainer* createContainer(int x, int y, int w, int h, const char* name) ;
-	Ogre::OverlayElement* createTextArea(const String& name, Ogre::Real width, Ogre::Real height, Ogre::Real top, Ogre::Real left, uint fontSize, const String& caption, bool show) ;
+	Ogre::v1::OverlayContainer* createContainer(int x, int y, int w, int h, const char* name) ;
+	Ogre::v1::OverlayElement* createTextArea(const String& name, Ogre::Real width, Ogre::Real height, Ogre::Real top, Ogre::Real left, uint fontSize, const String& caption, bool show) ;
 }
 
-Ogre::Overlay* createOverlay_(const char* name);
+Ogre::v1::Overlay* createOverlay_(const char* name);
 void destroyOverlay_(const char* name);
 void destroyOverlayElement_(const char* name);
 void destroyAllOverlayElements_();
-Ogre::OverlayElement* createTextArea_(const char* name, double width, double height, double top, double left, int fontSize, const char* caption, bool show);
+Ogre::v1::OverlayElement* createTextArea_(const char* name, double width, double height, double top, double left, int fontSize, const char* caption, bool show);
 #endif
 #include "../MainLib/WrapperLua/mainliblua_wrap.h"
 #ifdef _MSC_VER
@@ -6376,6 +6870,7 @@ typedef unsigned short ushort;
 		write('#include "../BaseLib/motion/ASFLoader.h"')
 		write('#include "../BaseLib/motion/BVHLoader.h"')
 		write('#include "../MainLib/OgreFltk/VRMLloader.h"')
+		--write('#include "../MainLib/WrapperLua/ThreadedScript.h"')
 		writeDefinitions(bindTargetMainLib, 'Register_mainlib') -- input bindTarget can be non-overlapping subset of entire bindTarget 
 		flushWritten(source_path..'/luna_mainlib.cpp') -- write to cpp file only when there exist modifications -> no-recompile.
 	end

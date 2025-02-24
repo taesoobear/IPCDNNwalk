@@ -15,7 +15,6 @@
 #include <MainLib/OgreFltk/Loader.h>
 //#include <MainLib/OgreFltk/Joystick.h"
 #include <MainLib/OgreFltk/MotionPanel.h>
-#include <MainLib/OgreFltk/OgreMotionLoader.h>
 #include <BaseLib/utility/checkPoints.h>
 #include <BaseLib/motion/MotionRetarget.h>
 //enum { WIDTH=1275-(1000-640), HEIGHT=700, RENDERER_WIDTH=640, RENDERER_HEIGHT=260, RENDERER=0};// dump video2 (half view)
@@ -71,7 +70,7 @@ public:
 		resizable(this);
 #endif
 	}
-	~MainWin()
+	virtual ~MainWin()
 	{		
 	}
 
@@ -89,7 +88,9 @@ static MainWin* g_pMainWin=NULL;
 void _createMainWin(int w, int h, int rw, int rh, float UIscaleFactor, OgreRenderer* _renderer);
 void createMainWin(int w, int h, int rw, int rh, float UIscaleFactor)
 {
-	if(g_pRenderer) { printf("mainwin already created\n"); return;}
+    #ifndef NO_GUI 
+        if(g_pRenderer) { printf("mainwin already created\n"); return;} 
+    #endif
 	FlLayout::setUIscaleFactor(UIscaleFactor);
 	srand((unsigned)time( NULL ));
 
@@ -99,12 +100,32 @@ void createMainWin(int w, int h, int rw, int rh, float UIscaleFactor)
 
 void createMainWin(int w, int h, int rw, int rh, float UIscaleFactor, const char* configFileName, const char* plugins_file, const char* ogre_config)
 {
-	if(g_pRenderer) { printf("mainwin already created\n"); return;}
+    #ifndef NO_GUI 
+	    if(g_pRenderer) { printf("mainwin already created\n"); return;}
+    #endif
 	FlLayout::setUIscaleFactor(UIscaleFactor);
 	srand((unsigned)time( NULL ));
 	_createMainWin(w,h, rw, rh, UIscaleFactor, new OgreRenderer(configFileName, configFileName, plugins_file, ogre_config));
 }
 
+void releaseMainWin()
+{
+	delete g_pMainWin;
+	g_pMainWin=NULL;
+	delete g_pRenderer;
+	g_pRenderer=NULL;
+}
+void _createInvisibleMainWin()
+{
+    #ifndef NO_GUI 
+        if(g_pRenderer) { printf("mainwin already created\n"); return;} 
+    #endif
+	FlLayout::setUIscaleFactor(1.5);
+	srand((unsigned)time( NULL ));
+
+	RE::g_pGlobals=new RE::Globals();
+	_createMainWin(10, 10, 10, 10, 1.5, NULL);
+}
 void _createMainWin(int w, int h, int rw, int rh, float UIscaleFactor, OgreRenderer* _renderer)
 {
 
@@ -130,10 +151,18 @@ void _createMainWin(int w, int h, int rw, int rh, float UIscaleFactor, OgreRende
 #ifndef NO_OGRE
 	catch( Ogre::Exception& e ) 
 	{
+		std::cout<<e.getFullDescription().c_str()<<std::endl;
+
 		Msg::msgBox(e.getFullDescription().c_str());
 
 	}	
 #endif
+	catch(std::exception& e)
+	{
+		std::cout << e.what() <<std::endl;
+		Msg::msgBox("c++ error : %s", e.what());
+		ASSERT(0);
+	}
 	catch(char * error)
 	{
 		Msg::msgBox("%s", error);
@@ -141,11 +170,6 @@ void _createMainWin(int w, int h, int rw, int rh, float UIscaleFactor, OgreRende
 	catch(const char* error)
 	{
 		Msg::msgBox("%s", error);
-	}
-	catch(std::runtime_error& e)
-	{
-		Msg::msgBox("c++ error : %s", e.what());
-		ASSERT(0);
 	}
 	catch(...)
 	{
@@ -163,11 +187,13 @@ void showMainWin()
 	win.m_Renderer->firstInit(&win);
 
 	{
+        #ifndef NO_GUI
 		LUAwrapper L;
 		Register_baselib(L.L);
 		Register_mainlib(L.L);
 
-		L.dofile("../Resource/scripts/loadBG_default.lua");
+		L.dofile(RE::taesooLibPath()+"Resource/scripts/loadBG_default.lua");
+        #endif
 	}
 }
 
@@ -200,11 +226,20 @@ void startMainLoop()
 	}
 	catch(...)
 	{
-		Msg::msgBox("some error");
+		Msg::msgBox("some error (unknown type)");
 		ASSERT(0);
 	}
 }
+
+bool hasPythonWin()
+{
+	if(!g_pMainWin) return false;
+	if(!g_pMainWin->m_pRightWin) return false;
+	return true;
+}
 PythonExtendWin* getPythonWin()
 {
+	if(!g_pMainWin) throw std::runtime_error("mainwin ==NULL");
+	if(!g_pMainWin->m_pRightWin) throw std::runtime_error("mainwin.rightwin ==NULL");
 	return g_pMainWin->m_pRightWin;
 }

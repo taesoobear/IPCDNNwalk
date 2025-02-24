@@ -71,6 +71,7 @@ public:
 	// return -1 if not found.
 	int findFirstIndex(int value) const;
 
+	void parseString(int n_reserve, const std::string &source);
 	intvectorn&  setAt( intvectorn const& columnIndex, _tvectorn<int> const& value);
 	intvectorn&  setAt( intvectorn const& columnIndex, int value);
 
@@ -365,6 +366,7 @@ public:
 	vectorn Each(m_real (*s2_func)(m_real,m_real), vectorn const& b) const;
 
 	friend std::ostream& operator<< ( std::ostream& os, const vectorn& u );
+	void parseString(int n_reserve, const std::string &source);
 };
 
 
@@ -387,6 +389,7 @@ public:
 	vectorn& operator=(const vectornView& other)		{ assign(other);return *this;}
 	vectorn& operator=( vector3 const& other)		{ return assign(other);};
 	vectorn& operator=( quater const& other)		{ return assign(other);};
+
 
 	/* doesn't work in some gnu compilers.
     inline operator vectorn & () const { return (vectorn&)(*this);}

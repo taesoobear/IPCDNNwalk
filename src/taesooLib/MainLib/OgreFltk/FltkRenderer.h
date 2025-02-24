@@ -130,6 +130,7 @@ public:
 	bool mouseReleased( const OIS::MouseEvent &e, OIS::MouseButtonID id );
 #endif
 
+	Handler* m_pHandler;
 protected:
 	// Fl_Window
 	
@@ -139,7 +140,6 @@ protected:
 	void capture();
 	void endCapture();
 
-	Handler* m_pHandler;
 
 	FastCapture *mFC;
 

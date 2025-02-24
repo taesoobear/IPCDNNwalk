@@ -455,7 +455,7 @@ void LCPsolver::setContactConstraintPoints(LinkPair& linkPair, CollisionPointSeq
 			contact.globalFrictionIndex = globalNumFrictionVectors;
 
 			double vt_square = dot(v_tangent, v_tangent);
-			static const double vsqrthresh = VEL_THRESH_OF_DYNAMIC_FRICTION * VEL_THRESH_OF_DYNAMIC_FRICTION;
+			const double vsqrthresh = VEL_THRESH_OF_DYNAMIC_FRICTION * VEL_THRESH_OF_DYNAMIC_FRICTION;
 			bool isSlipping = (vt_square > vsqrthresh);
 			contact.mu = isSlipping ? linkPair.muDynamic : linkPair.muStatic;
 			contact.numFrictionVectors = (STATIC_FRICTION_BY_TWO_CONSTRAINTS ? 2 : 4);

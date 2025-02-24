@@ -809,377 +809,474 @@ void VRMLTransform::unpack(VRMLloader& l, BinaryFile & bf)
 	}
 	Msg::verify(bf.unpackStr()==nameId(*this), "VRMLtransform unpack binary");
 }
-void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
+
+static VRMLloader::MaterialCreator* g_matCtor=NULL;
+void VRMLloader::registerMaterialCreator(MaterialCreator* singletonMatCtr)
 {
-  TString token=file.GetToken();
-#ifdef _DEBUG
-  Msg::print("token: %s", token.ptr());
-#endif
-  if(token=="DEF")
-    {
-      SetNameId(file.GetToken());
-      token=file.GetToken();
-    }
-#ifdef _DEBUG
-  Msg::print(" %s %s\n", NameId, token.ptr());
-#endif
+	g_matCtor=singletonMatCtr;
+}
 
-  mVRMLtype=token;
-  if(token=="Joint")
-    {
-      token=file.GetToken();
-      ASSERT(token=="{");
-      mJoint=new _HRP_JOINT();
 
-      while(1)
+static void VRMLloader_loadGeometryFromFile(OBJloader::Geometry& mesh, const char* filename)
+{
+	TString path=filename;
+	printf("opening %s\n", path.ptr());
+	if(path.right(4)==".dae")
 	{
-	  token=file.GetToken();
-#ifdef _DEBUG
-	  Msg::print("Joint token: %s", token.ptr());
-#endif
-	  if(token=="translation")
-	  {
-		  vector3 joint_translation;
-	    getVec3(file,joint_translation);
-		_getOffsetTransform().translation=joint_translation;
-	  }
-	  else if (token=="jointRange" )
-	  {
-		  mJoint->jointRangeMin=atof(file.GetToken());
-		  mJoint->jointRangeMax=atof(file.GetToken());
-	  }
-	  else if(token=="jointType")
-	    mJoint->jointType=_stringToJointType(file.GetQuotedText());
-	  else if(token=="jointAxis")
-	    mJoint->jointAxis=file.GetQuotedText();
-	  else if(token=="axis")
-	  {
-		  if (!mJoint->jointAxis2)
-		  {
-			  mJoint->jointAxis2 = new vector3[3];
-			  //mJoint->jointAxis2Angle = new m_real[3];
-			  mJoint->AxisNum = 1;
-			  mJoint->jointAxis="A";
-		  }
-		  else
-		  {
-			  mJoint->AxisNum++;
-			  mJoint->jointAxis=mJoint->jointAxis+"A";
-		  }
-		  int i=mJoint->AxisNum-1;
-		  //mJoint->jointAxis2Angle[i] = 0.0;
-		  getVec3(file,mJoint->jointAxis2[i]);
-	  }
-	  else if(token=="jointAxis2")//if(token=="jointAxis")에 넣는게 나을 것 같 다.
-	 	{
-			// deprecated. use "axis" instead.
-			mJoint->AxisNum = mJoint->jointAxis.length();
-			mJoint->jointAxis2 = new vector3[mJoint->AxisNum];
-			//mJoint->jointAxis2Angle = new m_real[mJoint->AxisNum];
-			for(int i=0;i<mJoint->AxisNum;i++)				
-			{
-				double unused=atof(file.GetToken());
-				if (unused!=0.0)
-					Msg::print("warning! non-zero default angle is no longer supported!\n");
-				//mJoint->jointAxis2Angle[i] = 
-		  	    getVec3(file,mJoint->jointAxis2[i]);
+		path+=".cache";
+		VRMLloader_loadGeometryFromFile(mesh, path.ptr());
+	}
+	else if(path.right(6)==".cache")
+	{
+		BinaryFile bf;
+		bool res=bf.openRead(filename);
+		if(!res) throw std::runtime_error(path.ptr());
+		int version=bf.unpackInt();
+		mesh.unpack(bf);
+		if(version==2)
+		{
+			int nmat=bf.unpackInt();
+			for (int imat=0; imat<nmat; imat++){
+				TString id=bf.unpackStr();
+				vector3 diffuse, specular, emissive;
+				bf.unpack(diffuse);
+				bf.unpack(specular);
+				bf.unpack(emissive);
+				int matVersion=bf.unpackInt();
+				if(g_matCtor)
+					g_matCtor->createMaterial(id, diffuse, specular, emissive, 10.0);
 			}
 		}
-	  else if(token=="jointId")
-	    {
-	      int jointId_unused=atoi(file.GetToken());
-	    }
-	  else if(token=="children")
-	    UnpackChildren(l, file);
-	  else if(token=="rotation")
-	  {
-		  vector4 jr;
-		  getVec4(file,jr);
-		  _getOffsetTransform().rotation.setRotation(vector3(jr.x(), jr.y(), jr.z()), jr.w());
-	  }
-	  else if(token=="translation")
-	  {
-	    getVec3(file,_getOffsetTransform().translation);
-	  }
-	  else if(token=="}")
-	    return;
-	  else unexpectedToken(file, token, "children, rotation, translation, } .. are expected");
-	};
-    }
-  else if(token=="AccelerationSensor")
-    skipNode(file);
-  else if(token=="Gyro")
-    skipNode(file);
-  else if(token=="VisionSensor")
-    skipNode(file);
-  else if(token=="Segment")
-    {
-      token=file.GetToken();
-#ifdef _DEBUG
-	  Msg::print("segment_token: %s", token.ptr());
-#endif
-      ASSERT(token=="{");
-      mSegment=new HRP_SEGMENT();
-      while(1)
-	{
-	  token=file.GetToken();
-	  if(token=="centerOfMass")
-	    getVec3(file,mSegment->centerOfMass);
-	  else if(token=="mass")
-	    mSegment->mass=atof(file.GetToken());
-	  else if(token=="momentsOfInertia")
-	    getMat3(file, mSegment->momentsOfInertia);
-	  else if(token=="children")
-	    UnpackChildren(l,file);
-	  else if(token=="material")
-	    mSegment->material=file.GetQuotedText();
-	  else if(token=="}")
-	    return;
-	  else unexpectedToken(file, token, "children, material,}... expected");
-	};
-    }
-  else if(token=="Transform")
-    {
-      token=file.GetToken();
-      ASSERT(token=="{");
-      mTransform=new VRML_TRANSFORM();
-      while(1)
-	{
-	  token=file.GetToken();
-	  if(token=="rotation")
-	    getVec4(file,mTransform->rotation);
-	  else if(token=="translation")
-	    getVec3(file,mTransform->translation);
-	  else if(token=="scale")
-	    getVec3(file, mTransform->scale);
-	  else if(token=="children")
-	    UnpackChildren(l,file);
-	  else if(token=="}")
-	    return;
-	  else unexpectedToken(file, token, "translation, scale, children, },... expected");
-	};
-    }
-  else if(token=="Shape")
-    {
-      token=file.GetToken();
-      ASSERT(token=="{");
-      mShape=new HRP_SHAPE();
-      while(1)
-	{
-	  token=file.GetToken();
-	  if(token=="appearance")
-	    {
-	      token=file.GetToken();
-	      if(token=="DEF")
-		{
-		  token=file.GetToken();// name
-		  token=file.GetToken();// Appearance
-		}
-				
 
-	      if(token=="Appearance")
-		skipNode(file);
-	      else if(token=="USE")
-		{
-		  token=file.GetToken();// use name
-		}
-	      else unexpectedToken(file, token, "??");
-	    }
-	  else if(token=="geometry")
-	  {
-		  TString geometryType=file.GetToken();
-
-		  float r=1.f,g=1.f,b=1.f, a=0.f;
-		  bool hasColor=false;
-
-		  if(geometryType=="Box" || geometryType=="Ellipsoid" || geometryType=="Plane")
-		  {
-			  token=file.GetToken();
-			  ASSERT(token=="{");
-			  token=file.GetToken();
-			  ASSERT(token=="size");
-			  vector3 size;
-			  size.x=atof(file.GetToken());
-			  size.y=atof(file.GetToken());
-			  size.z=atof(file.GetToken());
-
-			  //Msg::print("Box size %s\n", size.output().ptr());
-			  token=file.GetToken();
-
-			  if (token=="color")
-			  {
-				  hasColor=true;
-				  r=atof(file.GetToken());
-				  g=atof(file.GetToken());
-				  b=atof(file.GetToken());
-				  a=atof(file.GetToken());
-
-				  token=file.GetToken();
-			  }
-			  ASSERT(token=="}");
-
-			  if(geometryType=="Box")
-				  mShape->mesh.initBox(vector3(size.x, size.y, size.z));
-			  else if(geometryType=="Plane")
-				  mShape->mesh.initPlane(size.x, size.z);
-			  else
-				  mShape->mesh.initEllipsoid(vector3(size.x, size.y, size.z));
-		  }
-		  else if(geometryType=="Cylinder" || geometryType=="Capsule")
-		  {
-			  token=file.GetToken();
-			  ASSERT(token=="{");
-			  token=file.GetToken();
-			  double radius;
-			  double height;
-			  if (token=="radius")
-			  {
-				  radius=atof(file.GetToken());
-				  token=file.GetToken();
-				  if(token!="height") unexpectedToken(file, token, "height expected");
-				  height=atof(file.GetToken());
-			  }
-			  else  unexpectedToken(file, token, "radius expected");
-			  token=file.GetToken();
-			  int numDivision=10;
-			  while (token!="}")
-			  {
-				  if(token=="numDivision") 
-				  {
-					  numDivision=atoi(file.GetToken());
-				  }
-				  else if (token=="color")
-				  {
-					  hasColor=true;
-					  r=atof(file.GetToken());
-					  g=atof(file.GetToken());
-					  b=atof(file.GetToken());
-					  a=atof(file.GetToken());
-				  }
-				  else
-					  unexpectedToken(file, token, "numDivision expected");
-
-				  token=file.GetToken();
-			  }
-
-			  if (geometryType=="Cylinder")
-				  mShape->mesh.initCylinder( radius, height, numDivision);
-			  else
-				  mShape->mesh.initCapsule( radius, height);
-		  }
-		  else if(geometryType=="OBJ" || geometryType=="OBJ_no_classify_tri")
-		  {
-			  token=file.GetQuotedText();
-
-			  try{
-				  mShape->mesh.loadObj(token);
-			  }
-			  catch(std::runtime_error& e)
-			  {
-				  // try with relative path.
-				  TString wrlPath=sz1::parentDirectory(l.url);
-#ifdef _DEBUG
-				  Msg::print("%s %s\n", wrlPath.ptr(), token.ptr());
-#endif
-				  try{
-					  mShape->mesh.loadObj(wrlPath+token);
-				  }
-				  catch(std::runtime_error& e)
-				  {
-					  TString dir;
-					  TString fn=sz1::filename(token, dir);
-					  TString tryfn=l.url.left(-4)+"_sd/"+fn;
-#ifdef _DEBUG
-					  Msg::print("%s\n", tryfn.ptr());
-#endif
-					  if(!mShape->mesh.loadObj(tryfn))
-						  Msg::error("%s not found", token.ptr());
-				  }
-			  }
-			  mShape->mesh.calculateVertexNormal();
-			  if (geometryType!="OBJ_no_classify_tri")
-				  mShape->mesh.classifyTriangles();
-		  }
-		  else skipNode(file);
-
-		  // also set colors
-		  auto& mesh=mShape->mesh;
-		  int numColor=1;
-		  mesh.resize(mesh.numVertex(), mesh.numNormal(), mesh.numTexCoord(), numColor, mesh.numFace());
-		  mesh.getColor(0).x()=r;
-		  mesh.getColor(0).y()=g;
-		  mesh.getColor(0).z()=b;
-		  mesh.getColor(0).w()=a;
-		  for(int f=0; f<mesh.numFace(); f++){
-			  auto& ff=mesh.getFace(f);
-			  ff.setIndex(0,0,0, OBJloader::Buffer::COLOR);
-		  }
-	  }
-	  else if(token=="}")
-	    return;
-	  else unexpectedToken(file, token, "geometry, }, ... expected");
-	};
-    }
-  else if(token=="Humanoid")
-    {
-      token=file.GetToken();
-      ASSERT(token=="{");
-      while(1)
-	{
-	  token=file.GetToken();
-#ifdef _DEBUG
-	  Msg::print("humanoid token: %s\n", token.ptr());
-#endif
-	  
-	  if(token=="name")
-	    l.name=file.GetQuotedText();
-	  else if(token=="url")
-	    l.url=file.GetQuotedText();
-	  else if (token=="frameRate")
-	  {
-		  l._frameRate=atof(file.GetToken());
-		  //Msg::print("frameRate::%f\n", l._frameRate);
-	  }
-	  else if(token=="version")
-	    l.version=file.GetQuotedText();
-	  else if(token=="info")
-	    {
-	      token=file.GetToken();
-	      ASSERT(token=="[");
-	      while(1)
-		{
-		  token=file.GetToken();
-		  if(token=="]")
-		  {
-#ifdef _DEBUG
-			  Msg::print("info last line: %s\n", l.info.back().ptr());
-#endif
-		    break;
-		  }
-		  else
-		    {
-		      file.Undo();
-		      token=file.GetQuotedText();
-#ifdef _DEBUG
-			  Msg::print("info line: %s\n", token.ptr());
-#endif
-		      l.info.pushBack(token);
-		    }
-		}
-	    }
-	  else if(token=="joints")
-	    skipNode(file, "[]");
-	  else if(token=="segments")
-	    skipNode(file, "[]");
-	  else if(token=="humanoidBody")
-	    UnpackChildren(l,file);
-	  else if(token=="}")
-	    return;
-	  else
-		unexpectedToken(file, token, "joints, segments, humanoidBody,... expected");
 	}
-    }
-  else unexpectedToken(file, token, "Shape, humanoid, ... expected");
+	else
+	{
+		if(! mesh.loadObj(path))
+			throw std::runtime_error(path.ptr());
+	}
+}
+void VRMLTransform::Unpack(VRMLloader& l, CTextFile& file)
+{
+	TString token=file.GetToken();
+#ifdef _DEBUG
+	Msg::print("token: %s", token.ptr());
+#endif
+	if(token=="DEF")
+	{
+		SetNameId(file.GetToken());
+		token=file.GetToken();
+	}
+#ifdef _DEBUG
+	Msg::print(" %s %s\n", NameId, token.ptr());
+#endif
+
+	mVRMLtype=token;
+	if(token=="Joint")
+	{
+		token=file.GetToken();
+		ASSERT(token=="{");
+		mJoint=new _HRP_JOINT();
+
+		while(1)
+		{
+			token=file.GetToken();
+#ifdef _DEBUG
+			Msg::print("Joint token: %s", token.ptr());
+#endif
+			if(token=="translation")
+			{
+				vector3 joint_translation;
+				getVec3(file,joint_translation);
+				_getOffsetTransform().translation=joint_translation;
+			}
+			else if (token=="jointRange" )
+			{
+				mJoint->jointRangeMin=atof(file.GetToken());
+				mJoint->jointRangeMax=atof(file.GetToken());
+			}
+			else if(token=="jointType")
+				mJoint->jointType=_stringToJointType(file.GetQuotedText());
+			else if(token=="jointAxis")
+				mJoint->jointAxis=file.GetQuotedText();
+			else if(token=="axis")
+			{
+				if (!mJoint->jointAxis2)
+				{
+					mJoint->jointAxis2 = new vector3[3];
+					//mJoint->jointAxis2Angle = new m_real[3];
+					mJoint->AxisNum = 1;
+					mJoint->jointAxis="A";
+				}
+				else
+				{
+					mJoint->AxisNum++;
+					mJoint->jointAxis=mJoint->jointAxis+"A";
+				}
+				int i=mJoint->AxisNum-1;
+				//mJoint->jointAxis2Angle[i] = 0.0;
+				getVec3(file,mJoint->jointAxis2[i]);
+			}
+			else if(token=="jointAxis2")//if(token=="jointAxis")에 넣는게 나을 것 같 다.
+			{
+				// deprecated. use "axis" instead.
+				mJoint->AxisNum = mJoint->jointAxis.length();
+				mJoint->jointAxis2 = new vector3[mJoint->AxisNum];
+				//mJoint->jointAxis2Angle = new m_real[mJoint->AxisNum];
+				for(int i=0;i<mJoint->AxisNum;i++)				
+				{
+					double unused=atof(file.GetToken());
+					if (unused!=0.0)
+						Msg::print("warning! non-zero default angle is no longer supported!\n");
+					//mJoint->jointAxis2Angle[i] = 
+					getVec3(file,mJoint->jointAxis2[i]);
+				}
+			}
+			else if(token=="jointId")
+			{
+				int jointId_unused=atoi(file.GetToken());
+			}
+			else if(token=="children")
+				UnpackChildren(l, file);
+			else if(token=="rotation")
+			{
+				vector4 jr;
+				getVec4(file,jr);
+				_getOffsetTransform().rotation.setRotation(vector3(jr.x(), jr.y(), jr.z()), jr.w());
+			}
+			else if(token=="translation")
+			{
+				getVec3(file,_getOffsetTransform().translation);
+			}
+			else if(token=="}")
+				return;
+			else unexpectedToken(file, token, "children, rotation, translation, } .. are expected");
+		};
+	}
+	else if(token=="AccelerationSensor")
+		skipNode(file);
+	else if(token=="Gyro")
+		skipNode(file);
+	else if(token=="VisionSensor")
+		skipNode(file);
+	else if(token=="Segment")
+	{
+		token=file.GetToken();
+#ifdef _DEBUG
+		Msg::print("segment_token: %s", token.ptr());
+#endif
+		ASSERT(token=="{");
+		mSegment=new HRP_SEGMENT();
+		while(1)
+		{
+			token=file.GetToken();
+			if(token=="centerOfMass")
+				getVec3(file,mSegment->centerOfMass);
+			else if(token=="mass")
+				mSegment->mass=atof(file.GetToken());
+			else if(token=="momentsOfInertia")
+				getMat3(file, mSegment->momentsOfInertia);
+			else if(token=="children")
+				UnpackChildren(l,file);
+			else if(token=="material")
+				mSegment->material=file.GetQuotedText();
+			else if(token=="}")
+				return;
+			else unexpectedToken(file, token, "children, material,}... expected");
+		};
+	}
+	else if(token=="Transform")
+	{
+		token=file.GetToken();
+		ASSERT(token=="{");
+		mTransform=new VRML_TRANSFORM();
+		while(1)
+		{
+			token=file.GetToken();
+			if(token=="rotation")
+				getVec4(file,mTransform->rotation);
+			else if(token=="translation")
+				getVec3(file,mTransform->translation);
+			else if(token=="scale")
+				getVec3(file, mTransform->scale);
+			else if(token=="children")
+				UnpackChildren(l,file);
+			else if(token=="}")
+				return;
+			else unexpectedToken(file, token, "translation, scale, children, },... expected");
+		};
+	}
+	else if(token=="Shape")
+	{
+		token=file.GetToken();
+		ASSERT(token=="{");
+		mShape=new HRP_SHAPE();
+		while(1)
+		{
+			token=file.GetToken();
+			if(token=="appearance")
+			{
+				token=file.GetToken();
+				if(token=="DEF")
+				{
+					token=file.GetToken();// name
+					token=file.GetToken();// Appearance
+				}
+
+
+				if(token=="Appearance")
+					skipNode(file);
+				else if(token=="USE")
+				{
+					token=file.GetToken();// use name
+				}
+				else unexpectedToken(file, token, "??");
+			}
+			else if(token=="geometry")
+			{
+				TString geometryType=file.GetToken();
+
+				float r=1.f,g=1.f,b=1.f, a=0.f;
+				bool hasColor=false;
+
+				if(geometryType=="Box" || geometryType=="Ellipsoid" || geometryType=="Plane")
+				{
+					token=file.GetToken();
+					ASSERT(token=="{");
+					token=file.GetToken();
+					ASSERT(token=="size");
+					vector3 size;
+					size.x=atof(file.GetToken());
+					size.y=atof(file.GetToken());
+					size.z=atof(file.GetToken());
+
+					//Msg::print("Box size %s\n", size.output().ptr());
+					token=file.GetToken();
+
+					if (token=="color")
+					{
+						hasColor=true;
+						r=atof(file.GetToken());
+						g=atof(file.GetToken());
+						b=atof(file.GetToken());
+						a=atof(file.GetToken());
+
+						token=file.GetToken();
+					}
+					ASSERT(token=="}");
+
+					if(geometryType=="Box")
+						mShape->mesh.initBox(vector3(size.x, size.y, size.z));
+					else if(geometryType=="Plane")
+						mShape->mesh.initPlane(size.x, size.z);
+					else
+						mShape->mesh.initEllipsoid(vector3(size.x, size.y, size.z));
+				}
+				else if(geometryType=="Cylinder" || geometryType=="Capsule")
+				{
+					token=file.GetToken();
+					ASSERT(token=="{");
+					token=file.GetToken();
+					double radius;
+					double height;
+					if (token=="radius")
+					{
+						radius=atof(file.GetToken());
+						token=file.GetToken();
+						if(token!="height") unexpectedToken(file, token, "height expected");
+						height=atof(file.GetToken());
+					}
+					else  unexpectedToken(file, token, "radius expected");
+					token=file.GetToken();
+					int numDivision=10;
+					while (token!="}")
+					{
+						if(token=="numDivision") 
+						{
+							numDivision=atoi(file.GetToken());
+						}
+						else if (token=="color")
+						{
+							hasColor=true;
+							r=atof(file.GetToken());
+							g=atof(file.GetToken());
+							b=atof(file.GetToken());
+							a=atof(file.GetToken());
+						}
+						else
+							unexpectedToken(file, token, "numDivision expected");
+
+						token=file.GetToken();
+					}
+
+					if (geometryType=="Cylinder")
+						mShape->mesh.initCylinder( radius, height, numDivision);
+					else
+						mShape->mesh.initCapsule( radius, height);
+				}
+				else if(geometryType=="OBJ" || geometryType=="OBJ_no_classify_tri" || geometryType=="OBJ_merge_vertex")
+				{
+					token=file.GetQuotedText();
+
+					try{
+						VRMLloader_loadGeometryFromFile(mShape->mesh,token);
+					}
+					catch(std::runtime_error& e)
+					{
+						TString dir;
+						TString fn=sz1::filename(token, dir);
+						// try with relative path.
+						TString wrlPath=sz1::parentDirectory(l.url);
+						TString tryfn=wrlPath+l.assetFolder+"/"+fn;
+						TStrings tryfns;
+
+						try{
+							VRMLloader_loadGeometryFromFile(mShape->mesh,tryfn.ptr());
+						}
+						catch(std::runtime_error& e)
+						{
+							tryfns.pushBack(tryfn);
+#ifdef _DEBUG
+							Msg::print("%s %s\n", wrlPath.ptr(), token.ptr());
+#endif
+							try{
+								VRMLloader_loadGeometryFromFile(mShape->mesh,wrlPath+token);
+							}
+							catch(std::runtime_error& e)
+							{
+								tryfns.pushBack(tryfn);
+								tryfn=l.url.left(-4)+"_sd/"+fn;
+								try {
+									VRMLloader_loadGeometryFromFile(mShape->mesh,tryfn);
+								}
+								catch(std::runtime_error& e)
+								{
+									std::string out;
+									tryfns.pushBack(tryfn);
+									for(int i=0; i<tryfns.size(); i++)
+										out=out+std::string(tryfns[i])+std::string("\n");
+									Msg::error("failed to open %s", out.c_str());
+								}
+							}
+						}
+					}
+					token=file.GetToken();
+					if (token=="color")
+					{
+						hasColor=true;
+						r=atof(file.GetToken());
+						g=atof(file.GetToken());
+						b=atof(file.GetToken());
+						a=atof(file.GetToken());
+
+						token=file.GetToken();
+					}
+					ASSERT(token=="}");
+					file.Undo();
+#ifdef _DEBUG
+					cout << "loadobj finished"<<endl;
+#endif
+					if (geometryType=="OBJ_no_classify_tri")
+					{
+						mShape->mesh.calculateVertexNormal();
+					}
+					else if (geometryType=="OBJ")
+					{
+						mShape->mesh.calculateVertexNormal();
+						mShape->mesh.classifyTriangles();
+					}
+					else
+					{
+						OBJloader::Mesh otherMesh;
+						otherMesh=mShape->mesh;
+						otherMesh.mergeDuplicateVertices();
+						mShape->mesh=otherMesh;
+						mShape->mesh.calculateVertexNormal();
+					}
+#ifdef _DEBUG
+					cout << "classify finished"<<endl;
+#endif
+				}
+				else skipNode(file);
+
+				// also set colors
+				auto& mesh=mShape->mesh;
+				assert(mesh.numElements()==1);
+				if(hasColor)
+				{
+					TString temp;
+					temp.format("@color %f %f %f %f", r, g, b, a);
+					mesh._element(0).material=temp.tostring();
+				}
+			}
+			else if(token=="}")
+				return;
+			else unexpectedToken(file, token, "geometry, }, ... expected");
+		};
+	}
+	else if(token=="Humanoid")
+	{
+		token=file.GetToken();
+		ASSERT(token=="{");
+		while(1)
+		{
+			token=file.GetToken();
+#ifdef _DEBUG
+			Msg::print("humanoid token: %s\n", token.ptr());
+#endif
+
+			if(token=="name")
+				l.name=file.GetQuotedText();
+			else if(token=="url")
+				l.url=file.GetQuotedText();
+			else if (token=="assetFolder")
+			{
+				l.assetFolder=file.GetQuotedText();
+			}
+			else if (token=="frameRate")
+			{
+				l._frameRate=atof(file.GetToken());
+				//Msg::print("frameRate::%f\n", l._frameRate);
+			}
+			else if(token=="version")
+				l.version=file.GetQuotedText();
+			else if(token=="info")
+			{
+				token=file.GetToken();
+				ASSERT(token=="[");
+				while(1)
+				{
+					token=file.GetToken();
+					if(token=="]")
+					{
+#ifdef _DEBUG
+						Msg::print("info last line: %s\n", l.info.back().ptr());
+#endif
+						break;
+					}
+					else
+					{
+						file.Undo();
+						token=file.GetQuotedText();
+#ifdef _DEBUG
+						Msg::print("info line: %s\n", token.ptr());
+#endif
+						l.info.pushBack(token);
+					}
+				}
+			}
+			else if(token=="joints")
+				skipNode(file, "[]");
+			else if(token=="segments")
+				skipNode(file, "[]");
+			else if(token=="humanoidBody")
+				UnpackChildren(l,file);
+			else if(token=="}")
+				return;
+			else
+				unexpectedToken(file, token, "joints, segments, humanoidBody,... expected");
+		}
+	}
+	else unexpectedToken(file, token, "Shape, humanoid, ... expected");
 }
 
 static void VRML_TRANSFORM_identity(VRML_TRANSFORM* t)
@@ -1334,7 +1431,13 @@ void VRMLTransform::initBones()
 	}
       else if(mJoint->jointType==HRP_JOINT::SLIDE)
 	{
-	  setChannels(mJoint->jointAxis, "");
+		if(mJoint->jointAxis.findChar(0,'A') != -1)
+		{
+		  setChannels(mJoint->jointAxis, "");
+		  setArbitraryAxes(mJoint->jointAxis2);
+		}
+		else
+			setChannels(mJoint->jointAxis, "");
 	}
       else if(mJoint->jointType==HRP_JOINT::GENERAL)
 	{
@@ -1714,6 +1817,35 @@ int VRMLloader::numHRPjoints()
 	return VRMLbone(numBone()-1).mJoint->jointEndId;
 }
 
+VRMLloader::VRMLloader(VRMLloader const& other, int newRootIndex, bool bFreeRootJoint)
+{
+	_frameRate=30;
+	_terrain=NULL;
+	MemoryFile m;
+	name=other.name+TString("_", newRootIndex);
+
+	Msg::verify(other.numBone()>newRootIndex,"making subtree failed. (invalid newRootIndex)");
+	other.VRMLbone(newRootIndex).pack(m);
+
+	m_pTreeRoot=new VRMLTransform();
+	VRMLTransform* root=new VRMLTransform();
+	root->unpack(*this,m);
+	m_pTreeRoot->SetNameId("HumanoidBody");
+	m_pTreeRoot->AddChild(root);
+
+	if(bFreeRootJoint) {
+		root->mJoint->jointType=HRP_JOINT::FREE;
+		//root->setChannels("XYZ", "ZYX");
+		root->setChannels("XYZ", "ZXY"); // ZXY is better for YUP characters.
+	}
+
+	VRMLTransform* n=((VRMLTransform*)(m_pTreeRoot->m_pChildHead));
+	n->_getOffsetTransform().translation.zero();
+	_initDOFinfo(); 
+
+	url=other.url;
+	assetFolder=url.left(-4)+"_sd"; // default asset folder
+}
 VRMLloader::VRMLloader(VRMLloader const& other)
 	:MotionLoader()
 {
@@ -1723,6 +1855,7 @@ VRMLloader::VRMLloader(VRMLloader const& other)
 	other._exportBinary(m);
 	_importBinary(m);
 	url=other.url;
+	assetFolder=url.left(-4)+"_sd"; // default asset folder
 }
 VRMLloader::VRMLloader()
  :MotionLoader()
@@ -1810,6 +1943,7 @@ VRMLloader::VRMLloader(OBJloader::Geometry const& mesh, bool useFixedJoint)
 	_initDOFinfo(); 
 	name=RE::generateUniqueName();
 	url=name+".wrl";
+	assetFolder=url.left(-4)+"_sd"; // default asset folder
 
 	_initDOFinfo();
 	//VRMLloader_updateMeshEntity(*l);
@@ -1846,6 +1980,7 @@ VRMLloader::VRMLloader(OBJloader::Terrain* terrain)
 	_initDOFinfo(); 
 	name=RE::generateUniqueName();
 	url=name+".wrl";
+	assetFolder=url.left(-4)+"_sd"; // default asset folder
 
 	_initDOFinfo();
 	//VRMLloader_updateMeshEntity(*l);
@@ -1860,6 +1995,7 @@ VRMLloader::VRMLloader(const char* filename)
 #endif 
 
   url=filename;
+  assetFolder=url.left(-4)+"_sd"; // default asset folder
   if(!(url.right(4).toUpper()==".WRL"))
   {
 	  BinaryFile bf(false, filename);
@@ -1881,6 +2017,7 @@ VRMLloader::VRMLloader(const std::string & filename)
 #endif 
 
   url=filename.c_str();
+  assetFolder=url.left(-4)+"_sd"; // default asset folder
   if(!(url.right(4).toUpper()==".WRL"))
   {
 	  BinaryFile bf(false, filename.c_str());
@@ -1897,6 +2034,7 @@ VRMLloader::VRMLloader(CTextFile& vrmlFile)
 	_frameRate=30;
 	_terrain=NULL;
 	url="CTextFile";
+	assetFolder=url.left(-4)+"_sd"; // default asset folder
 	_importVRML(vrmlFile);
 }
 
@@ -2373,23 +2511,6 @@ void VRMLloader::_importVRML(CTextFile& file)
 }
 
 
-static void make_extra(VRMLTransform* node,VRMLTransform* out)
-{
-  while(out->m_pSibling)
-	out = (VRMLTransform*)(out->m_pSibling);
-
-  VRMLTransform* child;
-  child=new VRMLTransform();
-  child->copyFrom(*node);
-
-  out->AddChild(child);
-
-  if(node->m_pChildHead)
-	make_extra((VRMLTransform*)node->m_pChildHead,(VRMLTransform*)out->m_pChildHead);
-
-  if(node->m_pSibling)
-	make_extra((VRMLTransform*)node->m_pSibling,(VRMLTransform*)out);
-}
 
 
 void VRMLloader::addRelativeConstraint(int ibone1, vector3 const& lpos1, int ibone2, vector3 const& lpos2)
@@ -2415,125 +2536,6 @@ void VRMLloader::_getAllRelativeConstraints(intvectorn& ibone, vector3N& localpo
 		localpos[iconx2+1]=c.localpos2;
 	}
 }
-VRMLloader_subtree* VRMLloader::makesubtree(int treeIndex) const
-{
-  //VRMLTransform* found=findTransform((VRMLTransform*)m_pTreeRoot, startname);
-  VRMLTransform* found=&VRMLbone(treeIndex);
-  ASSERT(found);
-
-  VRMLloader_subtree* extra_VRMLloader = new VRMLloader_subtree();
-  extra_VRMLloader->m_pTreeRoot = new VRMLTransform();
-
-  if(TString(m_pTreeRoot->NameId) != found->name())
-  {
-	extra_VRMLloader->url = url+TString("_subtree_")+found->name();
-	extra_VRMLloader->name = name;
-	extra_VRMLloader->version = version;
-	extra_VRMLloader->info = info;
-
-	VRMLTransform* extra = ((VRMLTransform*)extra_VRMLloader->m_pTreeRoot);
-	extra->copyFrom(*(&VRMLbone(0)));
-
- 	VRMLTransform* m_child;	
-	m_child=new VRMLTransform();
-
-	if(1)
-	{
-		m_child->copyFrom(*found);
-		extra->AddChild(m_child);
-		Msg::verify(found->m_pChildHead, "%s has no child", found->NameId);
-		make_extra((VRMLTransform*)(found->m_pChildHead),(VRMLTransform*)(extra->m_pChildHead));		
-	}
-	else
-	{
-		// copy found to m_child
-		MemoryFile m;
-		found->pack(m);
-		m_child->unpack((VRMLloader&)*this, m);
-		extra->AddChild(m_child);
-	}
-
-	extra_VRMLloader->_initDOFinfo(); 
-	}
-  else
-  {
-	  Msg::print("\nWarning : You don't need extractSubtree! (Same VRMLloader)\n");		
-	return NULL;
-  }
-  extra_VRMLloader->fullbody = this;
-  extra_VRMLloader->mtreeindex=treeIndex;
-  extra_VRMLloader->mdof = 0;
-
-  const VRMLloader* fullbody=this;
-  for(int i =1; i < treeIndex; i++)
-	  extra_VRMLloader->mdof+=fullbody->dofInfo.numDOF(i);
-
-  extra_VRMLloader->FullbodyPoseToSubpose();
-  Bone* bone = fullbody->VRMLbone(treeIndex).parent();
-
-  if(bone!=NULL)	
-  {
-	  bone->getTranslation(extra_VRMLloader->origindofpos); 
-	  bone->getRotation(extra_VRMLloader->origindofori);
-  }
-  return extra_VRMLloader;
-}
- 
-
-VRMLloader_subtree::VRMLloader_subtree()
-	:VRMLloader()
-{
-}
-
-void VRMLloader_subtree::FullbodyPoseToSubpose()
-{
-	vectorn mPose,subPose;
-	fullbody->getPoseDOF(mPose);
-
-
-	fullbodyPoseToSubpose(mPose, subPose);
-
-	setPoseDOF(subPose);
-}
-void VRMLloader_subtree::fullbodyPoseToSubpose(vectorn const & fullPose, vectorn &subPose) const
-{
-	getPoseDOF(subPose);
-	for(int i = 0; i<subPose.size();i++)
-		subPose.set(i, fullPose(i + mdof ));
-}
-void VRMLloader_subtree::subPoseToFullpose(vectorn const & subPose, vectorn &fullPose) const
-{
-	for(int i=0;i<subPose.size();i++)
-		fullPose.set(i + mdof , subPose(i));
-}
-
-void VRMLloader_subtree::subPoseToFullpose()
-{
-	vectorn mPose,subPose;
-	fullbody->getPoseDOF(mPose);
-	getPoseDOF(subPose);
-	subPoseToFullpose(subPose, mPose);
-	fullbody->setPoseDOF(mPose);
-}
-
-
-VRMLloader_subtree::~VRMLloader_subtree()
-{
-	//fullbody is not created by this.
-#ifdef TEST_MEMORYLEAK	
-	Msg::msgBox("dtor VRMLloader_subtree %s", url.ptr());
-#endif 	
-	
-}
-
-int VRMLloader_subtree::subTreeindex(int fulltreeindex) const 
-{ 
-	int ii=
-	fulltreeindex-mtreeindex+1;
-	if (ii>=numBone() || ii<1)
-		return -1;
-	return ii;
-}
 
 void VRMLloader::setPosition(const vector3 & pos)
 {
@@ -2548,3 +2550,4 @@ void VRMLloader::setPosition(const vector3 & pos)
 		fkSolver().forwardKinematics();
 	}
 }
+

@@ -7,7 +7,6 @@
 #include "RE.h"
 #include "TraceManager.h"
 #include "Loader.h"
-#include "OgreMotionLoader.h"
 #include "../BaseLib/motion/MotionUtil.h"
 #include "MotionManager.h"
 #include "../BaseLib/motion/MotionRetarget.h"
@@ -18,7 +17,6 @@
 #include "FlLayout.h"
 #include "../BaseLib/math/intervals.h"
 #include "../BaseLib/motion/version.h"
-#include "../Ogre/PLDPrimCustumSkin.h"
 #include "FL/Fl_Float_Input.H"
 #include <FL/Fl_File_Chooser.H>
 #include "FlChoice.h"
@@ -340,7 +338,8 @@ FltkMotionWindow::FltkMotionWindow(int x, int y, int w)
 
 	m_nCurrFrame=0;
 	m_numFrame=0;
-	RE::renderer().addAfterFrameMoveObject(this);
+	if(RE::rendererValid())
+		RE::renderer().addAfterFrameMoveObject(this);
 	//RE::renderer().addFrameMoveObject(this);
 }
 
@@ -1611,7 +1610,7 @@ MotionPanel::MotionPanel(int x, int y, int w, int h)
 		cry+=20*mScaleFactor;
 	m_menuMotion.initChoice(crx,cry, (100+80)*mScaleFactor, 20*mScaleFactor);
 
-	int nitem=78;
+	int nitem=71;
 	m_menuOp.size(nitem);
 
 	int item=0;
@@ -1621,8 +1620,6 @@ MotionPanel::MotionPanel(int x, int y, int w, int h)
 	m_menuOp.item(item++, "Show all motions (point)",0, Hash("Show motions (point)"));
 	m_menuOp.item(item++, "Show all motions (elipsoid)",0, Hash("Show motions (elipsoid)"));
 	m_menuOp.item(item++, "Show all motions (box)",0, Hash("Show motions (box)"));
-	m_menuOp.item(item++, "Show skined motions",0, Hash("Show skined motions"));
-	m_menuOp.item(item++, "Change skins",0, Hash("Change skins"));
 	m_menuOp.item(item++, "Scale skins",0, Hash("Scale skins"));
 	m_menuOp.item(item++, "Translate all skins",0, Hash("Translate skins"));
 	m_menuOp.item(item++, "Hide skins", 0, Hash("hide skins"));
@@ -1630,11 +1627,6 @@ MotionPanel::MotionPanel(int x, int y, int w, int h)
 	m_menuOp.item(item++, "Release motions",0, Hash("Release motions"), FL_MENU_DIVIDER);
 	m_menuOp.item(item++, "Show Bone",0, Hash("Bone"));
 	m_menuOp.item(item++, "Show motion",0, Hash("Show"));
-	m_menuOp.item(item++, "Show motion using skin",0, Hash("ShoS"));
-	m_menuOp.item(item++, "Show motion using skin (dual quaternion)",0, Hash("ShoS2"));
-	m_menuOp.item(item++, "Change skin (automatic)",0, Hash("SkinAuto"));
-	m_menuOp.item(item++, "Change skin from a mapping table",0, Hash("Skin"));
-	m_menuOp.item(item++, "Reset skin",0, Hash("RSSk"));
 	m_menuOp.item(item++, "Change coordinate",0, Hash("Change coordinate"));
 	m_menuOp.endSubMenu(item++);
 	m_menuOp.beginSubMenu(item++, "Export");
@@ -1723,6 +1715,7 @@ void showBoundingBox(Ogre::SceneNode* node, bool bValue)
 {
 	if(node->getName()!="BackgroundNode")
 	{
+#ifdef TODO2
 		Ogre::Node::ChildNodeIterator it=node->getChildIterator();
 
 		while(it.hasMoreElements())
@@ -1734,6 +1727,7 @@ void showBoundingBox(Ogre::SceneNode* node, bool bValue)
 				showBoundingBox(childsceneNode, bValue);
 		};
 		node->showBoundingBox(bValue);
+#endif
 	}
 }
 void MotionPanel::onCallback(Fl_Widget* pWidget, int userdata)
@@ -2248,84 +2242,6 @@ void MotionPanel::onCallback(Fl_Widget* pWidget, int userdata)
 			m_motionWin->addSkin(pSkin);
 		}
 	}
-	else if(userdata==Hash("ShoS2"))
-	{
-#ifdef INCLUDE_OGRESKINENTITY
-		Motion& curMot=currMotion();
-
-		PLDPrimSkin* pSkin=RE::createCustumSkin(curMot);
-		m_motionWin->addSkin(pSkin);
-#endif
-	}
-	else if(userdata==Hash("ShoS"))
-	{
-		Motion& curMot=currMotion();
-
-		TString meshFile, mappingFile;
-		PREPAIR_SKIN(curMot, meshFile, mappingFile);
-
-		PLDPrimSkin* pSkin=RE::createOgreSkin(curMot.skeleton(),
-			RE::renderer().viewport().mScene->createEntity(RE::generateUniqueName().ptr(), meshFile.ptr()),
-			mappingFile);
-
-		pSkin->ApplyAnim(currMotion());
-		m_motionWin->addSkin(pSkin);
-	}
-	else if(userdata==Hash("Show skined motions"))
-	{
-		for(int i=0; i<m_motions.size(); i++)
-		{
-			Motion& curMot=m_motions[i];
-
-			TString meshFile, mappingFile;
-			PREPAIR_SKIN(curMot, meshFile, mappingFile);
-
-			PLDPrimSkin* pSkin=RE::createOgreSkin(curMot.skeleton(),
-				RE::renderer().viewport().mScene->createEntity(RE::generateUniqueName().ptr(), meshFile.ptr()),
-				mappingFile);
-
-			pSkin->ApplyAnim(curMot);
-			m_motionWin->addSkin(pSkin);
-		}
-	}
-	else if(userdata==Hash("SkinAuto"))
-	{
-		Motion& curMot=currMotion();
-
-		TString meshFile, mappingFile;
-		PREPAIR_SKIN(curMot, meshFile, mappingFile);
-
-		RE::changeDefaultSkin(curMot.skeleton(),
-			RE::renderer().viewport().mScene->createEntity(RE::generateUniqueName().ptr(), meshFile.ptr()),
-				mappingFile);
-	}
-	else if(userdata==Hash("SkinAuto2"))
-	{
-		Motion& curMot=currPairMotion();
-
-		TString meshFile, mappingFile;
-		PREPAIR_SKIN(curMot, meshFile, mappingFile);
-
-		RE::changeDefaultSkin(curMot.skeleton(),
-			RE::renderer().viewport().mScene->createEntity(RE::generateUniqueName().ptr(), meshFile.ptr()),
-				mappingFile);
-	}
-	else if(userdata==Hash("Change skins"))
-	{
-		for(int i=0; i<m_motions.size(); i++)
-		{
-			Motion& curMot=m_motions[i];
-
-
-			TString meshFile, mappingFile;
-			PREPAIR_SKIN(curMot, meshFile, mappingFile);
-
-			RE::changeDefaultSkin(curMot.skeleton(),
-				RE::renderer().viewport().mScene->createEntity(RE::generateUniqueName().ptr(), meshFile.ptr()),
-				mappingFile);
-		}
-
-	}
 	else if(userdata==Hash("Scale skins"))
 	{
 		(new ScaleWin(this))->show();
@@ -2376,23 +2292,11 @@ void MotionPanel::onCallback(Fl_Widget* pWidget, int userdata)
 				if (fc.count() > 0)
 				{
 					currMotion().setSkeleton(0);
-
-					TString name;
-					static int nId=0;
-					name.format("_%s%d", currMotion().GetIdentifier(), nId);
-					nId++;
-					RE::changeDefaultSkin(currMotion().skeleton(),
-						RE::renderer().viewport().mScene->createEntity(name.ptr(), model.ptr()),
-						fc.value() );
 				}
 			}
 
 		}
 
-	}
-	else if(userdata==Hash("RSSk"))
-	{
-		RE::resetDefaultSkin(currMotion().skeleton());
 	}
 	else if(userdata==Hash("Trans"))
 	{

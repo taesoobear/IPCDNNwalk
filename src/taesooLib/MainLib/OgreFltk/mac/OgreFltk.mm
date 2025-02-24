@@ -8,24 +8,13 @@ static void* getOpenGLContext(Fl_Window* win)
 return ((Fl_Gl_Window*) win)->context();
 }
 #import <Ogre.h>
-#import <OgreOSXCocoaView.h> // located in ogre-13.4.3 -> copy to /usr/local/include/OGRE/
 #define __glew_h__
-#include <OgreOSXCocoaWindow.h>// located in ogre-13.4.3 -> copy to /usr/local/include/OGRE/
 //using namespace Ogre;
-
-
-#if OGRE_VERSION_MINOR >= 12 || OGRE_VERSION_MAJOR>=13
-#define COCOA_WINDOW CocoaWindow
-#else
-#define COCOA_WINDOW OSXCocoaWindow
-#endif
-
 static int _frameWidth=0, _frameHeight=0;
-Ogre::Rect getWindowBounds(Ogre::RenderWindow *renderWindow)
+Ogre::Rect getWindowBounds(void* handle)
 {
-    Ogre::COCOA_WINDOW *cw = static_cast<Ogre::COCOA_WINDOW*>(renderWindow);
-    NSWindow *win = cw->ogreWindow();
- 
+    NSWindow *win= (NSWindow*)handle;
+
     // invert the y value to get the distance from the top of the display. ugh. 
     NSScreen *screen = NSScreen.mainScreen;
     NSRect rect = screen.frame;
@@ -34,6 +23,8 @@ Ogre::Rect getWindowBounds(Ogre::RenderWindow *renderWindow)
  
     return Ogre::Rect(win.frame.origin.x, rect.size.height - win.frame.origin.y, win.frame.size.width, win.frame.size.height);
 }
+
+
 
 int getActiveWindowOSX(){
     NSAutoreleasePool *pool=[[NSAutoreleasePool alloc] init];
@@ -138,6 +129,7 @@ int queryFrameWidth()
     return  myFrame.size.width;
 */
 	return _frameWidth;
+	return 0;
 }
 
 #include <Fl/x.H>

@@ -140,20 +140,6 @@ protected:
 	std::vector<Ogre::SceneNode*> mSceneNodesPoint;
 };
 
-class PLDPrimLine : public PLDPrimSkel
-{
-public:
-	PLDPrimLine(MotionLoader* pBVHL, const OgreRenderer& renderer);
-	virtual ~PLDPrimLine();
-
-	virtual void SetVisible(bool bVisible);
-	void setColor(RE::Color c);
-protected:
-	virtual int UpdateBone() override;
-	#ifndef NO_OGRE
-	std::vector<LineStrip*> mLines;
-#endif
-};
 
 class PLDPrimThickLine : public PLDPrimSkel
 {
@@ -170,7 +156,7 @@ protected:
 	std::string _materialName;
 #ifndef NO_OGRE
 	double _thickness;
-	BillboardLineList * _lines;
+	ColorBillboardLineList * _lines;
 #endif
 };
 
@@ -185,7 +171,7 @@ public:
 	참고: skel->_updateTransforms()
 	*/
 
-	PLDPrimOgreSkin(MotionLoader* pMotionLoader, Ogre::Entity* pEntity, const char* convfilename, const OgreRenderer& renderer, bool bCurrPoseAsBindPose=false, double motion_scale=1);
+	PLDPrimOgreSkin(MotionLoader* pMotionLoader, Ogre::v1::Entity* pEntity, const char* convfilename, const OgreRenderer& renderer, bool bCurrPoseAsBindPose=false, double motion_scale=1);
 
 	PLDPrimOgreSkin(const PLDPrimOgreSkin& other, const OgreRenderer& renderer, const char* nameid);
 	virtual ~PLDPrimOgreSkin();
@@ -204,7 +190,7 @@ protected:
 
 	void SetPose(const Posture& posture, int* aJointToTreeIndex, MotionLoader* pSkeleton);
 	// Ogre사용해서 그리는 경우 (Skinning)
-	Ogre::Entity* m_pEntity;
+	Ogre::v1::Entity* m_pEntity;
 	intvectorn parentIdx;
 	intvectorn m_aTargetIndex; // ByRotJointIndex
 	intvectorn m_aTargetIndexByTransJointIndex;
@@ -218,7 +204,7 @@ class PLDPrimPreciseOgreSkin : public PLDPrimSkin_impl
 {
 public:
 
-	PLDPrimPreciseOgreSkin(MotionLoader* pMotionLoader, Ogre::Entity* pEntity, const OgreRenderer& renderer, double motion_scale=1);
+	PLDPrimPreciseOgreSkin(MotionLoader* pMotionLoader, Ogre::v1::Entity* pEntity, const OgreRenderer& renderer, double motion_scale=1);
 	virtual ~PLDPrimPreciseOgreSkin();
 	virtual void ApplyAnim(const Motion& mot);
 
@@ -236,7 +222,7 @@ protected:
 
 	void SetPose(const Posture& posture, int* aJointToTreeIndex, MotionLoader* pSkeleton);
 	// Ogre사용해서 그리는 경우 (Skinning)
-	Ogre::Entity* m_pEntity;
+	Ogre::v1::Entity* m_pEntity;
 	intvectorn m_aTargetIndexByTreeIndex; 
 	double mMotionScale;
 };

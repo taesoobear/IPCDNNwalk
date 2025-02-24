@@ -106,7 +106,7 @@ bool Geometry::loadObj(const char* filename)
 // always make file format backward compatible.
 void Geometry::pack(BinaryFile& bf) const
 {
-	int version=1; // version 1: geometry. 
+	int version=2; // version 1: geometry. 
 	bf.packInt(version);
 	bf.packInt(elements.size());
 	for (int i=0; i<elements.size(); i++)
@@ -115,6 +115,7 @@ void Geometry::pack(BinaryFile& bf) const
 		bf.pack( elements[i].elementSize );
 		bf.pack( elements[i].tf.rotation);
 		bf.pack( elements[i].tf.translation);
+		bf.pack( elements[i].material);
 		bf.packInt( faceGroups.start(i));
 		bf.packInt( faceGroups.end(i));
 	}
@@ -124,7 +125,7 @@ void Geometry::pack(BinaryFile& bf) const
 void Geometry::unpack(BinaryFile& bf)
 {
 	int version=bf.unpackInt();
-	if (version==1){
+	if (version>=1){
 		int eltSize= bf.unpackInt();
 		elements.resize(eltSize);
 		intIntervals temp_faceGroups;		// becomes valid after classifyTriangles method is called.
@@ -135,6 +136,8 @@ void Geometry::unpack(BinaryFile& bf)
 			bf.unpack( elements[i].elementSize );
 			bf.unpack( elements[i].tf.rotation);
 			bf.unpack( elements[i].tf.translation);
+			if (version==2)
+				bf.unpack( elements[i].material);
 			temp_faceGroups.start(i)=bf.unpackInt( );
 			temp_faceGroups.end(i)=bf.unpackInt( );
 		}
@@ -204,7 +207,7 @@ void Geometry::initEllipsoid(const vector3& size)
 	elements[0].tf.identity();
 	faceGroups.resize(1);
 	faceGroups.start(0)=0;
-	faceGroups.end(0)=numVertex();
+	faceGroups.end(0)=numFace();
 }
 static void createPipe(Mesh& mesh, m_real radius, m_real height, int ndiv)
 {
@@ -297,7 +300,7 @@ void Geometry::initCapsule(double radius, double height)
 	elements[0].tf.identity();
 	faceGroups.resize(1);
 	faceGroups.start(0)=0;
-	faceGroups.end(0)=numVertex();
+	faceGroups.end(0)=numFace();
 }
 void Geometry::classifyTriangles()
 {
@@ -744,4 +747,98 @@ double Geometry::totalVolume()
 		}
 	}
 	return volume;
+}
+
+
+void Geometry::_addVertices(const vectorn& vertices)
+{
+	int nv=vertices.size()/3;
+	int prev_nv=numVertex();
+	resizeVertexBuffer(numVertex()+nv);
+	for(int i=0; i<nv; i++)
+		getVertex(prev_nv+i)=vertices.toVector3(i*3);
+}
+void Geometry::_addNormals(const vectorn& normals)
+{
+	int nv=normals.size()/3;
+	int prev_nv=numNormal();
+	resizeNormalBuffer(numNormal()+nv);
+	for(int i=0; i<nv; i++)
+		getNormal(prev_nv+i)=normals.toVector3(i*3);
+}
+void Geometry::_addTexCoords(const vectorn& coords)
+{
+	int nv=coords.size()/2;
+	int prev_nv=numTexCoord();
+	resizeUVbuffer(numTexCoord()+nv);
+	for(int i=0; i<nv; i++)
+		getTexCoord(prev_nv+i)=vector2(coords[i*2], coords[i*2+1]);
+}
+void Geometry::_addSubMesh(int vstart, int nstart, int texstart, int VERTEX_OFFSET, int NORMAL_OFFSET, int TEXCOORD_OFFSET, const intvectorn& all_indices)
+{
+	int face_offset=9;
+	int elt_offset=3;
+	int nf=all_indices.size()/face_offset;
+	int prev_nf=numFace();
+	resizeIndexBuffer(prev_nf+nf);
+	for(int i=0; i<nf; i++)
+	{
+		auto& f=getFace(prev_nf+i);
+		f.vertexIndex(0)=all_indices(i*face_offset+VERTEX_OFFSET)+vstart;
+		f.vertexIndex(1)=all_indices(i*face_offset+VERTEX_OFFSET+elt_offset)+vstart;
+		f.vertexIndex(2)=all_indices(i*face_offset+VERTEX_OFFSET+elt_offset*2)+vstart;
+		f.normalIndex(0)=all_indices(i*face_offset+NORMAL_OFFSET)+nstart;
+		f.normalIndex(1)=all_indices(i*face_offset+NORMAL_OFFSET+elt_offset)+nstart;
+		f.normalIndex(2)=all_indices(i*face_offset+NORMAL_OFFSET+elt_offset*2)+nstart;
+		f.texCoordIndex(0)=all_indices(i*face_offset+TEXCOORD_OFFSET)+texstart;
+		f.texCoordIndex(1)=all_indices(i*face_offset+TEXCOORD_OFFSET+elt_offset)+texstart;
+		f.texCoordIndex(2)=all_indices(i*face_offset+TEXCOORD_OFFSET+elt_offset*2)+texstart;
+		Msg::verify(f.vertexIndex(0)<numVertex(), "nv?");
+		Msg::verify(f.vertexIndex(1)<numVertex(), "nv?");
+		Msg::verify(f.vertexIndex(2)<numVertex(), "nv?");
+		Msg::verify(f.normalIndex(0)<numNormal(), "nn?");
+		Msg::verify(f.normalIndex(1)<numNormal(), "nn?");
+		Msg::verify(f.normalIndex(2)<numNormal(), "nn?");
+		Msg::verify(f.texCoordIndex(0)<numTexCoord(), "nt?");
+		Msg::verify(f.texCoordIndex(1)<numTexCoord(), "nt?");
+		Msg::verify(f.texCoordIndex(2)<numTexCoord(), "nt?");
+	}
+	int igrp=faceGroups.size();
+	faceGroups.resize(igrp+1);
+	faceGroups.start(igrp)=prev_nf;
+	faceGroups.end(igrp)=prev_nf+nf;
+	elements.resize(igrp+1);
+	elements[igrp].elementType=Element::TRI;
+	elements[igrp].tf.identity();
+}
+void Geometry::_addSubMeshPosNormal(int vstart, int nstart, int VERTEX_OFFSET, int NORMAL_OFFSET, const intvectorn& all_indices)
+{
+	int face_offset=6;
+	int elt_offset=2;
+	int nf=all_indices.size()/face_offset;
+	int prev_nf=numFace();
+	resizeIndexBuffer(prev_nf+nf);
+	for(int i=0; i<nf; i++)
+	{
+		auto& f=getFace(prev_nf+i);
+		f.vertexIndex(0)=all_indices(i*face_offset+VERTEX_OFFSET)+vstart;
+		f.vertexIndex(1)=all_indices(i*face_offset+VERTEX_OFFSET+elt_offset)+vstart;
+		f.vertexIndex(2)=all_indices(i*face_offset+VERTEX_OFFSET+elt_offset*2)+vstart;
+		f.normalIndex(0)=all_indices(i*face_offset+NORMAL_OFFSET)+nstart;
+		f.normalIndex(1)=all_indices(i*face_offset+NORMAL_OFFSET+elt_offset)+nstart;
+		f.normalIndex(2)=all_indices(i*face_offset+NORMAL_OFFSET+elt_offset*2)+nstart;
+		Msg::verify(f.vertexIndex(0)<numVertex(), "nv?");
+		Msg::verify(f.vertexIndex(1)<numVertex(), "nv?");
+		Msg::verify(f.vertexIndex(2)<numVertex(), "nv?");
+		Msg::verify(f.normalIndex(0)<numNormal(), "nn?");
+		Msg::verify(f.normalIndex(1)<numNormal(), "nn?");
+		Msg::verify(f.normalIndex(2)<numNormal(), "nn?");
+	}
+	int igrp=faceGroups.size();
+	faceGroups.resize(igrp+1);
+	faceGroups.start(igrp)=prev_nf;
+	faceGroups.end(igrp)=prev_nf+nf;
+	elements.resize(igrp+1);
+	elements[igrp].elementType=Element::TRI;
+	elements[igrp].tf.identity();
 }

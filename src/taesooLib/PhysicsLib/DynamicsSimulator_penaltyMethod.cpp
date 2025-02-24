@@ -6,7 +6,7 @@
 #include "../BaseLib/math/conversion.h"
 #include "CollisionDetector.h"
 
-void _setMaterial(Ogre::SimpleRenderable* ptr, const char* name);
+void _setMaterial(Ogre::Renderable* ptr, const char* name);
 
 // taesoo. global parameters.
 namespace OpenHRP
@@ -94,10 +94,6 @@ void DynamicsSimulator_penaltyMethod::drawDebugInformation()
 	if(nc==0 && nbc==0) return;
 	QuadList* box=new QuadList(vector3(0,1,0), _footSize);
 	QuadList* box2=new QuadList(vector3(0,1,0), _footSize);
-	box->setCastShadows(false);
-	_setMaterial(box, "redCircle");
-	box2->setCastShadows(false);
-	_setMaterial(box2, "blueCircle");
 
 	if(nc!=0)
 	  box->begin(nc);
@@ -147,6 +143,10 @@ void DynamicsSimulator_penaltyMethod::drawDebugInformation()
 	    delete box2;
 		box2=NULL;
 	}
+	if (box)
+	box->setMaterial( "redCircle");
+	if(box2)
+	box2->setMaterial( "blueCircle");
 #else
 
 	int nc=0;
@@ -161,8 +161,7 @@ void DynamicsSimulator_penaltyMethod::drawDebugInformation()
 		return;
 	}
 	QuadList* box=new QuadList(vector3(0,1,0), _footSize);
-	box->setCastShadows(false);
-	_setMaterial(box, "redCircle");
+	box->setMaterial( "redCircle");
 
 	box->begin(nc);
 	
@@ -220,7 +219,7 @@ void DynamicsSimulator_penaltyMethod::drawDebugInformation()
 		}
 	}
 
-	mObjectContactVisualization.registerObject(mObjectContactVisualization._uniqueId+"contactForce", "LineList", "solidblue", matView(lines));
+	mObjectContactVisualization.registerObject("contactForce", "LineList", "solidblue", matView(lines));
 	}
 #endif
 }

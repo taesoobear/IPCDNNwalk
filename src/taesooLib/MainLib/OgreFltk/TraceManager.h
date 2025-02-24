@@ -92,39 +92,25 @@ public:
 
 #endif
 #ifndef NO_OGRE
-namespace Ogre
-{
-	class OverlayElement;
-	class OverlayContainer;
-}
+
 
 #include "framemoveobject.h"
-class OgreTraceManager: public TraceBase, public FrameMoveObject
+class OgreTraceManager : public TraceBase, public FrameMoveObject
 {
-	bool eraseRequested;
 public:
+	
+	TString tid, tc;
 	OgreTraceManager(int x, int y, int w, int h);
-	virtual ~OgreTraceManager(void);
+	virtual ~OgreTraceManager(void){}
 
-	virtual void message(const char* id, const char* content);
+	virtual void draw(){}
 
+	void showOutputs(){}
+	void hideOutputs(){}
+
+    void setVisible( int iElement, bool visible){}                      // 296
+	
 	virtual int FrameMove(float fElapsedTime);
-	virtual void eraseAll();
-	Ogre::OverlayElement* mElementID;
-	Ogre::OverlayElement* mElementContent;
-
-	void hideOutputs();
-	void showOutputs();
-
-	// returns iElement
-	int createTextArea(double width, double height, double top, double left, int fontSize, const char* caption);
-	void setCaption(int iElement, const char* caption);
-	void setVisible(int iElement, bool visible);
-private:
-	Ogre::OverlayContainer* mProfileGui;
-	double _w; double _h;
-	std::vector<Ogre::OverlayElement*> _otherElements;
 };
-
 #endif
 #endif

@@ -8,7 +8,9 @@ class objectList_data;
 #include "framemoveobject.h"
 namespace Ogre
 {
+	namespace v1{
 	class Entity;
+	}
 	class MovableObject;
 	class SceneNode;
 }
@@ -18,7 +20,6 @@ class ObjectList: public FrameMoveObject
 {
 	objectList_data* _members;
 public:
-	TString _uniqueId;
 	ObjectList();
 	~ObjectList();
 
@@ -31,7 +32,7 @@ public:
 
 	Ogre::SceneNode* registerEntity(const char* node_name, const char* filename);
 	Ogre::SceneNode* registerEntity(const char* node_name, const char* filename, const char* materialName);
-	Ogre::SceneNode* registerEntity(const char* node_name, Ogre::Entity* pObject);
+	Ogre::SceneNode* registerEntity(const char* node_name, Ogre::Item* pObject);
 	// shows title above the entity
 	Ogre::SceneNode* registerNamedEntity(const char* node_name, const char* filename, 
 			const char* titleText, double textHeight, vector3 textColor);

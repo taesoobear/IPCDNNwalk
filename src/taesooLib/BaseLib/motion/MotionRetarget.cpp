@@ -3,6 +3,8 @@
 #include "MotionRetarget.h"
 #ifdef USE_NR
 #include "../math/nr/nr.h"
+#else
+#include "../math/optimize.h"
 #endif
 #include "MotionUtil.h"
 #include "Motion.h"
@@ -172,8 +174,7 @@ namespace m0
 
 		At.transpose(A);
 		Augmented.range(row, row+numCon, row, row+numCon).setAllValue(0.0);
-#ifdef USE_NR
-#define USE_LUDCMP
+//#define USE_LUDCMP
 #ifdef USE_LUDCMP
 		DP p;
 		matrixn LU(Augmented);
@@ -181,7 +182,7 @@ namespace m0
 		NR::ludcmp(LU,indx,p);
 #else
 		matrixn invAugmented;
-		invAugmented.inverse(Augmented);
+		m::LUinvert( invAugmented,Augmented);
 #endif
 		vectorn c(row-2);
 
@@ -220,9 +221,6 @@ namespace m0
 			for(int i=0; i<row; i++)
 				f(i)=x[i];
 		}
-#else
-		Msg::error("ludcmp");
-#endif
 	}
 
 	void adjustOnlineMultiCon::calc(matrixn& curve) const
@@ -284,8 +282,6 @@ namespace m0
 
 		At.transpose(A);
 		Augmented.range(row, row+numCon, row, row+numCon).setAllValue(0.0);
-#ifdef USE_NR
-#define USE_LUDCMP
 #ifdef USE_LUDCMP
 		DP p;
 		matrixn LU(Augmented);
@@ -293,7 +289,7 @@ namespace m0
 		NR::ludcmp(LU,indx,p);
 #else
 		matrixn invAugmented;
-		invAugmented.inverse(Augmented);
+		m::LUinvert(invAugmented,Augmented);
 #endif
 		vectorn c(row-2);
 
@@ -335,9 +331,6 @@ namespace m0
 			for(int i=0; i<row; i++)
 				f(i)=x[i];
 		}
-#else
-		Msg::error("ludcmp");
-#endif
 	}
 
 	void adjust::calc(matrixn& curve) const
@@ -397,8 +390,6 @@ namespace m0
 
 		At.transpose(A);
 		Augmented.range(row, row+numCon, row, row+numCon).setAllValue(0.0);
-#ifdef USE_NR
-#define USE_LUDCMP
 #ifdef USE_LUDCMP
 		DP p;
 		matrixn LU(Augmented);
@@ -406,7 +397,7 @@ namespace m0
 		NR::ludcmp(LU,indx,p);
 #else
 		matrixn invAugmented;
-		invAugmented.inverse(Augmented);
+		m::LUinvert(invAugmented,Augmented);
 #endif
 		vectorn c(row-2);
 
@@ -447,9 +438,6 @@ namespace m0
 			for(int i=0; i<row; i++)
 				f(i)=x[i];
 		}
-#else
-		Msg::error("ludcmp");
-#endif
 	}
 
 	void adjustOnline2::calc(matrixn& curve) const
@@ -504,7 +492,6 @@ namespace m0
 
 		At.transpose(A);
 		Augmented.range(row, row+numCon, row, row+numCon).setAllValue(0.0);
-#ifdef USE_NR
 //#define USE_LUDCMP
 #ifdef USE_LUDCMP
 		DP p;
@@ -513,7 +500,7 @@ namespace m0
 		NR::ludcmp(LU,indx,p);
 #else
 		matrixn invAugmented;
-		invAugmented.inverse(Augmented);
+		m::LUinvert(invAugmented,Augmented);
 #endif
 
 		for(int dim=0; dim<curve.cols(); dim++)
@@ -552,9 +539,6 @@ namespace m0
 			for(int i=0; i<row; i++)
 				f(i)=x[i];
 		}
-#else
-		Msg::error("ludcmp");
-#endif
 	}
 	void adjustSumOnline::calc(matrixn& curve) const
 	{
@@ -605,11 +589,15 @@ namespace m0
 
 		Augmented.range(xsize, xsize+numCon, xsize, xsize+numCon).setAllValue(0.0);
 
-#ifdef USE_NR
+#ifdef USE_LUDCMP
 		DP p;
 		matrixn LU(Augmented);
 		Vec_INT indx(Augmented.rows());
 		NR::ludcmp(LU,indx,p);
+#else
+		matrixn invAugmented;
+		m::LUinvert( invAugmented,Augmented);
+#endif
 
 		vectorn c(xsize-1);
 
@@ -638,17 +626,18 @@ namespace m0
 					d[i]-=2.0*c[i];
 			}
 
+#ifdef USE_LUDCMP
 			x=d;
 			NR::lubksb(LU,indx,x);
+#else
+			x.multmat(invAugmented, d);
+#endif
 
 			// save results.
 			for(int i=0; i<xsize; i++)
 				f(i)=x[i];
 
 		}
-#else
-		Msg::error("ludcmp");
-#endif
 	}
 }
 

@@ -1,8 +1,8 @@
 # Please do not change this default setting. 
 # if this setting is not good for you,
 # copy this file to ogreconfig_personal.txt and edit it.
-renderer_width 1280
-renderer_height 720
+renderer_width 1920
+renderer_height 1080
 right_panel_width 180
 UI_scale_factor 1
 useRTTcapture 0
@@ -27,7 +27,7 @@ shadowResolution 256
 
 # depthShadow does not work on ogre1.9. use ogre 1.12 instead.
 depthShadow 0
-enagleLog 0
+enableLog 0
 
 # Warning! orthographic mode doesn't work perfectly.
 useOrthographicProjection 0

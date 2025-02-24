@@ -12,7 +12,9 @@ class Fl_Valuator;
 class Fl_Slider;
 class Fl_Light_Button;
 class FlChoice;
-#ifndef NO_GUI
+#ifdef NO_GUI
+#include "../console/dummies.h"
+#else
 #include <Fl/Fl_Group.H>
 #include <Fl/Fl_Double_Window.H>
 #endif

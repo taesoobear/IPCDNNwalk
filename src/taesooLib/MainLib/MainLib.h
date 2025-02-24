@@ -76,11 +76,10 @@
 */
 
 #ifndef NO_OGRE
-#if OGRE_VERSION_MINOR >= 12 || OGRE_VERSION_MAJOR>=13
-#include <Ogre.h>
-#else
-#include <OgrePrerequisites.h>
+#ifdef None
+#undef None
 #endif
+#include <Ogre.h>
 #include <OgreColourValue.h>
 // following three files also bring horrible dependencies.
 //#include <OgreSceneNode.h>

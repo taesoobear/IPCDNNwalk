@@ -64,9 +64,9 @@ bool BinaryFile::openRead(const char *fileName)
 
 	if(m_pFile==NULL)
 	{
-		Msg::print("Open error %s\n", fileName);
 		return false;
 	}
+	//Msg::print("opening %s\n", fileName);
 
 	if(m_bReadToMemory)
 	{
@@ -218,6 +218,8 @@ void BinaryFile::packInt(int num)
 
 void BinaryFile::unpackInt(int& num)
 {
+	if(m_pFile==NULL && m_pBuffer==NULL)
+		throw std::runtime_error("BinaryFile open failure");
 	int tt=_unpackInt();
 	Msg::verify(tt==TYPE_INT,"unpackInt failed %d", tt);
 	_unpackInt(num);
@@ -1060,4 +1062,11 @@ void TFile::UnpackArrayMalloc(void **pbuffer, size_t count, size_t size)
 	ASSERT(!m_bTextMode);
 	*pbuffer=(void**) malloc (size*count);
 	UnpackArray(*pbuffer,count,size);
+}
+void BinaryFile::unpack(std::string& str) { 
+	TString temp; unpack(temp); 
+	if(temp.ptr())
+		str=temp.ptr();
+	else
+		str="";
 }

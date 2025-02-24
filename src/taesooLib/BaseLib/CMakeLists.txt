@@ -6,32 +6,29 @@
 project(BaseLib)
 
 set (CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../Samples")
-set (TAESOOLIB_DIR "${CMAKE_SOURCE_DIR}/../")
+get_filename_component(TAESOOLIB_DIR ${CMAKE_CURRENT_SOURCE_DIR} PATH)
+get_filename_component(ROOT_DIR ${TAESOOLIB_DIR} PATH)
 include(Common_baselib) 
 # Make sure the compiler can find include files from our Hello library.
 include_directories (${BaseLib_SOURCE_DIR})
 include_directories (${BaseLib_SOURCE_DIR}/unix)
 
+# devIL is no longer used.
+add_definitions(-DNO_DEVIL)
 if(WIN32)
 	if(NoFreeImage)
 		add_definitions(-DNO_FREEIMAGE)
 		set(IMAGE_LIBS )
 	else()
 		set (IMAGE_LIBS "${ROOT_DIR}/windows_dependencies/FreeImage/Dist/x64/FreeImage.lib")
+	endif()
 	include_directories (
-		${TAESOOLIB_DIR}/../windows_dependencies/eigen-3.4.0/
+		${ROOT_DIR}/windows_dependencies/eigen-3.4.0/
+		${ROOT_DIR}/windows_dependencies/FreeImage/Dist/x64/
 		${BaseLib_SOURCE_DIR}/../dependencies/libxml2-2.7.3.win32/include
-		${BaseLib_SOURCE_DIR}/image/FreeImage/Dist
 		)
-	link_directories (
-		${BaseLib_SOURCE_DIR}/image/FreeImage/Dist
-		)
-	endif()
+
 else()
-   	if(NoDevil)
-		add_definitions(-DNO_DEVIL)
-		message("nodevil?okay. many functionalities won't work.")
-	endif()
 	if(NoFreeImage)
 		add_definitions(-DNO_FREEIMAGE)
 		# warp cluster
@@ -248,8 +245,8 @@ set(math
 "./math/intervals.h"
 "./math/intervalN.cpp"
 "./math/intervalN.h"
-"./math/analyticSolver.cpp"
-"./math/analyticSolver.h"
+#"./math/analyticSolver.cpp"
+#"./math/analyticSolver.h"
 "./math/Operator.cpp"
 "./math/Operator.h"
 "./math/Operator_NR.cpp"
@@ -286,18 +283,65 @@ set(image
 "./image/DrawChart.h"
 )
 
+set(GJK_EPA_2d
+	./math/GJK_EPA_2D/ConcaveShape.cpp
+	./math/GJK_EPA_2D/ConvexShape.cpp
+	./math/GJK_EPA_2D/EPACalculator.cpp
+	./math/GJK_EPA_2D/GJKCalculator.cpp
+	./math/GJK_EPA_2D/IShape.cpp
+	./math/GJK_EPA_2D/Math.cpp
+	./math/GJK_EPA_2D/ConcaveShape.h
+	./math/GJK_EPA_2D/ConvexShape.h
+	./math/GJK_EPA_2D/EPACalculator.h
+	./math/GJK_EPA_2D/GJKCalculator.h
+	./math/GJK_EPA_2D/IShape.h
+	./math/GJK_EPA_2D/MyMath.h
+	)
 
 set(src_baselib
 ${math} 
 ${image} 
 ${motion}
 ${utility}
+#${GJK_EPA_2d}
 )
 
+include_directories (${TAESOOLIB_DIR}/dependencies/ezc3d/include)
+set(src_ezc3d
+	${TAESOOLIB_DIR}/dependencies/ezc3d/src/math/Matrix.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/math/Matrix33.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/math/Matrix44.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/math/Matrix66.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/math/Vector3d.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/math/Vector6d.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/Analogs.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/AnalogsInfo.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/AnalogsSubframe.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/Channel.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/Data.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/DataStartInfo.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/ezc3d.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/Frame.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/Group.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/Header.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/Parameter.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/Parameters.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/Point.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/Points.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/PointsInfo.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/Rotation.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/Rotations.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/RotationsInfo.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/RotationsSubframe.cpp
+    ${TAESOOLIB_DIR}/dependencies/ezc3d/src/modules/ForcePlatforms.cpp
+	)
+
+#add_subdirectory(${TAESOOLIB_DIR}/dependencies/ezc3d ./ezc3d)
 
 if (WIN32)
 add_library(BaseLib 
 	${src_baselib}
+	#	${src_ezc3d}
 )
 
 target_link_libraries(BaseLib
@@ -307,26 +351,13 @@ else()
 	if(useShared)
 		add_library(BaseLib SHARED
 			${src_baselib}
+			#${src_ezc3d}
 			)
 	else()
 		add_library(BaseLib
 			${src_baselib}
+			#${src_ezc3d}
 			)
 	endif()
-	if (APPLE)
-target_link_libraries(BaseLib
-			${IMAGE_LIBS})
-	else()
-		if((EXISTS "/usr/lib/OGRE/libOgreOverlay.so")
-			OR ( EXISTS "/usr/lib/x86_64-linux-gnu/libOgreOverlay.so") )
-			target_link_libraries(BaseLib 
-				${IMAGE_LIBS}
-				#boost_system
-				)
-		else()
-			target_link_libraries(BaseLib 
-				${IMAGE_LIBS}
-)
-		endif()
-	endif()
+	target_link_libraries(BaseLib ${IMAGE_LIBS})
 endif()

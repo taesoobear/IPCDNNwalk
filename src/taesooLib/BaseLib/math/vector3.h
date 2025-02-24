@@ -57,7 +57,7 @@ class vector3
 	inline void rotate( const quater& q) { vector3 t(*this); rotate(q, t); }
 	void rotate( const matrix4& m); // applies only the linear part of m.
 	void rotate( const quater& q, vector3 const& in);
-	void angularVelocity( quater const& q1, quater const& q2);
+	void angularVelocity( quater const& q1, quater const& q2); //! world angular velocy assuming dt==1
 	void linearVelocity(vector3 const& v1, vector3 const& v2);
 	inline void difference(vector3 const& v1, vector3 const& v2)	{ linearVelocity(v1, v2);}
 

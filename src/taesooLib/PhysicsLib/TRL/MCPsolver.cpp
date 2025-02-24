@@ -48,7 +48,7 @@ void MCPsolver::solveMCPByProjectedGaussSeidel(const rmdmatrix& __M, const dvect
 	_b=&__b(0);
 	_x=&__x(0);
 
-	static const int loopBlockSize = DEFAULT_NUM_GAUSS_SEIDEL_ITERATION_BLOCK;
+	const int loopBlockSize = DEFAULT_NUM_GAUSS_SEIDEL_ITERATION_BLOCK;
 
 	if(numGaussSeidelInitialIteration > 0){
 		solveMCPByProjectedGaussSeidelInitial(numGaussSeidelInitialIteration);

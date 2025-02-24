@@ -6,8 +6,8 @@ set(NoUMFpack TRUE)
 # all important dependencies are set in Common_baselib.cmake
 # NoAIST, NoGMBSsim, NoUTsim settings are in PhysicsLib/CMakeLists.txt
 include(Common_baselib) 
-add_subdirectory(${TAESOOLIB_DIR}/BaseLib "${TAESOOLIB_DIR}/BaseLib/build_${CMAKE_BUILD_TYPE}" )
-add_subdirectory(${TAESOOLIB_DIR}/MainLib "${TAESOOLIB_DIR}/MainLib/build_${CMAKE_BUILD_TYPE}" )
+add_subdirectory(${TAESOOLIB_DIR}/BaseLib "BaseLib/build_${CMAKE_BUILD_TYPE}" )
+add_subdirectory(${TAESOOLIB_DIR}/MainLib "MainLib/build_${CMAKE_BUILD_TYPE}" )
 include(Common_mainlib) 
 
 # PhysicsLib settings

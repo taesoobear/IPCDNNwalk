@@ -14,6 +14,11 @@
 #include "VRMLloader.h"
 #ifndef NO_OGRE
 #include "Ogre.h"
+#include "OgreItem.h"
+#include "OgreMeshManager2.h"
+#include "objectList.h"
+#include "../../BaseLib/math/conversion.h"
+#include <OgreMesh.h>
 #endif
 #include "pldprimskin_impl.h"
 namespace RE
@@ -58,8 +63,7 @@ Ogre::SceneManager* RE::ogreSceneManager()
 Ogre::SceneNode* RE::ogreRootSceneNode()
 {
   #ifndef NO_OGRE
-
-	return RE::renderer().viewport().mScene->getRootSceneNode();
+return RE::renderer().viewport().mScene->getRootSceneNode(Ogre::SCENE_DYNAMIC);
 #else
 return NULL;
 #endif
@@ -173,9 +177,9 @@ PLDPrimSkin* RE::createSkin(const MotionWrap& mot, PLDPrimSkinType t)
 PLDPrimSkin* RE::createSkin(const MotionLoader& skel)
 {
 	PLDPrimSkin* pSkin;
-	if(RE::g_pGlobals->defaultSkins.size() && RE::g_pGlobals->defaultSkins[skel.getHandle()])
-		pSkin=createSkin(*reinterpret_cast<PLDPrimOgreSkin*>(RE::g_pGlobals->defaultSkins[skel.getHandle()]));
-	else
+	//if(RE::g_pGlobals->defaultSkins.size() && RE::g_pGlobals->defaultSkins[skel.getHandle()])
+	//	pSkin=createSkin(*reinterpret_cast<PLDPrimOgreSkin*>(RE::g_pGlobals->defaultSkins[skel.getHandle()]));
+	//else
 	{
 		//pSkin=new PLDPrimCyl((MotionLoader*)(&skel), RE::renderer());
 		//pSkin=new PLDPrimLine((MotionLoader*)(&skel), RE::renderer());
@@ -255,9 +259,6 @@ void PREPAIR_SKIN(const Motion & curMot, TString& meshFile, TString& mappingFile
 #endif
 
 //#include "../Ogre/PLDPrimCustumSkin.h"
-#ifdef INCLUDE_OGRESKINENTITY
-#include "../Ogre/OgreSkinEntity.h"
-#endif
 /*
 PLDPrimSkin* RE::createCustumSkin(const Motion& curMot)
 {
@@ -273,26 +274,8 @@ PLDPrimSkin* RE::createCustumSkin(const Motion& curMot)
 
 }*/
 
-PLDPrimSkin* RE::createOgreSkin(const Motion& curMot)
-{
-#ifdef NO_OGRE
-  return RE::createSkin(curMot);
-#else
 
-  TString meshFile, mappingFile;
-	PREPAIR_SKIN(curMot, meshFile, mappingFile);
-
-	PLDPrimSkin* pSkin=RE::createOgreSkin(curMot.skeleton(),
-
-		RE::renderer().viewport().mScene->createEntity(RE::generateUniqueName().ptr(), meshFile.ptr()),
-		mappingFile);
-
-	pSkin->ApplyAnim(curMot);
-
-	return pSkin;
-#endif
-}
-
+/*
 PLDPrimSkin* RE::createSkin(const PLDPrimOgreSkin& other)
 {
 	static int g_nDefaultSkin=0;
@@ -304,11 +287,12 @@ PLDPrimSkin* RE::createSkin(const PLDPrimOgreSkin& other)
 	RE::renderer().addFrameMoveObject(pSkin);
 	return pSkin;
 }
+*/
 
 void RE::moveEntity(Ogre::SceneNode* node, vector3 const& p)
 {
  #ifndef NO_OGRE
-	node->resetToInitialState();
+	RE::resetToInitialState(node);
 	node->translate(ToOgre(p));
 #endif
 }
@@ -317,7 +301,7 @@ void RE::moveEntity(Ogre::SceneNode* node, quater const& q, vector3 const& p)
 {
    #ifndef NO_OGRE
 
-	node->resetToInitialState();
+	RE::resetToInitialState(node);
 	node->rotate(ToOgre(q));
 	node->translate(ToOgre(p));
 #endif
@@ -326,7 +310,7 @@ void RE::moveEntity(Ogre::SceneNode* node, quater const& q, vector3 const& p)
 void RE::moveEntity(Ogre::SceneNode* node, vector3 const& scale, vector3 const& p)
 {
  #ifndef NO_OGRE
-	node->resetToInitialState();
+	RE::resetToInitialState(node);
 	node->scale(ToOgre(scale));
 	node->translate(ToOgre(p));
 #endif
@@ -334,7 +318,7 @@ void RE::moveEntity(Ogre::SceneNode* node, vector3 const& scale, vector3 const& 
 void RE::moveEntity(Ogre::SceneNode* node, double scale, vector3 const& p)
 {
  #ifndef NO_OGRE
-	node->resetToInitialState();
+	RE::resetToInitialState(node);
 	node->scale(scale, scale, scale);
 	node->translate(ToOgre(p));
 #endif
@@ -343,7 +327,7 @@ void RE::moveEntity(Ogre::SceneNode* node, double scale, vector3 const& p)
 void RE::moveEntity(Ogre::SceneNode* node, vector3 const& scale, quater const& q, vector3 const& p)
 {
  #ifndef NO_OGRE
-	node->resetToInitialState();
+	RE::resetToInitialState(node);
 	node->scale(ToOgre(scale));
 	node->rotate(ToOgre(q));
 	node->translate(ToOgre(p));
@@ -352,10 +336,9 @@ void RE::moveEntity(Ogre::SceneNode* node, vector3 const& scale, quater const& q
 void RE::moveEntity(Ogre::SceneNode* node, double scale, quater const& q, vector3 const& p)
 {
  #ifndef NO_OGRE
-	node->resetToInitialState();
-	node->scale(scale, scale, scale);
-	node->rotate(ToOgre(q));
-	node->translate(ToOgre(p));
+	node->setScale(scale, scale, scale);
+	node->setOrientation(ToOgre(q));
+	node->setPosition(ToOgre(p));
 #endif
 }
 
@@ -363,17 +346,12 @@ Ogre::SceneNode* RE::createChildSceneNode(Ogre::SceneNode* parent, const char* n
 {
  #ifndef NO_OGRE
 	Ogre::SceneNode* pNode=NULL;
-	try {
-		// 있으면 지운다.
-		pNode=((Ogre::SceneNode*)parent->getChild(node_name));
+	if (pNode=RE::getSceneNode(node_name))
 		RE::removeEntity(pNode);
-	}
-	catch( Ogre::Exception& e )
-	{
-		// 없으면 okay.
-	}
 
-	pNode=parent->createChildSceneNode(node_name);
+	pNode=parent->createChildSceneNode();
+	pNode->setName(node_name);
+	RE::g_pGlobals->mNamedSceneNodes.insert({std::string(node_name), pNode});
 	pNode->setVisible(true);
 
 	return pNode;
@@ -381,21 +359,23 @@ Ogre::SceneNode* RE::createChildSceneNode(Ogre::SceneNode* parent, const char* n
   return NULL;
 #endif
 }
+#ifndef NO_OGRE
+unsigned int RE::nameToUID(const char* node_name)
+{
+	Ogre::IdString temp(node_name);
+	return temp.mHash;
+}
+#endif
 
 Ogre::SceneNode* RE::getSceneNode(const char* node_name)
 {
  #ifndef NO_OGRE
 	Ogre::SceneNode* pNode=NULL;
-	try {
-		// 있으면 지운다.
-		pNode=RE::ogreSceneManager()->getSceneNode(node_name);
-		return pNode;
-	}
-	catch( Ogre::Exception& e )
-	{
-		// 없으면 okay.
-		return NULL;
-	}
+	auto& named_nodes=RE::g_pGlobals->mNamedSceneNodes;
+	auto i=named_nodes.find(node_name);
+	if (i!=named_nodes.end())
+		return i->second;
+	return NULL;
 #else
 	return NULL;
 #endif
@@ -405,17 +385,13 @@ Ogre::SceneNode* RE::createSceneNode(const char* node_name)
 {
  #ifndef NO_OGRE
 	Ogre::SceneNode* pNode=NULL;
-	try {
-		// 있으면 지운다.
-		pNode=RE::ogreSceneManager()->getSceneNode(node_name);
+	pNode=RE::getSceneNode(node_name);
+	if(pNode)
 		RE::removeEntity(pNode);
-	}
-	catch( Ogre::Exception& e )
-	{
-		// 없으면 okay.
-	}
 
-	pNode=RE::ogreRootSceneNode()->createChildSceneNode(node_name);
+	pNode=RE::ogreRootSceneNode()->createChildSceneNode();
+	pNode->setName(node_name);
+	RE::g_pGlobals->mNamedSceneNodes.insert({std::string(node_name), pNode});
 	pNode->setVisible(true);
 
 	return pNode;
@@ -424,6 +400,79 @@ Ogre::SceneNode* RE::createSceneNode(const char* node_name)
 #endif
 }
 
+Ogre::Item* RE::_createEntity( const char* filename)
+{
+#ifndef NO_OGRE
+	Ogre::MeshPtr pMesh;
+	// Get mesh (load if required)
+	try{
+		pMesh = Ogre::MeshManager::getSingleton().load( filename, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+	}
+	catch ( Ogre::Exception& e )
+	{
+		if(TString(e.what()).findStr(0, "implementation for mesh version")!=-1)
+		{
+			Ogre::String v2meshId(filename);
+			v2meshId+="@v2";
+			if(Ogre::MeshManager::getSingleton().resourceExists(v2meshId))
+				pMesh = Ogre::MeshManager::getSingleton().load( v2meshId, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+			/*
+			else if(filename[0]=='h' && strcmp(&filename[3], ".mesh")==0)
+			{
+				printf("house mesh detected\n");
+				vector3N lines;
+				Ogre::v1::MeshPtr pMesh1= Ogre::v1::MeshManager::getSingleton().load( filename, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+				Msg::verify(!pMesh1->sharedVertexData[Ogre::VpNormal],"has shared vertex");
+				for(int imesh=0; imesh<pMesh1->getNumSubMeshes(); imesh++)
+				{
+					auto* vertexData=pMesh1->getSubMesh(imesh)->vertexData[Ogre::VpNormal];
+					auto& vertexDecl=vertexData->vertexDeclaration->getElements();
+					auto iter=vertexDecl.begin();
+					iter++;
+					Msg::verify(iter->getSemantic()==Ogre::VES_NORMAL, "no normal?");
+
+					Msg::verify(vertexData->vertexBufferBinding->getBufferCount()==1, "seperate buffers?");
+					const Ogre::v1::HardwareVertexBufferSharedPtr &vBuffer = vertexData->vertexBufferBinding-> getBuffer( 0 );
+					Ogre::v1::HardwareBufferLockGuard srcLock;
+					srcLock.lock( vBuffer, Ogre::v1::HardwareBuffer::HBL_NORMAL );
+					float* vertex=static_cast<float*>(srcLock.pData);
+
+					for(int v=0; v<vertexData->vertexCount; v++)
+					{
+						vector3 pos(vertex[0], vertex[1], vertex[2]);
+						vector3 normal(vertex[3], vertex[4], vertex[5]);
+						lines.pushBack(pos);
+						lines.pushBack(pos+normal*10);
+						// flip normal
+						//vertex[3]*=-1.f;
+						//vertex[4]*=-1.f;
+						//vertex[5]*=-1.f;
+						vertex+=vBuffer->getVertexSize()/sizeof(float);
+					}
+					srcLock.unlock();
+				}
+				static ObjectList normalVis;
+				std::cout<<lines.size()<<"::::"<< lines(0) <<std::endl<<lines(1)<<std::endl;
+				normalVis.registerObject("normals2", "LineList", "solidblue", matView(lines));
+
+				pMesh = Ogre::MeshManager::getSingleton().createByImportingV1( v2meshId, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, pMesh1.get(), true, true, true );
+			}
+			*/
+			else
+			{
+				Ogre::v1::MeshPtr pMesh1= Ogre::v1::MeshManager::getSingleton().load( filename, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+				pMesh = Ogre::MeshManager::getSingleton().createByImportingV1( v2meshId, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, pMesh1.get(), true, true, true );
+			}
+		}
+		else
+			throw e;
+	}
+	Ogre::Item *item = RE::ogreSceneManager()->createItem( pMesh, Ogre::SCENE_DYNAMIC );
+	return item;
+#else
+	return NULL;
+#endif
+}
 Ogre::SceneNode* RE::createEntity(const char* id, const char* filename)
 {
 	return RE::createEntity(RE::ogreRootSceneNode(), id, filename);
@@ -432,18 +481,16 @@ Ogre::SceneNode* RE::createEntity(const char* id, const char* filename, const ch
 {
 	Ogre::SceneNode* parentNode=RE::ogreRootSceneNode();
  #ifndef NO_OGRE
-	Ogre::SceneNode* pNode=NULL;
-	try {
-		// 같은 이름의 SceneNod가 있으면 그냥 재활용한다.
-		pNode=RE::ogreSceneManager()->getSceneNode(id);
-		pNode->resetToInitialState();
-	}
-	catch( Ogre::Exception& e )
+	Ogre::SceneNode* pNode;		
+	pNode=RE::getSceneNode(id);
+	// 같은 이름의 SceneNod가 있으면 그냥 재활용한다.
+	if(pNode)
+		RE::resetToInitialState(pNode);
+	else
 	{
-		TString entity_name;
-		entity_name.format("_entity_%s", id);
-		pNode=parentNode->createChildSceneNode(id);
-		Ogre::Entity *entity = RE::ogreSceneManager()->createEntity(entity_name.ptr(), filename);
+		pNode=RE::createChildSceneNode(parentNode, id);
+		//Ogre::Item *entity = RE::ogreSceneManager()->createItem(filename);
+		Ogre::Item *entity = RE::_createEntity(filename);
 		entity->setMaterialName(materialName);
 		pNode->attachObject(entity);
 		pNode->setVisible(true);
@@ -458,18 +505,16 @@ Ogre::SceneNode* RE::createEntity(const char* id, const char* filename, const ch
 Ogre::SceneNode* RE::createEntity(Ogre::SceneNode* parentNode, const char* id, const char* filename)
 {
  #ifndef NO_OGRE
-	Ogre::SceneNode* pNode=NULL;
-	try {
+	Ogre::SceneNode* pNode;
 		// 같은 이름의 SceneNod가 있으면 그냥 재활용한다.
-		pNode=RE::ogreSceneManager()->getSceneNode(id);
-		pNode->resetToInitialState();
-	}
-	catch( Ogre::Exception& e )
+	pNode=RE::getSceneNode(id);
+	if(pNode)
+		RE::resetToInitialState(pNode);
+	else
 	{
-		TString entity_name;
-		entity_name.format("_entity_%s", id);
-		pNode=parentNode->createChildSceneNode(id);
-		Ogre::Entity *entity = RE::ogreSceneManager()->createEntity(entity_name.ptr(), filename);
+		pNode=RE::createChildSceneNode(parentNode, id);
+		//Ogre::Item *entity = RE::ogreSceneManager()->createItem(filename);
+		Ogre::Item *entity = RE::_createEntity(filename);
 		pNode->attachObject(entity);
 		pNode->setVisible(true);
 	}
@@ -508,29 +553,60 @@ Ogre::SceneNode* RE::createMovableText(const char* node_name, const char* conten
 		RE_colorToOgreColour(c);
  #ifndef NO_OGRE
 	// MovableText에 bug가 있어서 매번 지우고 다시 setCaption한다.
-	TString entity_name;
-	entity_name.format("_entity_mt_%s", node_name);
 	Ogre::SceneNode* pNode=NULL;
-	try {
-		// 있으면 그냥 재활용한다.
-		pNode=RE::ogreSceneManager()->getSceneNode(node_name);
-		pNode->resetToInitialState();
-		delete pNode->detachObject((unsigned short)0);
-	}
-	catch( Ogre::Exception& e )
+	// 있으면 그냥 재활용한다.
+	pNode=RE::getSceneNode(node_name);
+	if(pNode)
 	{
-		pNode=RE::ogreRootSceneNode()->createChildSceneNode(Ogre::String(node_name));
+		RE::resetToInitialState(pNode);
+		auto* obj=pNode->getAttachedObject(0);
+		pNode->detachObject(obj);
+		RE::ogreSceneManager()->destroyMovableObject(obj);
+	}
+	else
+	{
+		pNode=RE::createSceneNode(node_name);
 	}
 
+		Ogre::NameValuePairList params;
+		params["fontName"]=fontName;
+		params["caption"]=contents;
+		params["fontSize"]=charHeight;
 
-	Ogre::MovableText* entity=new Ogre::MovableText(entity_name.ptr(), contents, fontName, charHeight, color);
-//	entity->setColor(Ogre::ColourValue(1.0,1.0,1.0));
+	Ogre::MovableText* entity=new Ogre::MovableText(RE::generateUniqueID(), RE::_objectMemoryManager(), RE::ogreSceneManager(), &params);
+	entity->setColor(color);
 	pNode->attachObject(entity);
 	pNode->setVisible(true);
 
 	return pNode;
 #else
   return NULL;
+#endif
+}
+
+unsigned int RE::generateUniqueID()
+{
+#ifndef NO_OGRE
+	return Ogre::Id::generateNewId<Ogre::MovableObject>();
+#else
+	static int uid=0;
+	return uid++;
+#endif
+}
+void RE::resetToInitialState(Ogre::SceneNode* pNode)
+{
+#ifndef NO_OGRE
+	pNode->setScale(1.0,1.0,1.0);
+	pNode->resetOrientation();
+	pNode->setPosition(0.0,0.0,0.0);
+#endif
+}
+Ogre::ObjectMemoryManager* RE::_objectMemoryManager()
+{
+#ifndef NO_OGRE
+	return &RE::ogreSceneManager()->_getEntityMemoryManager(Ogre::SCENE_DYNAMIC );
+#else
+	return NULL;
 #endif
 }
 void RE::setGlobalMousePos(int x, int y)
@@ -575,41 +651,7 @@ Ogre::SceneNode* RE::createEntity(const char* id, const char* filename, quater c
 }
 
 
-void RE::changeDefaultSkin(const MotionLoader& skel, Ogre::Entity* entity, const char* mappingTable, bool bCurrPoseAsBindPose)
-{
-#ifndef NO_OGRE
-	if(RE::g_pGlobals->defaultSkins.size()==0)
-	{
-		RE::g_pGlobals->defaultSkins.resize(RE::renderer().m_pMotionManager->GetNumResource());
-		for (int i=0; i<RE::g_pGlobals->defaultSkins.size(); i++)
-			RE::g_pGlobals->defaultSkins[i]=NULL;
-	}
-
-	if(RE::g_pGlobals->defaultSkins[skel.getHandle()])
-		RE::remove(reinterpret_cast<PLDPrimOgreSkin*>(RE::g_pGlobals->defaultSkins[skel.getHandle()]));
-
-	RE::g_pGlobals->defaultSkins[skel.getHandle()]=reinterpret_cast<void*>(static_cast<PLDPrimOgreSkin*>(createOgreSkin(skel, entity, mappingTable, bCurrPoseAsBindPose)));
-
-	reinterpret_cast<PLDPrimOgreSkin*>(RE::g_pGlobals->defaultSkins[skel.getHandle()])->SetVisible(false);
-#endif
-}
-
-void RE::resetDefaultSkin(const MotionLoader& skel)
-{
-  #ifndef NO_OGRE
-
-	if(RE::g_pGlobals->defaultSkins.size()!=0)
-	{
-		if(RE::g_pGlobals->defaultSkins[skel.getHandle()])
-		{
-			RE::remove(reinterpret_cast<PLDPrimOgreSkin*>(RE::g_pGlobals->defaultSkins[skel.getHandle()]));
-			RE::g_pGlobals->defaultSkins[skel.getHandle()]=NULL;
-		}
-	}
-#endif
-}
-
-Ogre::Entity* RE::createTerrain(const char* id, const char* filename, int imageSizeX, int imageSizeY, m_real sizeX, m_real sizeZ, m_real heightMax, int ntexSegX, int ntexSegZ)
+Ogre::Item* RE::createTerrain(const char* id, const char* filename, int imageSizeX, int imageSizeY, m_real sizeX, m_real sizeZ, m_real heightMax, int ntexSegX, int ntexSegZ)
 {
   #ifndef NO_OGRE
 
@@ -623,7 +665,7 @@ Ogre::Entity* RE::createTerrain(const char* id, const char* filename, int imageS
 #endif
 }
 
-Ogre::Entity* RE::createPlane(const char* id, m_real width, m_real height, int xsegment, int ysegment, int texSegx, int texSegy)
+Ogre::Item* RE::createPlane(const char* id, m_real width, m_real height, int xsegment, int ysegment, int texSegx, int texSegy)
 {
 #ifndef NO_OGRE
 	try {
@@ -638,15 +680,19 @@ Ogre::Entity* RE::createPlane(const char* id, m_real width, m_real height, int x
 	static int meshIdd=0;
 	meshId.format("mesh_%s_%d", id, meshIdd++);
 
-	Ogre::MeshManager::getSingleton().createPlane(meshId.ptr(),
+	Ogre::v1::MeshPtr planeMeshV1=Ogre::v1::MeshManager::getSingleton().createPlane((meshId+"___v1").ptr(),
 		Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, plane,
-		width,height,xsegment,ysegment,true,1,texSegx,texSegy,Ogre::Vector3::UNIT_Z);
+		width,height,xsegment,ysegment,true,1,texSegx,texSegy,Ogre::Vector3::UNIT_Z,
+                                            Ogre::v1::HardwareBuffer::HBU_STATIC,
+                                            Ogre::v1::HardwareBuffer::HBU_STATIC );
 
-	Ogre::Entity* pPlaneEnt = RE::ogreSceneManager()->createEntity( id, meshId.ptr() );
+	Ogre::MeshPtr planeMesh = Ogre::MeshManager::getSingleton().createByImportingV1(
+			meshId.ptr(), Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+			planeMeshV1.get(), true, true, true );
 
-	pPlaneEnt->setCastShadows(false);
 
-	return pPlaneEnt ;
+	Ogre::Item *item = RE::ogreSceneManager()->createItem( planeMesh, Ogre::SCENE_DYNAMIC );
+	return item;
 	}
 	catch ( Ogre::Exception& e ) {Msg::msgBox(e.getFullDescription().c_str());}
 #endif
@@ -655,17 +701,6 @@ Ogre::Entity* RE::createPlane(const char* id, m_real width, m_real height, int x
   
 }
 
-PLDPrimSkin* RE::createOgreSkin(const MotionLoader& skel, Ogre::Entity* entity, const char* mappingTable, bool bCurrPoseAsBindPose, double scale)
-{
-	PLDPrimSkin* pSkin;
-	if (!mappingTable || strlen(mappingTable)==0 || strcmp(mappingTable,"NONE")==0)
-		//pSkin=new PLDPrimPreciseOgreSkin((MotionLoader*)&skel, entity, RE::renderer(), scale);
-		pSkin=new PLDPrimOgreSkin((MotionLoader*)&skel, entity, NULL, RE::renderer(), bCurrPoseAsBindPose, scale);
-	else
-		pSkin=new PLDPrimOgreSkin((MotionLoader*)&skel, entity, mappingTable, RE::renderer(), bCurrPoseAsBindPose, scale);
-	RE::renderer().addFrameMoveObject(pSkin);
-	return pSkin;
-}
 Ogre::SceneNode* RE::getSceneNode(PLDPrimSkin* skin)
 {
 	return skin->m_pSceneNode;
@@ -673,19 +708,11 @@ Ogre::SceneNode* RE::getSceneNode(PLDPrimSkin* skin)
 
 #ifndef NO_OGRE
 
-LineSegment* RE::createLine()
-{
-  return new LineSegment(RE::renderer());
-}
 
-LineStrip* RE::createThinLine()
-{
-	return new LineStrip(RE::renderer());
-}
 
 Circle* RE::createCircle()
 {
-	return new Circle(RE::renderer());
+	return NULL;
 }
 #endif
 
@@ -700,35 +727,50 @@ void RE::removeEntity(const char* id)
 {
 #ifndef NO_OGRE
 	Ogre::SceneNode* pNode=NULL;
-	try {
-		// 있으면 지운다.
-		pNode=RE::ogreSceneManager()->getSceneNode(id);
-		RE::removeEntity(pNode);
-	}
-	catch( Ogre::Exception& e )
-	{
-		// 없으면 okay.
-	}
+	// 있으면 지운다.
+	pNode=RE::getSceneNode(id);
+	if(pNode) RE::removeEntity(pNode);
 #endif
 }
 
-Ogre::Entity* RE::getEntity(Ogre::SceneNode* node)
+Ogre::v1::Entity* RE::getEntity(Ogre::SceneNode* node)
 {
 #ifndef NO_OGRE
-	Ogre::SceneNode::ObjectIterator obji=node->getAttachedObjectIterator();
-	while (obji.hasMoreElements())
+	for (int i=0, ni=node->numAttachedObjects(); i<ni; i++)
 	{
-		Ogre::MovableObject* mobj = obji.getNext();
+		Ogre::MovableObject* mobj = node->getAttachedObject(i);
 		if (mobj->getMovableType() == "Entity")
 		{
-			return (Ogre::Entity* )mobj;
+			return (Ogre::v1::Entity* )mobj;
 		}
 	}
 
-	Ogre::SceneNode::ChildNodeIterator childi=node->getChildIterator();
+	auto childi=node->getChildIterator();
 	while(childi.hasMoreElements())
 	{
-		Ogre::Entity* out=RE::getEntity((Ogre::SceneNode*)childi.getNext());
+		Ogre::v1::Entity* out=RE::getEntity((Ogre::SceneNode*)childi.getNext());
+		if(out)
+			return out;
+	}
+#endif
+	return NULL;
+}
+Ogre::Item* RE::getItem(Ogre::SceneNode* node)
+{
+#ifndef NO_OGRE
+	for (int i=0, ni=node->numAttachedObjects(); i<ni; i++)
+	{
+		Ogre::MovableObject* mobj = node->getAttachedObject(i);
+		if (mobj->getMovableType() == "Item")
+		{
+			return (Ogre::Item* )mobj;
+		}
+	}
+
+	auto childi=node->getChildIterator();
+	while(childi.hasMoreElements())
+	{
+		Ogre::Item* out=RE::getItem((Ogre::SceneNode*)childi.getNext());
 		if(out)
 			return out;
 	}
@@ -749,18 +791,36 @@ void RE::removeEntity(Ogre::SceneNode* node)
 				RE::removeEntity(dynamic_cast<Ogre::SceneNode* >(node->getChild(0)));
 			}
 
-			while(node->numAttachedObjects())
+			int errc=0;
+			while(node->numAttachedObjects()-errc>0)
 			{
-				Ogre::MovableObject* mo = node->detachObject((unsigned short)(0));
 
-				// factory가 존재하는 type은 destroyMovableObject를 사용할수 있다.
-				if(mo->getMovableType()=="Entity" ||
-					mo->getMovableType()=="SkinEntity" ||
-					mo->getMovableType()=="Light" ||
-					mo->getMovableType()=="ManualObject")
-					RE::ogreSceneManager()->destroyMovableObject(mo);
-				else
-					delete mo;
+				Ogre::MovableObject* mo = node->getAttachedObject(0);
+				if(!mo) {
+					printf("null???\n");
+					errc++;
+				}
+				else {
+					node->detachObject(mo);
+
+					// factory가 존재하는 type은 destroyMovableObject를 사용할수 있다.
+					Ogre::String mt=mo->getMovableType();
+					if(mt=="Entity" ||
+							mt=="SkinEntity" ||
+							mt=="Light" ||
+							mt=="ManualObject"||
+							mt=="Item")
+						RE::ogreSceneManager()->destroyMovableObject(mo);
+					else if(mt=="MovableText")
+					{
+						// memory bug. destroy doesns't work. so currently a memory leak.
+					}
+					else
+					{
+						//printf("deleting movable object %s\n", mt.c_str());
+						delete mo;
+					}
+				}
 				/*
 				if(mo->getMovableType()=="Entity")
 					RE::ogreSceneManager()->destroyEntity((Ogre::Entity*)mo);
@@ -774,11 +834,9 @@ void RE::removeEntity(Ogre::SceneNode* node)
 
 			//std::cout<<"name :::"<<node->getName()<<std::endl;
 
-#if OGRE_VERSION_MINOR >= 12  || OGRE_VERSION_MAJOR>=13
+			if (node->getName().length()>0)
+				RE::g_pGlobals->mNamedSceneNodes.erase(node->getName());
 			((Ogre::SceneNode*)(node->getParent()))->removeAndDestroyChild(node);
-#else
-			((Ogre::SceneNode*)(node->getParent()))->removeAndDestroyChild(node->getName());
-#endif
 			node=NULL;
 		}
 	}
@@ -788,9 +846,9 @@ void RE::removeEntity(Ogre::SceneNode* node)
 	}
 #endif
 }
-void _setMaterial(Ogre::SimpleRenderable* ptr, const char* name);
+void _setMaterial(Ogre::v1::SimpleRenderable* ptr, const char* name);
 
-void RE::setColor(Ogre::SimpleRenderable *pRendererble, Color c)
+void RE::setColor(Ogre::v1::SimpleRenderable *pRendererble, Color c)
 {
   #ifndef NO_OGRE
 
@@ -854,7 +912,7 @@ void RE::setMaterialName(Ogre::SceneNode* pNode, const char* mat)
 {
   #ifndef NO_OGRE
 
-	((Ogre::Entity*)pNode->getAttachedObject(0))->setMaterialName(mat);
+	((Ogre::v1::Entity*)pNode->getAttachedObject(0))->setMaterialName(mat);
 #endif
 }
 /*
@@ -945,6 +1003,7 @@ void RE::SkinArray::changeColor(Color c)
 				}
 			}
 		}
+		/*todo2
 		else if(dynamic_cast<PLDPrimLine*>(&data(0)))
 		{
 			for(int i=0; i<size(); i++)
@@ -952,6 +1011,7 @@ void RE::SkinArray::changeColor(Color c)
 				((PLDPrimLine*)(&data(i)))->setColor(c);
 			}
 		}
+		*/
 	}
 }
 
@@ -1056,10 +1116,6 @@ OgreRenderer* RE::_createRenderer(int& w, int &rw)
 	{
 		Msg::msgBox("%s", error);
 	}
-	catch(const char* error)
-	{
-		Msg::msgBox("%s", error);
-	}
 	if (!config.Find("renderer_width"))
 		return renderer;
 	int DEFAULT_RENDERER_WIDTH=config.GetInt("renderer_width");
@@ -1075,14 +1131,16 @@ OgreRenderer* RE::_createRenderer(int& w, int &rw)
 void RE::buildEdgeList(const char* meshName)
 {
 #ifndef NO_GUI
+	/*
 	Ogre::String groupName = Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME;
 	// Get mesh (load if required)
-	Ogre::MeshPtr pmesh = Ogre::MeshManager::getSingleton().load(meshName, groupName);
+	Ogre::MeshPtr pmesh = Ogre::v1::MeshManager::getSingleton().load(meshName, groupName);
 	pmesh->freeEdgeList();
 	//pmesh->prepareForShadowVolume();
 	pmesh->buildEdgeList();
 	//pmesh-> setAutoBuildEdgeLists(true);
 	//pmesh->load();
+	//*/
 #endif
 }
 int RE::getOgreVersionMinor()
@@ -1090,7 +1148,7 @@ int RE::getOgreVersionMinor()
 #ifdef NO_GUI
 	return 7;
 #else
-#if OGRE_VERSION_MAJOR>=13 
+#if OGRE_VERSION_MAJOR>=13 ||  OGRE_VERSION_MAJOR==2 || OGRE_VERSION_MAJOR==3
 	return OGRE_VERSION_MAJOR;
 #endif
 	return OGRE_VERSION_MINOR;

@@ -63,10 +63,13 @@ PythonExtendWin::PythonExtendWin(int x, int y, int w, int h, MotionPanel& mp,Flt
 	//create("Button", "X", "X", 9);
 	updateLayout();
 
+	if(RE::rendererValid())
+	{
 #ifndef NO_OGRE
-	renderer.setHandler(this);
+		renderer.setHandler(this);
 #endif
-	renderer.ogreRenderer().addFrameMoveObject(this);
+		renderer.ogreRenderer().addFrameMoveObject(this);
+	}
 }
 
 PythonExtendWin::~PythonExtendWin(void)
@@ -459,6 +462,7 @@ int PythonExtendWin::work(TString const& workname, lunaStack& L)
 
 	else return ScriptBaseWin::work(workname, L);
 }
+/*
 #ifdef NO_GUI
 PythonExtendWin* getAdditionalPythonWin(PythonExtendWin* parent, int worker_id)
 {
@@ -480,3 +484,6 @@ PythonExtendWin* getAdditionalPythonWin(PythonExtendWin* parent, int worker_id)
 	return m_pAdditionalPythonWins[worker_id];
 }
 #endif
+*/
+
+

@@ -37,25 +37,50 @@ class CImage;
 #endif
 
 #ifndef NO_OGRE
-#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
-#include <Overlay/OgreOverlaySystem.h>
+#ifdef None
+#undef None
 #endif
+#include <OgreOverlaySystem.h>
+#include "StaticPluginLoader.h"
+#if !defined( __APPLE__) && !defined(_MSC_VER) 
+#define SEP_USE_SDL2
 #endif
-// frame listener 선언 
+
+#ifdef SEP_USE_SDL2
+    #include <SDL.h>
+#endif
+
+namespace Ogre
+{
+	class MovableTextFactory;
+}
+#endif
+#ifndef NO_OGRE
+#include "BaseSystem.h"
+class OgreRenderer : public Ogre::FrameListener, public BaseSystem
+#else
 class OgreRenderer : public Ogre::FrameListener
+#endif
 {
 protected:
+	void* _hWnd;
 	void _constructor(const char* fallback_configFileName, const char* configFileName, const char* plugins_file, const char* ogre_config);
-	void _locateTaesooLib();
-	std::string mTaesooLib_path;
 	std::string mPluginPath;
+    #ifdef SEP_USE_SDL2
+        SDL_Window          *mSdlWindow;
+        void handleWindowEvent( const SDL_Event& evt );
+    #endif
 public:
-	std::string taesooLibPath() const { return mTaesooLib_path;}
+#ifndef NO_OGRE
+	Ogre::MovableTextFactory * mMovableTextFactory;
+#endif
+	void _locateTaesooLib();
 	OgreRenderer(const char* fallback_configFileName, const char* configFileName, const char* plugins_file, const char* ogre_config);
 	OgreRenderer();
 	virtual ~OgreRenderer();
 	void createInputSystems(size_t hWnd);
-	virtual void firstInit(void* handle, int width, int height);
+	virtual void initialize(void* handle, int width, int height);
+	void deinitialize(void);
 	void speedControl(float f);	//normal speed에 fact만큼 배한다.
 	void pause(bool b);	//pause enable disable
 	void setScreenshotMotionBlur(int n);
@@ -76,7 +101,6 @@ public:
 	void createDynamicTexture(const char* name, CImage const& image);	
 	void createDynamicTexture(const char* name, CImage const& image, vector3 const& diffuseColor, vector3 const& specular_color, double shininess=10.0);	
 	void createMaterial(const char* name, vector3 const& diffuseColor, vector3 const& specular_color, double shininess=10.0);	
-	void addNewDynamicObj(Ogre::AnimationState* const as);
 	void addFrameMoveObject(FrameMoveObject* pFMO);
 	void removeFrameMoveObject(FrameMoveObject* pFMO);
 	void addAfterFrameMoveObject(FrameMoveObject* pFMO);
@@ -100,15 +124,17 @@ public:
 		void setOrthographicMode(bool isOrtho);
 		void setCustomProjectionMatrix(matrix4 const& mat_proj);
 		
-		virtual void _init(OgreRenderer& renderer, int width, int height);
+		virtual void createCamera(OgreRenderer& renderer, int width, int height);
 		void setupRTT(OgreRenderer& renderer, int width, int heigth);
+
+		int getActualWidth() const;
+		int getActualHeight() const;
+
 #ifndef NO_OGRE
 		Ogre::SceneManager *mScene;
 		Ogre::Camera *mCam;
-		Ogre::Viewport *mView;
-#if OGRE_VERSION_MAJOR>=13
+		//Ogre::Viewport *mView;
         Ogre::SceneNode* mCameraNode;       // camera node
-#endif
 #endif
 		Viewpoint* m_pViewpoint;
 	};
@@ -120,19 +146,55 @@ public:
 	Viewport& viewport(int viewport);
 	void addNewViewport();
 
+#ifndef NO_OGRE
+	Ogre::SceneManager* getSceneManager() { return viewport().mScene;}
+	Ogre::Camera* getCamera(void) const                     { return viewport().mCam; }
+	Ogre::Root* getRoot() { return mRoot;}
+	Ogre::Window* getRenderWindow(void) const               { return mWnd; }
+	Ogre::CompositorWorkspace* getCompositorWorkspace(void) const { return mWorkspace; }
+	Ogre::v1::OverlaySystem* getOverlaySystem(void) const   { return mOverlaySystem; }
+	virtual void stopCompositor(void);
+	virtual void restartCompositor(void);
+#endif
+
 	int _getOgreTextureWidth(const char* texturename);
 #ifndef NO_OGRE
 	Ogre::Root *mRoot;
-	Ogre::RenderWindow *mWnd;
+	Ogre::Window *mWnd;
 	Ogre::RenderSystem *mRSys;
+	Ogre::CompositorWorkspace   *mWorkspace;
 #ifndef NO_OIS
     OIS::Mouse        *mMouse;
     OIS::Keyboard     *mKeyboard;
     OIS::InputManager *mInputSystem;
 #endif
-#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
-	Ogre::OverlaySystem*  mOverlaySystem;
-#endif
+	Ogre::v1::OverlaySystem*  mOverlaySystem;
+	StaticPluginLoader          mStaticPluginLoader;
+	bool                mUseHlmsDiskCache;
+	bool                mUseMicrocodeCache;
+
+	Ogre::ColourValue   mBackgroundColour;
+	void loadTextureCache(void);
+	void saveTextureCache(void);
+	void loadHlmsDiskCache(void);
+	void saveHlmsDiskCache(void);
+	virtual void registerHlms(void);
+	/// Optional override method where you can perform resource group loading
+	/// Must at least do ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
+	//virtual void chooseSceneManager(void); -> Viewport::init
+	//virtual void createCamera(void); ->Viewport::_init
+	/// Virtual so that advanced samples such as Sample_Compositor can override this
+	/// method to change the default behavior if setupCompositor() is overridden, be
+	/// aware @mBackgroundColour will be ignored
+	virtual Ogre::CompositorWorkspace* setupCompositor(void);
+
+	/// Called right before initializing Ogre's first window, so the params can be customized
+	virtual void initMiscParamsListener( Ogre::NameValuePairList &params );
+
+	/// Optional override method where you can create resource listeners (e.g. for loading screens)
+	virtual void createResourceListener(void) {}
+	void createPcfShadowNode(void);
+	void createEsmShadowNodes(void);
 #endif
 	void ignoreTime()	{mbTimeStop=true;}
 	void setCaptureFPS(float fps)	{m_fCaptureFPS=fps;}
@@ -140,10 +202,15 @@ public:
 	bool mbScreenshot;	//screenshot enable disable. almost private.
 	void renderOneFrame();
 	void setBackgroundColour(float r, float g, float b);
+#ifndef NO_OGRE
+	void addResourceLocation( const Ogre::String &archName, const Ogre::String &typeName, const Ogre::String &secName );
+	void setupShadowNode(bool useESM);
+#endif
 protected:
 	std::vector<Viewport*> mViewports;
 	int mCurrViewports;
 	TString mResourceFile;
+	std::string mWriteAccessFolder;
 	TString mScreenshotPrefix;
 	bool mbFixedTimeStep;
 	bool mbTimeStop;
@@ -154,16 +221,19 @@ protected:
 	float m_fTimeScaling;	//frame speed fact
 	float m_fElapsedTime;
 
-	std::list<Ogre::AnimationState*> mAnimationStates;
-	// for backward compatibility
 	std::list<FrameMoveObject*> mFrameMoveObjects;		
 	std::list<FrameMoveObject*> mAfterFrameMoveObjects;		
 
-
+#ifndef NO_OGRE
 	virtual void setupResources(void);
+#endif
 
 	bool frameStarted(const Ogre::FrameEvent& evt);
 	bool frameEnded(const Ogre::FrameEvent& evt);
+
+public:
+	void _toggleHelpMode();
+	void _updateDebugCaption();
 };
 
 #ifndef NO_OGRE

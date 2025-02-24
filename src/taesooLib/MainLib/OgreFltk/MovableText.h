@@ -1,119 +1,135 @@
 /**
  * File: MovableText.h
  *
- * description: This create create a billboarding object that display a text.
+ * Description: This creates a billboarding object that display a text.
+ * Note: This object must have a dedicated scene node since it will rotate it to face the camera (OGRE 2.1)
  * 
- * @author  2003 by cTh see gavocanov@rambler.ru
- * @update  2006 by barraq see nospam@barraquand.com
+ * @author	2003 by cTh see gavocanov@rambler.ru
+ * @update	2006 by barraq see nospam@barraquand.com
+ * @update	2012 to work with newer versions of OGRE by MindCalamity <mindcalamity@gmail.com>
+ * @update	2015 to work on OGRE 2.1 (but not on older versions anymore) by Jayray <jeremy.richert1@gmail.com>
+ *	- See "Notes" on: http://www.ogre3d.org/tikiwiki/tiki-editpage.php?page=MovableText
  */
 
 #ifndef __include_MovableText_H__
 #define __include_MovableText_H__
 #ifndef NO_OGRE
-#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
-#include <Overlay/OgreFontManager.h>
-#include <Overlay/OgreFont.h>
-#endif
+#include <OgrePrerequisites.h>
+#include <OgreCommon.h>
+#include <OgreMovableObject.h>
+#include <OgreFontManager.h>
+#include <OgreHlmsDatablock.h>
+
 namespace Ogre {
 
-class MovableText : public MovableObject, public Renderable
-{
-    /******************************** MovableText data ****************************/
-public:
-    enum HorizontalAlignment    {H_LEFT, H_CENTER};
-    enum VerticalAlignment      {V_BELOW, V_ABOVE};
+	class MovableText : public MovableObject, public Renderable, public FrameListener
+	{
+		// Allow MovableTextFactory full access
+		friend class MovableTextFactory;
 
-protected:
-	String			mFontName;
-	String			mType;
-	String			mName;
-	String			mCaption;
-	HorizontalAlignment	mHorizontalAlignment;
-	VerticalAlignment	mVerticalAlignment;
+		/******************************** MovableText data ****************************/
+		public:
+		enum HorizontalAlignment    {H_LEFT, H_CENTER};
+		enum VerticalAlignment      {V_BELOW, V_ABOVE, V_CENTER};
 
-	ColourValue		mColor;
-	RenderOperation	mRenderOp;
-	AxisAlignedBox	mAABB;
-	LightList		mLList;
+		public:
+		String					mFontName;
+		String					mName;
+		String					mCaption;
+		HorizontalAlignment		mHorizontalAlignment;
+		VerticalAlignment		mVerticalAlignment;
 
-	Real			mCharHeight;
-	Real			mSpaceWidth;
+		ColourValue				mColor;
+		v1::RenderOperation		mRenderOp;
+		LightList				mLList;
 
-	bool			mNeedUpdate;
-	bool			mUpdateColors;
-	bool			mOnTop;
+		Real					mCharHeight;
+		Real					mSpaceWidth;
 
-	Real			mTimeUntilNextToggle;
-	Real			mRadius;
-    Real            mAdditionalHeight;
+		bool					mNeedUpdate;
+		bool					mUpdateColors;
+		bool					mOnTop;
 
-	Camera			*mpCam;
-	RenderWindow	*mpWin;
-	Font			*mpFont;
-	MaterialPtr		mpMaterial;
-    MaterialPtr		mpBackgroundMaterial;
+		Real					mTimeUntilNextToggle;
 
-    /******************************** public methods ******************************/
-public:
-	MovableText(const String &name, const String &caption, const String &fontName = "BlueHighway", Real charHeight = 1.0, const ColourValue &color = ColourValue::White);
-	virtual ~MovableText();
+		Vector3					mGlobalTranslation;
+		Vector3					mLocalTranslation;
 
-	// Add to build on Shoggoth:
-	/*
-	   virtual void visitRenderables(Ogre::Renderable::Visitor* visitor, bool debugRenderables = false);
-	*/
+		Camera					*mpCam;
+		Window					*mpWin;
+		Font					*mpFont;
+		HlmsDatablock			*mpHlmsDatablock;
 
-    // Set settings
-	void    setFontName(const String &fontName);
-	void    setCaption(const String &caption);
-	void    setColor(const ColourValue &color);
-	void    setCharacterHeight(Real height);
-	void    setSpaceWidth(Real width);
-	void    setTextAlignment(const HorizontalAlignment& horizontalAlignment, const VerticalAlignment& verticalAlignment);
-	void    setAdditionalHeight( Real height );
-    void    showOnTop(bool show=true);
+		/** Private constructor (instances cannot be created directly).
+		*/
+		MovableText(IdType id, ObjectMemoryManager *objectMemoryManager, SceneManager *sceneManager, const NameValuePairList* params);
 
-    // Get settings
-	const   String          &getFontName() const {return mFontName;}
-    const   String          &getCaption() const {return mCaption;}
-	const   ColourValue     &getColor() const {return mColor;}
-	
-    uint    getCharacterHeight() const {return mCharHeight;}
-	uint    getSpaceWidth() const {return mSpaceWidth;}
-    Real    getAdditionalHeight() const {return mAdditionalHeight;}
-    bool    getShowOnTop() const {return mOnTop;}
-    AxisAlignedBox	        GetAABB(void) { return mAABB; }
+		/******************************** public methods ******************************/
+		public:
+		virtual ~MovableText();
 
-	void visitRenderables(Renderable::Visitor* visitor, 
-		bool debugRenderables)
-	{}
-    /******************************** protected methods and overload **************/
-protected:
+		// Set settings
+		void						setFontName(const String &fontName);
+		void						setCaption(const String &caption);
+		void						setColor(const ColourValue &color);
+		void						setCharacterHeight(Real height);
+		void						setSpaceWidth(Real width);
+		void						setTextAlignment(const HorizontalAlignment& horizontalAlignment, const VerticalAlignment& verticalAlignment);
+		void						setGlobalTranslation( Vector3 trans );
+		void						setLocalTranslation( Vector3 trans );
+		void						showOnTop(bool show=true);
 
-    // from MovableText, create the object
-	void	_setupGeometry();
-	void	_updateColors();
+		// Get settings
+		const   String				&getFontName()	const {return mFontName;}
+		const   String				&getCaption()	const {return mCaption;}
+		const   ColourValue			&getColor()		const {return mColor;}
 
-	// from MovableObject
-	void    getWorldTransforms(Matrix4 *xform) const;
-    Real    getBoundingRadius(void) const {return mRadius;};
-	Real    getSquaredViewDepth(const Camera *cam) const {return 0;};
-    const   Quaternion        &getWorldOrientation(void) const;
-    const   Vector3           &getWorldPosition(void) const;
-	const   AxisAlignedBox    &getBoundingBox(void) const {return mAABB;};
-	const   String            &getName(void) const {return mName;};
-	const   String            &getMovableType(void) const {static Ogre::String movType = "MovableText"; return movType;};
+		Real						getCharacterHeight() const {return mCharHeight;}
+		Real						getSpaceWidth() const {return mSpaceWidth;}
+		Vector3						getGlobalTranslation() const {return mGlobalTranslation;}
+		Vector3						getLocalTranslation() const {return mLocalTranslation;}
+		bool						getShowOnTop() const {return mOnTop;}
 
-    void    _notifyCurrentCamera(Camera *cam);
-	void    _updateRenderQueue(RenderQueue* queue);
+		/******************************** protected methods and overload **************/
+		protected:
 
-	// from renderable
-	void    getRenderOperation(RenderOperation &op);
-	const   MaterialPtr       &getMaterial(void) const {assert(!mpMaterial.isNull());return mpMaterial;};
-	const   LightList         &getLights(void) const {return mLList;};
-};
+		// from MovableText, create the object
+		void						_setupGeometry();
+		void						_updateColors();
+		void                        _updateHlmsMacroblock();
 
-}
+		// from MovableObject
+		const   String				&getMovableType(void) const {static Ogre::String movType = "MovableText"; return movType;};
+
+		void						_updateRenderQueue(RenderQueue* queue, Camera *camera, const Camera *lodCamera);
+
+		// from Renderable
+		void						getWorldTransforms(Matrix4 *xform) const;
+		virtual void						getRenderOperation(v1::RenderOperation &op, bool casterPass);
+		const   LightList			&getLights(void) const {return mLList;};
+
+		// from FrameListener
+		bool 	                    frameRenderingQueued(const FrameEvent &evt);
+	};
+
+	/** Factory object for creating MovableText instances */
+	class MovableTextFactory : public MovableObjectFactory
+	{
+		protected:
+			virtual MovableObject* createInstanceImpl( IdType id, ObjectMemoryManager *objectMemoryManager, SceneManager *sceneManager,
+					const NameValuePairList* params = 0 );
+		public:
+			MovableTextFactory() {}
+			~MovableTextFactory() {}
+
+			static String FACTORY_TYPE_NAME;
+
+			const String& getType() const;
+			void destroyInstance(MovableObject* obj);
+
+	};
+
+} //end namespace Ogre
 
 #endif
 #endif

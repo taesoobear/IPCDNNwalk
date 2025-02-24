@@ -1312,8 +1312,14 @@ function writeHeader(bindTarget)
 		addLine('// The number at the end of each line denotes the line number of luna_gen.lua which generated that line')
 	end
 	for iluaclass, luaclass in ipairs(bindTarget.classes) do
+		if luaclass.if_ then
+			addLine('#if '..luaclass.if_)
+		end
 		if luaclass.decl then
 			addLine(luaclass.decl)
+		end
+		if luaclass.if_ then
+			addLine('#endif //'..luaclass.if_)
 		end
 	end
 

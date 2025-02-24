@@ -2,6 +2,7 @@
 //
 
 #include "stdafx.h"
+#include "../../BaseLib/math/tvector.h"
 #include "../../BaseLib/math/vector3.h"
 #include "../../BaseLib/math/quater.h"
 #include "../../BaseLib/math/quaterN.h"
@@ -25,6 +26,7 @@
 #include "../../MainLib/WrapperLua/LUAwrapper.h"
 #include "../../MainLib/WrapperLua/luna_baselib.h"
 #include "../../MainLib/WrapperLua/luna_mainlib.h"
+//#include "../../MainLib/WrapperLua/ThreadedScript.h"
 #include "../../PhysicsLib/luna_physics.h"
 #include "../../MainLib/WrapperLua/mainliblua_wrap.h"
 #include "../../BaseLib/motion/Terrain.h"
@@ -67,9 +69,9 @@
 #include "../../BaseLib/math/OperatorStitch.h"
 #include "../../PhysicsLib/clapack_wrap.h"
 #include "../../PhysicsLib/SDRE.h"
-//#ifndef EXCLUDE_GMBS_SIM
-//#include "../../PhysicsLib/GMBS_implementation/rmatrix3j.h"
-//#endif
+#ifndef EXCLUDE_GMBS_SIM
+#include "../../PhysicsLib/GMBS_implementation/rmatrix3j.h"
+#endif
 class GrahamScan;
 #include "../../PhysicsLib/CollisionDetector/CollisionDetector_libccd.h"
 
@@ -137,6 +139,9 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 #include "../../MainLib/OgreFltk/MotionPanel.h"
 
 #ifndef NO_OGRE
+#ifdef None
+#undef None
+#endif
 #include <Ogre.h>
 
 #define OGRE_VOID(x) x
@@ -146,36 +151,18 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 #define OGRE_PTR(x) return NULL
 #endif
 void createMainWin(int, int, int ,int, float);
+void releaseMainWin();
+void _createInvisibleMainWin();
 void createMainWin(int w, int h, int rw, int rh, float UIscaleFactor, const char* configFileName, const char* plugins_file, const char* ogre_config);
 void showMainWin();
 void startMainLoop();
 PythonExtendWin* getPythonWin();
+bool hasPythonWin();
 #ifdef NO_GUI
-// for multi-threading
+// for multi-threading. use ThreadedScript instread.
 //PythonExtendWin* getAdditionalPythonWin(PythonExtendWin* parent, int worker_id);
 #endif
 
-static void showBoundingBox(Ogre::SceneNode* node, bool bValue)
-{
-#ifndef NO_OGRE
-	if(node->getName()!="BackgroundNode")
-	{
-		Ogre::Node::ChildNodeIterator it=node->getChildIterator();
-
-		while(it.hasMoreElements())
-		{
-			Ogre::Node* childnode=it.getNext();
-			Ogre::SceneNode* childsceneNode;
-			childsceneNode=dynamic_cast<Ogre::SceneNode*>(childnode);
-			if(childsceneNode)
-				showBoundingBox(childsceneNode, bValue);
-		};
-		node->showBoundingBox(bValue);
-	}
-#else 
-	return ;
-#endif
-}
 
 void RE_outputRaw(const char* key, const char* output, int i);
 void RE_dumpOutput(TStrings& output, int i);
@@ -184,30 +171,26 @@ void RE_outputEraseAll(int i);
 #define BEGIN_OGRE_CHECK try {
 #define END_OGRE_CHECK	} catch ( Ogre::Exception& e ) {Msg::msgBox(e.getFullDescription().c_str());}
 
-#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
-#include "Overlay/OgreOverlay.h"
-#include "Overlay/OgreOverlayManager.h"
-#include "Overlay/OgreOverlayContainer.h"
-#include "Overlay/OgreOverlayElement.h"
-#else
+#include "OgreOverlay.h"
+#include "OgreOverlayManager.h"
 #include "OgreOverlayContainer.h"
 #include "OgreOverlayElement.h"
-#endif
+#include <OgreItem.h>
 #include <OgreEntity.h>
 #include <OgreAxisAlignedBox.h>
 
 namespace Ogre
 {
 
-	Ogre::OverlayContainer* createContainer(int x, int y, int w, int h, const char* name) ;
-	Ogre::OverlayElement* createTextArea(const String& name, Ogre::Real width, Ogre::Real height, Ogre::Real top, Ogre::Real left, uint fontSize, const String& caption, bool show) ;
+	Ogre::v1::OverlayContainer* createContainer(int x, int y, int w, int h, const char* name) ;
+	Ogre::v1::OverlayElement* createTextArea(const String& name, Ogre::Real width, Ogre::Real height, Ogre::Real top, Ogre::Real left, uint fontSize, const String& caption, bool show) ;
 }
 
-Ogre::Overlay* createOverlay_(const char* name);
+Ogre::v1::Overlay* createOverlay_(const char* name);
 void destroyOverlay_(const char* name);
 void destroyOverlayElement_(const char* name);
 void destroyAllOverlayElements_();
-Ogre::OverlayElement* createTextArea_(const char* name, double width, double height, double top, double left, int fontSize, const char* caption, bool show);
+Ogre::v1::OverlayElement* createTextArea_(const char* name, double width, double height, double top, double left, int fontSize, const char* caption, bool show);
 #endif
 
 
@@ -325,12 +308,6 @@ class impl_luna__interface_Viewpoint
 				RE::renderer().viewport().setOrthographicMode(isOrtho);
 #endif
 			}
-			inline static void setDimensions(Viewpoint& view, double left, double top, double width, double height)
-			{
-#ifndef NO_OGRE
-				RE::renderer().viewport().mView->setDimensions(left,top, width, height);
-#endif
-			}
 			inline static void setFOVy(Viewpoint& view, m_real degree)
 			{
 #ifndef NO_OGRE
@@ -382,11 +359,11 @@ class impl_luna__interface_SceneManager
                 pmgr->setFog(Ogre::FOG_NONE,Ogre::ColourValue(0,0,0), 0, 0, 0);
 #endif
             }
-            static Ogre::Entity* createEntity(Ogre::SceneManager* pmgr, const char* id, const char* mesh)
+            static Ogre::Item* createEntity(Ogre::SceneManager* pmgr, const char* id, const char* mesh)
             {
 #ifndef NO_OGRE
                 BEGIN_OGRE_CHECK
-                    return pmgr->createEntity(id,mesh);
+                    return RE::_createEntity(mesh);
                 END_OGRE_CHECK
 #else 
                     return NULL;
@@ -397,7 +374,7 @@ class impl_luna__interface_SceneManager
             {
 #ifndef NO_OGRE
                 BEGIN_OGRE_CHECK
-                    return pmgr->getSceneNode(id);
+                    return RE::getSceneNode(id);
                 END_OGRE_CHECK
 #else 
                     return NULL;
@@ -405,33 +382,11 @@ class impl_luna__interface_SceneManager
 
             }
 
-            static void showBoundingBox(Ogre::SceneNode* node, bool bValue)
-            {
-#ifndef NO_OGRE
-            if(node->getName()!="BackgroundNode")
-            {
-                Ogre::Node::ChildNodeIterator it=node->getChildIterator();
-
-                while(it.hasMoreElements())
-                {
-                    Ogre::Node* childnode=it.getNext();
-                    Ogre::SceneNode* childsceneNode;
-                    childsceneNode=dynamic_cast<Ogre::SceneNode*>(childnode);
-                    if(childsceneNode)
-                        showBoundingBox(childsceneNode, bValue);
-                };
-                node->showBoundingBox(bValue);
-            }
-#else 
-                    return ;
-#endif
-
-            }
             static Ogre::Light* createLight(Ogre::SceneManager* pmgr, const char* id)
             {
 #ifndef NO_OGRE
                 BEGIN_OGRE_CHECK
-                    return pmgr->createLight(id);
+                    return pmgr->createLight();
 
                 END_OGRE_CHECK
 #else 
@@ -440,84 +395,24 @@ class impl_luna__interface_SceneManager
 
 
             }
-            static Ogre::Light* getLight(Ogre::SceneManager* pmgr, const char* id)
-            {
-#ifndef NO_OGRE
-                BEGIN_OGRE_CHECK
-                    return pmgr->getLight(id);
 
-                END_OGRE_CHECK
-#else 
-                    return NULL;
-#endif
-
-
-            }
-            static Ogre::Entity* getEntity(Ogre::SceneManager* pmgr, const char* id)
-            {
-#ifndef NO_OGRE
-                BEGIN_OGRE_CHECK
-                    return pmgr->getEntity(id);
-                END_OGRE_CHECK
-#else 
-                    return NULL;
-#endif
-            }
-
-            static void setAmbientLight(Ogre::SceneManager* pmgr, m_real x, m_real y, m_real z)
-            {OGRE_VOID(pmgr->setAmbientLight(Ogre::ColourValue(x,y,z)));}
-            static void setShadowColour(Ogre::SceneManager* pmgr, m_real x, m_real y, m_real z)
-            {OGRE_VOID(pmgr->setShadowColour(Ogre::ColourValue(x,y,z)));}
 
             static void setSkyBox(Ogre::SceneManager* pmgr, bool enable, const char* materialName)
-            {OGRE_VOID(pmgr->setSkyBox(enable, materialName));}
+            {printf("warning! setSkyBox not ported to ogre2 yet\n");}
             static bool hasSceneNode(Ogre::SceneManager* pmgr, const char * name) 
             {
 #if !defined (NO_GUI)                                         
-                return pmgr->hasSceneNode(Ogre::String(name));
+                return (bool)RE::getSceneNode(name);
 #else
                 return true;
 #endif
             }
-            static void setRenderqueueOverlay(Ogre::SceneManager* pmgr,Ogre::Entity* roEntity, unsigned short groupID)
-            {
-                //Ogre::RenderQueue render_q;
-                //Ogre::SceneManager::MovableObjectIterator iterator=
-            //        pmgr->getMovableObjectIterator("Entity");
-                //while(iterator.hasMoreElements())
-                {
-                    //Ogre::Entity* e = static_cast<Ogre::Entity*>(iterator.getNext());
-                    //if(e->getName()!="testEntity")
-                    {
-                        //render_q.addRenderable(e,Ogre::RENDER_QUEUE_BACKGROUND);
-                        //e->getSubEntity(0)->getMaterial()->setDepthCheckEnabled(false);
-                        //e->getSubEntity(0)->getMaterial()->setDepthWriteEnabled(false);
-                        //e->setRenderQueueGroup(Ogre::RENDER_QUEUE_OVERLAY);
-                    }
-                    //else
-                    {
-                        //render_q.addRenderable(e,Ogre::RENDER_QUEUE_MAX);
-                    }
-                    //printf("Entity Name: %s\n",e->getName().c_str());
-                    //printf("RenderQueueGroupID:%d \n",e->getRenderQueueGroup());
-                }
-                //roEntity->getSubEntity(0)->getMaterial()->setDepthCheckEnabled(false);
-                //roEntity->getSubEntity(0)->getMaterial()->setDepthWriteEnabled(false);
-                //roEntity->setRenderQueueGroup(groupID);
-            }
             static int getShadowTechnique(Ogre::SceneManager* pmgr)
             {
-#if !defined (NO_GUI)                                         
-                return pmgr->getShadowTechnique();
-#else
                 return 18;
-#endif
             }
             static void setShadowTechnique(Ogre::SceneManager* pmgr, int i)
             {
-#if !defined (NO_GUI)                                         
-                pmgr->setShadowTechnique((Ogre::ShadowTechnique )i);
-#endif
             }
 };
 
@@ -590,8 +485,13 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("buildEdgeList", &RE::buildEdgeList) // 1458
 		.def("createMainWin", createMainWin1)
 		.def("createMainWin", createMainWin2)
+		.def("releaseMainWin", releaseMainWin)
+		.def("_createInvisibleMainWin", _createInvisibleMainWin)
+		//.def("ThreadScriptPoolWithPhysicsLib", &ThreadScriptPoolWithPhysicsLib)
+		//.def("ThreadedScriptWithPhysicsLib", &ThreadedScriptWithPhysicsLib)
 		.def("startMainLoop", startMainLoop)
 		.def("getPythonWin", getPythonWin, RETURN_REFERENCE)
+		.def("hasPythonWin", hasPythonWin)
 #ifdef NO_GUI
 		//.def("getAdditionalPythonWin", getAdditionalPythonWin, RETURN_REFERENCE)
 #endif
@@ -722,6 +622,45 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("dotProduct", (double (vector3::*)(vector3 const& b))&vector3::operator%) // 1460
 		.def("set", (void (vector3::*)(double ,double, double))&vector3::setValue) // 1460
 	;
+	{
+		struct vector2_wrap
+		{
+			static double getX(vector2 const& v){ return v.x();}
+			static double getY(vector2 const& v){ return v.y();}
+			static void setX(vector2 & v, double x){ v.x()=x;}
+			static void setY(vector2 & v, double y){ v.y()=y;}
+		};
+		class_<vector2>(mainlib, "vector2")
+			.def(init<>())
+			.def(init<m_real, m_real>())
+			.def_property("x", &vector2_wrap::getX, &vector2_wrap::setX)
+			.def_property("y", &vector2_wrap::getY, &vector2_wrap::setY)
+			.def("ref",  [](vector2 const& v){ 
+					npy_intp dims[1];
+					dims[0]=2;
+					npy_intp strides[1];
+					strides[0]=sizeof(double);
+					double* vv=const_cast<double*>(&v.x());
+					PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 1, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE , NULL);
+					return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
+					})
+			.def("copy", [](vector2 const&v )->vector2 *{ return new vector2(v);}, TAKE_OWNERSHIP )
+			.def("assign", [](vector2& l, WRAP_PY::list ll){
+					if(len(ll)!=2) throw std::range_error("vector2_assign");
+					l.x()=ll[0].cast<double>();
+					l.y()=ll[1].cast<double>();
+			})
+			.def("__neg__", [](vector2 const& v)->vector2 { return -v;}) // neg (unary minus)
+			.def("__add__", [](vector2 const& a, vector2 const& b)->vector2 { return a+b;}) 
+			.def("__sub__", [](vector2 const& a, vector2 const& b)->vector2 { return a-b;}) 
+			.def("__mul__", [](vector2 const& a, double b)->vector2 { return a*b;}) 
+			.def("__mul__", [](double b, vector2 const& a)->vector2 { return a*(double)b;}) 
+			.def("__mul__", [](vector2 const& a, double b)->vector2 { return a/b;}) 
+			.def("set", [](vector2& v, double x,double y ){
+				v.x()=x; v.y()=y;}) // 1460
+			;
+	}
+
 	{
 		struct __pybindgen___vector4_wrapper
 		{                                                             // 1382
@@ -1793,19 +1732,14 @@ PYBIND11_MODULE(libmainlib, mainlib)
 #endif
 		.def("resetToInitialState", [](Ogre::SceneNode* pNode){
 #ifndef NO_OGRE
-				pNode->resetToInitialState();
-#endif
-				})
-		.def("removeAndDestroyChild", [](Ogre::SceneNode* pNode, const char* name){
-#ifndef NO_OGRE
-				pNode->removeAndDestroyChild(name);
+				RE::resetToInitialState(pNode);
 #endif
 				})
 		.def("createChildSceneNode", [](Ogre::SceneNode* pNode){
 			OGRE_PTR(return pNode->createChildSceneNode());
 				}, RETURN_REFERENCE)
 		.def("createChildSceneNode", [](Ogre::SceneNode* pNode, const char* name){
-			OGRE_PTR(return pNode->createChildSceneNode(name));
+			OGRE_PTR(return RE::createChildSceneNode(pNode, name));
 				}, RETURN_REFERENCE)
 		.def("translate", [](Ogre::SceneNode* pNode, vector3 const& t){
 				OGRE_VOID(pNode->translate(t.x, t.y, t.z));
@@ -1828,7 +1762,6 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("scale", [](Ogre::SceneNode* pNode, m_real x){
 				OGRE_VOID(pNode->scale(x, x, x));
 				})
-		.def("showBoundingBox", &showBoundingBox)
 		.def("setPosition", [](Ogre::SceneNode* pNode, m_real x, m_real y, m_real z){
 				OGRE_VOID(pNode->setPosition(x,y,z));
 				})
@@ -1847,21 +1780,15 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("setOrientation", [](Ogre::SceneNode* pNode, quater const& q){
 				OGRE_VOID( pNode->setOrientation(q.w, q.x, q.y, q.z));
 				})
-		.def("getEntity", (Ogre ::Entity * (*)(Ogre::SceneNode* node))&RE::getEntity,RETURN_REFERENCE ) // 1446
+		.def("getEntity", (Ogre ::Item * (*)(Ogre::SceneNode* node))&RE::getItem,RETURN_REFERENCE ) // 1446
 			;
 	}
 	{
 		class_<Ogre ::SceneManager > (mainlib, "SceneManager")          // 1388
-			.def("setShadowTextureSize", (void (Ogre ::SceneManager::*)(int size))&Ogre ::SceneManager::setShadowTextureSize) // 1443
-			.def("setShadowTextureCount", (void (Ogre ::SceneManager::*)(int count))&Ogre ::SceneManager::setShadowTextureCount) // 1443
-			.def("getShadowTechnique", (int (*)(Ogre::SceneManager* pmgr))&impl_luna__interface_SceneManager:: getShadowTechnique) // 1446
-			.def("setShadowTechnique", (void (*)(Ogre::SceneManager* pmgr, int i))&impl_luna__interface_SceneManager::setShadowTechnique) // 1446
 			.def("setFog", (void (*)(Ogre::SceneManager* pmgr, double r, double g, double b, double a, double min, double max))&impl_luna__interface_SceneManager::setFog) // 1446
 			.def("setFogExponential", (void (*)(Ogre::SceneManager* pmgr, double r, double g, double b, double a, double min, double max))&impl_luna__interface_SceneManager::setFogExponential) // 1446
 			.def("setFogNone", (void (*)(Ogre::SceneManager* pmgr))&impl_luna__interface_SceneManager::setFogNone) // 1446
-			.def("createEntity", (Ogre ::Entity * (*)(Ogre::SceneManager* pmgr, const char* id, const char* mesh))&impl_luna__interface_SceneManager::createEntity, RETURN_REFERENCE) // 1446
-			.def("setAmbientLight", (void (*)(Ogre::SceneManager* pmgr, m_real x, m_real y, m_real z))&impl_luna__interface_SceneManager::setAmbientLight) // 1446
-			.def("setShadowColour", (void (*)(Ogre::SceneManager* pmgr, m_real x, m_real y, m_real z))&impl_luna__interface_SceneManager::setShadowColour) // 1446
+			.def("createEntity", (Ogre ::Item * (*)(Ogre::SceneManager* pmgr, const char* id, const char* mesh))&impl_luna__interface_SceneManager::createEntity, RETURN_REFERENCE) // 1446
 			.def("getSceneNode", (Ogre ::SceneNode * (*)(Ogre::SceneManager* pmgr, const char* id))&impl_luna__interface_SceneManager::getSceneNode, RETURN_REFERENCE) // 1446
 		/*
 		class SceneNode_Wrapper
@@ -1894,12 +1821,8 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		def("generateUniqueName", RE::generateUniqueName);
 		*/
 			.def("createLight", (Ogre ::Light * (*)(Ogre::SceneManager* pmgr, const char* id))&impl_luna__interface_SceneManager::createLight, RETURN_REFERENCE) // 1446
-			.def("getLight", (Ogre ::Light * (*)(Ogre::SceneManager* pmgr, const char* id))&impl_luna__interface_SceneManager::getLight, RETURN_REFERENCE) // 1446
-			.def("getEntity", (Ogre ::Entity * (*)(Ogre::SceneManager* pmgr, const char* id))&impl_luna__interface_SceneManager::getEntity, RETURN_REFERENCE) // 1446
 			.def("setSkyBox", (void (*)(Ogre::SceneManager* pmgr, bool enable, const char* materialName))&impl_luna__interface_SceneManager::setSkyBox) // 1446
 			.def("hasSceneNode", (bool (*)(Ogre::SceneManager* pmgr, const char * name))&impl_luna__interface_SceneManager::hasSceneNode) // 1446
-			.def("showBoundingBox", (void (*)(Ogre::SceneNode* node, bool bValue))&impl_luna__interface_SceneManager::showBoundingBox) // 1446
-			.def("setRenderqueueOverlay", (void (*)(Ogre::SceneManager* pmgr,Ogre::Entity* roEntity, unsigned short groupID))&impl_luna__interface_SceneManager::setRenderqueueOverlay) // 1446
 			; // end of class impl_LunaTraits<Ogre ::SceneManager >       // 1562
 	}
 	{
@@ -1998,13 +1921,13 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def(init<const OBJloader ::Mesh &,const std::string,bool,bool,bool,bool,bool>()) // 1426
 			.def("updatePositions", (void (OBJloader ::MeshToEntity::*)())&OBJloader ::MeshToEntity::updatePositions) // 1443
 			.def("updatePositionsAndNormals", (void (OBJloader ::MeshToEntity::*)())&OBJloader ::MeshToEntity::updatePositionsAndNormals) // 1443
-			.def("createEntity", [](OBJloader::MeshToEntity& self, const std::string & entityName)->Ogre::Entity* {
+			.def("createEntity", [](OBJloader::MeshToEntity& self, const std::string & entityName)->Ogre::Item* {
 					return self.createEntity(entityName.c_str());}, RETURN_REFERENCE) // 1443
-			.def("getLastCreatedEntity", (Ogre ::Entity * (OBJloader ::MeshToEntity::*)())&OBJloader ::MeshToEntity::getLastCreatedEntity, RETURN_REFERENCE) // 1443
+			.def("getLastCreatedEntity", (Ogre ::Item * (OBJloader ::MeshToEntity::*)())&OBJloader ::MeshToEntity::getLastCreatedEntity, RETURN_REFERENCE) // 1443
 			; // end of class impl_LunaTraits<OBJloader ::MeshToEntity > // 1605
-		class_<Ogre::Entity, Ogre::MovableObject> (mainlib, "Entity")
+		class_<Ogre::Item, Ogre::MovableObject> (mainlib, "Entity")
 #ifndef NO_GUI
-			.def("setMaterialName", [](Ogre::Entity& entity, const std::string name){ entity.setMaterialName(name);})
+			.def("setMaterialName", [](Ogre::Item& entity, const std::string name){ entity.setDatablockOrMaterialName(name);})
 #endif
 			;
 		class_<Viewpoint > (mainlib, "Viewpoint")                       // 1388
@@ -2028,7 +1951,6 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("setClipDistances", (void (*)(Viewpoint& view, m_real fnear, m_real ffar))&impl_luna__interface_Viewpoint:: setClipDistances) // 1460
 			.def("setFOVy", (void (*)(Viewpoint& view, m_real degree))&impl_luna__interface_Viewpoint:: setFOVy) // 1460
 			.def("setNearClipDistance", (void (*)(Viewpoint& view, m_real dist))&impl_luna__interface_Viewpoint:: setNearClipDistance) // 1460
-			.def("setDimensions", (void (*)(Viewpoint& view,double left, double top, double width, double height))&impl_luna__interface_Viewpoint:: setDimensions) // 1460
 			.def("setOrthographicMode", (void (*)(Viewpoint& view, bool isOrtho))&impl_luna__interface_Viewpoint:: setOrthographicMode) // 1460
 			.def_readwrite("vpos", &Viewpoint ::m_vecVPos)
 			.def_readwrite("vat", &Viewpoint ::m_vecVAt)
@@ -3072,7 +2994,7 @@ initSkeletonFromFile) // 1458
 			.def("drawAxes", [](ObjectList& o,transf const& tf, const char* nameid){ o.drawAxes(tf, nameid);})
 			.def("registerEntity", (Ogre ::SceneNode * (ObjectList::*)(const char* node_name, const char* filename))&ObjectList::registerEntity,return_value_policy::reference ) // 1450
 			.def("registerEntity", (Ogre ::SceneNode * (ObjectList::*)(const char* node_name, const char* filename, const char* materialName))&ObjectList::registerEntity,return_value_policy::reference ) // 1450
-			.def("registerEntity", (Ogre ::SceneNode * (ObjectList::*)(const char* node_name, Ogre::Entity* pObject))&ObjectList::registerEntity,return_value_policy::reference ) // 1450
+			.def("registerEntity", (Ogre ::SceneNode * (ObjectList::*)(const char* node_name, Ogre::Item* pObject))&ObjectList::registerEntity,return_value_policy::reference ) // 1450
 			.def("registerObject", (Ogre ::SceneNode * (ObjectList::*)(const char* node_name, Ogre::MovableObject* pObject))&ObjectList::registerObject,return_value_policy::reference ) // 1450
 			.def("registerObject", (Ogre ::SceneNode * (ObjectList::*)(const char* node_name, const char* typeName, const char* materialName, matrixn const& data, m_real thickness))&ObjectList::registerObject,return_value_policy::reference ) // 1450
 			.def("registerObject", [](ObjectList& s, const char* node_name, const char* typeName, const char* materialName, matrixn const& data){ s.registerObject( node_name, typeName, materialName, data);},return_value_policy::reference ) // 1450
@@ -3306,7 +3228,137 @@ initSkeletonFromFile) // 1458
 		class_<lunaStack >(mainlib, "lunaStack")
 			;
 	}
-
+#ifdef USE_THREADED_SCRIPT
+{
+	class_<LuaScript > (mainlib, "LuaScript")                 // 1389
+															  // : number denotes the line number of luna_gen.lua that generated the sentence // 1392
+		.def(init<>())                                                // 1426
+		.def("luaType", &LuaScript::luaType)                          // 1445
+																	  //when necessary, check c++ header: .def("luaType", (int (LuaScript::*)(int i))&LuaScript::luaType) // 1446
+		.def("lunaType", &LuaScript::lunaType)                        // 1445
+																	  //when necessary, check c++ header: .def("lunaType", (std ::string (LuaScript::*)(int i))&LuaScript::lunaType) // 1446
+		.def("next", &LuaScript::next)                                // 1445
+																	  //when necessary, check c++ header: .def("next", (bool (LuaScript::*)( int index))&LuaScript::next) // 1446
+		.def("pushvalue", &LuaScript::pushvalue)                      // 1445
+																	  //when necessary, check c++ header: .def("pushvalue", (void (LuaScript::*)(int index))&LuaScript::pushvalue) // 1446
+		.def("pushnil", &LuaScript::pushnil)                          // 1445
+																	  //when necessary, check c++ header: .def("pushnil", (void (LuaScript::*)())&LuaScript::pushnil) // 1446
+		.def("newtable", &LuaScript::newtable)                        // 1445
+																	  //when necessary, check c++ header: .def("newtable", (void (LuaScript::*)())&LuaScript::newtable) // 1446
+		.def("settable", &LuaScript::settable)                        // 1445
+																	  //when necessary, check c++ header: .def("settable", (void (LuaScript::*)(int index))&LuaScript::settable) // 1446
+		.def("getglobal", (void (LuaScript::*)(const char* key))&LuaScript::getglobal) // 1446
+		.def("_setglobal", &LuaScript::_setglobal)                    // 1445
+																	  //when necessary, check c++ header: .def("_setglobal", (void (LuaScript::*)(const char* key))&LuaScript::_setglobal) // 1446
+		.def("getglobalNoCheck", (void (LuaScript::*)(const char* key))&LuaScript::getglobalNoCheck) // 1446
+		.def("replaceTop", (void (LuaScript::*)(const char* key))&LuaScript::replaceTop) // 1446
+		.def("insert", &LuaScript::insert)                            // 1445
+																	  //when necessary, check c++ header: .def("insert", (void (LuaScript::*)(int index))&LuaScript::insert) // 1446
+		.def("replaceTop", (void (LuaScript::*)(int index))&LuaScript::replaceTop) // 1446
+		.def("getglobal", (void (LuaScript::*)(const char* key1, const char* key2))&LuaScript::getglobal) // 1446
+		.def("getglobalNoCheck", (void (LuaScript::*)(const char* key1, const char* key2))&LuaScript::getglobalNoCheck) // 1446
+		.def("getMemberFunc", &LuaScript::getMemberFunc)              // 1445
+																	  //when necessary, check c++ header: .def("getMemberFunc", (void (LuaScript::*)( const char* name))&LuaScript::getMemberFunc) // 1446
+		.def("releaseScript", &LuaScript::releaseScript)              // 1445
+																	  //when necessary, check c++ header: .def("releaseScript", (void (LuaScript::*)())&LuaScript::releaseScript) // 1446
+		.def("initLuaEnvironment", &LuaScript::initLuaEnvironment)    // 1445
+																	  //when necessary, check c++ header: .def("initLuaEnvironment", (void (LuaScript::*)())&LuaScript::initLuaEnvironment) // 1446
+		.def("loadScript", &LuaScript::loadScript)                    // 1445
+																	  //when necessary, check c++ header: .def("loadScript", (void (LuaScript::*)(const char* script))&LuaScript::loadScript) // 1446
+		.def("loadScript", &LuaScript::loadScript)                    // 1445
+																	  //when necessary, check c++ header: .def("loadScript", (void (LuaScript::*)(const char* script, const char* scriptstring))&LuaScript::loadScript) // 1446
+		.def("dostring", &LuaScript::dostring)                        // 1445
+																	  //when necessary, check c++ header: .def("dostring", (void (LuaScript::*)(const char* str))&LuaScript::dostring) // 1446
+		.def("dofile", &LuaScript::dofile)                            // 1445
+																	  //when necessary, check c++ header: .def("dofile", (void (LuaScript::*)(const char* str))&LuaScript::dofile) // 1446
+		.def("call", (void (LuaScript::*)(int numIn, int numOut))&LuaScript::call) // 1446
+		.def("call", (void (LuaScript::*)(int numIn))&LuaScript::call) // 1446
+		.def("popmatrixn", (matrixn * (LuaScript::*)())&LuaScript::popmatrixn,return_value_policy::reference ) // 1451
+		.def("popMotionDOF", (MotionDOF * (LuaScript::*)())&LuaScript::popMotionDOF,return_value_policy::reference ) // 1451
+		.def("popVRMLloader", (VRMLloader * (LuaScript::*)())&LuaScript::popVRMLloader,return_value_policy::reference ) // 1451
+		.def("pophypermatrixn", (hypermatrixn * (LuaScript::*)())&LuaScript::pophypermatrixn,return_value_policy::reference ) // 1451
+		.def("popTensor", (Tensor * (LuaScript::*)())&LuaScript::popTensor,return_value_policy::reference ) // 1451
+		.def("popvectorn", (vectorn * (LuaScript::*)())&LuaScript::popvectorn,return_value_policy::reference ) // 1451
+		.def("popintvectorn", (intvectorn * (LuaScript::*)())&LuaScript::popintvectorn,return_value_policy::reference ) // 1451
+		.def("checkmatrixn", (matrixn * (LuaScript::*)())&LuaScript::checkmatrixn,return_value_policy::reference ) // 1451
+		.def("checkhypermatrixn", (hypermatrixn * (LuaScript::*)())&LuaScript::checkhypermatrixn,return_value_policy::reference ) // 1451
+		.def("checkTensor", (Tensor * (LuaScript::*)())&LuaScript::checkTensor,return_value_policy::reference ) // 1451
+		.def("checkvectorn", (vectorn * (LuaScript::*)())&LuaScript::checkvectorn,return_value_policy::reference ) // 1451
+		.def("checkintvectorn", (intvectorn * (LuaScript::*)())&LuaScript::checkintvectorn,return_value_policy::reference ) // 1451
+		.def("popnumber", &LuaScript::popnumber)                      // 1445
+																	  //when necessary, check c++ header: .def("popnumber", (double (LuaScript::*)())&LuaScript::popnumber) // 1446
+		.def("popstring", &LuaScript::popstring)                      // 1445
+																	  //when necessary, check c++ header: .def("popstring", (std ::string (LuaScript::*)())&LuaScript::popstring) // 1446
+		.def("popboolean", &LuaScript::popboolean)                    // 1445
+																	  //when necessary, check c++ header: .def("popboolean", (bool (LuaScript::*)())&LuaScript::popboolean) // 1446
+		.def("popint", &LuaScript::popint)                            // 1445
+																	  //when necessary, check c++ header: .def("popint", (int (LuaScript::*)())&LuaScript::popint) // 1446
+		.def("isnil", &LuaScript::isnil)                              // 1445
+																	  //when necessary, check c++ header: .def("isnil", (bool (LuaScript::*)(int i))&LuaScript::isnil) // 1446
+		.def("isLuaReady", &LuaScript::isLuaReady)                    // 1445
+																	  //when necessary, check c++ header: .def("isLuaReady", (bool (LuaScript::*)())&LuaScript::isLuaReady) // 1446
+		.def("gettop", &LuaScript::gettop)                            // 1445
+																	  //when necessary, check c++ header: .def("gettop", (int (LuaScript::*)())&LuaScript::gettop) // 1446
+		.def("getPreviousTop", &LuaScript::getPreviousTop)            // 1445
+																	  //when necessary, check c++ header: .def("getPreviousTop", (int (LuaScript::*)())&LuaScript::getPreviousTop) // 1446
+		.def("saveCurrentTop", &LuaScript::saveCurrentTop)            // 1445
+																	  //when necessary, check c++ header: .def("saveCurrentTop", (void (LuaScript::*)())&LuaScript::saveCurrentTop) // 1446
+		.def("pop", &LuaScript::pop)                                  // 1445
+																	  //when necessary, check c++ header: .def("pop", (void (LuaScript::*)())&LuaScript::pop) // 1446
+		.def("set", &LuaScript::set)                                  // 1445
+																	  //when necessary, check c++ header: .def("set", (void (LuaScript::*)(std::string const& key))&LuaScript::set) // 1446
+		.def("push", (void (LuaScript::*)(FlLayout::Widget & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)(boolN & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)( double a))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)( bool a))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)( std::string const &a))&LuaScript::push) // 1446
+		.def("printStack", &LuaScript::printStack)                    // 1445
+																	  //when necessary, check c++ header: .def("printStack", (void (LuaScript::*)())&LuaScript::printStack) // 1446
+		.def("push", (void (LuaScript::*)(vector3 & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)(quater & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)(transf & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)(matrix4 & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)(quaterN & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)(vector3N & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)(intvectorn & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)(vectorn & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)(VRMLloader & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)(MotionDOF & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)(MotionLoader & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)(Bone & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)(PLDPrimSkin & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)(FlLayout & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)(matrixn & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)(hypermatrixn & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)(Tensor & w))&LuaScript::push) // 1446
+		.def("push", (void (LuaScript::*)(Posture & w))&LuaScript::push) // 1446
+		; // end of class impl___pybindgen___LuaScript                // 1506
+	class_<ThreadedScript, LuaScript > (mainlib, "ThreadedScript")       // 1389
+															  // : number denotes the line number of luna_gen.lua that generated the sentence // 1392
+		.def(init<>())                                                // 1426
+		.def("threadedCall", &ThreadedScript::threadedCall)           // 1445
+																	  //when necessary, check c++ header: .def("threadedCall", (void (ThreadedScript::*)(int numIn))&ThreadedScript::threadedCall) // 1446
+		.def("waitUntilFinished", &ThreadedScript::waitUntilFinished) // 1445
+																	  //when necessary, check c++ header: .def("waitUntilFinished", (void (ThreadedScript::*)())&ThreadedScript::waitUntilFinished) // 1446
+		; // end of class impl___pybindgen___ThreadedScript           // 1506
+	class_<ThreadScriptPool > (mainlib, "ThreadScriptPool")   // 1389
+															  // : number denotes the line number of luna_gen.lua that generated the sentence // 1392
+		.def(init<>())                                                // 1426
+		.def(init<int>())                                             // 1426
+		.def("queueJob", &ThreadScriptPool::queueJob)                 // 1445
+																	  //when necessary, check c++ header: .def("queueJob", (void (ThreadScriptPool::*)(const char* job))&ThreadScriptPool::queueJob) // 1446
+		.def("start", &ThreadScriptPool::start)                       // 1445
+																	  //when necessary, check c++ header: .def("start", (void (ThreadScriptPool::*)())&ThreadScriptPool::start) // 1446
+		.def("stop", &ThreadScriptPool::stop)                         // 1445
+																	  //when necessary, check c++ header: .def("stop", (void (ThreadScriptPool::*)())&ThreadScriptPool::stop) // 1446
+		.def("busy", &ThreadScriptPool::busy)                         // 1445
+																	  //when necessary, check c++ header: .def("busy", (bool (ThreadScriptPool::*)())&ThreadScriptPool::busy) // 1446
+		.def("numThreads", &ThreadScriptPool::numThreads)             // 1445
+																	  //when necessary, check c++ header: .def("numThreads", (int (ThreadScriptPool::*)())&ThreadScriptPool::numThreads) // 1446
+		.def("env", (LuaScript * (ThreadScriptPool::*)(int i))&ThreadScriptPool::env,return_value_policy::reference ) // 1451
+		; // end of class impl___pybindgen___ThreadScriptPool         // 1506
+	}
+#endif
 	{
 		struct PythonExtendWin_wrapper
 		{
@@ -3608,6 +3660,11 @@ initSkeletonFromFile) // 1458
 					},RETURN_REFERENCE)
   			.def("popvector3", [](PythonExtendWin& l)->vector3*{
 					vector3* result= (vector3*)Luna<typename LunaTraits<vector3>::base_t>::check(l.L,-1);
+					lua_pop(l.L,1);
+					return result;
+					},RETURN_REFERENCE)
+  			.def("popvector2", [](PythonExtendWin& l)->vector2*{
+					vector2* result= (vector2*)Luna<typename LunaTraits<vector3>::base_t>::check(l.L,-1);
 					lua_pop(l.L,1);
 					return result;
 					},RETURN_REFERENCE)
@@ -4304,19 +4361,21 @@ class_<interval > (mainlib, "interval")                         // 1389
 		.def("setDamping", (void (OpenHRP ::DynamicsSimulator_TRL_LCP::*)())&OpenHRP ::DynamicsSimulator_TRL_LCP::setDamping) // 1445
 		.def("getCOMbasedContactForce", (Liegroup ::dse3 (OpenHRP ::DynamicsSimulator_TRL_LCP::*)(int ichar, int ibone))&OpenHRP ::DynamicsSimulator_TRL_LCP::getCOMbasedContactForce) // 1445
 		; // end of class impl___pybindgen__Physics_DynamicsSimulator_TRL_LCP // 1505
-//	class_<TRL ::DynamicsSimulator_TRL_softbody > (mainlib, "DynamicsSimulator_TRL_softbody") // 1389
-//																						// : number denotes the line number of luna_gen.lua that generated the sentence // 1392
-//		.def(init<>())                                                // 1426
-//		.def("registerLBScharacter", (void (TRL ::DynamicsSimulator_TRL_softbody::*)(VRMLloader* l, SkinnedMeshFromVertexInfo * info))&TRL ::DynamicsSimulator_TRL_softbody::registerLBScharacter) // 1445
-//		.def("registerCollisionCheckPair_Rigid_vs_LBS", (void (TRL ::DynamicsSimulator_TRL_softbody::*)(int bodyIndex1, int treeIndex1, int bodyIndex2, vectorn const& param))&TRL ::DynamicsSimulator_TRL_softbody::registerCollisionCheckPair_Rigid_vs_LBS) // 1445
-//		.def("registerCollisionCheckPair_LBS_vs_LBS", (void (TRL ::DynamicsSimulator_TRL_softbody::*)(int bodyIndex1, int bodyIndex2, vectorn const& param))&TRL ::DynamicsSimulator_TRL_softbody::registerCollisionCheckPair_LBS_vs_LBS) // 1445
-//		.def("init", (void (TRL ::DynamicsSimulator_TRL_softbody::*)(double timeStep, OpenHRP::DynamicsSimulator::IntegrateMethod integrateOpt))&TRL ::DynamicsSimulator_TRL_softbody::init) // 1445
-//		.def("setParam_Epsilon_Kappa", (void (TRL ::DynamicsSimulator_TRL_softbody::*)(double eps, double kap))&TRL ::DynamicsSimulator_TRL_softbody::setParam_Epsilon_Kappa) // 1445
-//		.def("setParam_R_B_MA", (void (TRL ::DynamicsSimulator_TRL_softbody::*)(double r, double b, double ma))&TRL ::DynamicsSimulator_TRL_softbody::setParam_R_B_MA) // 1445
-//		.def("stepSimulation", (void (TRL ::DynamicsSimulator_TRL_softbody::*)())&TRL ::DynamicsSimulator_TRL_softbody::stepSimulation) // 1445
-//		.def("addRelativeConstraint", (void (TRL ::DynamicsSimulator_TRL_softbody::*)(int ichara, Bone& bone1,vector3 boneVector1,Bone& bone2, vector3 boneVector2))&TRL ::DynamicsSimulator_TRL_softbody::addRelativeConstraint) // 1445
-//		.def("removeRelativeConstraint", (void (TRL ::DynamicsSimulator_TRL_softbody::*)(int ichara, Bone& bone1, Bone& bone2))&TRL ::DynamicsSimulator_TRL_softbody::removeRelativeConstraint) // 1445
-//		; // end of class impl___pybindgen__Physics_DynamicsSimulator_TRL_softbody // 1505
+#ifdef USE_SOFTBODY
+	class_<TRL ::DynamicsSimulator_TRL_softbody > (mainlib, "DynamicsSimulator_TRL_softbody") // 1389
+																						// : number denotes the line number of luna_gen.lua that generated the sentence // 1392
+		.def(init<>())                                                // 1426
+		.def("registerLBScharacter", (void (TRL ::DynamicsSimulator_TRL_softbody::*)(VRMLloader* l, SkinnedMeshFromVertexInfo * info))&TRL ::DynamicsSimulator_TRL_softbody::registerLBScharacter) // 1445
+		.def("registerCollisionCheckPair_Rigid_vs_LBS", (void (TRL ::DynamicsSimulator_TRL_softbody::*)(int bodyIndex1, int treeIndex1, int bodyIndex2, vectorn const& param))&TRL ::DynamicsSimulator_TRL_softbody::registerCollisionCheckPair_Rigid_vs_LBS) // 1445
+		.def("registerCollisionCheckPair_LBS_vs_LBS", (void (TRL ::DynamicsSimulator_TRL_softbody::*)(int bodyIndex1, int bodyIndex2, vectorn const& param))&TRL ::DynamicsSimulator_TRL_softbody::registerCollisionCheckPair_LBS_vs_LBS) // 1445
+		.def("init", (void (TRL ::DynamicsSimulator_TRL_softbody::*)(double timeStep, OpenHRP::DynamicsSimulator::IntegrateMethod integrateOpt))&TRL ::DynamicsSimulator_TRL_softbody::init) // 1445
+		.def("setParam_Epsilon_Kappa", (void (TRL ::DynamicsSimulator_TRL_softbody::*)(double eps, double kap))&TRL ::DynamicsSimulator_TRL_softbody::setParam_Epsilon_Kappa) // 1445
+		.def("setParam_R_B_MA", (void (TRL ::DynamicsSimulator_TRL_softbody::*)(double r, double b, double ma))&TRL ::DynamicsSimulator_TRL_softbody::setParam_R_B_MA) // 1445
+		.def("stepSimulation", (void (TRL ::DynamicsSimulator_TRL_softbody::*)())&TRL ::DynamicsSimulator_TRL_softbody::stepSimulation) // 1445
+		.def("addRelativeConstraint", (void (TRL ::DynamicsSimulator_TRL_softbody::*)(int ichara, Bone& bone1,vector3 boneVector1,Bone& bone2, vector3 boneVector2))&TRL ::DynamicsSimulator_TRL_softbody::addRelativeConstraint) // 1445
+		.def("removeRelativeConstraint", (void (TRL ::DynamicsSimulator_TRL_softbody::*)(int ichara, Bone& bone1, Bone& bone2))&TRL ::DynamicsSimulator_TRL_softbody::removeRelativeConstraint) // 1445
+		; // end of class impl___pybindgen__Physics_DynamicsSimulator_TRL_softbody // 1505
+#endif
 	class_<OpenHRP ::DynamicsSimulator_TRL_QP > (mainlib, "DynamicsSimulator_TRL_QP") // 1389
 																				// : number denotes the line number of luna_gen.lua that generated the sentence // 1392
 		.def(init<const char *>())                                    // 1426

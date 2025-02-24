@@ -51,6 +51,10 @@ public:
 	virtual int work(TString const& workname, lunaStack& L);
 };
 
-
-
+class LuaScript;
+void LuaScript_registerQP(LuaScript* L);
+class ThreadedScript;
+class ThreadScriptPool;
+ThreadedScript* ThreadedScriptWithPhysicsLib();
+ThreadScriptPool* ThreadScriptPoolWithPhysicsLib(int nthread);
 

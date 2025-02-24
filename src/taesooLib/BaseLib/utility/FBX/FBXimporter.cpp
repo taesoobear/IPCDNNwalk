@@ -1082,6 +1082,7 @@ void resolve_limb_nodes(const ofbx::IScene* scene) {
 	int i = 0;
 	
 	std::list<const ofbx::Object*> nullNodes; 
+	Msg::verify(scene, "FBX error!");
 	const ofbx::Object* startNode=scene->getRoot();									//
 	
 	while(!root)
@@ -2034,6 +2035,7 @@ void FBXimporter::getAnim2(int ianim, int g_nFrames, double g_T, int ilimbnode, 
 	while(const ofbx::Object* child = layer->resolveObjectLink(i)) {
 		if(child->getType() == ofbx::Object::Type::ANIMATION_CURVE_NODE) {
 			auto* limb=child->getParent();
+			if(!limb) { ++i; continue; }
 			if(limb->getType()!=ofbx::Object::Type::LIMB_NODE) {++i;continue; }
 			if(limb!=fbx_info.limbVec[ilimbnode]) { ++i; continue; }
 			// ignoring scale node

@@ -194,8 +194,17 @@ function FBXloader:genSkelTable(fbx, options)
 	--self:drawPose(jointpos, jointori, options, 'bindpose', vector3(-300,0,0))
 	--self:drawRestPose(options)
 
-	if options.mirror or options.toYUP or options.toZUP then
-		self.convertAxis=true
+	if options.mirror or options.toYUP or options.toZUP or options.toYUP_meshOnly or options.toZUP_meshOnly then
+		if options.toYUP_meshOnly then
+			self.convertMeshAxis=true
+			options.toYUP=true
+		elseif options.toZUP_meshOnly then
+			self.convertMeshAxis=true
+			options.toZUP=true
+		else
+			self.convertMeshAxis=true
+			self.convertSkelAxis=true
+		end
 
 		if options.mirror and options.toYUP then
 			self.mirror=function (self, v)
@@ -243,7 +252,7 @@ function FBXloader:genSkelTable(fbx, options)
 		end
 	end
 	
-	if self.convertAxis then
+	if self.convertSkelAxis then
 		self:mirrorVA(jointpos)
 		self:mirrorQA(jointori)
 	end
@@ -638,7 +647,7 @@ function FBXloader:_getAnim(ianim, loader, motion)
 			end
 		end
 	end
-	if self.convertAxis then
+	if self.convertSkelAxis then
 		for j=0, motion:numFrames()-1 do
 			local pose=motion:pose(j)
 			self:mirrorVA(pose.translations)
@@ -658,7 +667,10 @@ function FBXloader:getAnim(loader)
 	else
 		self.trackNames={ 'default'}
 	end
-	FBXloader._getAnim(self, 0, loader, loader.mMotion)
+
+	if #self.trackNames>0 then
+		FBXloader._getAnim(self, 0, loader, loader.mMotion)
+	end
 end
 
 function FBXloader:loadTrack(trackName)
@@ -955,6 +967,8 @@ function FBXloader:_loadTexture(meshInfo,filename)
 				diffuseTexture='../media12/mixamo/'..meshInfo.diffuseTexture
 			elseif os.isFileExist('work/taesooLib/media12/mixamo/'..meshInfo.diffuseTexture) then
 				diffuseTexture='work/taesooLib/media12/mixamo/'..meshInfo.diffuseTexture
+			elseif (meshInfo.diffuseTexture:len()>_:len()) and os.isFileExist(filepath..'/'..(meshInfo.diffuseTexture:sub(_:len()-2))) then
+				diffuseTexture=filepath..'/'..(meshInfo.diffuseTexture:sub(_:len()-2))
 			else
 				print('Warning! failed to find '..meshInfo.diffuseTexture)
 			end
@@ -1227,7 +1241,7 @@ function FBXloader:__init(filename, options)
 		pose:leftMultScaling(inv_bindpose_scale, inv_bindpose_scale, inv_bindpose_scale)
 		mesh:transform(pose)
 
-		if self.convertAxis then
+		if self.convertMeshAxis then
 			for v=0, mesh:numVertex()-1 do
 				mesh:getVertex(v):assign(self:mirror(mesh:getVertex(v)))
 				mesh:getNormal(v):assign(self:mirror(mesh:getNormal(v)))
@@ -1539,7 +1553,7 @@ function FBXloader.Skin:__init(fbxloader, option)
 	self.fbx=fbxloader
 	self.fkSolver=fbxloader.loader:fkSolver():copy()
 	if option.drawSkeleton then
-		self.skelSkin=RE.createSkin(fbxloader.loader)
+		self.skelSkin=RE.createSkin(fbxloader.loader, PLDPrimSkin.LINE)
 		self.skelSkin:setPose(fbxloader.loader:pose())
 	end
 	self.uid=RE.generateUniqueName()
@@ -1724,8 +1738,16 @@ function FBXloader.Skin:setSamePose(fk)
 		return
 	end
 	local rootTrans=fk:globalFrame(1).translation:copy()
+	local currJointPos=vector3N(self.fkSolver:numBone()-1)
 	for ibone=1, self.fkSolver:numBone()-1 do
 		--self.fkSolver:globalFrame(ibone).translation:rsub(rootTrans)
+		currJointPos(ibone-1):assign(self.fkSolver:globalFrame(ibone).translation-rootTrans)
+	end
+	local buildEdgeList=false
+	--if self.prevPose then print(self.prevPose:MSE(currJointPos)) end
+	if self.prevPose==nil or self.prevPose:MSE(currJointPos)>1e-3 then
+		buildEdgeList=true
+		self.prevPose=currJointPos
 	end
 
 	for i, meshInfo in ipairs(fbxloader.fbxInfo) do
@@ -1740,6 +1762,8 @@ function FBXloader.Skin:setSamePose(fk)
 		mesh:transform(removeRootTrans)
 
 		local useNormal=mesh:numNormal()>0
+		ME:setBuildEdgeList(buildEdgeList)
+
 		if useNormal then
 			skin:calcVertexNormals(self.fkSolver, fbxloader:_getBindPoseGlobal(i), meshInfo.localNormal, mesh)
 			ME:updatePositionsAndNormals()
@@ -1858,6 +1882,8 @@ function RE.createFBXskin(fbxloader, drawSkeleton)
 	end
 	if type(drawSkeleton)=='boolean' then
 		return FBXloader.Skin(fbxloader, { drawSkeleton=drawSkeleton})
+	elseif drawSkeleton and drawSkeleton.adjustable then
+		return FBXloader.AdjustableSkin(fbxloader, drawSkeleton)
 	else
 		return FBXloader.Skin(fbxloader, drawSkeleton)
 	end
@@ -1947,6 +1973,9 @@ function FBXloader.motionLoader(filename, options)
 	local fbx
 	if type(filename)=='string' and filename:sub(-4):upper()=='.FBX' then
 		fbx=util.FBXimporter(filename)
+	elseif type(filename)=='string' and filename:sub(-8):upper()=='.FBX.DAT' then
+		local l=FBXloader(filename)
+		return l.loader
 	else
 		fbx=FBXloader.Converter(filename)
 	end
@@ -2059,7 +2088,7 @@ function FBXloader:getBindPose(jointpos, jointori)
 		jointori(i):assign(tf.rotation)
 	end
 
-	if self.convertAxis then
+	if self.convertSkelAxis then
 		self:mirrorVA(jointpos)
 		self:mirrorQA(jointori)
 	end
@@ -2100,6 +2129,158 @@ function FBXloader:checkRelativeRestPose(bindpose_pos, bindpose_ori)
 		-- compatible.
 		-- then, use relative pose as the bindpose
 		bindpose_ori:assign(jointori)
+	end
+end
+
+
+FBXloader.AdjustableSkin=LUAclass(FBXloader.Skin,true)
+
+function FBXloader.AdjustableSkin:__init(fbxloader, option)
+	if not option then option={} end
+	self.scale=vector3(1,1,1)
+	self.fbx=fbxloader
+	self.fkSolver=util.ScaledBoneKinematics(fbxloader.loader)
+	if option.drawSkeleton then
+		self.skelSkin=RE.createSkin(fbxloader.loader, PLDPrimSkin.LINE)
+		self.skelSkin:setPose(fbxloader.loader:pose())
+	end
+	self.uid=RE.generateUniqueName()
+
+	self.nodes={}
+	self.ME={}
+	if not RE.ogreSceneManager() then return end
+
+	for i, meshInfo in ipairs(fbxloader.fbxInfo) do
+		if RE.ogreSceneManager() then
+			local mesh=meshInfo[1]
+
+			local useTexCoord=false
+			local useColor=false
+			local useNormal=true
+			local buildEdgeList=not option.disableShadow
+			local dynamicUpdate=true
+
+			if mesh:numNormal()==0 then
+				useNormal=false
+			end
+			if mesh:numTexCoord()>0 then
+				useTexCoord=true
+			end
+			if mesh:numColor()>0 then
+				useColor=true
+			end
+			-- scale 100 for rendering 
+			local meshToEntity=MeshToEntity(mesh, self.uid..'meshName'..i, buildEdgeList, dynamicUpdate, useNormal, useTexCoord, useColor)
+
+			self.ME[i]=meshToEntity
+		end
+		local meshToEntity=self.ME[i]
+		local entity=meshToEntity:createEntity('entityName'..self.uid..'_'..i )
+		--entity:setMaterialName('white')
+		if option.material then
+			entity:setMaterialName(option.material )
+		elseif meshInfo.material then
+			entity:setMaterialName(meshInfo.material )
+		else
+			entity:setMaterialName('grey_transparent')
+		end
+		local node=RE.createChildSceneNode(RE.ogreRootSceneNode(), self.uid..'_'..i)
+		self.nodes[i]= {node, vector3(0,0,0), vector3N()}
+
+		if self.fbx.rigidBody then
+			local node2=RE.createChildSceneNode(node, self.uid..'__'..i)
+			node2:attachObject(entity)
+
+			if not self.nodes2 then
+				self.nodes2={}
+			end
+			self.nodes2[i]=node2
+		else
+			node:attachObject(entity)
+		end
+	end
+	self:setPose(fbxloader.loader:pose())
+end
+function FBXloader.AdjustableSkin:setLengthAndPose(length_scale, pose)
+	self:_setLengthOnly(length_scale)
+	self:setPose(pose)
+end
+function FBXloader.AdjustableSkin:setLengthAndPoseDOF(length_scale, pose)
+	self:_setLengthOnly(length_scale)
+	self:setPoseDOF(pose)
+end
+-- change length while maintaining pose
+function FBXloader.AdjustableSkin:setLengthScale(length_scale)
+	self:_setLengthOnly(length_scale)
+	self.fkSolver:forwardKinematics()
+	self:setSamePose(self.fkSolver)
+end
+
+function FBXloader.AdjustableSkin:_setLengthOnly(length_scale)
+	if self.poseMap and self.poseMap.targetIndexAtoB:size()==length_scale:size() then
+		local length_scale_orig=length_scale
+		length_scale=CT.ones(self.poseMap:target():numBone())
+		local AtoB=self.poseMap.targetIndexAtoB
+		for i=1, AtoB:size()-1 do
+			length_scale:set(AtoB(i), length_scale_orig(i))
+		end
+	end
+	self.fkSolver:setLengthScale(length_scale)
+end
+function FBXloader.AdjustableSkin:setSamePose(fk)
+	--assert(fk==self.fbx.loader:fkSolver()) BoneForwardKinematics.operator==  doesn't work yet.
+	if self.skelSkin then
+		self.skelSkin:setSamePose(fk)
+	end
+	self.fkSolver:assign(fk)
+	local fbxloader=self.fbx
+	if fbxloader.rigidBody then
+		for i, node2 in ipairs(self.nodes2) do
+			node2:setOrientation(fk:globalFrame(1).rotation)
+			node2:setPosition(fk:globalFrame(1).translation)
+		end
+		return
+	end
+	local rootTrans=fk:globalFrame(1):getTranslation():copy()
+
+	local currJointPos=vector3N(self.fkSolver:numBone()-1)
+	for ibone=1, self.fkSolver:numBone()-1 do
+		--self.fkSolver:globalFrame(ibone).translation:rsub(rootTrans)
+		currJointPos(ibone-1):assign(self.fkSolver:globalFrame(ibone):translation()-rootTrans)
+	end
+
+	local buildEdgeList=false
+	--if self.prevPose then print(self.prevPose:MSE(currJointPos)) end
+	if self.prevPose==nil or self.prevPose:MSE(currJointPos)>1e-3 then
+		buildEdgeList=true
+		self.prevPose=currJointPos
+	end
+
+	for i, meshInfo in ipairs(fbxloader.fbxInfo) do
+		local ME=self.ME[i]
+		local node=self.nodes[i]
+		local skin=meshInfo.skin
+		local mesh=meshInfo[1]
+
+		skin:calcVertexPositions(self.fkSolver, mesh)
+		local removeRootTrans=matrix4()
+		removeRootTrans:setTranslation(-rootTrans, false)
+		mesh:transform(removeRootTrans)
+
+		local useNormal=mesh:numNormal()>0
+		ME:setBuildEdgeList(buildEdgeList)
+
+		--ME:setBuildEdgeList(false)
+		if useNormal then
+			skin:calcVertexNormals(self.fkSolver, fbxloader:_getBindPoseGlobal(i), meshInfo.localNormal, mesh)
+			ME:updatePositionsAndNormals()
+		else
+			ME:updatePositions()
+		end
+		if mesh.getVertices then
+			mesh:getVertices(node[3]) -- backup current mesh pose
+		end
+		node[1]:setPosition(node[2]+rootTrans*self.scale.x)
 	end
 end
 return FBXloader

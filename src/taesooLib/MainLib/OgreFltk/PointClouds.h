@@ -47,7 +47,7 @@ namespace RE
 #include "../Ogre/intersectionTest.h"
 class TRect;
 class FltkRenderer;
-class SelectionRectangle : public Ogre::ManualObject
+class SelectionRectangle : public Ogre::v1::ManualObject
 {
 	
 public:

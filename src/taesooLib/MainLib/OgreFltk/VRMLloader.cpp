@@ -9,7 +9,8 @@
 #ifndef NO_OGRE
 #include <OgreSceneNode.h>
 #include <OgreSceneManager.h>
-#include <OgreEntity.h>
+#include <OgreItem.h>
+#include "Mesh.h"
 #endif
 #include "../BaseLib/motion/VRMLloader_internal.h"
 
@@ -46,6 +47,20 @@ void VRMLloader_updateMeshEntity(VRMLloader& l)
 {
   for(int i=1;i<l.numBone(); i++)
     {
+		/*
+		printf("bone %d: %s %d\n", i, l.bone(i).name().ptr(), l.VRMLbone(i).getMesh().numElements());
+		int nElt=l.VRMLbone(i).getMesh().numElements();
+		for(int j=0; j<nElt; j++)
+		{
+			const auto& elt=l.VRMLbone(i).getMesh().element(j);
+			printf("elt %s %d %d\n", elt.material.c_str(),  
+					l.VRMLbone(i).getMesh().faceGroups.start(j), 
+					l.VRMLbone(i).getMesh().faceGroups.end(j));
+
+
+		}
+		*/
+
       VRMLTransform* ll=((VRMLTransform*)&l.getBoneByTreeIndex(i));
 
       if(ll->mShape)
@@ -58,7 +73,7 @@ void VRMLloader_updateMeshEntity(VRMLloader& l)
 	  OBJloader::MeshToEntity::Option o;
 	  o.useTexCoord=false;
 	  o.buildEdgeList=true;
-	  o.useColor=true;
+	  o.useColor=false;
 	  //o.buildEdgeList=false;
 
 	  HRP_SHAPE_MESH_TO_ENTITY* oo=new HRP_SHAPE_MESH_TO_ENTITY() ;
@@ -88,8 +103,8 @@ PLDPrimVRML::PLDPrimVRML(VRMLloader* pVRMLL, bool bDrawSkeleton, const OgreRende
 	{
 	  mSceneNodes[i]=m_pSceneNode->createChildSceneNode();
 	  mSceneNodes[i]->attachObject(
-				       ((HRP_SHAPE_MESH_TO_ENTITY*)(ll->mShape->customShape))->meshToEntity->createEntity(RE::generateUniqueName(),
-									      ll->mSegment->material));
+			  ((HRP_SHAPE_MESH_TO_ENTITY*)(ll->mShape->customShape))->meshToEntity->createEntity(RE::generateUniqueName(),
+			  ll->mSegment->material));
 	}
       else
 	mSceneNodes[i]=NULL;
@@ -208,9 +223,9 @@ void PLDPrimVRML::_updateEntities(BoneForwardKinematics & fk)
 				auto p=fk.global(i).translation;
 				if(q.x==q.x && p.x==p.x)
 				{
-					ptr->resetToInitialState();
-					ptr->rotate(ToOgre(q));
-					ptr->translate(ToOgre(p));
+					ptr->setScale(1.0,1.0,1.0);
+					ptr->setOrientation(ToOgre(q));
+					ptr->setPosition(ToOgre(p));
 				}
 				else
 					Msg::print("PLDPrimVRML nan pose\n");
@@ -226,7 +241,7 @@ void PLDPrimVRML::setMaterial(const char* mat)
 #ifndef NO_OGRE
   for(int i=1; i<mSceneNodes.size(); i++)
 	  if(mSceneNodes[i])
-		((Ogre::Entity*)mSceneNodes[i]->getAttachedObject(0))->setMaterialName(mat);
+		((Ogre::Item*)mSceneNodes[i]->getAttachedObject(0))->setDatablockOrMaterialName(mat);
 #endif
 }
 
@@ -234,7 +249,7 @@ void PLDPrimVRML::setMaterial(int i,const char* mat)
 {
 #ifndef NO_OGRE
 	  if(mSceneNodes[i] && mSceneNodes[i]->numAttachedObjects())
-		((Ogre::Entity*)mSceneNodes[i]->getAttachedObject(0))->setMaterialName(mat);
+		  ((Ogre::Item*)mSceneNodes[i]->getAttachedObject(0))->setDatablockOrMaterialName(mat);
 #endif
 }
 

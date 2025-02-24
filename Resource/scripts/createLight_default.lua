@@ -1,17 +1,24 @@
-local f=io.open('../Resource/scripts/ogreConfig_personal.lua','r')
+
+if RE.taesooLibPath then -- for backward binary compatibility.
+	taesooLibPath=RE.taesooLibPath()
+else
+	taesooLibPath='../'
+end
+
+local f=io.open(taesooLibPath..'Resource/scripts/ogreConfig_personal.lua','r')
 if f then
 	f:close()
-	dofile('../Resource/scripts/ogreConfig_personal.lua')
+	dofile(taesooLibPath..'Resource/scripts/ogreConfig_personal.lua')
 else
-	dofile('../Resource/scripts/ogreConfig.lua')
+	dofile(taesooLibPath..'Resource/scripts/ogreConfig.lua')
 end
 
 rootnode =RE.ogreRootSceneNode()
 if rootnode then
 lightnode=RE.createChildSceneNode(rootnode, "LightNode")
-RE.ogreSceneManager():setAmbientLight(0.4, 0.4, 0.4)
 
 if RE.getOgreVersionMinor()>=12 then
+	RE.ogreSceneManager():setAmbientLight(0.4, 0.4, 0.4)
 
 	local function randomNormal()
 		return (math.random()-0.5)*2
@@ -120,7 +127,63 @@ if RE.getOgreVersionMinor()>=12 then
 	light:setSpecularColour(0.4,0.4,0.4)
 	light:setCastShadows(false)
 	lightnode:attachObject(light)
+elseif RE.getOgreVersionMinor()==2 then
+	local function randomNormal()
+		return (math.random()-0.5)*2
+	end
+
+	numMainLights=5
+	local lightVar=0.02
+
+	local light1D=1.4
+	local light1S=0.6
+	local lightOD=0.0
+	local lightOS=0.0
+	local lightFD=0.3
+	local lightFS=0.3
+
+	RE.ogreSceneManager():setAmbientLight(0.4, 0.4, 0.4)
+	for i=1,numMainLights do
+		local light
+		if i==1 then
+			light=RE.ogreSceneManager():createLight("Mainlight")
+		else
+			light=RE.ogreSceneManager():createLight("Mainlight"..i)
+		end
+		light:setType("LT_DIRECTIONAL")
+
+		local node=lightnode:createChildSceneNode("mainlightnode"..i)
+		local dir=vector3(-0.5+lightVar*(randomNormal()),-0.7,0.5+lightVar*(randomNormal()))
+		dir:normalize()
+		node:setDirection(dir)
+		node:attachObject(light)
+		light:setDiffuseColour(light1D,light1D,light1D)
+		light:setSpecularColour(light1S,light1S,light1S)
+		light:setCastShadows(true)
+	end
+	light=RE.ogreSceneManager():createLight("FillLight")
+	local node=lightnode:createChildSceneNode("filllightnode")
+	local dir=vector3(0.5,0.7,-0.5)
+	dir:normalize()
+	node:setDirection(dir)
+	node:attachObject(light)
+	light:setType("LT_DIRECTIONAL")
+	light:setDiffuseColour(lightFD,lightFD,lightFD)
+	light:setSpecularColour(lightFS,lightFS,lightFS)
+	light:setCastShadows(false)
+	--light=RE.ogreSceneManager():createLight("FillLight")
+	--light:setType("LT_DIRECTIONAL")
+	--light:setDirection(0.5,0.7,-0.5)
+	--light:setDiffuseColour(0.4,0.4,0.4)
+	--light:setSpecularColour(0.4,0.4,0.4)
+	--light:setCastShadows(false)
+	--lightnode:attachObject(light)
+
+	RE.ogreSceneManager():getSceneNode("LightNode"):setOrientation(quater(math.rad(180), vector3(0,1,0)))
+	local useESM=false
+	RE.renderer():setupShadowNode(useESM)
 else
+	RE.ogreSceneManager():setAmbientLight(0.4, 0.4, 0.4)
 	light=RE.ogreSceneManager():createLight("Mainlight")
 	light:setType("LT_DIRECTIONAL")
 	light:setDirection(-0.5,-0.7,0.5)

@@ -22,6 +22,8 @@
 void FltkRenderer_toggleCursor();
 namespace Msg
 {
+		OgreTraceManager* otm1=NULL;
+		OgreTraceManager* otm2=NULL;
 	/// 사용법: Msg::print(...);
 	class FltkMsg : public Base
 	{
@@ -44,17 +46,13 @@ Msg::FltkMsg g_cFltkMsgUtil;
 
 #ifndef NO_OGRE
 #include <Ogre.h>
-#if OGRE_VERSION_MINOR>=9|| OGRE_VERSION_MAJOR>=13
 
 //http://www.ogre3d.org/forums/viewtopic.php?f=2&t=79694
-#include <Overlay/OgreOverlayManager.h>
-#include <Overlay/OgreOverlayElement.h>
-#include <Overlay/OgreOverlayContainer.h>
-#if OGRE_VERSION_MINOR>=12|| OGRE_VERSION_MAJOR>=13
-
-#include <Overlay/OgreOverlay.h>
-#endif
-#endif // OGRE_VERSION_MINOR==9
+#include <OgreWindow.h>
+#include <OgreOverlay.h>
+#include <OgreOverlayManager.h>
+#include <OgreOverlayElement.h>
+#include <OgreOverlayContainer.h>
 #endif // NO_OGRE
 #include "../BaseLib/utility/operatorString.h"
 #include "fastCapture.h"
@@ -62,7 +60,7 @@ Msg::FltkMsg g_cFltkMsgUtil;
 #include <stdexcept>
 
 
-static bool softKill=false;
+bool softKill=false;
 
 
 
@@ -276,11 +274,7 @@ int FltkRenderer::renderWindowWidth() const
 	{
 		unsigned int width, height, depth;
 		int top, left;
-#if OGRE_VERSION_MAJOR<13
-		RE::renderer().mWnd->getMetrics(width, height, depth, left, top);
-#else
 		RE::renderer().mWnd->getMetrics(width, height, left, top);
-#endif
 		return width;
 	}
 
@@ -292,11 +286,7 @@ int FltkRenderer::renderWindowHeight() const
 	{
 		unsigned int width, height, depth;
 		int top, left;
-#if OGRE_VERSION_MAJOR<13
-		RE::renderer().mWnd->getMetrics(width, height, depth, left, top);
-#else
 		RE::renderer().mWnd->getMetrics(width, height, left, top);
-#endif
 		return height;
 	}
 	return (m_RenderView)?m_RenderView->h():h();
@@ -467,11 +457,15 @@ void FltkRenderer::firstInit(Fl_Window* topmostwin)
 	assert(visible());
 	Fl::check();
 	make_current();
-	mOgreRenderer->firstInit((void*)(Fl_Window*)this, w(), h());
+#if __APPLE__
+	mOgreRenderer->initialize(fl_xid((Fl_Window*)this), w(), h());
+#else
+	mOgreRenderer->initialize((void*)(Fl_Window*)this, w(), h());
+#endif
 #endif 
 
 #else // NO_GUI
-  mOgreRenderer->firstInit(NULL,10,10);
+  mOgreRenderer->initialize(NULL,10,10);
 #endif
 	mbSkybox=true;
 
@@ -487,7 +481,6 @@ void FltkRenderer::firstInit(Fl_Window* topmostwin)
 #ifndef NO_OGRE
 	// Skybox.
 	//mOgreRenderer->mScene->setSkyBox(mbSkybox, "My/SkyBox2"); ->moved to lua
-  	m_eShadowTechnique=(int)mOgreRenderer->viewport().mScene->getShadowTechnique();
 #endif
 	mSavedView[0]=mSavedView[1]=mSavedView[2]=mSavedView[3]=mSavedView[4]=*mOgreRenderer->viewport().m_pViewpoint;
 //#ifdef __APPLE__
@@ -612,7 +605,7 @@ void FltkRenderer::capture()
 			ScreenshotNew(filename, fl_gc, width, height);
 #else
 			printf("mWnd\n");
-			mOgreRenderer->mWnd->writeContentsToFile(filename.ptr());
+			// TODO2 mOgreRenderer->mWnd->writeContentsToFile(filename.ptr());
 #endif
 			
 
@@ -754,6 +747,9 @@ namespace RE_ {
 		{
 			if (win.visible())
 			{
+				if(!win.shown())
+					return false;
+
 				if (!Fl::check())
 					return false;	// returns immediately
 			}
@@ -850,23 +846,23 @@ void FltkRenderer::onCallback(Fl_Widget * pWidget, int userData)
 			printf("TraceManager created\n");
 		}
 #else
-		static OgreTraceManager* otm=NULL;
-		if(!otm)
+		if(!Msg::otm1)
 		{
-			otm=new OgreTraceManager(0, 0, 640, 240);
+			Msg::otm1=new OgreTraceManager(0, 0, 640, 240);
 #ifdef __APPLE__
 
 			int _w=w()/2;
 #ifndef NO_OGRE
 			_w=mOgreRenderer ->viewport().m_pViewpoint->m_iWidth/2;
 #endif
-			otm=new OgreTraceManager(_w, 240*2, _w, 480);
+			Msg::otm2=new OgreTraceManager(_w, 240*2, _w, 480);
 #else
-			otm=new OgreTraceManager(w()/2, 240, w()/2, 480);
+			Msg::otm2=new OgreTraceManager(w()/2, 240, w()/2, 480);
 #endif
 
 			printf("TraceManager created\n");
 		}
+		RE::renderer()._toggleHelpMode();
 #endif
 		//else 
 		//{
@@ -913,7 +909,7 @@ void FltkRenderer::onCallback(Fl_Widget * pWidget, int userData)
 	else if(userData==Hash("Toggle background"))
 	{
 		try{
-			Ogre::SceneNode* pBg=mOgreRenderer->viewport().mScene->getSceneNode("BackgroundNode");
+			Ogre::SceneNode* pBg=mOgreRenderer->viewport().mScene->getSceneNode((unsigned int)RE::BackgroundNode);
 			pBg->flipVisibility();
 		}
 		catch(Ogre::Exception& e ) {
@@ -927,7 +923,7 @@ void FltkRenderer::onCallback(Fl_Widget * pWidget, int userData)
 	else if(userData==Hash("TgLg"))
 	{
 		try{
-			Ogre::Overlay* overlay=Ogre::OverlayManager::getSingleton().getByName("LogoOverlay");
+			Ogre::v1::Overlay* overlay=Ogre::v1::OverlayManager::getSingleton().getByName("LogoOverlay");
 
 			if(overlay)
 			{
@@ -956,7 +952,7 @@ void FltkRenderer::onCallback(Fl_Widget * pWidget, int userData)
 		if (fl_color_chooser(0,r,g,b))
 		{
 			auto c=Ogre::ColourValue(r,g,b,1.f);
-			mOgreRenderer->viewport().mView->setBackgroundColour(c);
+			//TODO2 mOgreRenderer->viewport().mView->setBackgroundColour(c);
 
 			bool bOrthographic=mOgreRenderer->viewport().m_pViewpoint->getOrthographicMode();	
 			if (bOrthographic)
@@ -967,6 +963,7 @@ void FltkRenderer::onCallback(Fl_Widget * pWidget, int userData)
 	}
 	else if(userData==Hash("TgSb"))
 	{
+		/* TODO2
 		try{
 
 			mbSkybox=!mbSkybox;
@@ -978,9 +975,11 @@ void FltkRenderer::onCallback(Fl_Widget * pWidget, int userData)
 		catch(Ogre::Exception& e ) {
 				Msg::msgBox("%s", e.getFullDescription().c_str());
 		}
+		*/
 	}
 	else if(userData==Hash("ChSh"))
 	{
+		/*TODO2
 		m_eShadowTechnique=(m_eShadowTechnique+1)%4;
 		mOgreRenderer->viewport().mScene->setShadowTechnique( (Ogre::ShadowTechnique)m_eShadowTechnique);
 
@@ -995,6 +994,7 @@ void FltkRenderer::onCallback(Fl_Widget * pWidget, int userData)
 		case Ogre::SHADOWTYPE_TEXTURE_MODULATIVE:
 			Msg::msgBox("SHADOWTYPE_TEXTURE_MODULATIVE");break;
 		}
+		*/
 	}
 	else if(userData==Hash("Capt"))
 	{
@@ -1038,15 +1038,11 @@ void drawCursor(int x, int y)
 {
 	
 #ifndef NO_GUI
-	Ogre::Overlay* overlay=Ogre::OverlayManager::getSingleton().getByName("CursorOverlay");
+	Ogre::v1::Overlay* overlay=Ogre::v1::OverlayManager::getSingleton().getByName("CursorOverlay");
 
 	if(overlay)
 	{
-#if OGRE_VERSION_MINOR<9
-		Ogre::OverlayElement* pElt=overlay->getChild("TCursor");
-#else
-		Ogre::OverlayContainer* pElt=overlay->getChild("TCursor");
-#endif
+		Ogre::v1::OverlayContainer* pElt=overlay->getChild("TCursor");
 		pElt->setPosition(x-3,y);
 	}
 #endif
@@ -1056,7 +1052,7 @@ void FltkRenderer_toggleCursor()
 {
 #ifndef NO_GUI
 	try{
-		Ogre::Overlay* overlay=Ogre::OverlayManager::getSingleton().getByName("CursorOverlay");
+		Ogre::v1::Overlay* overlay=Ogre::v1::OverlayManager::getSingleton().getByName("CursorOverlay");
 
 		if(overlay)
 		{
@@ -1066,16 +1062,9 @@ void FltkRenderer_toggleCursor()
 			{
 				overlay->show();
 
-#if OGRE_VERSION_MINOR<9
-
-				Ogre::OverlayElement* pElt=overlay->getChild("TCursor");
-				pElt->setPosition(500,300);
-				pElt->show();
-#else
-				Ogre::OverlayContainer* pElt=overlay->getChild("TCursor");
+				Ogre::v1::OverlayContainer* pElt=overlay->getChild("TCursor");
 				pElt->setPosition(100,100);
 				pElt->show();
-#endif
 
 			}
 		}
@@ -1263,7 +1252,7 @@ void FltkRenderer::changeViewNoAnim(int curView)
 
 static void resizeOgreWin(OgreRenderer* mOgreRenderer, int ww, int hh)
 {
-	mOgreRenderer->mWnd->resize(ww,hh);
+	//mOgreRenderer->mWnd->resize(ww,hh);
 	mOgreRenderer->mWnd->windowMovedOrResized();
 
 

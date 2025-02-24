@@ -122,6 +122,10 @@ set(libccd
 	CollisionDetector/CollisionDetector_fcl.cpp
 	CollisionDetector/CollisionDetector_libccd.h
 	CollisionDetector/CollisionDetector_libccd.cpp
+	#CollisionDetector/CollisionDetector_libccd_LBS.h
+	#CollisionDetector/CollisionDetector_libccd_LBS.cpp
+	#CollisionDetector/CollisionDetector_simple2.h
+	#CollisionDetector/CollisionDetector_simple2.cpp
 	#CollisionDetector/CollisionDetector_libccd_specialPlane.h
 	#CollisionDetector/CollisionDetector_libccd_specialPlane.cpp
 	#CollisionDetector/CollisionDetector_libccd_cylinder.h
@@ -152,6 +156,8 @@ set(src
   "DynamicsSimulator.cpp"
   "DynamicsSimulator_penaltyMethod.cpp"
   "OpenHRPcommon.cpp"
+	  "GMBS_implementation/rmatrix3j.cpp"
+	  "GMBS_implementation/rmatrix3j.h"
 	)
 
 set(src11

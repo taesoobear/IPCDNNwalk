@@ -851,9 +851,9 @@ void quater::bezier(const quater& q0, const quater& q1, const quater& q2, const 
 	b2=3.0*SQR(t)-2.0*CUBIC(t);
 	b3=CUBIC(t);
 
-	// This paper follows directX convention of the definition of w (angularVelocity)
+	// This paper uses local angularVelocity w.
 	// Furthermore, its length is twice the common definition. (This means that this paper is actually wrong.)
-	// I modified to support common definition (OpenGL convention)
+	// I modified it to use world angular velocity.
 	// ->
 	// q(t)=( PI_n^1 exp(2*wi*bi) ) * q0
 

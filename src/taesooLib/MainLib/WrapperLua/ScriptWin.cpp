@@ -166,14 +166,16 @@ m_renderer(&renderer)
 
 	updateLayout();
 
+	if (RE::rendererValid()){
 #ifdef NO_GUI
-	renderer.ogreRenderer().addFrameMoveObject(this);
+		renderer.ogreRenderer().addFrameMoveObject(this);
 #else
-	renderer.setHandler(this);
-	renderer.ogreRenderer().addFrameMoveObject(this);
-	if(RE::motionPanelValid())
-		mp.motionWin()->connect(*this);
+		renderer.setHandler(this);
+		renderer.ogreRenderer().addFrameMoveObject(this);
+		if(RE::motionPanelValid())
+			mp.motionWin()->connect(*this);
 #endif
+	}
 }
 
 ScriptWin::ScriptWin(int w, int h, const char* title, const char* defaultScript, const char* _defaultScriptFolder)
@@ -230,17 +232,24 @@ void ScriptWin::luna_call(lunaStack& l,int numIn, int numOut)
 	}
 	catch (char * error)
 	{
-		Msg::msgBox("%s", error);
+		Msg::msgBox("%s: %s", lastFunc.ptr(), error);
+		dostring("dbg.console()");
+		exit(0);
 	}
 	catch (const char* error)
 	{
-		Msg::msgBox("%s", error);
+		Msg::msgBox("%s: %s", lastFunc.ptr(), error);
+		dostring("dbg.console()");
+		exit(0);
 	}
 	catch (std::exception& e)
 	{
-		printf("%s", e.what());
-		Msg::msgBox("c++ error : %s", e.what());
+		luna_printStack(L, false);
+		printf(" %s: %s\n", lastFunc.ptr(), e.what());
+		Msg::msgBox("c++ error : %s: %s", lastFunc.ptr(), e.what());
 		ASSERT(0);
+		dostring("dbg.console()");
+		exit(0);
 	}
 	catch (...)
 	{
@@ -262,10 +271,10 @@ void ScriptWin::releaseScript()
 		FractionTimer::printSummary("test", "C++", "lua");
 #endif
 
-
 		lunaStack l(L);
-		getglobal(l,"dtor");
-		luna_call(l,0,0);
+		bool check=getglobalNoException(l,"dtor");
+		if(check)
+			luna_call(l,0,0);
 
 		lua_close(L);
 		L=NULL;
@@ -440,7 +449,7 @@ void ScriptWin::_checkErrorFunc()
 void ScriptWin::initLuaEnvironment()
 {
 	_initLuaEnvironment();
-	if(RE::renderer().taesooLibPath()=="../")
+	if(RE::taesooLibPath()=="../")
 		::_loadScript(L, this, "config.lua");
 	else
 		::_loadScript(L, this, "work/taesooLib/Resource/scripts/relative_mode/config.lua");

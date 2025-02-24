@@ -17,8 +17,6 @@ BoneForwardKinematics::BoneForwardKinematics(MotionLoader* pskel)
 
 void BoneForwardKinematics::forwardKinematics()
 {
-	// this is thread unsafe so.. 
-	// NodeStack  & stack=m_skeleton->m_TreeStack;
 	NodeStack  stack;
 	stack.Initiate();
 
@@ -34,8 +32,7 @@ void BoneForwardKinematics::forwardKinematics()
 			Bone* pBone=(Bone*)src;
 			int treeindex=pBone->treeIndex();
 			if(stack.GetTop())
-				_global(treeindex).mult(
-				global(*((Bone*)stack.GetTop())), local(treeindex));
+				_global(treeindex).mult( global(*((Bone*)stack.GetTop())), local(treeindex));
 			else
 				_global(treeindex)=local(treeindex);
 
@@ -520,4 +517,243 @@ void BoneVelocityForwardKinematics::computeDQfromDS(BoneForwardKinematics const&
 			rel_lin_vel=loc_lin_vel;
 		}
 	}
+}
+
+
+
+
+	matrix4 const& ScaledBoneKinematics::global(const Bone& bone) const	{ return m_global2[bone.treeIndex()];}
+	matrix4 const& ScaledBoneKinematics::local(const Bone& bone) const	{ return m_local2[bone.treeIndex()];}
+	matrix4 & ScaledBoneKinematics::_global(const Bone& bone) 	{ return m_global2[bone.treeIndex()];}
+	matrix4 & ScaledBoneKinematics::_local(const Bone& bone) 	{ return m_local2[bone.treeIndex()];}
+
+
+ScaledBoneKinematics::ScaledBoneKinematics(MotionLoader* pskel)
+:m_skeleton(pskel)
+{	
+	init();
+}
+
+void ScaledBoneKinematics::forwardKinematics()
+{
+	for (int treeindex=1; treeindex<m_skeleton->numBone(); treeindex++)
+	{
+		Bone& bone=m_skeleton->bone(treeindex);
+		Bone* parent=bone.parent();
+		globalRot(treeindex).mult(globalRot(parent->treeIndex()), localRot(treeindex));
+
+		matrix4& L=_local(treeindex);
+
+		vector3 trans;
+		if(bone.transJointIndex()!=-1)
+			trans=L.translation();
+		else
+			m_skeleton->bone(treeindex).getOffset(trans);
+
+		auto& scale=m_scale[treeindex];
+		L=scale;
+		L.leftMultRotation(m_local[treeindex]);
+		L.setTranslation(m_scale[parent->treeIndex()]*trans);
+
+		matrix4 parent_global(globalRot(parent->treeIndex()), global(*parent).translation());
+		_global(treeindex).mult( parent_global, local(treeindex));
+
+		Msg::verify(_global(treeindex)._11==_global(treeindex)._11, "q is nan. ");
+	}
+}
+
+
+
+void ScaledBoneKinematics::init()
+{
+	m_local2.resize(m_skeleton->numBone());
+	m_global2.resize(m_skeleton->numBone());
+	if(m_skeleton->numBone()==0) return;
+	m_local2[0].identity();
+	m_global2[0].identity();
+
+	m_local.setSize(m_skeleton->numBone());
+	m_global.setSize(m_skeleton->numBone());
+	m_local[0].identity();
+	m_global[0].identity();
+
+	m_scale.resize(m_skeleton->numBone());
+	m_scale[0].identity();
+
+	m_defaultScale.setSize(m_skeleton->numBone());
+	m_defaultScale.setAllValue(vector3(1,1,1));
+
+
+	for(int i=1, ni=m_skeleton->numBone(); i<ni; i++)
+	{
+		m_local2[i]=m_skeleton->bone(i).getOffsetTransform();
+		m_local[i]=m_skeleton->bone(i).getOffsetTransform().rotation;
+		m_scale[i].identity();
+	}
+
+
+
+	forwardKinematics();
+}
+void ScaledBoneKinematics::setScale(const vector3N & m)
+{
+	for(int i=1, ni=m_skeleton->numBone(); i<ni; i++)
+	{
+		auto& ms=m_defaultScale[i];
+		ms=m(i);
+	}
+}
+void ScaledBoneKinematics::setLengthScale(const vectorn & s)
+{
+	Msg::verify(s.size()==getSkeleton().numBone(),"setLengthScale, incorrect input size");
+
+	intvectorn count(getSkeleton().numBone());
+	count.setAllValue(0);
+	for(int i=1, ni=getSkeleton().numBone(); i<ni; i++)
+	{
+		auto& bone=getSkeleton().bone(i);
+		vector3 offset(0.0);
+
+		int co=0;
+		for (Bone* c=bone.child(); c!=NULL; c=c->sibling())
+		{
+			offset+=c->getOffsetTransform().translation;
+			co++;
+		}
+		if(co==0)
+			m_scale[i].setScaling(vector3(s(i), s(i), s(i)),false);
+		else
+		{
+			offset.normalize();
+			if(offset.length()>0.9)
+			{
+				quater q;
+				q.axisToAxis(offset, vector3(0,0,1));
+				ASSERT(q.x==q.x);
+				ASSERT(q.y==q.y);
+				ASSERT(q.z==q.z);
+
+				matrix4 ls;
+				ls.setScaling(1,1,s(i));
+
+				m_scale[i]=matrix4(q.inverse())*ls*matrix4(q);
+				ASSERT(m_scale[i]._11==m_scale[i]._11);
+			}
+			else
+				m_scale[i].setScaling(vector3(s(i), s(i), s(i)),false);
+		}
+		m_scale[i]._11*=m_defaultScale[i].x;
+		m_scale[i]._22*=m_defaultScale[i].y;
+		m_scale[i]._33*=m_defaultScale[i].z;
+	}
+}
+
+void ScaledBoneKinematics::operator=(BoneForwardKinematics const& other)
+{
+	RANGE_ASSERT(getSkeleton().numBone()==other.getSkeleton().numBone());
+
+	for(int i=0,ni=getSkeleton().numBone(); i<ni; i++)
+	{
+		_local(i)=other.local(i);
+		_global(i)=other.global(i);	
+		localRot(i)=other.local(i).rotation;
+		globalRot(i)=other.global(i).rotation;
+	}
+}
+void ScaledBoneKinematics::operator=(ScaledBoneKinematics const& other)
+{
+	if(&other==this) return;
+
+	RANGE_ASSERT(getSkeleton().numBone()==other.getSkeleton().numBone());
+
+	for(int i=0,ni=getSkeleton().numBone(); i<ni; i++)
+	{
+		_local(i)=other.local(i);
+		_global(i)=other.global(i);	
+		m_scale[i]=other.m_scale[i];
+		localRot(i)=other.localRot(i);
+		globalRot(i)=other.globalRot(i);
+	}
+}
+void ScaledBoneKinematics::setPose(const Posture& pose)
+{
+	if(m_local2.size()==0)
+		init();
+	// update root position and rotations
+	for(int ijoint=0, nj=m_skeleton->numRotJoint(); ijoint<nj; ijoint++)
+	{
+		// update rotations
+		int target=m_skeleton->getTreeIndexByRotJointIndex(ijoint);
+		m_local[target]=pose.m_aRotations[ijoint];
+	}
+
+	for(int ijoint=0, nj=MIN(m_skeleton->numTransJoint(), pose.m_aTranslations.size()); ijoint<nj; ijoint++)
+	{
+		// update translations
+		int target=m_skeleton->getTreeIndexByTransJointIndex(ijoint);
+		m_local2[target].setTranslation(pose.m_aTranslations[ijoint], true);
+	}
+
+	forwardKinematics();
+}
+
+void ScaledBoneKinematics::setPoseDOF(const vectorn& dof)
+{
+	MotionDOFinfo const& dofInfo=m_skeleton->dofInfo;
+	setPoseDOFusingCompatibleDOFinfo(dofInfo,  dof);
+
+}
+void ScaledBoneKinematics::setPoseDOFusingCompatibleDOFinfo(MotionDOFinfo const& dofInfo, const vectorn& dof)
+{
+	// thread unsafe equivalent: setPose(m_skeleton->dofInfo.setDOF(poseDOF));	
+	MotionLoader* skeleton=&dofInfo.skeleton();
+	
+	int start=0;
+	for(int i=1; i<skeleton->numBone(); i++)
+	{
+		Bone& bone=skeleton->bone(i);
+		if(bone.transJointIndex()!=-1)
+		{
+			vector3 trans;
+			int nc=bone.getLocalTrans(trans, &dof[start]);
+			m_local2[bone.treeIndex()].setTranslation(trans);
+			start+=nc;
+		}
+
+		int ri=bone.rotJointIndex();
+		if(ri==-1) continue;
+
+		quater& rotation=m_local[bone.treeIndex()];
+		if(dofInfo.hasQuaternion(i))
+		{
+			rotation=dof.toQuater(start);
+			start+=4;
+		}
+
+		if(dofInfo.hasAngles(i))
+		{
+			int nc=bone.getLocalOri(rotation, &dof[start]);
+			start+=nc;
+		}
+	}
+	RANGE_ASSERT(start==dof.size());
+	forwardKinematics();
+}
+void ScaledBoneKinematics::updateBoneLength(MotionLoader const& loader)
+{
+	for(int i=2; i<loader.numBone()-1 ; i++)
+		m_local2[i].setTranslation(loader.bone(i).getOffsetTransform().translation,true);
+
+	forwardKinematics();
+}
+void BoneForwardKinematics::operator=(ScaledBoneKinematics const& other)
+{
+	RANGE_ASSERT(getSkeleton().numBone()==other.getSkeleton().numBone());
+
+	for(int i=0,ni=getSkeleton().numBone(); i<ni; i++)
+	{
+		_global(i).rotation=other.globalRot(i);	
+		_global(i).translation=other.global(i).translation();	
+	}
+	inverseKinematicsExact();
 }

@@ -174,6 +174,17 @@ function LimbIKsolverT:__init(dofInfo, eff, kneeIndex, axis, config)
 	self.axis=axis
 	self.config=deepCopyTable(config)
 	for i, limbConfig in ipairs(self.config) do
+		if limbConfig[#limbConfig]:length()==0 then
+			local ankle=self.effectors(i-1).bone
+			if ankle:parent():treeIndex()~=kneeIndex(i-1) then
+				local newoffset=ankle:getOffset()
+				self.effectors(i-1):init(ankle:parent(), newoffset)
+				local con_i=self.config[i]
+				con_i[#con_i-1]=ankle:parent():name()
+				con_i[#con_i]=newoffset:copy()
+			end
+
+		end
 		if limbConfig.childCon then
 			local c=limbConfig.childCon
 			self.config[c].unused=true
@@ -183,8 +194,12 @@ function LimbIKsolverT:__init(dofInfo, eff, kneeIndex, axis, config)
 			end
 		end
 	end
+	self.options={}
 end
 function LimbIKsolverT:setValue()
+end
+function LimbIKsolverT:setOption(type, value)
+	self.options[type]=value
 end
 function LimbIKsolverT:IKsolve(pose, conPos)
 
@@ -211,6 +226,7 @@ function LimbIKsolverT:IKsolve(pose, conPos)
 	local qo2=quater()
 	local qt=quater()
 
+	local len={}
 	for c=0, self.effectors:size()-1 do
 		local limbconfig=self.config[c+1]
 		if not limbconfig.unused then
@@ -260,8 +276,16 @@ function LimbIKsolverT:IKsolve(pose, conPos)
 			qo1=q1;
 			qo2=q2;
 
+			local r=0
+			if self.options.lengthAdjust then
+				r=MotionUtil.limbIK_1DOFknee(goal, sh, v1, v2, v3, v4, q1, q2, kneeBone:getAxis(-1)*self.axis(c), useKneeDamping, 1.0, true);
 
-			MotionUtil.limbIK_1DOFknee(goal, sh, v1, v2, v3, v4, q1, q2, kneeBone:getAxis(-1)*self.axis(c), useKneeDamping);
+				local d1=v3:length()
+				local d2=v4:length()
+				len[c+1]={hipBone:treeIndex(), (d1+r)/d1, kneeBone:treeIndex(), (d2+r)/d2}
+			else
+				MotionUtil.limbIK_1DOFknee(goal, sh, v1, v2, v3, v4, q1, q2, kneeBone:getAxis(-1)*self.axis(c), useKneeDamping);
+			end
 
 			hipBone:getLocalFrame().rotation:assign(q0:inverse()*q1);
 			kneeBone:getLocalFrame().rotation:assign(q1:inverse()*q2);
@@ -270,6 +294,15 @@ function LimbIKsolverT:IKsolve(pose, conPos)
 		end
 	end
 	skel:getPoseDOF(pose)
+	if #len>0 then
+		local lenScale=vectorn(skel:numBone())
+		lenScale:setAllValue(1.0)
+		for i, v in ipairs(len) do
+			lenScale:set(v[1], v[2])
+			lenScale:set(v[3], v[4])
+		end
+		return lenScale
+	end
 end
 
 function _createIKsolver(solverType, loader, eff, kneeIndex, axis , _hipIndex, config)

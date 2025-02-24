@@ -9,6 +9,7 @@ end
 function Constraints:__init(...)
 	local points={...}
 	self.blueCircles={}
+	self.visible=true
 	self.basePos=vector3(0,0,0)
 	self.prefix="con"..RE.generateUniqueName()
 	self.matSelected='red_transparent'
@@ -23,6 +24,8 @@ function Constraints:__init(...)
 		for i=1, #points do
 			self.conPos(i-1):assign(points[i])
 		end
+	elseif points[1]==nil then
+		self.conPos=vector3N()
 	else 
 		assert(dbg.lunaType(points[1])=='vector3N')
 		self.conPos=points[1]:copy()
@@ -84,6 +87,12 @@ function Constraints:setOption(param1, param2)
 		self:drawConstraints()
 	end
 end
+function Constraints:setVisible(b)
+	self.objectList:setVisible(b)
+	self.visible=b
+	self.redrawBlueCircles =true
+	self:drawConstraints()
+end
 function Constraints:drawConstraints(ev)
 	local conPos=self.conPos
 	for i=0 ,conPos:size()-1 do
@@ -117,13 +126,18 @@ function Constraints:drawConstraints(ev)
 	end
 
 	if self.redrawBlueCircles then
-		local goal=vector3N()
-		for k, v in pairs(self.blueCircles) do
-			goal:pushBack(v[1])
-			assert(v[2]==self.size or v[2]==nil)
-		end
+
+		if self.visible then
+			local goal=vector3N()
+			for k, v in pairs(self.blueCircles) do
+				goal:pushBack(v[1])
+				assert(v[2]==self.size or v[2]==nil)
+			end
 			local thickness=self.size*2-- 10 cm
-		dbg.drawBillboard(goal:matView(), self.prefix..'_conblue', 'blueCircle', thickness, 'QuadListV')
+			dbg.drawBillboard(goal:matView(), self.prefix..'_conblue', 'blueCircle', thickness, 'QuadListV')
+		else
+			dbg.erase('Billboard', self.prefix..'_conblue')
+		end
 		self.redrawBlueCircles =false
 	end
 end

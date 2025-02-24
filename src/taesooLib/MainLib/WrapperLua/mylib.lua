@@ -512,14 +512,13 @@ function dbg.console(msg, stackoffset)
 				dbg.listLunaClasses(' '..line)		
 			else
 			print('bt[level=3]      : backtrace. Prints callstack')
+			print('trace      	: start dbg.trace() (an alternative debugger similar to pdb.set_trace())')
 			print(';(lua statement) : eval lua statements. Usually, ";" can be omitted. e.g.) print(a) ')
             print('                   print or printTable can be omitted too            e.g.) a ')
 			print('?                : Type ? for help. e.g. ? torch.bitor')
 			print('help             : shows the usage of dbg.console (this debugger)')
 			print(':(lua statement) : eval lua statements and exit debug console. e.g.) :dbg.startCount(10)')
 			print('s[number=1]      : proceed n steps')
-			print('n		        : go to the next line')
-            print('fi               : finish the current function')
 			print('r filename [lineno]  : run until execution of a line. filename can be a postfix substring. e.g.) r syn.lua 32')
 			print('c[level=2]       : print source code at a stack level')
 			print('e[level=2]       : show current line (at callstack level 2) in gedit editor')
@@ -537,6 +536,12 @@ function dbg.console(msg, stackoffset)
 			print('dbg.lunaType(v)  : print typename of v')
 		end
 		elseif line=="cont" then break
+		elseif line=='trace' or line=='n' then 
+			if debug.getinfo(2) and debug.getinfo(2).short_src=='[C]' then
+				require('debugger')()
+			else
+				return require('debugger')() 
+			end
 		elseif string.sub(line,1,2)=="bt" then dbg.callstack(tonumber(string.sub(line,3)) or 3)
 		elseif line=="clist" or string.sub(line,1,6)=='clist ' then
 			dbg.listLunaClasses(line)		
@@ -598,9 +603,6 @@ function dbg.console(msg, stackoffset)
 		elseif cmd==":" then
 			handleStatement(string.sub(line,2))
 			break
-		elseif cmd=="n" then
-			event={"n"}
-			break
 		elseif cmd=="s" or cmd=="'" then
 			local count=cmd_arg or 1
 			event={"s", count}
@@ -627,8 +629,6 @@ function dbg.console(msg, stackoffset)
 			return dbg.step(event[2]) 
 		elseif event[1]=="r" then
 			return dbg.run(event[2])
-		elseif event[1]=="n" then
-			return dbg.nextLine(event[2])
 		elseif event[1]=="fi" then
 			return dbg.finish(event[2])
 		end
@@ -687,20 +687,6 @@ function dbg._nextFunc(event, line)
 		dbg._saveLocals=dbg.locals(level+1,true)
 	end
 	return dbg.console()
-end
-function dbg.nextLine(n)
-	local info=debug.getinfo(4)
-	if info then
-		if info.source~="=(tail call)" then
-			print(info.source..':'..(info.name or ''))
-			dbg._finishFunc_until=info.func
-			return debug.sethook(dbg._nextFunc,"l")
-		end
-	end
-	print('proceeding one line')
-	dbg._step=0
-	dbg._nstep=1
-	debug.sethook(dbg._stepFunc,"l")
 end
 
 function dbg.callstack(level)
@@ -1028,7 +1014,7 @@ end
 
 --  loader=VRMLloader(a,b,c) 
 
-function LUAclass(baseClass)
+function LUAclass(baseClass, _copyBaseFunctions)
 
 	local classobj={}
 	classobj.__index=classobj
@@ -1061,7 +1047,17 @@ function LUAclass(baseClass)
 							 return new_inst
 						 end
 		end
-		setmetatable(classobj, {__index=baseClass,__call=classobj.new})
+		local mt={__index=baseClass,__call=classobj.new}
+		if _copyBaseFunctions then
+			for k, v in pairs(getmetatable(baseClass)) do
+				if k~='__index' and k~='__call' then
+					if type(v)=='function' then
+						mt[k]=v
+					end
+				end
+			end
+		end
+		setmetatable(classobj, mt)
 	else
 		setmetatable(classobj, {__call=classobj.new})
 	end
@@ -2683,7 +2679,12 @@ function util.getScriptPath(level)
 	if not level then level=2 end
 	local currentPath=select(2, os.processFileName(debug.getinfo(level,'S').source:sub(2)))
 	if currentPath:sub(1,1)=='.' then
-		currentPath=os.relativeToAbsolutePath(currentPath)
+		local a,b=pcall(os.relativeToAbsolutePath, currentPath)
+		if not a then
+			return currentPath
+		else
+			return b
+		end
 	end
 	return currentPath
 end

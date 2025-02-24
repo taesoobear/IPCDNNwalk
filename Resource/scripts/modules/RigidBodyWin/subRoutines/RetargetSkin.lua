@@ -258,6 +258,8 @@ function RetargetSkin:_setPoseFromLoaderAB()
 	poseOrig.translations(0):radd(frameA.translation-frameB.translation)
 
 	local enforceMarkers=self.enforceMarkerPos
+	-- todo2
+	enforceMarkers=false
 
 	local posError
 	local animEntity=self.entity
@@ -324,6 +326,7 @@ function RetargetSkin:_setPoseFromLoaderAB()
 			end
 		end
 	end
+
 
 	if enforceMarkers then
 		-- set ogre pose

@@ -18,8 +18,12 @@ namespace MotionUtil
 
 	void setKneeDampingCoef_RO(double ro);
 	double getKneeDampingCoef_RO();
-	int limbIK_1DOFknee( const vector3& goal, const vector3& sh, const vector3& v1, const vector3& v2, const vector3& v3, const vector3& v4,
+	void setMaxLengthAdjustmentRatio(double mr);
+	double getMaxLengthAdjustmentRatio();
+	double limbIK_1DOFknee( const vector3& goal, const vector3& sh, const vector3& v1, const vector3& v2, const vector3& v3, const vector3& v4,
 			quater& qq1, quater& qq2, vector3 const& axis, bool kneeDamping, m_real* lengthAdjust=NULL, double kneeDampingConstant=1.0);
+	double limbIK_1DOFknee( const vector3& goal, const vector3& sh, const vector3& v1, const vector3& v2, const vector3& v3, const vector3& v4,
+			quater& qq1, quater& qq2, vector3 const& axis, bool kneeDamping, double kneeDampingConstant, bool lengthAdjust=false);
 
 	void setLimb(int con, int& index_up, int& index_mid, int& index_low, vector3& axis, const MotionLoader& skeleton);
 	// 현재 다리가 펴져있는 정도를 계산한다. 1이 완전히 펴진상태를 뜻한다.

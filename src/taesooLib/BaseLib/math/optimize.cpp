@@ -56,6 +56,11 @@ public:
 
 double Optimize::Method::func(const vectorn& x)
 {
+	if(!_optimizer->_useNormalization)
+	{
+		return _optimizer->objectiveFunction(x);
+	}
+
 	_unnormalize(_opos, x);
 	double out=_optimizer->objectiveFunction(_opos);
    
@@ -68,6 +73,11 @@ double Optimize::Method::func(const vectorn& x)
 
 double Optimize::Method::func_dfunc(const vectorn& x,vectorn& dx)
 {
+	if(!_optimizer->_useNormalization)
+	{
+		return _optimizer->gradientFunction(x, dx);
+	}
+
 	_unnormalize(_opos, x);
 	double e=_optimizer->gradientFunction(_opos, _gradient) ;
 	dx.setSize(_gradient.size());
@@ -89,23 +99,31 @@ void Optimize::Method::prepareOptimization(Optimize& objectiveFunction)
 	_optimizer=&objectiveFunction;
 	int N_opt_dimension=_optimizer->_opt_dimension.size();
 	_x.resize(N_opt_dimension);
-	_opos.resize(N_opt_dimension);
 
-	_getCurPos(_opos);
 
-	_oeval=_optimizer->objectiveFunction(_opos);
-	if (_oeval<=0.0001 ) _oeval=0.0001;
+	if(_optimizer->_useNormalization)
+	{
+		_opos.resize(N_opt_dimension);
+		_getCurPos(_opos);
+		_oeval=_optimizer->objectiveFunction(_opos);
+		if (_oeval<=0.0001 ) _oeval=0.0001;
 
 #ifdef DEBUG_Optimize
-	printf("oeval: %g\n", _oeval);
+		printf("oeval: %g\n", _oeval);
 #endif
-	_normalize(_x, _opos); // actual optimization is done in the normalized space.
-
+		_normalize(_x, _opos); // actual optimization is done in the normalized space.
+	}
+	else
+	{
+		_getCurPos(_x);
+		_oeval=1.0;
+	}
 }
 void Optimize::Method::finalizeOptimization()
 {
 	// save result to _opos.
-	_unnormalize(_opos, _x);
+	if(_optimizer->_useNormalization)
+		_unnormalize(_opos, _x);
 	//info(-1,0);
 }
 
@@ -138,12 +156,17 @@ double Optimize::gradientFunction(vectorn const& _pos, vectorn& gradient)
 }
 Optimize::Optimize()
 {
+	_useNormalization=true;
 	_data=NULL;
 }
 void Optimize::init(double stepSize, int ndim, double max_step, double grad_step, Method & method)
 {
 	std::vector<Optimize::Opt_dimension>&	dim=_opt_dimension;
 	dim.resize(ndim);
+
+	if(max_step==1.0)
+		_useNormalization=false;
+
 
 	for(int i=0; i<ndim; i++)
 	{
@@ -158,6 +181,7 @@ void Optimize::init(double stepSize, int ndim, double max_step, double grad_step
 
 Optimize::Optimize(double stepSize, std::vector<Opt_dimension> const& dim, Method & method)
 {
+	_useNormalization=true;
 	_opt_dimension=dim;
 	_data=(void*) new Optimize_impl( method);
 	((Optimize_impl*)_data)->_interface=this;
@@ -165,6 +189,7 @@ Optimize::Optimize(double stepSize, std::vector<Opt_dimension> const& dim, Metho
 
 Optimize::Optimize(double stepSize, int ndim, double max_step, double grad_step, Method & method)
 {
+	_useNormalization=true;
 	_data=NULL;
 	init(stepSize,ndim,max_step,grad_step,method);
 }
@@ -184,7 +209,10 @@ void Optimize::optimize(vectorn const& initialSolution)
 
 vectorn& Optimize::getResult()
 {
-	return ((Optimize_impl*)_data	)->_method._opos;	
+	if(_useNormalization)
+		return ((Optimize_impl*)_data	)->_method._opos;	
+	else
+		return ((Optimize_impl*)_data	)->_method._x;	
 }
 void* _NRSolver::mFunc=NULL;
 static Optimize::Method * g_func=NULL;
@@ -302,9 +330,12 @@ void NR_linmin(vectorn &p, vectorn &xi, double &fret, double func(vectorn &), co
 	}
 	ax=0.0;
 	xx=1.0;
+#ifdef USE_NR
+	NR::mnbrak(ax,xx,bx,fa,fx,fb,NR::f1dim);
+	fret=NR_brent(ax,xx,bx,NR::f1dim,TOL,xmin, ITMAX);
+#else
 	Msg::error("mnbrak");
-	//NR::mnbrak(ax,xx,bx,fa,fx,fb,NR::f1dim);
-	//fret=NR_brent(ax,xx,bx,NR::f1dim,TOL,xmin, ITMAX);
+#endif
 	for (j=0;j<n;j++) {
 		xi[j] *= xmin;
 		p[j] += xi[j];
@@ -313,19 +344,19 @@ void NR_linmin(vectorn &p, vectorn &xi, double &fret, double func(vectorn &), co
 	delete pcom_p;
 }
 
-void NR_frprmn(vectorn &p, const double ftol, int &iter, double &fret,
-	double func(vectorn &), void dfunc(vectorn &, vectorn &))
+void NR_frprmn(Vec_IO_DP &p, const DP ftol, int &iter, DP &fret,
+	DP func(Vec_I_DP &), void dfunc(Vec_I_DP &, Vec_O_DP &))
 {
-	//const double TOL=1.0e-8;
-	const double TOL=fret*1.0e-2;
+	//const DP TOL=1.0e-8;
+	const DP TOL=fret*1.0e-2;
 	//const int ITMAX=2000;
 	const int ITMAX=iter;
-	const double _EPS=1.0e-18;
+	const DP eps=1.0e-18;
 	int j,its;
-	double gg,gam,fp,dgg;
+	DP gg,gam,fp,dgg;
 
 	int n=p.size();
-	vectorn g(n),h(n),xi(n);
+	Vec_DP g(n),h(n),xi(n);
 	fp=func(p);
 	dfunc(p,xi);
 	for (j=0;j<n;j++) {
@@ -335,7 +366,7 @@ void NR_frprmn(vectorn &p, const double ftol, int &iter, double &fret,
 	for (its=0;its<ITMAX;its++) {
 		iter=its;
 		NR_linmin(p,xi,fret,func,TOL, ITMAX);
-		if (2.0*fabs(fret-fp) <= ftol*(fabs(fret)+fabs(fp)+_EPS))
+		if (2.0*fabs(fret-fp) <= ftol*(fabs(fret)+fabs(fp)+eps))
 			return;
 		fp=fret;
 		dfunc(p,xi);
@@ -361,9 +392,56 @@ void Optimize::ConjugateGradient::optimize(vectorn & initial)
 	g_func=this;
 	vectorn& x=getInout();
 	int iter=int(max_iter);
+#ifdef USE_NR
 	//			NR_OLD::opt_info=&NRoptInfo;
+	NR_frprmn(x, tol,iter, thr, NRfunc, NRdfunc2);
+#else
 	Msg::error("frprmn");
-	//NR_frprmn(x, tol,iter, thr, NRfunc, NRdfunc2);
+#endif
 }
 
+
+void Optimize::_initSquareTerms(int ndim)
+{
+	terms.resize(0);
+	termCoeffs.resize(ndim);
+	for(int i=0; i<ndim; i++)
+		termCoeffs[i].resize(0);
+}
+double Optimize::_updateSquareTermsGradient(vectorn const& pos, vectorn& grad)
+{
+	double o=0.0;
+	// objective function value
+	for(int i=0; i<terms.size(); i++)
+	{
+		auto& term=terms[i];
+		auto& ii=term.indices;
+		auto& w=term.coeffs;
+		double v=0.0;
+		for(int j=0;j< ii.size(); j++)
+			v+=pos(ii(j))*w(j);
+		v+=w(ii.size());
+		term.v=v;
+		o+=v*v;
+	}
+
+	// gradient
+	for (int i=0; i<grad.size();i++){
+		auto& termCoeff=termCoeffs[i];
+		for (int j=0; j< termCoeff.size(); j++)
+		{
+			auto& tc=termCoeff[j];
+			int ti=tc.termIndex;
+			grad(i)+= terms[ti].v*2*tc.termCoef;
+		}
+	}
+	return o;
+}
+void Optimize::addSquared(intvectorn const& index, vectorn const& coef)
+{
+	int iterm=terms.size();
+	terms.push_back({index, coef});
+	for(int i=0; i<index.size(); i++)
+		termCoeffs[index(i)].push_back({iterm, coef(i)});
+}
 

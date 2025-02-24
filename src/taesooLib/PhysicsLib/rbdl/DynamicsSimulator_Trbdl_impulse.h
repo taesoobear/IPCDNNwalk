@@ -13,7 +13,6 @@
 #include "../../BaseLib/math/Operator.h"
 #include "../../MainLib/OgreFltk/Mesh.h"
 #include "../../MainLib/OgreFltk/MotionPanel.h"
-#include "../../MainLib/OgreFltk/OgreMotionLoader.h"
 #include <stdio.h> //printf debugging
 
 #include "DynamicsSimulator_Trbdl_penalty.h"

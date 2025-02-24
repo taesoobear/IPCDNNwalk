@@ -17,19 +17,19 @@ useSeperateOgreWindow 1
 # Please do not change this default setting. 
 # One can instead copy this file to
 # ogreconfig_personal.txt and personalize it.
-#shadowTechnique 33
+#shadowTechnique 34
 shadowTechnique 18
 #shadowTechnique 17
 #shadowTechnique 0
 shadowFarDistance 2000
 # must be power of 2
 #shadowResolution 4096 
-shadowResolution 512
+shadowResolution 256
 shadowmapCount 10
 shadowColor 0.8
 
 depthShadow 0
-enagleLog 0
+enableLog 0
 
 # Warning! orthographic mode doesn't work perfectly.
 useOrthographicProjection 0

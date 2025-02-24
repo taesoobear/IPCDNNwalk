@@ -115,40 +115,35 @@ namespace BaselibLUA {
 #define BEGIN_OGRE_CHECK try {
 #define END_OGRE_CHECK	} catch ( Ogre::Exception& e ) {Msg::msgBox(e.getFullDescription().c_str());}
 
-#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
-#include "Overlay/OgreOverlayManager.h"
-#include "Overlay/OgreOverlayContainer.h"
-#include "Overlay/OgreOverlayElement.h"
-#else
+#include "OgreOverlayManager.h"
 #include "OgreOverlayContainer.h"
 #include "OgreOverlayElement.h"
-#endif
 
 namespace Ogre
 {
 
-	Ogre::OverlayContainer* createContainer(int x, int y, int w, int h, const char* name) ;
-	Ogre::OverlayElement* createTextArea(const String& name, Real width, Real height, Real top, Real left, uint fontSize, const String& caption, bool show) ;
+	Ogre::v1::OverlayContainer* createContainer(int x, int y, int w, int h, const char* name) ;
+	Ogre::v1::OverlayElement* createTextArea(const String& name, Real width, Real height, Real top, Real left, uint fontSize, const String& caption, bool show) ;
 }
 
-Ogre::Overlay* createOverlay_(const char* name)
+Ogre::v1::Overlay* createOverlay_(const char* name)
 {
-	return Ogre::OverlayManager::getSingleton().create(name);
+	return Ogre::v1::OverlayManager::getSingleton().create(name);
 }
 
 void destroyOverlay_(const char* name)
 {
-	Ogre::OverlayManager::getSingleton().destroy(name);
+	Ogre::v1::OverlayManager::getSingleton().destroy(name);
 }
 void destroyOverlayElement_(const char* name)
 {
-	Ogre::OverlayManager::getSingleton().destroyOverlayElement(name);
+	Ogre::v1::OverlayManager::getSingleton().destroyOverlayElement(name);
 }
 void destroyAllOverlayElements_()
 {
-	Ogre::OverlayManager::getSingleton().destroyAllOverlayElements();
+	Ogre::v1::OverlayManager::getSingleton().destroyAllOverlayElements();
 }
-Ogre::OverlayElement* createTextArea_(const char* name, double width, double height, double top, double left, int fontSize, const char* caption, bool show)
+Ogre::v1::OverlayElement* createTextArea_(const char* name, double width, double height, double top, double left, int fontSize, const char* caption, bool show)
 {
 	return Ogre::createTextArea(name, width, height, top, left, fontSize, caption, show);
 }
@@ -169,12 +164,12 @@ std::string RE_::generateUniqueName()
   return std::string(RE::generateUniqueName().ptr());
 }
 
-Ogre::Entity* RE_::createPlane2(const char* id, m_real width, m_real height, int xsegment, int ysegment, int texSegx, int texSegy)
+Ogre::Item* RE_::createPlane2(const char* id, m_real width, m_real height, int xsegment, int ysegment, int texSegx, int texSegy)
 {
   return RE::createPlane(id, width, height, xsegment, ysegment, texSegx, texSegy);
 }
 
-Ogre::Entity* RE_::createPlane(const char* id, m_real width, m_real height, int xsegment, int ysegment)
+Ogre::Item* RE_::createPlane(const char* id, m_real width, m_real height, int xsegment, int ysegment)
 {
   return createPlane2(id, width, height, xsegment, ysegment, 1, 1);
 }

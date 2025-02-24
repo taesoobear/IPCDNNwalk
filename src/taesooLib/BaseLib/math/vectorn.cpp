@@ -3,6 +3,8 @@
 #include "mathclass.h"
 #include "float.h"
 #include "Metric.h"
+#include <sstream>
+#include <string>
 
 bool vectorn::isnan() const
 {
@@ -669,31 +671,6 @@ vectorn& vectorn::normalize(vectorn const& min, vectorn const& max)
 
 
 
-/*
-ostream& operator<<( ostream& os, vectorn const& a )
-{
-    os << "( ";
-    for( int i=0; i< a.size()-1; i++ )
-        os << a.v[i] << " , ";
-    os << a.v[a.size()-1] << " )";
-    return os;
-}
-
-istream& operator>>( istream& is, vectorn& a )
-{
-	static char	buf[256];
-    //is >> "(";
-	is >> buf;
-    for( int i=0; i< a.size()-1; i++ )
-	{
-		//is >> a.v[i] >> ",";
-		is >> a.v[i] >> buf;
-	}
-	//is >> a.v[a.size()-1] >> ")";
-	is >> a.v[a.size()-1] >> buf;
-    return is;
-}
-*/
 
 m_real	vectorn::cosTheta(vectorn const& b) const
 {
@@ -912,248 +889,7 @@ vectorn&  vectorn::resample(vectorn const& vec, int numSample)
 	return *this;
 }
 
-// namespace vectorUtil
 
-/*
-
-int vectorn::argNearest(m_real value) const
-{
-	int argNearest=-1;
-	m_real min=FLT_MAX;
-
-	m_real dist;
-	for(int i=0; i<size(); i++)
-	{
-		if((dist=(m_real)(ABS((*this)[i]-value))) < min)
-		{
-			min=dist;
-			argNearest=i;
-		}
-	}
-	return argNearest;
-}
-
-int vectorn::argMax(int_vectorn const& columns) const
-{
-	int argMax=-1;
-	m_real max=-FLT_MAX;
-	for(int i=0; i<columns.size(); i++)
-	{
-		if((*this)[columns[i]]>max)
-		{
-			max=(*this)[columns[i]];
-			argMax=columns[i];
-		}
-	}
-	return argMax;
-}
-
-
-vectorn&  vectorn::normalizeSignal(m_real min, m_real max)
-{
-m_real sigMin=minimum();
-m_real sigMax=maximum();
-
-for(int i=0; i<size(); i++)
-value(i)=(value(i)-sigMin)/(sigMax-sigMin)*(max-min)+min;
-
-return *this;
-}
-
-vectorn&
-vectorn::solve( matrixn const& a, vectorn const& b, int num, m_real tolerance, m_real damp )
-{
-vectorn &c = (*this);
-assert( a.rows()==a.cols() );
-assert( a.rows()==b.size() );
-c.setSize( b.size() );
-
-int flag = TRUE;
-for( int i=0; i<num && flag; i++ )
-{
-flag = FALSE;
-for( int j=0; j<a.rows(); j++ )
-{
-m_real r = b[j] - a[j]%c;
-c[j] += damp*r/a[j][j];
-if ( r>tolerance ) flag = TRUE;
-}
-}
-
-return c;
-}
-
-
-vectorn&
-vectorn::solve( matrixn const& a, vectorn const& b )
-{
-vectorn &c = (*this);
-assert( a.rows()==a.cols() );
-assert( a.rows()==b.size() );
-
-int n = b.size();
-c.setSize( n );
-c.assign( b );
-
-static matrixn mat; mat.setSize( n, n );
-mat.assign( a );
-
-static int* index;
-static int index_count = 0;
-if ( index_count<n )
-{
-if ( index_count>0 ) delete[] index;
-index_count = n;
-if ( index_count>0 ) index = new int[index_count];
-}
-
-mat.LUdecompose( index );
-mat.LUsubstitute( index, c );
-
-return c;
-}
-
-
-vectorn&
-vectorn::solve( matrixn const& a, vectorn const& b, m_real tolerance )
-{
-int m = a.rows();
-int n = a.cols();
-
-assert( m >= n );
-assert( b.size()==m );
-
-vectorn &c = (*this);
-c.setSize( n );
-
-static matrixn u; u.setSize( m, n );
-static vectorn w; w.setSize( n );
-static matrixn v; v.setSize( n, n );
-
-u.assign( a );
-NR_OLD::SVdecompose( u, w, v );
-
-int i, j;
-m_real s;
-static vectorn tmp; tmp.setSize( n );
-
-m_real wmax = 0.0f;
-for( j=0; j<n; j++ )
-if ( w[j] > wmax ) wmax = w[j];
-
-for( j=0; j<n; j++ )
-if ( w[j] < wmax * tolerance ) w[j] = 0.0f;
-
-for( j=0; j<n; j++ )
-{
-s = 0.0f;
-if ( w[j] )
-{
-for( i=0; i<m; i++ )
-s += u[i][j] * b[i];
-s /= w[j];
-}
-tmp[j] = s;
-}
-
-for ( j=0; j<n; j++ )
-{
-s = 0.0;
-for ( i=0; i<n; i++ )
-s += v[j][i] * tmp[i];
-c[j] = s;
-}
-
-return c;
-}
-
-
-vectorn&  vectorn::colon(m_real start, m_real stepSize, int nSize)
-{
-if(nSize!=-1)
-setSize(nSize);
-
-m_real cur=start;
-for(int i=0; i<size(); i++)
-{
-v[i]=cur;
-cur+=stepSize;
-}
-return *this;
-}
-
-vectorn& vectorn::linspace(m_real x1, m_real x2, int nSize)
-{
-if(nSize!=-1)
-setSize(nSize);
-
-// simple sampling
-m_real len=x2-x1;
-
-m_real factor=1.f/((m_real)size()-1);
-for(int i=0; i<size(); i++)
-{
-// position : increases from 0 to 1
-m_real position=((m_real)i)*factor;
-(*this)[i]=position*len+x1;
-}
-return *this;
-}
-
-vectorn&  vectorn::uniform(m_real x1, m_real x2, int nSize)
-{
-if(nSize!=-1)
-setSize(nSize);
-
-// simple sampling
-m_real len=x2-x1;
-m_real factor=1.f/((m_real)size());
-
-for(int i=0; i<size(); i++)
-{
-m_real position=((m_real)(i+(i+1)))*factor/2.f;
-(*this)[i]=position*len+x1;
-}
-return *this;
-}
-
-
-vectorn&  vectorn::makeSamplingIndex(int nLen, int numSample)
-{
-setSize(numSample);
-
-// simple sampling
-m_real len=(m_real)nLen;
-
-m_real factor=1.f/(m_real)numSample;
-for(int i=0; i<numSample; i++)
-{
-m_real position=((m_real)i+0.5f)*factor;
-(*this)[i]=(m_real)(position*len);
-}
-return *this;
-}
-
-vectorn& vectorn::interpolate(vectorn const& a, vectorn const& b, m_real t)
-{
-ASSERT(a.size()==b.size());
-setSize(a.size());
-
-for(int i=0; i<n; i++)
-{
-(*this)[i]=a[i]*(1-t)+b[i]*t;
-}
-return *this;
-}
-
-
-vectorn& vectorn::sort(vectorn const& source, int_vectorn& sortedIndex)
-{
-sortedIndex.sortedOrder(source);
-return extract(source, sortedIndex);
-}
-
-*/
 intvectorn& intvectorn::findIndex(intvectorn const& source, int value)
 {
 	int count=0;
@@ -1450,4 +1186,24 @@ std::ostream& operator<< ( std::ostream& os, const vectorn& u )
 std::ostream& operator<< ( std::ostream& os, const intvectorn& u )
 {
 	return (os << u.output().ptr());
+}
+void vectorn::parseString(int n_reserve, const std::string &source)
+{
+	std::stringstream ss;
+	ss.str(source);
+	reserve(n_reserve);
+	setSize(0);
+	std::string t;
+	while ( ss >> t) 
+		pushBack(std::stof(t));
+}
+void intvectorn::parseString(int n_reserve, const std::string &source)
+{
+	std::stringstream ss;
+	ss.str(source);
+	reserve(n_reserve);
+	setSize(0);
+	std::string t;
+	while ( ss >> t) 
+		pushBack(std::stof(t));
 }

@@ -20,7 +20,7 @@ function shadowMaterial(input)
    return input
 end
 
-if RE.getOgreVersionMinor()>=12 then
+if RE.getOgreVersionMinor()>=12 then 
 	numMainLights=2 -- 5이상이어야 품질이 좋지만, m1 macbook에서 너무 느림
 	if RE.useSeperateOgreWindow and RE.useSeperateOgreWindow() then
 		numMainLights=5
@@ -28,4 +28,6 @@ if RE.getOgreVersionMinor()>=12 then
 	if depthShadow then
 		numMainLights=1 -- no difference
 	end
+elseif RE.getOgreVersionMinor()==2 then
+	numMainLights=5
 end

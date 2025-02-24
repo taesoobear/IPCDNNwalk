@@ -22,6 +22,7 @@ public:
 	// a.unpack(...)
 	// a.close()
 
+	virtual bool readable() { return buffer.size()>0;}
 	void openRead(){readCounter=0;}
 	void openWrite(){buffer.clear();}
 	virtual void _packArray(void *buffer, int count, size_t size);

@@ -411,6 +411,18 @@ void matrix4::setScaling(m_real sx, m_real sy, m_real sz)
 #endif
 
 }
+void matrix4::setScaling(const vector3 & v, bool bPreserveTranslation)
+{
+	if (bPreserveTranslation)
+	{
+		setValue(v.x,0,0,_14, 
+				0,v.y,0,_24,
+				0,0,v.z, _34,
+				0,0,0,1);
+	}
+	else
+		setValue(v.x,0,0,0,v.y,0,0,0,v.z);
+}
 
 void matrix4::transpose(const matrix4& a)
 {

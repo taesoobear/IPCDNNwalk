@@ -24,6 +24,7 @@ namespace OBJloader
 		int elementType;
 		vector3 elementSize;
 		transf tf; // actual vertices have already this tf applied, so do not double-multiply.
+		std::string material;
 	};
 
 	class Geometry : public OBJloader::Mesh
@@ -32,6 +33,7 @@ namespace OBJloader
 		std::vector<Element> elements;
 		inline int numElements() const {return elements.size();}
 		inline Element const& element(int i) const {return elements[i];}
+		inline Element & _element(int i) {return elements[i];}
 		double totalVolume(); // returns volume if all elementType!=OBJ, otherwise returns 0;
 
 		// each element corresponds to each faceGroup.
@@ -48,6 +50,13 @@ namespace OBJloader
 		void assignMesh(OBJloader::Mesh const& otherMesh);
 		void assignTerrain(OBJloader::Terrain const& terrain, vector3 const & center);
 
+		void _addVertices(const vectorn& vertices);
+		void _addNormals(const vectorn& vertices);
+		void _addTexCoords(const vectorn& vertices);
+		/// all indices: vertexIndex0, normalIndex0, texIndex0, vertexIndex1, normalIndex1, texIndex1, ... (The actual vertex index will be vertexIndex0+vstart.)
+		void _addSubMesh(int vstart, int nstart, int texstart, int VERTEX_OFFSET, int NORMAL_OFFSET, int TEXCOORD_OFFSET, const intvectorn& all_indices);
+		/// all indices: vertexIndex0, normalIndex0, vertexIndex1, ... (The actual vertex index will be vertexIndex0+vstart.)
+		void _addSubMeshPosNormal(int vstart, int nstart, int VERTEX_OFFSET, int NORMAL_OFFSET, const intvectorn& all_indices) ;
 
 		void merge(Geometry const& a, Geometry const& b);
 		void rigidTransform(transf const& b);

@@ -21,8 +21,8 @@ namespace sz0
 // string class mainly for internal use.
 //
 // examples:
-// to convert TString aaa to std::string -->          std::string(aaa.ptr())
-// to convert std::string to TString -->              TString(aaa.c_str()) 
+// to convert TString aaa to std::string -->          aaa.tostring()
+// to convert std::string to TString -->              TString(aaa)
 //
 /// Do not use for printf input directly! O: printf("%s", a.ptr()); X: printf("%s", a)
 class TString
@@ -33,6 +33,7 @@ public:
 	TString(const char* str, int i);
 	// if(str=="aaa" && i=0) -> this="aaa0"
 	TString(const TString& str);
+	TString(const std::string& str):TString(str.c_str()){}
 	TString(const sz0::Operator& op);
 	~TString();
 

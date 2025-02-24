@@ -22,7 +22,7 @@ class transf
 
 	transf project2D() const;
     // constructors
-    transf() {};
+    transf() {identity();}
     transf( quater const& a, vector3 const& b ) { rotation=a; translation=b; }
     transf( vector3 const& b ) { rotation.identity(); translation=b; }
     transf( quater const& a ) { rotation=a; translation.zero();}

@@ -8,6 +8,15 @@
 #define NO_DEBUG_GUI
 //#define DEBUG_OUTPUT
 static double _RO=TO_RADIAN(130);
+static double _MAX_LENGTH_RATIO=0.1;
+void MotionUtil::setMaxLengthAdjustmentRatio(double mr)
+{
+	_MAX_LENGTH_RATIO=mr;
+}
+double MotionUtil::getMaxLengthAdjustmentRatio()
+{
+	return _MAX_LENGTH_RATIO;
+}
 // l1과 l2 사이의 각도.  in [0, M_PI]
 std::pair<m_real,bool> angle(m_real l1, m_real l2, m_real l3)
 {
@@ -176,7 +185,15 @@ double MotionUtil::getKneeDampingCoef_RO()
 #include "../../MainLib/OgreFltk/objectList.h"
 #endif
 
-int MotionUtil::limbIK_1DOFknee( const vector3& goal, const vector3& sh, const vector3& v1, const vector3& v2, const vector3& v3, const vector3& v4,
+double MotionUtil::limbIK_1DOFknee( const vector3& goal, const vector3& sh, const vector3& v1, const vector3& v2, const vector3& v3, const vector3& v4, quater& qq1, quater& qq2, vector3 const& axis, bool kneeDamping, double kneeDampingConstant, bool lengthAdjust )
+{
+	double r;
+	if(lengthAdjust)
+		return MotionUtil::limbIK_1DOFknee(goal, sh, v1, v2, v3, v4, qq1, qq2, axis, kneeDamping, &r, kneeDampingConstant);
+	else
+		return MotionUtil::limbIK_1DOFknee(goal, sh, v1, v2, v3, v4, qq1, qq2, axis, kneeDamping, NULL, kneeDampingConstant);
+}
+double MotionUtil::limbIK_1DOFknee( const vector3& goal, const vector3& sh, const vector3& v1, const vector3& v2, const vector3& v3, const vector3& v4,
 			quater& qq1, quater& qq2, vector3 const& axis, bool kneeDamping, m_real* lengthAdjust, double kneeDampingConstant)
 {
 	// 1은 shoulder, 2는 elbow, 3은 wrist
@@ -273,62 +290,87 @@ int MotionUtil::limbIK_1DOFknee( const vector3& goal, const vector3& sh, const v
 		qq2=qq1*lq2;
 		vector3 d23_after=qq2*ld23;
 
+		double r=0.0;
+		if(lengthAdjust)
+		{
+			r=increaseLengthAmt(d12_len, d23_len, d1G_len, cos(desiredAngle));
+			vector3 dir;
+
+			// prevent too much change.
+			if( r/d12_len>_MAX_LENGTH_RATIO)
+				r=d12_len*_MAX_LENGTH_RATIO ;
+			else if(r/d12_len<-_MAX_LENGTH_RATIO )
+				r=d12_len*-_MAX_LENGTH_RATIO ;
+
+			dir.normalize(d12);
+			d12+=dir*r;
+
+			dir.normalize(d23_after);
+			d23_after+=dir*r;
+
+			*lengthAdjust=r;
+		}
+
 		vector3 d13_after=d12+d23_after;
+
 		q_delta2.axisToAxis(d13_after, d13);
 		qq1=q_delta1*q_delta2*qq1;
 		qq2=q_delta1*q_delta2*qq2;
+		return r;
 	}
-	else{
+	else
+	{
 		// buggy
-	// local orientation at 2.
-	quater lq2;
-	// from qq2=qq1*lq2
-	lq2.mult(qq1.inverse(), qq2);
+		// local orientation at 2.
+		quater lq2;
+		// from qq2=qq1*lq2
+		lq2.mult(qq1.inverse(), qq2);
 
-	quater q_delta2(currAngle-desiredAngle, axis);
+		quater q_delta2(currAngle-desiredAngle, axis);
 
 #ifdef DEBUG_OUTPUT
-	printf("lq2 %f %s %f %s\n",lq2.rotationAngle(),  lq2.output().ptr(), q_delta2.rotationAngle(), q_delta2.output().ptr());
+		printf("lq2 %f %s %f %s\n",lq2.rotationAngle(),  lq2.output().ptr(), q_delta2.rotationAngle(), q_delta2.output().ptr());
 #endif
 
-	vector3 d23_after;
+		vector3 d23_after;
 
-	if(lengthAdjust)
-	{
-		m_real r=increaseLengthAmt(d12_len, d23_len, d1G_len, cos(desiredAngle));
-		vector3 dir;
+		m_real r=0.0;
+		if(lengthAdjust)
+		{
+			r=increaseLengthAmt(d12_len, d23_len, d1G_len, cos(desiredAngle));
+			vector3 dir;
 
-		// prevent too much change.
-		if( r/d12_len>0.05 )
-			r=d12_len*0.05;
-		else if(r/d12_len<-0.05)
-			r=d12_len*-0.05;
+			// prevent too much change.
+			if( r/d12_len>0.05 )
+				r=d12_len*0.05;
+			else if(r/d12_len<-0.05)
+				r=d12_len*-0.05;
 
-		dir.normalize(d12);
-		d12=d12+dir*r;
+			dir.normalize(d12);
+			d12=d12+dir*r;
 
-		dir.normalize(d23);
-		d23=d23+dir*r;
+			dir.normalize(d23);
+			d23=d23+dir*r;
 
-		*lengthAdjust=r;
+			*lengthAdjust=r;
+		}
+
+		d23_after.rotate(qq2*q_delta2*qq2.inverse(), d23);
+
+		vector3 d13_after=d12+d23_after;
+
+		quater q_delta1;
+		q_delta1.axisToAxis(d13_after, d1G);
+
+
+		// qq1=q_delta1*qq1
+		// qq2=q_delta1*qq2*q_delta2
+
+		qq1=q_delta1*qq1;
+		qq2=q_delta1*qq2*q_delta2;
+
+		return r;
 	}
-
-	d23_after.rotate(qq2*q_delta2*qq2.inverse(), d23);
-
-	vector3 d13_after=d12+d23_after;
-
-	quater q_delta1;
-	q_delta1.axisToAxis(d13_after, d1G);
-
-
-	// qq1=q_delta1*qq1
-	// qq2=q_delta1*qq2*q_delta2
-
-	qq1=q_delta1*qq1;
-	qq2=q_delta1*qq2*q_delta2;
-
-	}
-	return 0;
 }
 void MotionUtil::IKSolveAnalytic(const MotionLoader& skeleton, Bone& bone, vector3 input_goal, intvectorn& index, quaterN& delta_rot, bool bKneeDamping, bool bToeCorrection)
 {

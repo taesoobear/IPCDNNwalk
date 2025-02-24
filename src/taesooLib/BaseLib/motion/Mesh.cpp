@@ -2170,6 +2170,18 @@ void SkinnedMeshFromVertexInfo::calcVertexPositions(BoneForwardKinematics const&
 	for (int i=0; i<mesh.numVertex(); i++)
 		((SkinnedMeshFromVertexInfo&)*this)._calcVertexPosition(fkSolver, i, mesh.getVertex(i));
 }
+void SkinnedMeshFromVertexInfo::calcVertexPositions(ScaledBoneKinematics const& fkSolver, OBJloader::Mesh& mesh) const
+{
+	Msg::verify(mesh.numVertex()==vertices.size(), "#vertex does not match");
+	for (int i=0; i<mesh.numVertex(); i++)
+	{
+		auto& vpos=mesh.getVertex(i);
+		vpos.zero();
+		auto& vi=vertices[i];
+		for (int j=0; j < vi.weights.size(); j++)
+			vpos+=(fkSolver.global(vi.treeIndices(j))*vi.localpos(j))*vi.weights(j);
+	}
+}
 void SkinnedMeshFromVertexInfo::calcVertexNormals(MotionLoader const& loader,quaterN const& bindpose_global, vector3N const& localNormal, OBJloader::Mesh& mesh) const
 {
 	Msg::verify(mesh.numVertex()==vertices.size(), "#vertex does not match");
@@ -2203,6 +2215,28 @@ void SkinnedMeshFromVertexInfo::calcVertexNormals(BoneForwardKinematics const& f
 		quater q;
 		q.inverse(bindpose_global(i));
 		delta(i)=fkSolver.global(i).rotation*q;
+	}
+
+	for (int vertexIndex=0; vertexIndex<mesh.numVertex(); vertexIndex++)
+	{
+		auto& vi=vertices[vertexIndex];
+		auto& normal=mesh.getNormal(vertexIndex);
+		normal.zero();
+		for (int j=0; j < vi.weights.size(); j++)
+			normal+=(delta(vi.treeIndices(j))* (localNormal(vertexIndex))*vi.weights(j));
+		normal.normalize();
+	}
+}
+void SkinnedMeshFromVertexInfo::calcVertexNormals(ScaledBoneKinematics const& fkSolver,quaterN const& bindpose_global, vector3N const& localNormal, OBJloader::Mesh& mesh) const
+{
+	Msg::verify(mesh.numVertex()==vertices.size(), "#vertex does not match");
+	Msg::verify(mesh.numNormal()==mesh.numVertex(), "seperate normal indices are not supported!");
+	quaterN delta(bindpose_global.size());
+	for(int i=1; i<fkSolver.numBone(); i++)
+	{
+		quater q;
+		q.inverse(bindpose_global(i));
+		delta(i)=fkSolver.globalRot(i)*q;
 	}
 
 	for (int vertexIndex=0; vertexIndex<mesh.numVertex(); vertexIndex++)

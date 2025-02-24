@@ -324,6 +324,7 @@ namespace OBJloader
 
 class MotionLoader;
 class BoneForwardKinematics;
+class ScaledBoneKinematics;
 class SkinnedMeshFromVertexInfo
 {
 	public:
@@ -348,9 +349,11 @@ class SkinnedMeshFromVertexInfo
 		// modifies mesh
 		void calcVertexPositions(MotionLoader const& loader, OBJloader::Mesh& mesh) const;
 		void calcVertexPositions(BoneForwardKinematics const& fkSolver, OBJloader::Mesh& mesh) const;
+		void calcVertexPositions(ScaledBoneKinematics const& fkSolver, OBJloader::Mesh& mesh) const;
 		// assumes that both meshes has a normal buffer 
 		void calcVertexNormals(MotionLoader const& loader, quaterN const& bindpose_global, vector3N const& local_normal, OBJloader::Mesh& mesh) const;
 		void calcVertexNormals(BoneForwardKinematics const& fkSolver, quaterN const& bindpose_global, vector3N const& local_normal, OBJloader::Mesh& mesh) const;
+		void calcVertexNormals(ScaledBoneKinematics const& fkSolver, quaterN const& bindpose_global, vector3N const& local_normal, OBJloader::Mesh& mesh) const;
 
 		// modifies self.
 		void calcLocalVertexPositions(MotionLoader const& loader, OBJloader::Mesh const& mesh);

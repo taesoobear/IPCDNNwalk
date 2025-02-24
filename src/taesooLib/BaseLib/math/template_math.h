@@ -38,7 +38,7 @@ class _tvectorn
 
 	friend class _tmat<T_base>;
 
-	T* getStride1Pointer() const;
+	void getStride1Pointer(_tvectorn<T,T_base>& copy) const;
 protected:
 
 	// disable default constructors (Do not use this class directly!)
@@ -699,21 +699,20 @@ void _tvectorn<T, T_base>::assignSelective(int N, ...)
 }
 
 template <class T, class T_base>
-T* _tvectorn<T, T_base>::getStride1Pointer() const
+void _tvectorn<T, T_base>::getStride1Pointer(_tvectorn<T,T_base>& copy) const
 {
 	// 한 벡터가 여러번 반복해서 읽어지는 경우, stride가 1이 아닌경우 1인 놈에 카피해서 읽는것이 더 효율적임.
-	T* bb;
 	if(stride==1)
-		bb=ptr;
+	{
+		copy.assignRef(*this);
+	}
 	else
 	{
-		static _tvectorn<T, T_base> copy;
 		copy.setSize(size());
-		bb=copy.ptr;
+		T* bb=copy.ptr;
 		for(int i=0; i<size(); i++)
 			bb[i]=value(i);
 	}
-	return bb;
 }
 
 template <class T, class T_base>
@@ -723,7 +722,9 @@ void _tvectorn<T, T_base>::multmat( _tmat<T> const& a, _tvectorn<T, T_base> cons
     RANGE_ASSERT( a.cols()==b.size() );
     c.setSize( a.rows() );
 
-	T* bb=b.getStride1Pointer() ;
+	_tvectorn<T, T_base> copy;
+	b.getStride1Pointer(copy) ;
+	T* bb=copy.dataPtr();
 	for( int i=0; i<a.rows(); i++ )
     {
         T c_i= 0.0;
@@ -742,7 +743,9 @@ void _tvectorn<T, T_base>::multmat( _tvectorn<T, T_base> const& b, _tmat<T> cons
     c.setSize( a.cols() );
 
 
-	T* bb=b.getStride1Pointer() ;
+	_tvectorn<T, T_base> copy;
+	b.getStride1Pointer(copy) ;
+	T* bb=copy.dataPtr();
     for( int i=0; i<a.cols(); i++ )
     {
         T c_i= 0.0;

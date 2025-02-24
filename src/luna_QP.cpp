@@ -38,83 +38,85 @@
 // But you can declare a class explictly by using something like decl='class AAA;'  // 1308
 // Also, you can add a "#include" sentence by using headerFile="AAA.h"  // 1309
 // The number at the end of each line denotes the line number of luna_gen.lua which generated that line // 1312
-class CMAwrap;                                                // 1316
-class Individual;                                             // 1316
-class FitnessCalcLua;                                         // 1316
-template<>                                                    // 1327
+class CMAwrap;                                                // 1319
+class Individual;                                             // 1319
+class FitnessCalcLua;                                         // 1319
+#if defined (USE_MPI)                                         // 1316
+#endif //defined (USE_MPI)                                    // 1322
+template<>                                                    // 1333
  class LunaTraits<CMAwrap > {
-public:                                                       // 1329
-    static const char className[];                            // 1338
-    static const int uniqueID;                                // 1339
-    static luna_RegType methods[];                            // 1340
-    static CMAwrap* _bind_ctor(lua_State *L);                 // 1342
-    static void _bind_dtor(CMAwrap* obj);                     // 1343
-    typedef CMAwrap base_t;                                   // 1345
-};                                                            // 1351
-template<>                                                    // 1327
+public:                                                       // 1335
+    static const char className[];                            // 1344
+    static const int uniqueID;                                // 1345
+    static luna_RegType methods[];                            // 1346
+    static CMAwrap* _bind_ctor(lua_State *L);                 // 1348
+    static void _bind_dtor(CMAwrap* obj);                     // 1349
+    typedef CMAwrap base_t;                                   // 1351
+};                                                            // 1357
+template<>                                                    // 1333
  class LunaTraits<FitnessCalc > {
-public:                                                       // 1329
-    static const char className[];                            // 1338
-    static const int uniqueID;                                // 1339
-    static luna_RegType methods[];                            // 1340
-    static FitnessCalc* _bind_ctor(lua_State *L);             // 1342
-    static void _bind_dtor(FitnessCalc* obj);                 // 1343
-    typedef FitnessCalc base_t;                               // 1345
-};                                                            // 1351
-template<>                                                    // 1327
+public:                                                       // 1335
+    static const char className[];                            // 1344
+    static const int uniqueID;                                // 1345
+    static luna_RegType methods[];                            // 1346
+    static FitnessCalc* _bind_ctor(lua_State *L);             // 1348
+    static void _bind_dtor(FitnessCalc* obj);                 // 1349
+    typedef FitnessCalc base_t;                               // 1351
+};                                                            // 1357
+template<>                                                    // 1333
  class LunaTraits<Individual > {
-public:                                                       // 1329
-    static const char className[];                            // 1338
-    static const int uniqueID;                                // 1339
-    static luna_RegType methods[];                            // 1340
-    static Individual* _bind_ctor(lua_State *L);              // 1342
-    static void _bind_dtor(Individual* obj);                  // 1343
-    typedef Individual base_t;                                // 1345
-static luna__hashmap properties;                              // 1347
-static luna__hashmap write_properties;                        // 1348
-};                                                            // 1351
-template<>                                                    // 1327
+public:                                                       // 1335
+    static const char className[];                            // 1344
+    static const int uniqueID;                                // 1345
+    static luna_RegType methods[];                            // 1346
+    static Individual* _bind_ctor(lua_State *L);              // 1348
+    static void _bind_dtor(Individual* obj);                  // 1349
+    typedef Individual base_t;                                // 1351
+static luna__hashmap properties;                              // 1353
+static luna__hashmap write_properties;                        // 1354
+};                                                            // 1357
+template<>                                                    // 1333
  class LunaTraits<Population > {
-public:                                                       // 1329
-    static const char className[];                            // 1338
-    static const int uniqueID;                                // 1339
-    static luna_RegType methods[];                            // 1340
-    static Population* _bind_ctor(lua_State *L);              // 1342
-    static void _bind_dtor(Population* obj);                  // 1343
-    typedef Population base_t;                                // 1345
-};                                                            // 1351
-template<>                                                    // 1327
+public:                                                       // 1335
+    static const char className[];                            // 1344
+    static const int uniqueID;                                // 1345
+    static luna_RegType methods[];                            // 1346
+    static Population* _bind_ctor(lua_State *L);              // 1348
+    static void _bind_dtor(Population* obj);                  // 1349
+    typedef Population base_t;                                // 1351
+};                                                            // 1357
+template<>                                                    // 1333
  class LunaTraits<FitnessCalcLua > {
-public:                                                       // 1329
-    static const char className[];                            // 1338
-    static const int uniqueID;                                // 1339
-    static luna_RegType methods[];                            // 1340
-    static FitnessCalcLua* _bind_ctor(lua_State *L);          // 1342
-    static void _bind_dtor(FitnessCalcLua* obj);              // 1343
-    typedef FitnessCalc base_t;                               // 1345
-};                                                            // 1351
+public:                                                       // 1335
+    static const char className[];                            // 1344
+    static const int uniqueID;                                // 1345
+    static luna_RegType methods[];                            // 1346
+    static FitnessCalcLua* _bind_ctor(lua_State *L);          // 1348
+    static void _bind_dtor(FitnessCalcLua* obj);              // 1349
+    typedef FitnessCalc base_t;                               // 1351
+};                                                            // 1357
  class luna__interface_15473501_Eigen {
-public:                                                       // 1329
-    static const char moduleName[];                           // 1334
-    typedef LunaModule<luna__interface_15473501_Eigen> luna_t; // 1335
-    static luna_RegType methods[];                            // 1336
-};                                                            // 1351
-#if defined (USE_MPI)                                         // 1323
+public:                                                       // 1335
+    static const char moduleName[];                           // 1340
+    typedef LunaModule<luna__interface_15473501_Eigen> luna_t; // 1341
+    static luna_RegType methods[];                            // 1342
+};                                                            // 1357
+#if defined (USE_MPI)                                         // 1329
  class luna__interface_15473501_MPI {
-public:                                                       // 1329
-    static const char moduleName[];                           // 1334
-    typedef LunaModule<luna__interface_15473501_MPI> luna_t;  // 1335
-    static luna_RegType methods[];                            // 1336
-};                                                            // 1351
-#endif //defined (USE_MPI)                                    // 1353
-#endif                                                        // 1356
-template<>                                                    // 1389
+public:                                                       // 1335
+    static const char moduleName[];                           // 1340
+    typedef LunaModule<luna__interface_15473501_MPI> luna_t;  // 1341
+    static luna_RegType methods[];                            // 1342
+};                                                            // 1357
+#endif //defined (USE_MPI)                                    // 1359
+#endif                                                        // 1362
+template<>                                                    // 1395
  class impl_LunaTraits<CMAwrap > {
-public:                                                       // 1392
-    typedef Luna<CMAwrap > luna_t;                            // 1396
-// : number denotes the line number of luna_gen.lua that generated the sentence // 1399
+public:                                                       // 1398
+    typedef Luna<CMAwrap > luna_t;                            // 1402
+// : number denotes the line number of luna_gen.lua that generated the sentence // 1405
   inline static bool _lg_typecheck_ctor_overload_1(lua_State *L)
-  {                                                           // 1408
+  {                                                           // 1414
     if( lua_gettop(L)!=4) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=10150210) return false; // vectorn // 629
     if( Luna<void>::get_uniqueid(L,2)!=10150210) return false; // vectorn // 629
@@ -123,7 +125,7 @@ public:                                                       // 1392
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_ctor_overload_2(lua_State *L)
-  {                                                           // 1408
+  {                                                           // 1414
     if( lua_gettop(L)!=3) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=10150210) return false; // vectorn // 629
     if( Luna<void>::get_uniqueid(L,2)!=10150210) return false; // vectorn // 629
@@ -131,38 +133,38 @@ public:                                                       // 1392
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_testForTermination(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=1) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=64707780) return false; // CMAwrap // 629
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_samplePopulation(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=1) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=64707780) return false; // CMAwrap // 629
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_numPopulation(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=1) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=64707780) return false; // CMAwrap // 629
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_dim(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=1) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=64707780) return false; // CMAwrap // 629
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_getPopulation(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=2) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=64707780) return false; // CMAwrap // 629
     if( lua_isnumber(L,2)==0) return false;                   // 631
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_setVal(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=3) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=64707780) return false; // CMAwrap // 629
     if( lua_isnumber(L,2)==0) return false;                   // 631
@@ -170,14 +172,14 @@ public:                                                       // 1392
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_resampleSingle(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=2) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=64707780) return false; // CMAwrap // 629
     if( lua_isnumber(L,2)==0) return false;                   // 631
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_resampleSingleFrom(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=3) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=64707780) return false; // CMAwrap // 629
     if( lua_isnumber(L,2)==0) return false;                   // 631
@@ -185,40 +187,40 @@ public:                                                       // 1392
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_update(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=1) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=64707780) return false; // CMAwrap // 629
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_getMean(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=2) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=64707780) return false; // CMAwrap // 629
     if( Luna<void>::get_uniqueid(L,2)!=10150210) return false; // vectorn // 629
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_getBest(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=2) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=64707780) return false; // CMAwrap // 629
     if( Luna<void>::get_uniqueid(L,2)!=10150210) return false; // vectorn // 629
     return true;
   }                                                           // 656
   inline static CMAwrap* _bind_ctor_overload_1(lua_State *L)
-  {                                                           // 1430
+  {                                                           // 1436
     vectorn const & start_p=static_cast<vectorn &>(*Luna<vectorn >::check(L,1)); // 568
     vectorn const & stdev=static_cast<vectorn &>(*Luna<vectorn >::check(L,2)); // 568
     int populationSize=(int)lua_tonumber(L,3);                // 576
     int mu=(int)lua_tonumber(L,4);                            // 576
-    return new CMAwrap( start_p, stdev, populationSize, mu);  // 1435
-  }                                                           // 1436
+    return new CMAwrap( start_p, stdev, populationSize, mu);  // 1441
+  }                                                           // 1442
   inline static CMAwrap* _bind_ctor_overload_2(lua_State *L)
-  {                                                           // 1430
+  {                                                           // 1436
     vectorn const & start_p=static_cast<vectorn &>(*Luna<vectorn >::check(L,1)); // 568
     vectorn const & stdev=static_cast<vectorn &>(*Luna<vectorn >::check(L,2)); // 568
     int populationSize=(int)lua_tonumber(L,3);                // 576
-    return new CMAwrap( start_p, stdev, populationSize);      // 1435
-  }                                                           // 1436
+    return new CMAwrap( start_p, stdev, populationSize);      // 1441
+  }                                                           // 1442
   static CMAwrap* _bind_ctor(lua_State *L)
   {                                                           // 233
     if (_lg_typecheck_ctor_overload_1(L)) return _bind_ctor_overload_1(L); // 236
@@ -228,7 +230,7 @@ public:                                                       // 1392
     return NULL;                                              // 244
   }                                                           // 245
   static int _bind_testForTermination(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_testForTermination(L)) { char msg[]="luna typecheck failed:\n  testForTermination(CMAwrap& self,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     CMAwrap& self=static_cast<CMAwrap &>(*Luna<CMAwrap >::check(L,1)); // 568
@@ -242,7 +244,7 @@ public:                                                       // 1392
     return 1;                                                 // 355
   }                                                           // 374
   static int _bind_samplePopulation(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_samplePopulation(L)) { char msg[]="luna typecheck failed:\n  samplePopulation(CMAwrap& self,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     CMAwrap& self=static_cast<CMAwrap &>(*Luna<CMAwrap >::check(L,1)); // 568
@@ -255,7 +257,7 @@ public:                                                       // 1392
     return 0;                                                 // 298
   }                                                           // 374
   static int _bind_numPopulation(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_numPopulation(L)) { char msg[]="luna typecheck failed:\n  numPopulation(CMAwrap& self,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     CMAwrap& self=static_cast<CMAwrap &>(*Luna<CMAwrap >::check(L,1)); // 568
@@ -269,7 +271,7 @@ public:                                                       // 1392
     return 1;                                                 // 344
   }                                                           // 374
   static int _bind_dim(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_dim(L)) { char msg[]="luna typecheck failed:\n  dim(CMAwrap& self,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     CMAwrap& self=static_cast<CMAwrap &>(*Luna<CMAwrap >::check(L,1)); // 568
@@ -283,7 +285,7 @@ public:                                                       // 1392
     return 1;                                                 // 344
   }                                                           // 374
   static int _bind_getPopulation(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_getPopulation(L)) { char msg[]="luna typecheck failed:\n  getPopulation(CMAwrap& self,int i,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     CMAwrap& self=static_cast<CMAwrap &>(*Luna<CMAwrap >::check(L,1)); // 568
@@ -298,7 +300,7 @@ public:                                                       // 1392
     return 1;                                                 // 338
   }                                                           // 374
   static int _bind_setVal(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_setVal(L)) { char msg[]="luna typecheck failed:\n  setVal(CMAwrap& self,int i,double eval,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     CMAwrap& self=static_cast<CMAwrap &>(*Luna<CMAwrap >::check(L,1)); // 568
@@ -313,7 +315,7 @@ public:                                                       // 1392
     return 0;                                                 // 298
   }                                                           // 374
   static int _bind_resampleSingle(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_resampleSingle(L)) { char msg[]="luna typecheck failed:\n  resampleSingle(CMAwrap& self,int i,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     CMAwrap& self=static_cast<CMAwrap &>(*Luna<CMAwrap >::check(L,1)); // 568
@@ -327,7 +329,7 @@ public:                                                       // 1392
     return 0;                                                 // 298
   }                                                           // 374
   static int _bind_resampleSingleFrom(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_resampleSingleFrom(L)) { char msg[]="luna typecheck failed:\n  resampleSingleFrom(CMAwrap& self,int i,vectorn const & _arg2,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     CMAwrap& self=static_cast<CMAwrap &>(*Luna<CMAwrap >::check(L,1)); // 568
@@ -342,7 +344,7 @@ public:                                                       // 1392
     return 0;                                                 // 298
   }                                                           // 374
   static int _bind_update(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_update(L)) { char msg[]="luna typecheck failed:\n  update(CMAwrap& self,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     CMAwrap& self=static_cast<CMAwrap &>(*Luna<CMAwrap >::check(L,1)); // 568
@@ -355,7 +357,7 @@ public:                                                       // 1392
     return 0;                                                 // 298
   }                                                           // 374
   static int _bind_getMean(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_getMean(L)) { char msg[]="luna typecheck failed:\n  getMean(CMAwrap& self,vectorn & out,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     CMAwrap& self=static_cast<CMAwrap &>(*Luna<CMAwrap >::check(L,1)); // 568
@@ -369,7 +371,7 @@ public:                                                       // 1392
     return 0;                                                 // 298
   }                                                           // 374
   static int _bind_getBest(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_getBest(L)) { char msg[]="luna typecheck failed:\n  getBest(CMAwrap& self,vectorn & out,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     CMAwrap& self=static_cast<CMAwrap &>(*Luna<CMAwrap >::check(L,1)); // 568
@@ -382,82 +384,82 @@ public:                                                       // 1392
                                                               // 297
     return 0;                                                 // 298
   }                                                           // 374
-}; // end of class impl_LunaTraits<CMAwrap >                  // 1612
+}; // end of class impl_LunaTraits<CMAwrap >                  // 1618
   CMAwrap* LunaTraits<CMAwrap >::_bind_ctor(lua_State *L)
-  {                                                           // 1618
-    return impl_LunaTraits<CMAwrap >::_bind_ctor(L);          // 1619
-  }                                                           // 1620
-  void LunaTraits<CMAwrap >::_bind_dtor(CMAwrap* obj){        // 1622
-    delete obj;                                               // 1623
-  }                                                           // 1624
-const char LunaTraits<CMAwrap >::className[] = "math_CMAwrap"; // 1642
-const int LunaTraits<CMAwrap >::uniqueID = 64707780;          // 1643
-luna_RegType LunaTraits<CMAwrap >::methods[] = {              // 1649
-    {"testForTermination", &impl_LunaTraits<CMAwrap >::_bind_testForTermination}, // 1654
-    {"samplePopulation", &impl_LunaTraits<CMAwrap >::_bind_samplePopulation}, // 1654
-    {"numPopulation", &impl_LunaTraits<CMAwrap >::_bind_numPopulation}, // 1654
-    {"dim", &impl_LunaTraits<CMAwrap >::_bind_dim},           // 1654
-    {"getPopulation", &impl_LunaTraits<CMAwrap >::_bind_getPopulation}, // 1654
-    {"setVal", &impl_LunaTraits<CMAwrap >::_bind_setVal},     // 1654
-    {"resampleSingle", &impl_LunaTraits<CMAwrap >::_bind_resampleSingle}, // 1654
-    {"resampleSingleFrom", &impl_LunaTraits<CMAwrap >::_bind_resampleSingleFrom}, // 1654
-    {"update", &impl_LunaTraits<CMAwrap >::_bind_update},     // 1654
-    {"getMean", &impl_LunaTraits<CMAwrap >::_bind_getMean},   // 1654
-    {"getBest", &impl_LunaTraits<CMAwrap >::_bind_getBest},   // 1654
-    {0,0}                                                     // 1657
-};                                                            // 1658
-template<>                                                    // 1389
+  {                                                           // 1624
+    return impl_LunaTraits<CMAwrap >::_bind_ctor(L);          // 1625
+  }                                                           // 1626
+  void LunaTraits<CMAwrap >::_bind_dtor(CMAwrap* obj){        // 1628
+    delete obj;                                               // 1629
+  }                                                           // 1630
+const char LunaTraits<CMAwrap >::className[] = "math_CMAwrap"; // 1648
+const int LunaTraits<CMAwrap >::uniqueID = 64707780;          // 1649
+luna_RegType LunaTraits<CMAwrap >::methods[] = {              // 1655
+    {"testForTermination", &impl_LunaTraits<CMAwrap >::_bind_testForTermination}, // 1660
+    {"samplePopulation", &impl_LunaTraits<CMAwrap >::_bind_samplePopulation}, // 1660
+    {"numPopulation", &impl_LunaTraits<CMAwrap >::_bind_numPopulation}, // 1660
+    {"dim", &impl_LunaTraits<CMAwrap >::_bind_dim},           // 1660
+    {"getPopulation", &impl_LunaTraits<CMAwrap >::_bind_getPopulation}, // 1660
+    {"setVal", &impl_LunaTraits<CMAwrap >::_bind_setVal},     // 1660
+    {"resampleSingle", &impl_LunaTraits<CMAwrap >::_bind_resampleSingle}, // 1660
+    {"resampleSingleFrom", &impl_LunaTraits<CMAwrap >::_bind_resampleSingleFrom}, // 1660
+    {"update", &impl_LunaTraits<CMAwrap >::_bind_update},     // 1660
+    {"getMean", &impl_LunaTraits<CMAwrap >::_bind_getMean},   // 1660
+    {"getBest", &impl_LunaTraits<CMAwrap >::_bind_getBest},   // 1660
+    {0,0}                                                     // 1663
+};                                                            // 1664
+template<>                                                    // 1395
  class impl_LunaTraits<FitnessCalc > {
-public:                                                       // 1392
-    typedef Luna<FitnessCalc > luna_t;                        // 1396
-// : number denotes the line number of luna_gen.lua that generated the sentence // 1399
-}; // end of class impl_LunaTraits<FitnessCalc >              // 1612
+public:                                                       // 1398
+    typedef Luna<FitnessCalc > luna_t;                        // 1402
+// : number denotes the line number of luna_gen.lua that generated the sentence // 1405
+}; // end of class impl_LunaTraits<FitnessCalc >              // 1618
   FitnessCalc* LunaTraits<FitnessCalc >::_bind_ctor(lua_State *L)
-  {                                                           // 1629
-   std::cerr<<"undefined contructor of FitnessCalc called\n"; // 1630
-    return NULL;                                              // 1631
-  }                                                           // 1632
-  void LunaTraits<FitnessCalc >::_bind_dtor(FitnessCalc* obj){ // 1633
-   delete obj;                                                // 1634
-  }                                                           // 1635
-const char LunaTraits<FitnessCalc >::className[] = "_FitnessCalc"; // 1642
-const int LunaTraits<FitnessCalc >::uniqueID = 33618519;      // 1643
-luna_RegType LunaTraits<FitnessCalc >::methods[] = {          // 1649
-    {0,0}                                                     // 1657
-};                                                            // 1658
-template<>                                                    // 1389
+  {                                                           // 1635
+   std::cerr<<"undefined contructor of FitnessCalc called\n"; // 1636
+    return NULL;                                              // 1637
+  }                                                           // 1638
+  void LunaTraits<FitnessCalc >::_bind_dtor(FitnessCalc* obj){ // 1639
+   delete obj;                                                // 1640
+  }                                                           // 1641
+const char LunaTraits<FitnessCalc >::className[] = "_FitnessCalc"; // 1648
+const int LunaTraits<FitnessCalc >::uniqueID = 33618519;      // 1649
+luna_RegType LunaTraits<FitnessCalc >::methods[] = {          // 1655
+    {0,0}                                                     // 1663
+};                                                            // 1664
+template<>                                                    // 1395
  class impl_LunaTraits<Individual > {
-public:                                                       // 1392
-    typedef Luna<Individual > luna_t;                         // 1396
-// : number denotes the line number of luna_gen.lua that generated the sentence // 1399
+public:                                                       // 1398
+    typedef Luna<Individual > luna_t;                         // 1402
+// : number denotes the line number of luna_gen.lua that generated the sentence // 1405
   inline static bool _lg_typecheck_toString(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=1) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=3133180) return false; // Individual // 629
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_setDefaultGeneLength(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=1) return false;                       // 621
     if( lua_isnumber(L,1)==0) return false;                   // 631
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_setDefaultTrueGeneRate(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=1) return false;                       // 621
     if( lua_isnumber(L,1)==0) return false;                   // 631
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck__property_get_genes(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=1) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=3133180) return false; // Individual // 629
     return true;
   }                                                           // 656
 inline static boolN& _property_get_genes(Individual const& a) { return (boolN &) a.genes; }
-                                                              // 1444
+                                                              // 1450
   static int _bind_toString(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_toString(L)) { char msg[]="luna typecheck failed:\n  toString(Individual& self,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     Individual& self=static_cast<Individual &>(*Luna<Individual >::check(L,1)); // 568
@@ -471,7 +473,7 @@ inline static boolN& _property_get_genes(Individual const& a) { return (boolN &)
     return 1;                                                 // 355
   }                                                           // 374
   static int _bind_setDefaultGeneLength(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_setDefaultGeneLength(L)) { char msg[]="luna typecheck failed:\n  setDefaultGeneLength(int length,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     int length=(int)lua_tonumber(L,1);                        // 576
@@ -484,7 +486,7 @@ inline static boolN& _property_get_genes(Individual const& a) { return (boolN &)
     return 0;                                                 // 298
   }                                                           // 374
   static int _bind_setDefaultTrueGeneRate(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_setDefaultTrueGeneRate(L)) { char msg[]="luna typecheck failed:\n  setDefaultTrueGeneRate(double rate,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     double rate=(double)lua_tonumber(L,1);                    // 576
@@ -497,7 +499,7 @@ inline static boolN& _property_get_genes(Individual const& a) { return (boolN &)
     return 0;                                                 // 298
   }                                                           // 374
   static int _bind__property_get_genes(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck__property_get_genes(L)) { char msg[]="luna typecheck failed:\n  _property_get_genes(Individual const & a,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     Individual const & a=static_cast<Individual &>(*Luna<Individual >::check(L,1)); // 568
@@ -511,14 +513,14 @@ inline static boolN& _property_get_genes(Individual const& a) { return (boolN &)
     return 1;                                                 // 338
   }                                                           // 374
   static void luna_init_hashmap()
-  {                                                           // 1493
-    LunaTraits<Individual >::properties["genes"]=&_bind__property_get_genes; // 1495
-  }                                                           // 1497
+  {                                                           // 1499
+    LunaTraits<Individual >::properties["genes"]=&_bind__property_get_genes; // 1501
+  }                                                           // 1503
   static void luna_init_write_hashmap()
-  {                                                           // 1498
-  }                                                           // 1504
+  {                                                           // 1504
+  }                                                           // 1510
             static int __index(lua_State* L)
-            {                                                 // 1508
+            {                                                 // 1514
                         {
                         luna__hashmap::iterator i=LunaTraits<Individual >::properties.find((const char*)lua_tostring(L,2));
 
@@ -529,88 +531,88 @@ inline static boolN& _property_get_genes(Individual const& a) { return (boolN &)
                             return fnc(L); 
                         }
                             }
-                                                              // 1517
+                                                              // 1523
                     int mt=lua_getmetatable(L, 1);
                     if(mt==0) luaL_error(L,"__index");//end
                     lua_pushstring(L, lua_tostring(L,2));
                     lua_rawget(L, -2);
                     return 1;
-                                                              // 1550
-            }                                                 // 1558
+                                                              // 1556
+            }                                                 // 1564
  
-            static int __newindex(lua_State* L) {             // 1561
+            static int __newindex(lua_State* L) {             // 1567
                     luaL_error(L,"__newindex doesn't allow defining non-property member");
                     return 0;
-                                                              // 1603
-            }                                                 // 1608
-}; // end of class impl_LunaTraits<Individual >               // 1612
+                                                              // 1609
+            }                                                 // 1614
+}; // end of class impl_LunaTraits<Individual >               // 1618
   Individual* LunaTraits<Individual >::_bind_ctor(lua_State *L)
-  {                                                           // 1629
-   std::cerr<<"undefined contructor of Individual called\n";  // 1630
-    return NULL;                                              // 1631
-  }                                                           // 1632
-  void LunaTraits<Individual >::_bind_dtor(Individual* obj){  // 1633
-   delete obj;                                                // 1634
-  }                                                           // 1635
-const char LunaTraits<Individual >::className[] = "_Individual"; // 1642
-const int LunaTraits<Individual >::uniqueID = 3133180;        // 1643
-luna__hashmap LunaTraits<Individual >::properties;            // 1646
-luna__hashmap LunaTraits<Individual >::write_properties;      // 1647
-luna_RegType LunaTraits<Individual >::methods[] = {           // 1649
-    {"toString", &impl_LunaTraits<Individual >::_bind_toString}, // 1654
-    {"setDefaultGeneLength", &impl_LunaTraits<Individual >::_bind_setDefaultGeneLength}, // 1654
-    {"setDefaultTrueGeneRate", &impl_LunaTraits<Individual >::_bind_setDefaultTrueGeneRate}, // 1654
-    {"_property_get_genes", &impl_LunaTraits<Individual >::_bind__property_get_genes}, // 1654
-    {"__index", &impl_LunaTraits<Individual >::__index},      // 1654
-    {"__newindex", &impl_LunaTraits<Individual >::__newindex}, // 1654
-    {0,0}                                                     // 1657
-};                                                            // 1658
-template<>                                                    // 1389
+  {                                                           // 1635
+   std::cerr<<"undefined contructor of Individual called\n";  // 1636
+    return NULL;                                              // 1637
+  }                                                           // 1638
+  void LunaTraits<Individual >::_bind_dtor(Individual* obj){  // 1639
+   delete obj;                                                // 1640
+  }                                                           // 1641
+const char LunaTraits<Individual >::className[] = "_Individual"; // 1648
+const int LunaTraits<Individual >::uniqueID = 3133180;        // 1649
+luna__hashmap LunaTraits<Individual >::properties;            // 1652
+luna__hashmap LunaTraits<Individual >::write_properties;      // 1653
+luna_RegType LunaTraits<Individual >::methods[] = {           // 1655
+    {"toString", &impl_LunaTraits<Individual >::_bind_toString}, // 1660
+    {"setDefaultGeneLength", &impl_LunaTraits<Individual >::_bind_setDefaultGeneLength}, // 1660
+    {"setDefaultTrueGeneRate", &impl_LunaTraits<Individual >::_bind_setDefaultTrueGeneRate}, // 1660
+    {"_property_get_genes", &impl_LunaTraits<Individual >::_bind__property_get_genes}, // 1660
+    {"__index", &impl_LunaTraits<Individual >::__index},      // 1660
+    {"__newindex", &impl_LunaTraits<Individual >::__newindex}, // 1660
+    {0,0}                                                     // 1663
+};                                                            // 1664
+template<>                                                    // 1395
  class impl_LunaTraits<Population > {
-public:                                                       // 1392
-    typedef Luna<Population > luna_t;                         // 1396
-// : number denotes the line number of luna_gen.lua that generated the sentence // 1399
+public:                                                       // 1398
+    typedef Luna<Population > luna_t;                         // 1402
+// : number denotes the line number of luna_gen.lua that generated the sentence // 1405
   inline static bool _lg_typecheck_getIndividual(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=2) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=44424126) return false; // Population // 629
     if( lua_isnumber(L,2)==0) return false;                   // 631
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_size(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=1) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=44424126) return false; // Population // 629
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_getFittest(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=1) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=44424126) return false; // Population // 629
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_GA_setParam(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=2) return false;                       // 621
     if( lua_isnumber(L,1)==0) return false;                   // 631
     if( lua_isnumber(L,2)==0) return false;                   // 631
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_GA_solve(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=2) return false;                       // 621
     if( lua_isnumber(L,1)==0) return false;                   // 631
     if( lua_isnumber(L,2)==0) return false;                   // 631
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_setFitness(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=1) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=33618519) return false; // FitnessCalc // 629
     return true;
   }                                                           // 656
   static int _bind_getIndividual(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_getIndividual(L)) { char msg[]="luna typecheck failed:\n  getIndividual(Population& self,int index,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     Population& self=static_cast<Population &>(*Luna<Population >::check(L,1)); // 568
@@ -625,7 +627,7 @@ public:                                                       // 1392
     return 1;                                                 // 338
   }                                                           // 374
   static int _bind_size(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_size(L)) { char msg[]="luna typecheck failed:\n  size(Population& self,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     Population& self=static_cast<Population &>(*Luna<Population >::check(L,1)); // 568
@@ -639,7 +641,7 @@ public:                                                       // 1392
     return 1;                                                 // 344
   }                                                           // 374
   static int _bind_getFittest(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_getFittest(L)) { char msg[]="luna typecheck failed:\n  getFittest(Population& self,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     Population& self=static_cast<Population &>(*Luna<Population >::check(L,1)); // 568
@@ -653,7 +655,7 @@ public:                                                       // 1392
     return 1;                                                 // 338
   }                                                           // 374
   static int _bind_GA_setParam(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_GA_setParam(L)) { char msg[]="luna typecheck failed:\n  GA_setParam(double m,int t,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     double m=(double)lua_tonumber(L,1);                       // 576
@@ -667,7 +669,7 @@ public:                                                       // 1392
     return 0;                                                 // 298
   }                                                           // 374
   static int _bind_GA_solve(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_GA_solve(L)) { char msg[]="luna typecheck failed:\n  GA_solve(int numPop,int maxGenerations,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     int numPop=(int)lua_tonumber(L,1);                        // 576
@@ -683,7 +685,7 @@ public:                                                       // 1392
     return 1;                                                 // 338
   }                                                           // 374
   static int _bind_setFitness(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_setFitness(L)) { char msg[]="luna typecheck failed:\n  setFitness(FitnessCalc * pcalc,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     FitnessCalc * pcalc=static_cast<FitnessCalc *>(Luna<FitnessCalc >::check(L,1)); // 564
@@ -695,26 +697,26 @@ public:                                                       // 1392
                                                               // 297
     return 0;                                                 // 298
   }                                                           // 374
-}; // end of class impl_LunaTraits<Population >               // 1612
+}; // end of class impl_LunaTraits<Population >               // 1618
   Population* LunaTraits<Population >::_bind_ctor(lua_State *L)
-  {                                                           // 1629
-   std::cerr<<"undefined contructor of Population called\n";  // 1630
-    return NULL;                                              // 1631
-  }                                                           // 1632
-  void LunaTraits<Population >::_bind_dtor(Population* obj){  // 1633
-   delete obj;                                                // 1634
-  }                                                           // 1635
-const char LunaTraits<Population >::className[] = "_Population"; // 1642
-const int LunaTraits<Population >::uniqueID = 44424126;       // 1643
-luna_RegType LunaTraits<Population >::methods[] = {           // 1649
-    {"getIndividual", &impl_LunaTraits<Population >::_bind_getIndividual}, // 1654
-    {"size", &impl_LunaTraits<Population >::_bind_size},      // 1654
-    {"getFittest", &impl_LunaTraits<Population >::_bind_getFittest}, // 1654
-    {"GA_setParam", &impl_LunaTraits<Population >::_bind_GA_setParam}, // 1654
-    {"GA_solve", &impl_LunaTraits<Population >::_bind_GA_solve}, // 1654
-    {"setFitness", &impl_LunaTraits<Population >::_bind_setFitness}, // 1654
-    {0,0}                                                     // 1657
-};                                                            // 1658
+  {                                                           // 1635
+   std::cerr<<"undefined contructor of Population called\n";  // 1636
+    return NULL;                                              // 1637
+  }                                                           // 1638
+  void LunaTraits<Population >::_bind_dtor(Population* obj){  // 1639
+   delete obj;                                                // 1640
+  }                                                           // 1641
+const char LunaTraits<Population >::className[] = "_Population"; // 1648
+const int LunaTraits<Population >::uniqueID = 44424126;       // 1649
+luna_RegType LunaTraits<Population >::methods[] = {           // 1655
+    {"getIndividual", &impl_LunaTraits<Population >::_bind_getIndividual}, // 1660
+    {"size", &impl_LunaTraits<Population >::_bind_size},      // 1660
+    {"getFittest", &impl_LunaTraits<Population >::_bind_getFittest}, // 1660
+    {"GA_setParam", &impl_LunaTraits<Population >::_bind_GA_setParam}, // 1660
+    {"GA_solve", &impl_LunaTraits<Population >::_bind_GA_solve}, // 1660
+    {"setFitness", &impl_LunaTraits<Population >::_bind_setFitness}, // 1660
+    {0,0}                                                     // 1663
+};                                                            // 1664
             class FitnessCalcLua: public FitnessCalc, public luna_wrap_object
             {
                 public:
@@ -749,25 +751,25 @@ luna_RegType LunaTraits<Population >::methods[] = {           // 1649
                     return 1;
                 }
             };
-                                                              // 1385
-template<>                                                    // 1389
+                                                              // 1391
+template<>                                                    // 1395
  class impl_LunaTraits<FitnessCalcLua > {
-public:                                                       // 1392
-    typedef Luna<FitnessCalcLua > luna_t;                     // 1396
-// : number denotes the line number of luna_gen.lua that generated the sentence // 1399
+public:                                                       // 1398
+    typedef Luna<FitnessCalcLua > luna_t;                     // 1402
+// : number denotes the line number of luna_gen.lua that generated the sentence // 1405
   inline static bool _lg_typecheck_ctor(lua_State *L)
-  {                                                           // 1408
+  {                                                           // 1414
     if( lua_gettop(L)!=0) return false;                       // 621
     return true;
   }                                                           // 656
   inline static FitnessCalcLua* _bind_ctor(lua_State *L)
-  {                                                           // 1430
+  {                                                           // 1436
     if (!_lg_typecheck_ctor(L)) { char msg[]="luna typecheck failed:\n  ctor()"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
-    return new FitnessCalcLua();                              // 1435
-  }                                                           // 1436
+    return new FitnessCalcLua();                              // 1441
+  }                                                           // 1442
             static int __index(lua_State* L)
-            {                                                 // 1508
+            {                                                 // 1514
                     luna_t::userdataType* u=luna_t::checkRaw(L,1);
                     if (u->has_env){
                         lua_getfenv(L,1);
@@ -776,16 +778,16 @@ public:                                                       // 1392
                         if( !lua_isnil(L,-1))
                         return 1;
                     }
-                                                              // 1539
+                                                              // 1545
                     int mt=lua_getmetatable(L, 1);
                     if(mt==0) luaL_error(L,"__index");//end
                     lua_pushstring(L, lua_tostring(L,2));
                     lua_rawget(L, -2);
                     return 1;
-                                                              // 1550
-            }                                                 // 1558
+                                                              // 1556
+            }                                                 // 1564
  
-            static int __newindex(lua_State* L) {             // 1561
+            static int __newindex(lua_State* L) {             // 1567
                     luna_t::userdataType* u=luna_t::checkRaw(L,1);
                     if(!u->has_env) {
                         lua_newtable(L);
@@ -796,30 +798,30 @@ public:                                                       // 1392
                     lua_replace(L,1);
                     lua_settable(L,1);
                     return 0;
-                                                              // 1589
-            }                                                 // 1608
-}; // end of class impl_LunaTraits<FitnessCalcLua >           // 1612
+                                                              // 1595
+            }                                                 // 1614
+}; // end of class impl_LunaTraits<FitnessCalcLua >           // 1618
   FitnessCalcLua* LunaTraits<FitnessCalcLua >::_bind_ctor(lua_State *L)
-  {                                                           // 1618
-    return impl_LunaTraits<FitnessCalcLua >::_bind_ctor(L);   // 1619
-  }                                                           // 1620
-  void LunaTraits<FitnessCalcLua >::_bind_dtor(FitnessCalcLua* obj){ // 1622
-    delete obj;                                               // 1623
-  }                                                           // 1624
-const char LunaTraits<FitnessCalcLua >::className[] = "_FitnessCalcLua"; // 1642
-const int LunaTraits<FitnessCalcLua >::uniqueID = 33618519;   // 1643
-luna_RegType LunaTraits<FitnessCalcLua >::methods[] = {       // 1649
-    {"new_modified_T", &Luna<FitnessCalcLua >::new_modified_T}, // 1652
-    {"__index", &impl_LunaTraits<FitnessCalcLua >::__index},  // 1654
-    {"__newindex", &impl_LunaTraits<FitnessCalcLua >::__newindex}, // 1654
-    {0,0}                                                     // 1657
-};                                                            // 1658
+  {                                                           // 1624
+    return impl_LunaTraits<FitnessCalcLua >::_bind_ctor(L);   // 1625
+  }                                                           // 1626
+  void LunaTraits<FitnessCalcLua >::_bind_dtor(FitnessCalcLua* obj){ // 1628
+    delete obj;                                               // 1629
+  }                                                           // 1630
+const char LunaTraits<FitnessCalcLua >::className[] = "_FitnessCalcLua"; // 1648
+const int LunaTraits<FitnessCalcLua >::uniqueID = 33618519;   // 1649
+luna_RegType LunaTraits<FitnessCalcLua >::methods[] = {       // 1655
+    {"new_modified_T", &Luna<FitnessCalcLua >::new_modified_T}, // 1658
+    {"__index", &impl_LunaTraits<FitnessCalcLua >::__index},  // 1660
+    {"__newindex", &impl_LunaTraits<FitnessCalcLua >::__newindex}, // 1660
+    {0,0}                                                     // 1663
+};                                                            // 1664
  class impl_luna__interface_15473501_Eigen {
-public:                                                       // 1392
-    typedef LunaModule<luna__interface_15473501_Eigen> luna_t; // 1394
-// : number denotes the line number of luna_gen.lua that generated the sentence // 1399
+public:                                                       // 1398
+    typedef LunaModule<luna__interface_15473501_Eigen> luna_t; // 1400
+// : number denotes the line number of luna_gen.lua that generated the sentence // 1405
   inline static bool _lg_typecheck_solveQuadprog_overload_1(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=6) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=55023510) return false; // HessianQuadratic // 629
     if( Luna<void>::get_uniqueid(L,2)!=23735758) return false; // matrixn // 629
@@ -830,7 +832,7 @@ public:                                                       // 1392
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_solveQuadprog_overload_2(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=7) return false;                       // 621
     if( Luna<void>::get_uniqueid(L,1)!=55023510) return false; // HessianQuadratic // 629
     if( Luna<void>::get_uniqueid(L,2)!=23735758) return false; // matrixn // 629
@@ -842,7 +844,7 @@ public:                                                       // 1392
     return true;
   }                                                           // 656
   static int _bind_solveQuadprog_overload_1(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     HessianQuadratic & problem=static_cast<HessianQuadratic &>(*Luna<HessianQuadratic >::check(L,1)); // 568
     const matrixn & CE=static_cast<matrixn &>(*Luna<matrixn >::check(L,2)); // 568
     const vectorn & ce0=static_cast<vectorn &>(*Luna<vectorn >::check(L,3)); // 568
@@ -859,7 +861,7 @@ public:                                                       // 1392
     return 1;                                                 // 344
   }                                                           // 374
   static int _bind_solveQuadprog_overload_2(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     HessianQuadratic & problem=static_cast<HessianQuadratic &>(*Luna<HessianQuadratic >::check(L,1)); // 568
     const matrixn & CE=static_cast<matrixn &>(*Luna<matrixn >::check(L,2)); // 568
     const vectorn & ce0=static_cast<vectorn &>(*Luna<vectorn >::check(L,3)); // 568
@@ -884,52 +886,52 @@ public:                                                       // 1392
                                                               // 243
     return 0;                                                 // 244
   }                                                           // 245
-}; // end of class impl_luna__interface_15473501_Eigen        // 1612
-const char luna__interface_15473501_Eigen::moduleName[] = "_Eigen"; // 1640
-luna_RegType luna__interface_15473501_Eigen::methods[] = {    // 1649
-    {"solveQuadprog", &impl_luna__interface_15473501_Eigen::_bind_solveQuadprog}, // 1654
-    {0,0}                                                     // 1657
-};                                                            // 1658
-#if defined (USE_MPI)                                         // 1372
+}; // end of class impl_luna__interface_15473501_Eigen        // 1618
+const char luna__interface_15473501_Eigen::moduleName[] = "_Eigen"; // 1646
+luna_RegType luna__interface_15473501_Eigen::methods[] = {    // 1655
+    {"solveQuadprog", &impl_luna__interface_15473501_Eigen::_bind_solveQuadprog}, // 1660
+    {0,0}                                                     // 1663
+};                                                            // 1664
+#if defined (USE_MPI)                                         // 1378
  class impl_luna__interface_15473501_MPI {
-public:                                                       // 1392
-    typedef LunaModule<luna__interface_15473501_MPI> luna_t;  // 1394
-// : number denotes the line number of luna_gen.lua that generated the sentence // 1399
+public:                                                       // 1398
+    typedef LunaModule<luna__interface_15473501_MPI> luna_t;  // 1400
+// : number denotes the line number of luna_gen.lua that generated the sentence // 1405
   inline static bool _lg_typecheck_rank(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=0) return false;                       // 621
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_size(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=0) return false;                       // 621
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_send(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=2) return false;                       // 621
     if( lua_isstring(L,1)==0) return false;                   // 636
     if( lua_isnumber(L,2)==0) return false;                   // 631
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_receive(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=1) return false;                       // 621
     if( lua_isnumber(L,1)==0) return false;                   // 631
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_source(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=0) return false;                       // 621
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_test(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=0) return false;                       // 621
     return true;
   }                                                           // 656
   inline static bool _lg_typecheck_test2(lua_State *L)
-  {                                                           // 1418
+  {                                                           // 1424
     if( lua_gettop(L)!=0) return false;                       // 621
     return true;
   }                                                           // 656
@@ -999,9 +1001,9 @@ public:                                                       // 1392
             }
 
             #endif
-                                                              // 1444
+                                                              // 1450
   static int _bind_rank(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_rank(L)) { char msg[]="luna typecheck failed:\n  rank()"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     try {                                                     // 340
@@ -1014,7 +1016,7 @@ public:                                                       // 1392
     return 1;                                                 // 344
   }                                                           // 374
   static int _bind_size(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_size(L)) { char msg[]="luna typecheck failed:\n  size()"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     try {                                                     // 340
@@ -1027,7 +1029,7 @@ public:                                                       // 1392
     return 1;                                                 // 344
   }                                                           // 374
   static int _bind_send(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_send(L)) { char msg[]="luna typecheck failed:\n  send(const char * msg,int i,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     const char * msg=(const char *)lua_tostring(L,1);         // 571
@@ -1041,7 +1043,7 @@ public:                                                       // 1392
     return 0;                                                 // 298
   }                                                           // 374
   static int _bind_receive(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_receive(L)) { char msg[]="luna typecheck failed:\n  receive(int i,)"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     int i=(int)lua_tonumber(L,1);                             // 576
@@ -1055,7 +1057,7 @@ public:                                                       // 1392
     return 1;                                                 // 355
   }                                                           // 374
   static int _bind_source(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_source(L)) { char msg[]="luna typecheck failed:\n  source()"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     try {                                                     // 340
@@ -1068,7 +1070,7 @@ public:                                                       // 1392
     return 1;                                                 // 344
   }                                                           // 374
   static int _bind_test(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_test(L)) { char msg[]="luna typecheck failed:\n  test()"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     try {                                                     // 295
@@ -1080,7 +1082,7 @@ public:                                                       // 1392
     return 0;                                                 // 298
   }                                                           // 374
   static int _bind_test2(lua_State *L)
-  {                                                           // 1451
+  {                                                           // 1457
     if (!_lg_typecheck_test2(L)) { char msg[]="luna typecheck failed:\n  test2()"; puts(msg); luna_printStack(L); luaL_error(L, msg); }
                                                               // 548
     try {                                                     // 295
@@ -1091,54 +1093,54 @@ public:                                                       // 1392
                                                               // 297
     return 0;                                                 // 298
   }                                                           // 374
-}; // end of class impl_luna__interface_15473501_MPI          // 1612
-const char luna__interface_15473501_MPI::moduleName[] = "_MPI"; // 1640
-luna_RegType luna__interface_15473501_MPI::methods[] = {      // 1649
-    {"rank", &impl_luna__interface_15473501_MPI::_bind_rank}, // 1654
-    {"size", &impl_luna__interface_15473501_MPI::_bind_size}, // 1654
-    {"send", &impl_luna__interface_15473501_MPI::_bind_send}, // 1654
-    {"receive", &impl_luna__interface_15473501_MPI::_bind_receive}, // 1654
-    {"source", &impl_luna__interface_15473501_MPI::_bind_source}, // 1654
-    {"test", &impl_luna__interface_15473501_MPI::_bind_test}, // 1654
-    {"test2", &impl_luna__interface_15473501_MPI::_bind_test2}, // 1654
-    {0,0}                                                     // 1657
-};                                                            // 1658
-#endif //defined (USE_MPI)                                    // 1661
-void Register_QP(lua_State* L) {                              // 1665
-    luna_dostring(L,"if __luna==nil then __luna={} end");     // 1666
-    luna_dostring(L,"    if __luna.copyMethodsFrom==nil then\n        function __luna.copyMethodsFrom(methodsChild, methodsParent)\n            for k,v in pairs(methodsParent) do\n                if k~='__index' and k~='__newindex' and methodsChild[k]==nil then\n                    methodsChild[k]=v\n                end\n            end\n        end\n        function __luna.overwriteMethodsFrom(methodsChild, methodsParent)\n            for k,v in pairs(methodsParent) do\n                if k~='__index' and k~='__newindex' then\n                    if verbose then print('registering', k, methodsChild[k]) end\n                    methodsChild[k]=v\n                end\n            end\n        end\n    end\n    "); // 1667
-    Luna<CMAwrap >::Register(L);                              // 1708
-    luna_dostring(L, "if not math then math={} end math.CMAwrap=__luna.math_CMAwrap"); // 1715
-    luna_dostring(L,"                __luna.math_CMAwrap.luna_class='h.CMAwrap'"); // 1716
-    Luna<FitnessCalc >::Register(L);                          // 1708
-    luna_dostring(L, "FitnessCalc=__luna._FitnessCalc");      // 1731
-    luna_dostring(L,"                __luna._FitnessCalc.luna_class='FitnessCalc'"); // 1732
-   impl_LunaTraits<Individual >::luna_init_hashmap();         // 1702
-   impl_LunaTraits<Individual >::luna_init_write_hashmap();   // 1703
-    Luna<Individual >::Register(L);                           // 1708
-    luna_dostring(L, "Individual=__luna._Individual");        // 1731
-    luna_dostring(L,"                __luna._Individual.luna_class='Individual'"); // 1732
-    Luna<Population >::Register(L);                           // 1708
-    luna_dostring(L, "Population=__luna._Population");        // 1731
-    luna_dostring(L,"                __luna._Population.luna_class='Population'"); // 1732
-    Luna<FitnessCalcLua >::Register(L);                       // 1708
-    luna_dostring(L, "FitnessCalcLua=__luna._FitnessCalcLua"); // 1731
-    luna_dostring(L,"                __luna._FitnessCalcLua.luna_class='FitnessCalcLua'"); // 1732
-    luna_dostring(L,"            __luna.copyMethodsFrom(__luna._FitnessCalcLua, __luna._FitnessCalc)"); // 1741
-   LunaModule<luna__interface_15473501_Eigen >::Register(L);  // 1706
-    luna_dostring(L," \n                if Eigen==nil then \n                    Eigen={}\n                end \n                __luna.overwriteMethodsFrom(Eigen, __luna._Eigen)\n                "); // 1721
-#if defined (USE_MPI)                                         // 1696
-   LunaModule<luna__interface_15473501_MPI >::Register(L);    // 1706
-    luna_dostring(L," \n                if MPI==nil then \n                    MPI={}\n                end \n                __luna.overwriteMethodsFrom(MPI, __luna._MPI)\n                "); // 1721
+}; // end of class impl_luna__interface_15473501_MPI          // 1618
+const char luna__interface_15473501_MPI::moduleName[] = "_MPI"; // 1646
+luna_RegType luna__interface_15473501_MPI::methods[] = {      // 1655
+    {"rank", &impl_luna__interface_15473501_MPI::_bind_rank}, // 1660
+    {"size", &impl_luna__interface_15473501_MPI::_bind_size}, // 1660
+    {"send", &impl_luna__interface_15473501_MPI::_bind_send}, // 1660
+    {"receive", &impl_luna__interface_15473501_MPI::_bind_receive}, // 1660
+    {"source", &impl_luna__interface_15473501_MPI::_bind_source}, // 1660
+    {"test", &impl_luna__interface_15473501_MPI::_bind_test}, // 1660
+    {"test2", &impl_luna__interface_15473501_MPI::_bind_test2}, // 1660
+    {0,0}                                                     // 1663
+};                                                            // 1664
+#endif //defined (USE_MPI)                                    // 1667
+void Register_QP(lua_State* L) {                              // 1671
+    luna_dostring(L,"if __luna==nil then __luna={} end");     // 1672
+    luna_dostring(L,"    if __luna.copyMethodsFrom==nil then\n        function __luna.copyMethodsFrom(methodsChild, methodsParent)\n            for k,v in pairs(methodsParent) do\n                if k~='__index' and k~='__newindex' and methodsChild[k]==nil then\n                    methodsChild[k]=v\n                end\n            end\n        end\n        function __luna.overwriteMethodsFrom(methodsChild, methodsParent)\n            for k,v in pairs(methodsParent) do\n                if k~='__index' and k~='__newindex' then\n                    if verbose then print('registering', k, methodsChild[k]) end\n                    methodsChild[k]=v\n                end\n            end\n        end\n    end\n    "); // 1673
+    Luna<CMAwrap >::Register(L);                              // 1714
+    luna_dostring(L, "if not math then math={} end math.CMAwrap=__luna.math_CMAwrap"); // 1721
+    luna_dostring(L,"                __luna.math_CMAwrap.luna_class='h.CMAwrap'"); // 1722
+    Luna<FitnessCalc >::Register(L);                          // 1714
+    luna_dostring(L, "FitnessCalc=__luna._FitnessCalc");      // 1737
+    luna_dostring(L,"                __luna._FitnessCalc.luna_class='FitnessCalc'"); // 1738
+   impl_LunaTraits<Individual >::luna_init_hashmap();         // 1708
+   impl_LunaTraits<Individual >::luna_init_write_hashmap();   // 1709
+    Luna<Individual >::Register(L);                           // 1714
+    luna_dostring(L, "Individual=__luna._Individual");        // 1737
+    luna_dostring(L,"                __luna._Individual.luna_class='Individual'"); // 1738
+    Luna<Population >::Register(L);                           // 1714
+    luna_dostring(L, "Population=__luna._Population");        // 1737
+    luna_dostring(L,"                __luna._Population.luna_class='Population'"); // 1738
+    Luna<FitnessCalcLua >::Register(L);                       // 1714
+    luna_dostring(L, "FitnessCalcLua=__luna._FitnessCalcLua"); // 1737
+    luna_dostring(L,"                __luna._FitnessCalcLua.luna_class='FitnessCalcLua'"); // 1738
+    luna_dostring(L,"            __luna.copyMethodsFrom(__luna._FitnessCalcLua, __luna._FitnessCalc)"); // 1747
+   LunaModule<luna__interface_15473501_Eigen >::Register(L);  // 1712
+    luna_dostring(L," \n                if Eigen==nil then \n                    Eigen={}\n                end \n                __luna.overwriteMethodsFrom(Eigen, __luna._Eigen)\n                "); // 1727
+#if defined (USE_MPI)                                         // 1702
+   LunaModule<luna__interface_15473501_MPI >::Register(L);    // 1712
+    luna_dostring(L," \n                if MPI==nil then \n                    MPI={}\n                end \n                __luna.overwriteMethodsFrom(MPI, __luna._MPI)\n                "); // 1727
 {
-  std::stringstream stringStreams;// defining enums           // 1746
-  stringStreams <<"MPI.ANY_SOURCE="<< MPI_ANY_SOURCE;         // 1750
+  std::stringstream stringStreams;// defining enums           // 1752
+  stringStreams <<"MPI.ANY_SOURCE="<< MPI_ANY_SOURCE;         // 1756
   luna_dostring(L, stringStreams.str().c_str());
-}                                                             // 1753
+}                                                             // 1759
 {
-  std::stringstream stringStreams;// defining enums           // 1746
-  stringStreams <<"MPI.ANY_TAG="<< MPI_ANY_TAG;               // 1750
+  std::stringstream stringStreams;// defining enums           // 1752
+  stringStreams <<"MPI.ANY_TAG="<< MPI_ANY_TAG;               // 1756
   luna_dostring(L, stringStreams.str().c_str());
-}                                                             // 1753
-#endif //defined (USE_MPI)                                    // 1758
-}                                                             // 1765
+}                                                             // 1759
+#endif //defined (USE_MPI)                                    // 1764
+}                                                             // 1771

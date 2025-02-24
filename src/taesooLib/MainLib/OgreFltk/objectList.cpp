@@ -13,22 +13,42 @@
 #include <OgreSceneNode.h>
 #include <OgreSceneManager.h>
 #include <OgreEntity.h>
-void _setMaterial(Ogre::SimpleRenderable* ptr, const char* name);
+#include <OgreItem.h>
+#include "RE.h"
+void _setMaterial(Ogre::Renderable* ptr, const char* name);
 
-Ogre::MovableObject	* createObject(const char* node_name, const char* typeName, const char* materialName, matrixn const& _data, m_real thickness)
+static vector3 materialToColor(const char* materialName)
 {
+	TString m(materialName);
+	m.makeUpper();
+	if(m.findStr(0, "RED")!=-1)
+		return vector3(1.0,0.0,0.0);
+	else if(m.findStr(0, "BLUE")!=-1)
+		return vector3(0.0,1.0,0.0);
+	else if(m.findStr(0, "WHITE")!=-1)
+		return vector3(1.0,1.0,1.0);
+	else if(m.findStr(0, "GREY")!=-1)
+		return vector3(0.5,0.5,0.5);
+	else 
+		return vector3(0.0,0.0,1.0);
+}
+Ogre::MovableObject	* createObject(const char* _node_name, const char* typeName, const char* materialName, matrixn const& _data, m_real thickness)
+{
+	unsigned int objectID=RE::nameToUID(_node_name);
 	TString tn=typeName;
+	if (_data.rows()==0) 
+		return NULL;
 	if(tn=="LineList")
 	{
 		vector3NView data=vec3ViewCol(_data);
-		LineList* line=new LineList();
-		line->begin(data.size()/2);
+		//LineList* line=new LineList();
+		ColorBillboardLineList * line=new ColorBillboardLineList (objectID, data.size()/2, 0.6);
+		vector3 color=materialToColor(materialName);
 		for(int i=0, ni=data.size()/2; i<ni; i++)
 		{
-			line->line(i, data[i*2], data[i*2+1]);
+			//line->line(i, data[i*2], data[i*2+1]);
+			line->line(i, data[i*2], data[i*2+1], color);
 		}
-		line->end();
-		_setMaterial(line, materialName);
 		return line;
 	}
 	else if(tn=="MovableText")
@@ -41,47 +61,59 @@ Ogre::MovableObject	* createObject(const char* node_name, const char* typeName, 
 			c.b=_data(0,2);
 			c.a=_data(0,3);
 		}
-		return new Ogre::MovableText(RE::generateUniqueName().ptr(), materialName, "BlueHighway", thickness,c);
+		Ogre::NameValuePairList params;
+		//params["name"]=_node_name;
+		params["name"]=RE::generateUniqueName();
+		params["fontName"]="BlueHighway";
+		params["caption"]=materialName;
+		TString fh("", (int) thickness);
+		params["fontSize"]=fh.ptr();
+		/*
+		params["colorR"]=c.r;
+		params["colorG"]=c.g;
+		params["colorB"]=c.b;
+		params["colorA"]=c.a;
+		*/
+
+		auto* item=RE::ogreSceneManager()->createMovableObject(Ogre::MovableTextFactory::FACTORY_TYPE_NAME, RE::_objectMemoryManager(), & params);
+		
+		((Ogre::MovableText*)item)->setColor(c);
+		((Ogre::MovableText*)item)->setRenderQueueGroup(254u); // last V1_Fast queue.
+		return item;
 	}
 	else if(tn=="Curve")
 	{
 		vector3NView data=vec3ViewCol(_data);
-		LineList* line=new LineList();
-		line->begin(data.size()-1);
+		ColorBillboardLineList * line=new ColorBillboardLineList (objectID, data.size()-1, 0.6);
+		vector3 color=materialToColor(materialName);
 		for(int i=0, ni=data.size()-1; i<ni; i++)
 		{
-			line->line(i, data[i], data[i+1]);
+			line->line(i, data[i], data[i+1], color);
 		}
-		line->end();
-		_setMaterial(line, materialName);
 		return line;
 	}
 	else if(tn=="LineList2D")
 	{
-		LineList* line=new LineList();
-		line->begin(_data.rows()/2);
+		ColorBillboardLineList * line=new ColorBillboardLineList (objectID, _data.rows()/2, 0.6);
+		vector3 color=materialToColor(materialName);
 		for(int i=0, ni=_data.rows()/2; i<ni; i++)
 		{
 			vector3 s(_data[i*2][0], 3, _data[i*2][1]);
 			vector3 e(_data[i*2+1][0], 3, _data[i*2+1][1]);
-			line->line(i, s, e);
+			line->line(i, s, e, color);
 		}
-		line->end();
-		_setMaterial(line, materialName);
 		return line;
 	}
 	else if(tn=="LineList2D_ZX")
 	{
-		LineList* line=new LineList();
-		line->begin(_data.rows()/2);
+		ColorBillboardLineList * line=new ColorBillboardLineList (objectID, _data.rows()/2, 0.6);
+		vector3 color=materialToColor(materialName);
 		for(int i=0, ni=_data.rows()/2; i<ni; i++)
 		{
 			vector3 s(_data[i*2][1], 3, _data[i*2][0]);
 			vector3 e(_data[i*2+1][1], 3, _data[i*2+1][0]);
-			line->line(i, s, e);
+			line->line(i, s, e, color);
 		}
-		line->end();
-		_setMaterial(line, materialName);
 		return line;
 	}
 
@@ -90,12 +122,12 @@ Ogre::MovableObject	* createObject(const char* node_name, const char* typeName, 
 		vector3NView data=vec3ViewCol(_data);
 
 		if (thickness==0) thickness=0.7;
-		BillboardLineList * line=new BillboardLineList (TString(node_name)+"__bbll", data.size()/2, thickness);
+		ColorBillboardLineList * line=new ColorBillboardLineList (objectID, data.size()/2, thickness);
+		vector3 color=materialToColor(materialName);
 		for(int i=0, ni=data.size()/2; i<ni; i++)
 		{
-			line->line(i, data[i*2], data[i*2+1]);
+			line->line(i, data[i*2], data[i*2+1], color);
 		}
-		line->setMaterialName(materialName);
 		return line;
 	}
 	else if(tn=="ColorBillboardLineList")
@@ -103,19 +135,19 @@ Ogre::MovableObject	* createObject(const char* node_name, const char* typeName, 
 		vector3NView data=vec3ViewCol(_data);
 
 		if (thickness==0) thickness=0.7;
-		ColorBillboardLineList * line=new ColorBillboardLineList (TString(node_name)+"__cbbll", data.size()/3, thickness);
+		ColorBillboardLineList * line=new ColorBillboardLineList (objectID, data.size()/3, thickness);
 		for(int i=0, ni=data.size()/3; i<ni; i++)
 		{
 			line->line(i, data[i*3], data[i*3+1], data[i*3+2]);
 		}
-		line->setMaterialName(materialName);
+		//line->setMaterialName(materialName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
 		return line;
 	}
 	else if(tn=="ColorWidthBillboardLineList")
 	{
 
 		if (thickness==0) thickness=0.7;
-		ColorWidthBillboardLineList * line=new ColorWidthBillboardLineList (TString(node_name)+"__cbbll", _data.rows(), thickness);
+		ColorWidthBillboardLineList * line=new ColorWidthBillboardLineList (objectID, _data.rows(), thickness);
 		for(int i=0, ni=_data.rows(); i<ni; i++)
 		{
 			auto v=_data.row(i);
@@ -127,22 +159,19 @@ Ogre::MovableObject	* createObject(const char* node_name, const char* typeName, 
 	else if(tn=="BillboardChain")
 	{
 		if (thickness==0) thickness=0.7;
-		Ogre::BillboardChain* line=new Ogre::BillboardChain ((TString(node_name)+"__cbbll").ptr(), _data.rows());
+		Ogre::v1::BillboardChain* line=new Ogre::v1::BillboardChain (
+				RE::generateUniqueID(), RE::_objectMemoryManager(), RE::ogreSceneManager(), 
+				_data.rows());
 		for(int i=0, ni=_data.rows(); i<ni; i++)
 		{
 			vectornView r=_data.row(i);
-#if OGRE_VERSION_MINOR >= 8 || OGRE_VERSION_MAJOR>=13
-			line->addChainElement(0, Ogre::BillboardChain::Element(ToOgre(r.toVector3(0)), r(6), r(7), Ogre::ColourValue(r(3),r(4), r(5), 1), Ogre::Quaternion(1,0,0,0)));
-#else
-			line->addChainElement(0, Ogre::BillboardChain::Element(ToOgre(r.toVector3(0)), r(6), r(7), Ogre::ColourValue(r(3),r(4), r(5), 1)));
-#endif
+			line->addChainElement(0, Ogre::v1::BillboardChain::Element(ToOgre(r.toVector3(0)), r(6), r(7), Ogre::ColourValue(r(3),r(4), r(5), 1), Ogre::Quaternion(1,0,0,0)));
 		}
-		line->setMaterialName(materialName);
+		//line->setMaterialName(materialName, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
 		return line;
 	}
 	else if(tn.left(8)=="QuadList" )
 	{
-		vector3NView data=vec3ViewCol(_data);
 
 		if (thickness==0) thickness=10;
 
@@ -150,7 +179,11 @@ Ogre::MovableObject	* createObject(const char* node_name, const char* typeName, 
 
 		if(tn.right(1)=="Z")
 			normal=vector3(0,0,1);
-		else if(tn.right(1)=="X")
+		else if(tn.right(1)=="X") // incorrect but for backward compatibility
+			normal=vector3(0,1,0);
+		else if(tn.right(1)=="x")  // use lowcase
+			normal=vector3(1,0,0);
+		else if(tn.right(1)=="Y")
 			normal=vector3(0,1,0);
 		else if(tn.right(1)=="V")
 		{
@@ -160,10 +193,10 @@ Ogre::MovableObject	* createObject(const char* node_name, const char* typeName, 
 		}
 
 		QuadList* quads=new QuadList(normal, thickness);
-		quads->begin(data.size());
-		for(int i=0, ni=data.size(); i<ni; i++)
+		quads->begin(_data.rows());
+		for(int i=0, ni=_data.rows(); i<ni; i++)
 		{
-			quads->quad(i, data[i]);
+			quads->quad(i, _data.row(i).toVector3(0));
 		}
 		quads->end();
 		_setMaterial(quads,materialName);
@@ -223,12 +256,11 @@ class objectList_data
 	std::list<ScheduledSceneNodePtr> mScheduledObjects;
 	bool isVisible;
 	Ogre::SceneNode* mRootSceneNode;
+	std::unordered_map<std::string, Ogre::SceneNode*> mUnscheduledObjects;
 };
 ObjectList::ObjectList()
 { 
 	_members=new objectList_data();
-	static int _objlist_unique_id=1;
-	_uniqueId.format("objl_%d", _objlist_unique_id++);
 	_members->isVisible=true;
 
 }
@@ -239,11 +271,11 @@ Ogre::SceneNode* ObjectList::registerNamedEntity(const char* node_name, const ch
 	Ogre::SceneNode* node=registerEntity(node_name, filename);
 	Ogre::SceneNode* node2=node->createChildSceneNode();
 
-	TString entity_name;
-	entity_name.format("_mt_object%s_%s", _uniqueId.ptr(),  node_name);
 	Ogre::ColourValue c(textColor.x,textColor.y,textColor.z,1);
-	node2->attachObject(
-			new Ogre::MovableText(entity_name.ptr(), titleText, "BlueHighway", textHeight,c));
+		Ogre::NameValuePairList params;
+		params["name"]="DebugFont";
+		params["caption"]=titleText;
+	node2->attachObject( new Ogre::MovableText(RE::generateUniqueID(), RE::_objectMemoryManager(), RE::ogreSceneManager(),& params));
 	node2->translate(Ogre::Vector3(0, textHeight, 0));
 	return node;
 #else
@@ -263,6 +295,7 @@ Ogre::MovableObject* ObjectList::_find(const char* node_name)
 ObjectList::~ObjectList()
 {
 	_members->mScheduledObjects.clear();
+	_members->mUnscheduledObjects.clear();
 	if(RE::rendererValid()&&_members->mRootSceneNode)
 	{
 		RE::removeEntity(_members->mRootSceneNode);
@@ -277,7 +310,7 @@ Ogre::SceneNode* ObjectList::getCurrRootSceneNode()
 	if (!_members->mRootSceneNode)
 	{
 		RE::renderer().addFrameMoveObject(this);
-		_members->mRootSceneNode=RE::ogreRootSceneNode()->createChildSceneNode(_uniqueId.ptr());
+		_members->mRootSceneNode=RE::ogreRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 	}
 	return _members->mRootSceneNode;
 #else
@@ -286,11 +319,9 @@ Ogre::SceneNode* ObjectList::getCurrRootSceneNode()
 }
 Ogre::SceneNode* ObjectList::registerEntity(const char* node_name, const char* filename)
 {
-	TString entity_name;
-	entity_name.format("_entity_%s_%s", _uniqueId.ptr(),  node_name);
 	Ogre::SceneNode* pNode=	createSceneNode(node_name);
 #ifndef NO_OGRE
-	pNode->attachObject(RE::ogreSceneManager()->createEntity(entity_name.ptr(), filename));
+	pNode->attachObject(RE::_createEntity(filename));
 	pNode->setVisible(_members->isVisible);
 #endif
 	return pNode;
@@ -303,6 +334,7 @@ void ObjectList::clear()
 	if(_members->mRootSceneNode)
 		RE::removeEntity(_members->mRootSceneNode);
 	_members->mScheduledObjects.clear();
+	_members->mUnscheduledObjects.clear();
 #ifndef NO_OGRE
 	_members->mRootSceneNode=NULL;
 	_members->mRootSceneNode=getCurrRootSceneNode();
@@ -325,20 +357,17 @@ void ObjectList::setVisible(bool bVisible)
 
 Ogre::SceneNode* ObjectList::registerEntity(const char* node_name, const char* filename, const char* materialName)
 {
-	TString entity_name;
-	entity_name.format("_entity_%s_%s", _uniqueId.ptr(),  node_name);
-
 	Ogre::SceneNode* pNode=	createSceneNode(node_name);
 #ifndef NO_OGRE
-	Ogre::Entity* pEntity=RE::ogreSceneManager()->createEntity(entity_name.ptr(), filename);
-	if(materialName)
-		pEntity->setMaterialName(materialName);
+	auto* pEntity=RE::_createEntity(filename);
+	if(materialName) 
+		pEntity->setDatablockOrMaterialName(materialName);
 	pNode->attachObject(pEntity);
 	pNode->setVisible(_members->isVisible);
 #endif
 	return pNode;
 }
-Ogre::SceneNode* ObjectList::registerEntity(const char* node_name, Ogre::Entity* pObject)
+Ogre::SceneNode* ObjectList::registerEntity(const char* node_name, Ogre::Item* pObject)
 {
 	return registerObject(node_name, pObject);
 }
@@ -347,6 +376,7 @@ Ogre::SceneNode* ObjectList::registerObject(const char* node_name, Ogre::Movable
 {
 	Ogre::SceneNode* pNode=createSceneNode(node_name);
 #ifndef NO_OGRE
+	if(!pObject) return pNode;
 	pNode->attachObject(pObject);
 	pNode->setVisible(_members->isVisible);
 #endif
@@ -372,7 +402,7 @@ Ogre::SceneNode* ObjectList::registerObjectScheduled(m_real time, const char* ty
     return registerObjectScheduled(NULL, time);
 #else
 	return registerObjectScheduled( 
-			createObject(RE::generateUniqueName().ptr(), typeName, materialName, _data, thickness),
+			createObject(RE::generateUniqueName(), typeName, materialName, _data, thickness),
 			time
 			);
 #endif
@@ -383,15 +413,22 @@ Ogre::SceneNode* ObjectList::findNode(const char* node_name)
 {
 	Ogre::SceneNode* pNode=NULL;
 	if(!_members->mRootSceneNode) return pNode;
+
 #ifndef NO_OGRE
 	try {
-		pNode=(Ogre::SceneNode*)_members->mRootSceneNode->getChild(node_name);
+		auto i=_members->mUnscheduledObjects.find(node_name);
+		if(i!=_members->mUnscheduledObjects.end())
+		{
+			return i->second;
+		}
 	}
 	catch( Ogre::Exception& e )
 	{
+		printf("%s\n", e.what());
 		// 없으면 okay.
 	}
 #endif
+
 	return pNode;
 
 	/*
@@ -405,7 +442,10 @@ void ObjectList::erase(const char* node_name)
 {
 	Ogre::SceneNode* pNode=findNode(node_name);
 	if(pNode)
+	{
+		_members->mUnscheduledObjects.erase(std::string(node_name));
 		RE::removeEntity(pNode);
+	}
 	/*
 	nameIterator i=_members->mObjectNames.find(node_name);
 	if(i==_members->mObjectNames.end())
@@ -422,31 +462,15 @@ void ObjectList::erase(const char* node_name)
 
 Ogre::SceneNode* ObjectList::createSceneNode(const char* node_name)
 {
-/*
-	// erase first.
-	{
-		nameIterator i=_members->mObjectNames.find(node_name);
-		if(i!=_members->mObjectNames.end())
-		{
-			_members->mObjects.erase(i->second);
-			_members->mObjectNames.erase(i);
-		}
-	}
-
-	objectIterator i=_members->mObjects.end();
-	i=_members->mObjects.insert(i, SceneNodePtr());
-	Ogre::SceneNode* pNode=createSceneNode(_uniqueId+node_name);
-	// automatic removal
-	i->reset(pNode, (void(*)(Ogre::SceneNode*))RE::removeEntity);
-	_members->mObjectNames[node_name]=i;
-	*/
 	Ogre::SceneNode* pNode=findNode(node_name);
 #ifndef NO_OGRE
 	if(pNode) {
 		RE::removeEntity(pNode);
+		_members->mUnscheduledObjects.erase(node_name);
 	}
-	RE::removeEntity(node_name); // I  do not know why this is necessary.. but sometimes it is necessary...
-	pNode=getCurrRootSceneNode()->createChildSceneNode(node_name);
+	//RE::removeEntity(node_name); // I  do not know why this is necessary.. but sometimes it is necessary...
+	pNode=getCurrRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
+	_members->mUnscheduledObjects.insert({std::string(node_name), pNode});
 #endif
 
 	return pNode;
@@ -457,10 +481,12 @@ Ogre::SceneNode* ObjectList::registerObjectScheduled(Ogre::MovableObject* pObjec
 {
 	std::list<ScheduledSceneNodePtr>::iterator i=_members->mScheduledObjects.end();
 	i=_members->mScheduledObjects.insert(i, ScheduledSceneNodePtr());
-	Ogre::SceneNode* pNode=createSceneNode(RE::generateUniqueName());
 #ifndef NO_OGRE
+	Ogre::SceneNode* pNode=getCurrRootSceneNode()->createChildSceneNode(Ogre::SCENE_DYNAMIC);
 	pNode->attachObject(pObject);
 	pNode->setVisible(_members->isVisible);
+#else
+	Ogre::SceneNode* pNode=createSceneNode(RE::generateUniqueName());
 #endif
 	i->ptr=pNode;
 	i->timeLeft=destroyTime;
@@ -474,7 +500,7 @@ Ogre::SceneNode* ObjectList::registerEntityScheduled(const char* filename, m_rea
  #ifdef NO_OGRE
   return registerObjectScheduled(NULL, destroyTime);
 #else
-	return registerObjectScheduled(RE::ogreSceneManager()->createEntity(RE::generateUniqueName().ptr(), filename), destroyTime);
+	return registerObjectScheduled(RE::_createEntity(filename), destroyTime);
 #endif
 }
 
@@ -531,7 +557,7 @@ void ObjectList::drawLine(vector3 const& startpos, vector3 const& endpos, const 
 	   materialname=_materialName;
    else
 	   materialname="solidred";
-   registerObject(nameid.ptr(), "LineList", materialname.ptr(), matView(lines),0);
+   registerObject(nameid, "LineList", materialname.ptr(), matView(lines),0);
 #endif
 }
 void ObjectList::drawAxes(transf const& tf, const char* nameid, double _scale, double posScale)

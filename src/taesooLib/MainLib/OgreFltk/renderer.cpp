@@ -6,6 +6,7 @@
 #endif
 #include "stdafx.h"
 #include <stdio.h>
+#include <sstream>
 #include "../BaseLib/utility/util.h"
 #include "MotionManager.h"
 #include "../BaseLib/motion/viewpoint.h"
@@ -15,26 +16,100 @@
 #include "FltkRenderer.h"
 #include "renderer.h"
 #include "../../BaseLib/utility/TypeString.h"
+#include "../../BaseLib/motion/VRMLloader.h"
 #include "RE.h"
 #ifndef NO_OGRE
 #include <Ogre.h>
+#include <OgreOverlay.h>
+#include <OgreWindow.h>
+#include "OgreOverlaySystem.h"
+#include "OgreOverlayManager.h"
+#include "MovableText.h"
+
+#include "OgreCamera.h"
+#include "OgreItem.h"
+
+#include "OgreHlmsUnlit.h"
+#include "OgreHlmsPbs.h"
+#include "OgreHlmsManager.h"
+
+#include "OgreHlmsPbsDatablock.h"
+#include "OgreHlmsSamplerblock.h"
+
+#include "OgreRoot.h"
+#include "OgreHlmsManager.h"
+#include "OgreTextureGpuManager.h"
+#include "OgreTextureFilters.h"
+#include "OgreHlmsPbs.h"
+#include "OgreArchiveManager.h"
+
+#include "Compositor/OgreCompositorManager2.h"
+
+#include "OgreOverlaySystem.h"
+#include "OgreOverlayManager.h"
+
+#include "OgreTextureGpuManager.h"
+#include "OgreStagingTexture.h"
+
+#include "OgreWindowEventUtilities.h"
+#include "OgreWindow.h"
+
+#include "OgreFileSystemLayer.h"
+
+#include "OgreHlmsDiskCache.h"
+#include "OgreGpuProgramManager.h"
+
+#include "OgreLogManager.h"
+
+#include "OgrePlatformInformation.h"
+#ifdef SEP_USE_SDL2
+    #include <SDL_syswm.h>
+#include <FL/Fl_Window.H>
+#endif
+
+#include "Compositor/OgreCompositorManager2.h"
+#include "Compositor/OgreCompositorNodeDef.h"
+#include "Compositor/OgreCompositorShadowNode.h"
+#include "Compositor/Pass/PassScene/OgreCompositorPassSceneDef.h"
+
+#include <fstream>
+
+
+#if OGRE_PLATFORM == OGRE_PLATFORM_APPLE || OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
+#include "OSX/macUtils.h"
+#include <Carbon/Carbon.h>
+#include <ApplicationServices/ApplicationServices.h>
+#if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
+#include "System/iOS/iOSUtils.h"
+#else
+#include "OSXUtils.h"
+#endif
+#endif
 #ifndef NO_OIS
  #include <OISMouse.h>
  #include <OISKeyboard.h>
  #include <OISJoyStick.h>
  #include <OISInputManager.h>
 #endif
-#if OGRE_VERSION_MINOR>=12 || OGRE_VERSION_MAJOR>=13
-#include "Bites/OgreBitesConfigDialog.h"
-#endif
+//#include "Bites/OgreBitesConfigDialog.h"
+#include "ShadowMapFromCodeGameState.h"
 #endif
 using namespace std;
 
 ConfigTable config;
 #if defined( __APPLE__) && !defined(NO_GUI)
-Ogre::Rect getWindowBounds(Ogre::RenderWindow *renderWindow);
+Ogre::Rect getWindowBounds(void* handle);
 #endif
 
+	class OgreMaterialCreator : public VRMLloader::MaterialCreator
+	{
+		public:
+		OgreMaterialCreator(){}
+		virtual void createMaterial(const char* id, const vector3 & diffuse, const vector3& specular, const vector3&  emissive, double shininess){
+			printf("creating material: %s %s\n", id, diffuse.output().c_str());
+			RE::renderer().createMaterial(id, diffuse, specular, shininess);
+		}
+	};
 #ifndef _MSC_VER
  #if FL_MAJOR_VERSION == 2
 #ifndef ___APPLE_CC__
@@ -70,15 +145,16 @@ bool useSeperateOgreWindow()
 #endif
 }
 
-#ifdef INCLUDE_OGRESKINENTITY
-#include "../Ogre/OgreSkinEntity.h"
-#endif
 
 #ifndef NO_OGRE
+
+extern bool softKill;
+
 #if !defined(__APPLE__) && !defined(_MSC_VER)
 #include <X11/Xlib.h>
 #endif
-#endif
+
+#endif // NO_OGRE
 namespace RE	
 {
 	extern Globals* g_pGlobals;
@@ -115,8 +191,10 @@ inline Ogre::Matrix4 BuildScaledOrthoMatrix(double zoom, double aspectRatio)
 
 
 #ifndef NO_OGRE
+/* todo2
 static Ogre::TexturePtr rtt_texture;
 static Ogre::RenderTexture *renderTexture=NULL;
+*/
 static bool mbUseRTTcapture=false;
 static bool mbUseOGREcapture=false;
 #endif
@@ -124,10 +202,13 @@ static bool mbUseOGREcapture=false;
 void OgreRenderer::setBackgroundColour(float r, float g, float b)
 {
 #ifndef NO_OGRE
+	printf("OgreRenderer::setBackgroundColour currently doesn't work.\n If necessary, adjust the 1st line of OgreRenderer::_construct(...) in renderer.cpp directly!!!\n");
+	/* todo2
 	viewport().mView->setBackgroundColour(Ogre::ColourValue(r,g,b,1.f));
 	if(mbUseRTTcapture){
 		renderTexture->getViewport(0)->setBackgroundColour(Ogre::ColourValue(r,g, b, 1.f));
 	}
+	*/
 #endif
 }
 void OgreRenderer::Viewport::setupRTT(OgreRenderer& renderer, int width, int height)
@@ -136,7 +217,7 @@ void OgreRenderer::Viewport::setupRTT(OgreRenderer& renderer, int width, int hei
 
 	// Viewports.
 
-	mView->setBackgroundColour(Ogre::ColourValue(0.f, 0.6f, 0.8f, 0.9f));
+	//todo2 mView->setBackgroundColour(Ogre::ColourValue(0.f, 0.6f, 0.8f, 0.9f));
 
 	bool bOrthographic=config.GetInt("useOrthographicProjection")==1;
 
@@ -161,6 +242,7 @@ void OgreRenderer::Viewport::setupRTT(OgreRenderer& renderer, int width, int hei
 
 	if (mbUseRTTcapture)
 	{
+		/* todo2
 		rtt_texture = Ogre::TextureManager::getSingleton().createManual("RttTex", Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME, Ogre::TEX_TYPE_2D, width, height, 0, Ogre::PF_R8G8B8, Ogre::TU_RENDERTARGET);
 
 		renderTexture = rtt_texture->getBuffer()->getRenderTarget();
@@ -171,59 +253,9 @@ void OgreRenderer::Viewport::setupRTT(OgreRenderer& renderer, int width, int hei
 		renderTexture->getViewport(0)->setBackgroundColour(Ogre::ColourValue(0.f, 0.6f, 0.8f, 0.9f));
 		renderTexture->getViewport(0)->setOverlaysEnabled(true);
 		renderTexture->setAutoUpdated(true);
+		*/
 	}
 
-	// Shadow
-	//mScene->setShadowTechnique( Ogre::SHADOWTYPE_TEXTURE_MODULATIVE);
-	Ogre::ShadowTechnique shadowTechnique=(Ogre::ShadowTechnique )config.GetInt("shadowTechnique");
-	int depthShadow=config.GetInt("depthShadow")==1;
-
-#if OGRE_VERSION_MINOR>=12 || OGRE_VERSION_MAJOR>=13
-	if (depthShadow)
-	{
-		mScene->setShadowTexturePixelFormat(Ogre::PF_FLOAT32_R);
-		shadowTechnique=Ogre::SHADOWTYPE_TEXTURE_ADDITIVE_INTEGRATED;
-	}
-#endif
-
-	mScene->setShadowTextureSize(512);
-	mScene->setShadowTechnique( shadowTechnique);		
-
-	if (renderer.mRoot->getRenderSystem()->getCapabilities()->hasCapability(Ogre::RSC_HWRENDER_TO_TEXTURE))
-	{
-		// In D3D, use a 1024x1024 shadow texture
-		//mScene->setShadowTextureSettings(1024, 2);
-		//
-		int count=2;
-		if (config.Find("shadowmapCount"))
-			count=config.GetInt("shadowmapCount");
-		mScene->setShadowTextureSettings(config.GetInt("shadowResolution"),count);
-		//mScene->setShadowTextureSize(config.GetInt("shadowResolution"));
-	}
-	else
-	{
-		// Use 512x512 texture in GL since we can't go higher than the window res
-		mScene->setShadowTextureSettings(256, 2);
-	}
-
-	double shadowColor=0.5;
-	mScene->setShadowColour(Ogre::ColourValue(shadowColor, shadowColor, shadowColor));
-
-
-	if (depthShadow){
-#if OGRE_VERSION_MINOR>=12 || OGRE_VERSION_MAJOR>=13
-		auto mSceneMgr=mScene;
-		std::string CUSTOM_ROCKWALL_MATERIAL("Ogre/DepthShadowmap/Receiver/RockWall");
-		std::string CUSTOM_CASTER_MATERIAL("PSSM/shadow_caster");
-		std::string CUSTOM_RECEIVER_MATERIAL("Ogre/DepthShadowmap/Receiver/Float");
-		std::string CUSTOM_ATHENE_MATERIAL("Ogre/DepthShadowmap/Receiver/Athene");
-		auto themat = Ogre::MaterialManager::getSingleton().getByName(CUSTOM_CASTER_MATERIAL);
-		mSceneMgr->setShadowTextureCasterMaterial(themat);
-		mSceneMgr->setShadowTextureSelfShadow(true);    
-		// 모든 shadow receiver들도 특수 material사용해야함. see loadBG_default.lua (search "if depthShadow")
-#endif
-
-	}
 #endif
 }
 void OgreRenderer::Viewport::init(OgreRenderer& renderer, vectorn const& param)
@@ -231,14 +263,24 @@ void OgreRenderer::Viewport::init(OgreRenderer& renderer, vectorn const& param)
 	int width=param(0);
 	int height=param(1);
 #ifndef NO_OGRE
+	const size_t numThreads = 1;
+	//const size_t numThreads = std::max<size_t>( 1, Ogre::PlatformInformation::getNumLogicalCores() );
 	//mScene = renderer.mRoot->createSceneManager("OctreeSceneManager", "OgreFltk");
-	mScene = renderer.mRoot->createSceneManager();
-#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
+	mScene = renderer.mRoot->createSceneManager( Ogre::ST_GENERIC,
+			numThreads,
+			"ExampleSMInstance" );
+
 	mScene->addRenderQueueListener(renderer.mOverlaySystem);
-#endif
+	mScene->getRenderQueue()->setSortRenderQueue(
+			Ogre::v1::OverlayManager::getSingleton().mDefaultRenderQueueId,
+			Ogre::RenderQueue::StableSort );
+
+	//Set sane defaults for proper shadow mapping
+	mScene->setShadowDirectionalLightExtrusionDistance( 500.0f );
+	mScene->setShadowFarDistance( 5000.0f );
 #endif
 	// init camera
-	_init(renderer, width, height);
+	createCamera(renderer, width, height);
 	if(param.size()==3)
 	{
 		// manually setup mView and mScene options
@@ -246,10 +288,12 @@ void OgreRenderer::Viewport::init(OgreRenderer& renderer, vectorn const& param)
 	else // default automatic setup
 	{
 #ifndef NO_OGRE
+		/*todo2
 		mView = renderer.mWnd->addViewport(mCam,cameraIndex-1 );
 		setupRTT(renderer, width, height);
 		m_pViewpoint->m_iWidth=mView->getActualWidth();
 		m_pViewpoint->m_iHeight=mView->getActualHeight();
+		*/
 #endif
 	}
 /*
@@ -266,7 +310,7 @@ void OgreRenderer::Viewport::init(OgreRenderer& renderer, vectorn const& param)
 }
 
 
-void OgreRenderer::Viewport::_init(OgreRenderer& renderer,int width, int height)
+void OgreRenderer::Viewport::createCamera(OgreRenderer& renderer,int width, int height)
 {
 	// Taesoo Camera.
 	m_pViewpoint=new Viewpoint();
@@ -275,7 +319,7 @@ void OgreRenderer::Viewport::_init(OgreRenderer& renderer,int width, int height)
 	m_pViewpoint->setDefaultView();
 #else
 	FILE* fp;
-	VERIFY(fp=fopen((renderer.mTaesooLib_path+"Resource/viewpoint.txt").c_str(),"r"));
+	VERIFY(fp=fopen((RE::taesooLibPath()+"Resource/viewpoint.txt").c_str(),"r"));
 	m_pViewpoint->ReadViewPoint(fp);	
 //	m_pViewpoint->ReadViewPoint((mTaesooLib_path+"Resource/viewpoint.txt");	
 	fclose(fp);
@@ -296,17 +340,17 @@ void OgreRenderer::Viewport::_init(OgreRenderer& renderer,int width, int height)
 	cameraname.format("Camera %d", cameraIndex++);
 	mCam = mScene->createCamera(cameraname.ptr());
 
+	mCam->setNearClipDistance(config.GetInt("nearClipDistance"));
 	mCam->setFarClipDistance(config.GetInt("farClipDistance"));
+	mCam->setAutoAspectRatio(true);
 //	mCam->setPosition(m_pViewpoint->m_vecVPos.x, m_pViewpoint->m_vecVPos.y, m_pViewpoint->m_vecVPos.z);
-#if OGRE_VERSION_MAJOR<13
-	mCam->lookAt(m_pViewpoint->m_vecVAt.x, m_pViewpoint->m_vecVAt.y, m_pViewpoint->m_vecVAt.z);
-#else
 	mCameraNode=mScene->getRootSceneNode()->createChildSceneNode();
+	printf("c");fflush(stdout);
+	((Ogre::SceneNode*)mCam->getParentNode())->detachObject(mCam);
+	//
 	mCameraNode->attachObject(mCam);
 	mCameraNode->setFixedYawAxis(true); // fix lookAt calls
 	mCameraNode->lookAt(Ogre::Vector3(m_pViewpoint->m_vecVAt.x, m_pViewpoint->m_vecVAt.y, m_pViewpoint->m_vecVAt.z), Ogre::Node::TS_PARENT);
-#endif
-	mCam->setNearClipDistance(config.GetInt("nearClipDistance"));
 	mCam->setFOVy(Ogre::Radian(Ogre::Degree(45)));
 
 
@@ -315,7 +359,7 @@ void OgreRenderer::Viewport::_init(OgreRenderer& renderer,int width, int height)
 void OgreRenderer::Viewport::setOrthographicMode(bool isOrtho)
 {
 #ifndef NO_OGRE
-	m_real aspectRatio=(m_real)mView->getActualWidth()/(m_real)mView->getActualHeight();
+	m_real aspectRatio=(m_real)getActualWidth()/(m_real)getActualHeight();
 	printf("aspect Ratio %f\n", aspectRatio);
 	if(isOrtho)
 	{
@@ -340,6 +384,8 @@ void OgreRenderer::Viewport::setOrthographicMode(bool isOrtho)
 	}
 #endif
 }
+int OgreRenderer::Viewport::getActualWidth() const { return m_pViewpoint->m_iWidth;}
+int OgreRenderer::Viewport::getActualHeight() const { return m_pViewpoint->m_iHeight;}
 void OgreRenderer::Viewport::setCustomProjectionMatrix(matrix4 const& mat_proj)
 {
 #ifndef NO_GUI
@@ -369,16 +415,15 @@ void OgreRenderer::Viewport::init(OgreRenderer& renderer, OgreRenderer::Viewport
 #ifndef NO_OGRE
 	mScene=other.mScene;
 #endif
-	_init(renderer, other.m_pViewpoint->m_iWidth, other.m_pViewpoint->m_iHeight);
+	createCamera(renderer, other.m_pViewpoint->m_iWidth, other.m_pViewpoint->m_iHeight);
 #ifndef NO_OGRE
-	mView = renderer.mWnd->addViewport(mCam,cameraIndex-1 );
-	mView->setBackgroundColour(other.mView->getBackgroundColour());
+	// todo2 mView = renderer.mWnd->addViewport(mCam,cameraIndex-1 );
+	// todo2 mView->setBackgroundColour(other.mView->getBackgroundColour());
 #endif
 }
 OgreRenderer::OgreRenderer()
-	:
-
 #if !defined( NO_OGRE) 
+	: BaseSystem(new ShadowMapFromCodeGameState( "")),
 		mRoot(NULL),
 		mWnd(NULL),
 #if !defined(NO_OIS)
@@ -386,54 +431,64 @@ OgreRenderer::OgreRenderer()
 		mKeyboard(NULL),
 		mInputSystem(NULL),
 #endif
+#else
+	:
 #endif
 		mStatsOn(true),
 		mbPause(false), 
 		mbScreenshot(false),
 		mbFixedTimeStep(false),
 		m_fTimeScaling(1.f),
-		mScreenshotPrefix("../dump/dump"),
-		mTaesooLib_path	("../")
+		mScreenshotPrefix("../dump/dump")
 {
 	_locateTaesooLib();
+	std::string mTaesooLib_path=RE::taesooLibPath();
+
+#ifndef NO_OGRE
+	((ShadowMapFromCodeGameState*)mCurrentGameState)->_notifyGraphicsSystem(this);
+#endif
+
 #ifdef _MSC_VER // WINDOWS
 #if defined(_DEBUG)
-	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig.txt").c_str(),(mPluginPath+"plugins_d.cfg").c_str(), (mPluginPath+"ogre.cfg").c_str());
+	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig.txt").c_str(),(mPluginPath+"plugins2_d.cfg").c_str(), (mPluginPath+"ogre2.cfg").c_str());
 #else
-	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig.txt").c_str(),(mPluginPath+"plugins.cfg").c_str(), (mPluginPath+"ogre.cfg").c_str());
+	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig.txt").c_str(),(mPluginPath+"plugins2.cfg").c_str(), (mPluginPath+"ogre2.cfg").c_str());
 #endif
 #elif defined(__APPLE__) 
-	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig_mac.txt").c_str(),(mPluginPath+"plugins_mac.cfg").c_str(), (mPluginPath+"ogre_mac.cfg").c_str());
+#if defined(_DEBUG)
+	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig_mac.txt").c_str(),(mPluginPath+"plugins2_mac_d.cfg").c_str(), (mPluginPath+"ogre2_mac.cfg").c_str());
+#else
+	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig_mac.txt").c_str(),(mPluginPath+"plugins2_mac.cfg").c_str(), (mPluginPath+"ogre2_mac.cfg").c_str());
+#endif
 #else // LINUX
 
-#if OGRE_VERSION_MINOR >= 12 || OGRE_VERSION_MAJOR>=13
-	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig_linux12.txt").c_str(), (mPluginPath+"plugins_linux12.cfg").c_str(), (mPluginPath+"ogre_linux12.cfg").c_str());
-#else
-	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig_linux.txt").c_str(), (mPluginPath+"plugins_linux.cfg").c_str(), (mPluginPath+"ogre_linux.cfg").c_str());
-#endif
+	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig_linux.txt").c_str(), (mPluginPath+"plugins2_linux.cfg").c_str(), (mPluginPath+"ogre2_linux.cfg").c_str());
 #endif
 }
 
 
 OgreRenderer::OgreRenderer(const char* fallback_configFileName, const char* configFileName, const char* plugins_file, const char* ogre_config)
-	:
-
 #if !defined( NO_OGRE)
+	: BaseSystem(new ShadowMapFromCodeGameState( "This sample is almost exactly the same as ShadowMapFromCode.\n")),
 	mRoot(NULL),
 	mWnd(NULL),
+#ifdef SEP_USE_SDL2
+	mSdlWindow( 0 ),
+#endif
 #if !defined(NO_OIS)
 		mMouse(NULL),
 		mKeyboard(NULL),
 		mInputSystem(NULL),
 #endif
+#else
+	:
 #endif
 		mStatsOn(true),
 		mbPause(false), 
 		mbScreenshot(false),
 		mbFixedTimeStep(false),
 		m_fTimeScaling(1.f),
-		mScreenshotPrefix("../dump/dump"),
-		mTaesooLib_path	("../")
+		mScreenshotPrefix("../dump/dump")
 {
 	_locateTaesooLib();
 	_constructor(fallback_configFileName, configFileName, plugins_file, ogre_config);
@@ -441,8 +496,7 @@ OgreRenderer::OgreRenderer(const char* fallback_configFileName, const char* conf
 
 void OgreRenderer::_locateTaesooLib()
 {
-	mTaesooLib_path=RE::taesooLibPath();
-	if( mTaesooLib_path=="work/taesooLib/")
+	if(RE::taesooLibPath()=="work/taesooLib/")
 	{
 		mScreenshotPrefix="work/taesooLib/dump/dump";
 		mPluginPath="work/";
@@ -450,6 +504,9 @@ void OgreRenderer::_locateTaesooLib()
 }
 void OgreRenderer::_constructor(const char* fallback_configFileName, const char* configFileName, const char* plugins_file, const char* ogre_config)
 {
+#ifndef NO_OGRE
+	mBackgroundColour=Ogre::ColourValue( 0.2f, 0.4f, 0.6f );
+#endif
 	printf("loading %s\n", configFileName);
 #if !defined(NO_GUI)
 	config.load(fallback_configFileName, configFileName);
@@ -457,43 +514,30 @@ void OgreRenderer::_constructor(const char* fallback_configFileName, const char*
 	ASSERT(RE::g_pGlobals==NULL);
 	RE::g_pGlobals=new RE::Globals();
 	RE::g_pGlobals->pRenderer = this;    
-	m_pMotionManager=new MotionManager((mTaesooLib_path+"Resource/motion.lua").c_str());
+	m_pMotionManager=new MotionManager((RE::taesooLibPath()+"Resource/motion.lua").c_str());
 	m_fElapsedTime=0.f;
 	m_fCaptureFPS=30.f;
 	mbTimeStop=false;
 
+	auto mTaesooLib_path=RE::taesooLibPath();
 	if(mTaesooLib_path=="../")
 	{
-#if	OGRE_VERSION_MAJOR>=13
-		mResourceFile=(mTaesooLib_path+"Resource/resources13.cfg").c_str();
-#elif OGRE_VERSION_MINOR>=12 
-		mResourceFile=(mTaesooLib_path+"Resource/resources12.cfg").c_str();
-#else
-		mResourceFile=(mTaesooLib_path+"Resource/resources.cfg").c_str();
-#endif
+		mResourceFile=(mTaesooLib_path+"Resource/resources2.cfg").c_str();
 	}
 	else
 	{
-#if	OGRE_VERSION_MAJOR>=13
-		mResourceFile=(mTaesooLib_path+"Resource/resources13_relative.cfg").c_str();
-#elif OGRE_VERSION_MINOR>=12 
-		mResourceFile=(mTaesooLib_path+"Resource/resources12_relative.cfg").c_str();
-#else
-		mResourceFile=(mTaesooLib_path+"Resource/resources_relative.cfg").c_str();
-#endif
-
+		mResourceFile=(mTaesooLib_path+"Resource/resources2_relative.cfg").c_str();
 	}
+	mWriteAccessFolder=mTaesooLib_path+"Resource/";
 
 #ifndef NO_OGRE
-#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
 	mOverlaySystem=NULL;
-#endif
 	// Make the root
 
 	printf("starting ogre"); fflush(stdout);
 	Ogre::Log* log=NULL;
 
-	if(config.GetInt("enagleLog")==0)	 {
+	if(config.GetInt("enableLog")==0)	 {
 		Ogre::LogManager* logMgr=new Ogre::LogManager();
 		log=Ogre::LogManager::getSingleton().createLog("", true, false, false);
 	}
@@ -503,15 +547,25 @@ void OgreRenderer::_constructor(const char* fallback_configFileName, const char*
 	mRoot = new Ogre::Root(plugins_file, ogre_config, (log)?"":"Ogre.log");
 	printf("."); fflush(stdout);
 
-#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
-	mOverlaySystem=new Ogre::OverlaySystem();
-#endif
+	static Ogre::MovableTextFactory _mMovableTextFactory;
+	mMovableTextFactory=&_mMovableTextFactory;
+	mRoot->addMovableObjectFactory(mMovableTextFactory);
+		
+	mStaticPluginLoader.install( mRoot );
+	Ogre::RenderSystemList::const_iterator itor = mRoot->getAvailableRenderers().begin();
+	Ogre::RenderSystemList::const_iterator endt = mRoot->getAvailableRenderers().end();
+
+	// enable sRGB Gamma Conversion mode by default for all renderers,
+	// but still allow to override it via config dialog
+	while( itor != endt )
+	{
+		Ogre::RenderSystem *rs = *itor;
+		rs->setConfigOption( "sRGB Gamma Conversion", "Yes" );
+		++itor;
+	}
+
 	printf("."); fflush(stdout);
 
-#ifdef INCLUDE_OGRESKINENTITY
-	mRoot->addMovableObjectFactory(new Ogre::SkinEntityFactory ());
-#endif
-	printf("."); fflush(stdout);
 
 #endif	
 	// now OgreRenderer can do non-ogre stuff.
@@ -557,11 +611,143 @@ Ogre::Root::getSingleton().setRenderSystem(renderSystem);
 return true;
 
 }*/
-void OgreRenderer::firstInit(void* handle, int width, int height)
+#if !defined(NO_OGRE) && defined(SEP_USE_SDL2)
+void translateSDLEventToFLTK(const SDL_Event& sdlEvent) {
+
+	static int fltkButton=0;
+	static bool isDragging=false;
+	int mouse_ev=FL_NO_EVENT;
+    switch (sdlEvent.type) {
+        case SDL_KEYDOWN:
+		case SDL_KEYUP: 
+			{
+				int fltkKey = -1;
+				switch (sdlEvent.key.keysym.sym) 
+				{
+					case SDLK_ESCAPE: 
+						fltkKey = FL_Escape; softKill=true; break;
+					case SDLK_RETURN: 
+						fltkKey = FL_Enter; break;
+					case SDLK_SPACE: 
+						fltkKey = ' '; break;
+					case SDLK_LSHIFT:
+						{
+							if(sdlEvent.type==SDL_KEYUP)
+								Fl::e_state&=~FL_SHIFT;
+							else
+								Fl::e_state|=FL_SHIFT;
+							printf("shift %d\n", Fl::event_state()&FL_SHIFT);
+						}
+						break;
+					case SDLK_LCTRL:
+					case 1073741881: //   
+						{
+							if(sdlEvent.type==SDL_KEYUP)
+								Fl::e_state&=~FL_CTRL;
+							else
+								Fl::e_state|=FL_CTRL;
+							printf("ctrl %d\n", Fl::event_ctrl());
+						}
+						break;
+
+					case SDLK_LALT:
+						{
+							if(sdlEvent.type==SDL_KEYUP)
+								Fl::e_state&=~FL_ALT;
+							else
+								Fl::e_state|=FL_ALT;
+							printf("alt %d\n", Fl::event_state()&FL_ALT);
+						}
+						break;
+
+						// 다른 키들에 대한 매핑 추가
+					default: 
+						{
+							auto sym=sdlEvent.key.keysym.sym;
+							if (sym>=SDL_SCANCODE_A && sym<=SDL_SCANCODE_Z)
+								fltkKey='a'+sym-SDL_SCANCODE_A;
+							else if (sym>=SDL_SCANCODE_1 && sym<=SDL_SCANCODE_9)
+								fltkKey='1'+sym-SDL_SCANCODE_1;
+							else if (sym==SDL_SCANCODE_0)
+								fltkKey='0';
+							else
+								fltkKey=sym;
+							break;
+						}
+				}
+				if(fltkKey!=-1)
+				{
+					printf("key%d\n", fltkKey);
+					//Fl::e_keysym = fltkKey;
+					Fl::e_keysym = sdlEvent.key.keysym.sym; 
+
+					if(sdlEvent.type==SDL_KEYUP)
+						Fl::handle_(FL_KEYUP, &RE::FltkRenderer());
+					else
+						Fl::handle_(FL_KEYDOWN,& RE::FltkRenderer());
+				}
+            break;
+        }
+        case SDL_MOUSEBUTTONDOWN:
+        case SDL_MOUSEBUTTONUP: {
+            switch (sdlEvent.button.button) {
+                case SDL_BUTTON_LEFT: fltkButton = 1; break;
+                case SDL_BUTTON_RIGHT: fltkButton = 2; break;
+                case SDL_BUTTON_MIDDLE: fltkButton = 3; break;
+            }
+			if(sdlEvent.type==SDL_MOUSEBUTTONDOWN)
+			{
+				isDragging=true;
+				mouse_ev=FL_PUSH;
+			}
+			else
+			{
+				isDragging=false;
+				mouse_ev=FL_RELEASE;
+			}
+
+			printf("button: %d\n", fltkButton);
+            break;
+        }
+        case SDL_MOUSEMOTION: {
+			if(isDragging)
+				mouse_ev=FL_DRAG;
+			else
+				mouse_ev=FL_MOVE;
+            break;
+        }
+        // 다른 SDL 이벤트에 대한 처리 추가
+        default:
+            break;
+    }
+
+	if(mouse_ev!=FL_NO_EVENT)
+	{
+		auto* m_pHandler=RE::FltkRenderer().m_pHandler;
+
+		if(m_pHandler && m_pHandler->handleRendererMouseEvent(mouse_ev, sdlEvent.motion.x, sdlEvent.motion.y, fltkButton))
+			return;
+		RE::FltkRenderer().handle_mouse(mouse_ev, sdlEvent.motion.x, sdlEvent.motion.y, fltkButton);
+	}
+}
+
+#endif
+void OgreRenderer::initialize(void* handle, int width, int height)
 {
 
+	_hWnd=handle;
 #ifndef NO_OGRE
+    #ifdef SEP_USE_SDL2
+        //if( SDL_Init( SDL_INIT_EVERYTHING ) != 0 )
+        if( SDL_Init( SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK |
+                      SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS ) != 0 )
+        {
+            OGRE_EXCEPT( Ogre::Exception::ERR_INTERNAL_ERROR, "Cannot initialize SDL2!",
+                         "GraphicsSystem::initialize" );
+        }
+    #endif
 
+		mOverlaySystem=new Ogre::v1::OverlaySystem();
 	try
 	{
 
@@ -570,8 +756,45 @@ void OgreRenderer::firstInit(void* handle, int width, int height)
 		// Show the configuration dialog and initialise the system
 		// You can skip this and use root.restoreConfig() to load configuration
 		// settings if you were sure there are valid ones saved in ogre.cfg
-		setupResources();
+#ifndef NO_OGRE
+		if(config.GetInt("showConfigDlg"))
+		{
+			if(!mRoot->showConfigDialog())
+			{
+				Msg::error("Configuration canceled");
+			}
+		}
+		else
+		{
 
+			if(!mRoot->restoreConfig())
+			{
+				printf("Displaying configuration dialog...\n");
+				if(!mRoot->showConfigDialog())
+				{
+					Msg::error("Configuration canceled");
+				}
+			}
+		}
+
+#endif
+
+#if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
+	if(!mRoot->getRenderSystem())
+	{
+		Ogre::RenderSystem *renderSystem =
+			mRoot->getRenderSystemByName( "Metal Rendering Subsystem" );
+		mRoot->setRenderSystem( renderSystem );
+	}
+#endif
+#if OGRE_PLATFORM == OGRE_PLATFORM_ANDROID
+	if( !mRoot->getRenderSystem() )
+	{
+		Ogre::RenderSystem *renderSystem =
+			mRoot->getRenderSystemByName( "Vulkan Rendering Subsystem" );
+		mRoot->setRenderSystem( renderSystem );
+	}
+#endif
 		/*if(!config.GetInt("showConfigDlg"))
 		  {
 		  mRoot->getRenderSystem()->validateConfigOptions();
@@ -585,24 +808,176 @@ void OgreRenderer::firstInit(void* handle, int width, int height)
 			// Root and Scene.
 			if(useSeperateOgreWindow())
 			{
+#ifdef SEP_USE_SDL2
+				if(config.Find("useOGREcapture")) mbUseOGREcapture=config.GetInt("useOGREcapture");
+				mWnd = mRoot->initialise(false);
+
+				Ogre::ConfigOptionMap& cfgOpts = mRoot->getRenderSystem()->getConfigOptions();
+
+				width   = 1280;
+				height  = 720;
+
+#if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
+				{
+					Ogre::Vector2 screenRes = iOSUtils::getScreenResolutionInPoints();
+					width = static_cast<int>( screenRes.x );
+					height = static_cast<int>( screenRes.y );
+				}
+#endif
+
+				Ogre::ConfigOptionMap::iterator opt = cfgOpts.find( "Video Mode" );
+				if( opt != cfgOpts.end() && !opt->second.currentValue.empty() )
+				{
+					//Ignore leading space
+					const Ogre::String::size_type start = opt->second.currentValue.find_first_of("012356789");
+					//Get the width and height
+					Ogre::String::size_type widthEnd = opt->second.currentValue.find(' ', start);
+					// we know that the height starts 3 characters after the width and goes until the next space
+					Ogre::String::size_type heightEnd = opt->second.currentValue.find(' ', widthEnd+3);
+					// Now we can parse out the values
+					width   = Ogre::StringConverter::parseInt( opt->second.currentValue.substr( 0, widthEnd ) );
+					height  = Ogre::StringConverter::parseInt( opt->second.currentValue.substr(
+								widthEnd+3, heightEnd ) );
+				}
+
+				Ogre::NameValuePairList params;
+				bool fullscreen = Ogre::StringConverter::parseBool( cfgOpts["Full Screen"].currentValue );
+				fullscreen=false;
+				int screen = 0;
+				int posX = SDL_WINDOWPOS_CENTERED_DISPLAY(screen);
+				int posY = SDL_WINDOWPOS_CENTERED_DISPLAY(screen);
+
+				SDL_DisplayMode DM;
+				SDL_GetCurrentDisplayMode(0, &DM);
+				Fl_Window* parent= (Fl_Window*)handle;
+				while(parent->parent())
+					parent=(Fl_Window*)parent->parent();
+				posX= (DM.w-width)/2+parent->w()/2;
+				/*
+
+				Fl_Window* parent= (Fl_Window*)handle;
+
+				printf("pos %d\n", Fl::event_x_root()- Fl::event_x());
+				posX=parent->x();
+				while(parent->parent())
+					parent=(Fl_Window*)parent->parent();
+
+				printf("posX %d %d\n", parent->x(), posX);
+				posX=parent->x();
+				posY=parent->y();
+				*/
+
+				if(fullscreen)
+				{
+					posX = SDL_WINDOWPOS_UNDEFINED_DISPLAY(screen);
+					posY = SDL_WINDOWPOS_UNDEFINED_DISPLAY(screen);
+				}
+
+				mSdlWindow = SDL_CreateWindow(
+						"TaesooLib",    // window title
+						posX,               // initial x position
+						posY,               // initial y position
+						width,              // width, in pixels
+						height,             // height, in pixels
+						SDL_WINDOW_SHOWN
+						| (fullscreen ? SDL_WINDOW_FULLSCREEN : 0) | SDL_WINDOW_RESIZABLE );
+
+				//Get the native whnd
+				SDL_SysWMinfo wmInfo;
+				SDL_VERSION( &wmInfo.version );
+
+				if( SDL_GetWindowWMInfo( mSdlWindow, &wmInfo ) == SDL_FALSE )
+				{
+					OGRE_EXCEPT( Ogre::Exception::ERR_INTERNAL_ERROR,
+							"Couldn't get WM Info! (SDL2)",
+							"GraphicsSystem::initialize" );
+				}
+
+				switch( wmInfo.subsystem )
+				{
+#if defined(SDL_VIDEO_DRIVER_WINDOWS)
+					case SDL_SYSWM_WINDOWS:
+						// Windows code
+						handle=(void*)wmInfo.info.win.window ;
+						break;
+#endif
+#if defined(SDL_VIDEO_DRIVER_WINRT)
+					case SDL_SYSWM_WINRT:
+						// Windows code
+						handle = (void*)wmInfo.info.winrt.window ;
+						break;
+#endif
+#if defined(SDL_VIDEO_DRIVER_COCOA)
+					case SDL_SYSWM_COCOA:
+						handle  = (void*)WindowContentViewHandle(wmInfo);
+						break;
+#endif
+#if defined(SDL_VIDEO_DRIVER_X11)
+					case SDL_SYSWM_X11:
+						handle = (void*)wmInfo.info.x11.window ;
+						params.insert( std::make_pair(
+									"SDL2x11", Ogre::StringConverter::toString( (uintptr_t)&wmInfo.info.x11 ) ) );
+						break;
+#endif
+					default:
+						OGRE_EXCEPT( Ogre::Exception::ERR_NOT_IMPLEMENTED,
+								"Unexpected WM! (SDL2)",
+								"GraphicsSystem::initialize" );
+						break;
+				}
+
+				Ogre::String winHandle;
+#ifdef _MSC_VER
+				winHandle = Ogre::StringConverter::toString((uintptr_t)handle); 
+#elif defined(__APPLE__)
+				//misc["currentGLContext"]=Ogre::String("True");  
+				winHandle  = Ogre::StringConverter::toString(WindowContentViewHandleFltk(handle));
+#else
+				winHandle=Ogre::StringConverter::toString((uintptr_t)handle);
+				//XSync(fl_display, False);
+#endif
+#if OGRE_PLATFORM == OGRE_PLATFORM_WIN32 || OGRE_PLATFORM == OGRE_PLATFORM_WINRT
+				params.insert( std::make_pair("externalWindowHandle",  winHandle) );
+#else
+				params.insert( std::make_pair("parentWindowHandle",  winHandle) );
+#endif
+
+				params.insert( std::make_pair("title", "win title") );
+				params.insert( std::make_pair("gamma", cfgOpts["sRGB Gamma Conversion"].currentValue) );
+				if( cfgOpts.find( "VSync Method" ) != cfgOpts.end() )
+					params.insert( std::make_pair( "vsync_method", cfgOpts["VSync Method"].currentValue ) );
+				params.insert( std::make_pair("FSAA", cfgOpts["FSAA"].currentValue) );
+				params.insert( std::make_pair("vsync", cfgOpts["VSync"].currentValue) );
+				params.insert( std::make_pair("reverse_depth", "Yes" ) );
+
+				initMiscParamsListener( params );
+
+				mWnd = mRoot->createRenderWindow("My sub render window", width, height, false, &params); 
+
+				size_t hWnd = 0;
+				//mWnd->getCustomAttribute("WINDOW", &hWnd);
+				_hWnd=handle;
+				hWnd=(size_t)_hWnd;
+
+				createInputSystems(hWnd);
+#else // ifndef SEP_USE_SDL2
 				mWnd = mRoot->initialise(true); // create renderwindow
 				size_t hWnd = 0;
 
-				mWnd->getCustomAttribute("WINDOW", &hWnd);
+				//mWnd->getCustomAttribute("WINDOW", &hWnd);
+				hWnd=(size_t)_hWnd;
 
 				createInputSystems(hWnd);
+#endif
 			}
 			else
 				mWnd = mRoot->initialise(false);
 		}
 		catch(Ogre::Exception &e)
 		{
+			printf("%s\n", e.what());
 			Msg::msgBox("init failed - showing configuration dialog");
-#if OGRE_VERSION_MINOR>=12 || OGRE_VERSION_MAJOR>=13
-			if(!mRoot->showConfigDialog( OgreBites::getNativeConfigDialog()))
-#else
-			if(!mRoot->showConfigDialog())
-#endif
+			if(!mRoot->showConfigDialog( ))
 			{
 				Msg::error("Configuration canceled");
 			}
@@ -619,6 +994,8 @@ void OgreRenderer::firstInit(void* handle, int width, int height)
 		{
 			createRenderWindow(handle,width, height);
 		}
+
+		setupResources();
 		vectorn param(2);
 		param(0)=width;
 		param(1)=height;
@@ -626,14 +1003,6 @@ void OgreRenderer::firstInit(void* handle, int width, int height)
 		mViewports.resize(mViewports.size()+1);
 		mViewports.back()=new Viewport();
 		mCurrViewports=mViewports.size()-1;
-
-		// Set default mipmap level (NB some APIs ignore this)
-		Ogre::TextureManager::getSingleton().setDefaultNumMipmaps(5);
-
-		// Load resource
-		Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups();
-
-
 #else // #ifndef NO_OGRE
 		vectorn param(2);
 		param(0)=10;
@@ -646,6 +1015,10 @@ void OgreRenderer::firstInit(void* handle, int width, int height)
 
 #ifndef NO_OGRE		
 
+		mWorkspace = setupCompositor();
+		BaseSystem::initialize();
+
+
 		//mScene->setShowDebugShadows(true);
 
 		// Lights.
@@ -656,10 +1029,13 @@ void OgreRenderer::firstInit(void* handle, int width, int height)
 
 
 		// All set up, activate.
-		mWnd->setActive(true);		
-		mWnd->setVisible(true);
 
 		// Do not create scene here! :TAESOO
+		createScene01();
+
+		// todo2: leak : OgreMaterialCreator
+		VRMLloader::registerMaterialCreator(new OgreMaterialCreator());
+		setupShadowNode(true);
 
 	}
 	catch(Ogre::Exception &e)
@@ -672,15 +1048,45 @@ void OgreRenderer::firstInit(void* handle, int width, int height)
 		// Clean up.
 		if(mRoot)
 		{
-#if OGRE_VERSION_MINOR>=9 || OGRE_VERSION_MAJOR>=13
 			delete mOverlaySystem;
-#endif
 			delete mRoot;
 		}
 		mRoot=NULL;
 		throw std::runtime_error(e.getFullDescription());
 	}
 #endif
+}
+
+void OgreRenderer::deinitialize()
+{
+#ifndef NO_OGRE
+	BaseSystem::deinitialize();
+
+	saveTextureCache();
+	saveHlmsDiskCache();
+
+	if( getSceneManager() )
+		getSceneManager()->removeRenderQueueListener( mOverlaySystem );
+
+	delete mOverlaySystem;
+	mOverlaySystem = 0;
+
+
+	delete mRoot;
+	mRoot = 0;
+#ifdef SEP_USE_SDL2
+	if( mSdlWindow )
+	{
+		// Restore desktop resolution on exit
+		SDL_SetWindowFullscreen( mSdlWindow, 0 );
+		SDL_DestroyWindow( mSdlWindow );
+		mSdlWindow = 0;
+	}
+
+	SDL_Quit();
+#endif
+#endif
+
 }
 
 OgreRenderer::Viewport& OgreRenderer::viewport()
@@ -698,7 +1104,7 @@ OgreRenderer::Viewport::Viewport()
 #ifndef NO_OGRE
 	mScene=NULL;
 	mCam=NULL;
-	mView=NULL;
+	//mView=NULL;
 #endif
 }
 OgreRenderer::Viewport::~Viewport()
@@ -711,8 +1117,9 @@ OgreRenderer::~OgreRenderer()
 	RE::g_pGlobals=NULL;
 	//RE::g_pGlobals->pRenderer=NULL;
 #ifndef NO_OGRE
-	rtt_texture.setNull();
+	//todo2 rtt_texture.setNull();
 	delete mRoot;
+	delete mCurrentGameState;
 #endif
 	delete m_pMotionManager;	
 }
@@ -722,13 +1129,8 @@ void OgreRenderer::Viewport::changeView(matrix4 const& matview)
 {
 #ifndef NO_OGRE
 	m_pViewpoint->SetViewMatrix(matview);
-#if OGRE_VERSION_MAJOR<13
-	mCam->setPosition(m_pViewpoint->m_vecVPos.x, m_pViewpoint->m_vecVPos.y, m_pViewpoint->m_vecVPos.z);
-	mCam->lookAt(m_pViewpoint->m_vecVAt.x, m_pViewpoint->m_vecVAt.y, m_pViewpoint->m_vecVAt.z);
-#else
 	mCameraNode->setPosition(m_pViewpoint->m_vecVPos.x, m_pViewpoint->m_vecVPos.y, m_pViewpoint->m_vecVPos.z);
 	mCameraNode->lookAt(Ogre::Vector3(m_pViewpoint->m_vecVAt.x, m_pViewpoint->m_vecVAt.y, m_pViewpoint->m_vecVAt.z), Ogre::Node::TS_PARENT);
-#endif
 //	mCam->lookAt(m_pViewpoint->m_vecVAt.x, m_pViewpoint->m_vecVAt.y, m_pViewpoint->m_vecVAt.z);
 #endif
 }
@@ -739,15 +1141,9 @@ void OgreRenderer::Viewport::changeView(Viewpoint const& view)
 	m_real m_zoom;
 #ifndef NO_OGRE
 	//float interval = isLeft ? -config.GetFloat("interval") : config.GetInt("interval");
-#if OGRE_VERSION_MAJOR<13
-	mCam->setPosition(m_pViewpoint->m_vecVPos.x, m_pViewpoint->m_vecVPos.y, m_pViewpoint->m_vecVPos.z);
-	mCam->lookAt(m_pViewpoint->m_vecVAt.x, m_pViewpoint->m_vecVAt.y, m_pViewpoint->m_vecVAt.z);
-	mCam->setFixedYawAxis( true, ToOgre(m_pViewpoint->m_vecVUp));
-#else
 	mCameraNode->setPosition(m_pViewpoint->m_vecVPos.x, m_pViewpoint->m_vecVPos.y, m_pViewpoint->m_vecVPos.z);
 	mCameraNode->lookAt(Ogre::Vector3(m_pViewpoint->m_vecVAt.x, m_pViewpoint->m_vecVAt.y, m_pViewpoint->m_vecVAt.z), Ogre::Node::TS_PARENT);
 	mCameraNode->setFixedYawAxis( true, ToOgre(m_pViewpoint->m_vecVUp));
-#endif
 
 	//	std::cout << mCam->getName() << mCam->getPosition() << std::endl;
 	if(mCam->isCustomProjectionMatrixEnabled())
@@ -759,7 +1155,7 @@ void OgreRenderer::Viewport::changeView(Viewpoint const& view)
 		{
 			//OrthoMode
 			m_zoom=m_pViewpoint->getZoom();
-			m_real aspectRatio=(m_real)mView->getActualWidth()/(m_real)mView->getActualHeight();
+			m_real aspectRatio=(m_real)getActualWidth()/(m_real)getActualHeight();
 			m_real zoom=m_zoom;
 			mCam->setCustomProjectionMatrix( true, BuildScaledOrthoMatrix(zoom, aspectRatio));
 		}
@@ -807,18 +1203,6 @@ bool OgreRenderer::frameStarted(const Ogre::FrameEvent& evt)
 	}
 
 
-
-#ifndef NO_OGRE
-
-	{
-		std::list<Ogre::AnimationState*>::iterator i;
-
-		for(i=mAnimationStates.begin(); i != mAnimationStates.end(); ++i)
-		{
-			(*i)->addTime(m_fElapsedTime);
-		}
-	}
-#endif
 	{
 		std::list<FrameMoveObject*>::iterator i;
 
@@ -835,6 +1219,10 @@ bool OgreRenderer::frameStarted(const Ogre::FrameEvent& evt)
 			(*i)->FrameMove(m_fElapsedTime);
 		}
 	}
+
+#ifndef NO_OGRE
+	BaseSystem::update( static_cast<float>( 1.0/60.0 ) );
+#endif
 	for (int i=0,n=mViewports.size();i<n; i++)
 		mViewports[i]-> changeView(*mViewports[i]->m_pViewpoint);
 	
@@ -859,10 +1247,6 @@ void OgreRenderer::setScreenshotPrefix(const char* prefix)
 	mScreenshotPrefix=prefix;
 }
 
-void OgreRenderer::addNewDynamicObj(Ogre::AnimationState* const as)
-{
-	mAnimationStates.push_back(as);
-}
 
 void OgreRenderer::pause(bool b)
 {
@@ -979,66 +1363,81 @@ m_nCurrDumpSequence=-1;
 }
 
 */
+#ifndef NO_OGRE
+void OgreRenderer::addResourceLocation( const Ogre::String &archName, const Ogre::String &typeName,
+		const Ogre::String &secName )
+{
+//#if (OGRE_PLATFORM == OGRE_PLATFORM_APPLE) || (OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS)
+#if (OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS)
+	// OS X does not set the working directory relative to the app,
+	// In order to make things portable on OS X we need to provide
+	// the loading with it's own bundle path location
+	Ogre::ResourceGroupManager::getSingleton().addResourceLocation( Ogre::String( Ogre::macBundlePath() + "/" + archName ), typeName, secName );
+#else
+	Ogre::ResourceGroupManager::getSingleton().addResourceLocation( archName, typeName, secName);
+#endif
+}
 
 void OgreRenderer::setupResources(void)
 {
-#ifndef NO_OGRE
 	// Load resource paths from config file
 	Ogre::ConfigFile cf;
-	cf.load(mResourceFile.ptr());
+	//cf.load( AndroidSystems::openFile( mResourcePath + "resources2.cfg" ) );
+	cf.load( mResourceFile.ptr() ) ;
 
 	// Go through all sections & settings in the file
 	Ogre::ConfigFile::SectionIterator seci = cf.getSectionIterator();
 
 	Ogre::String secName, typeName, archName;
-	while (seci.hasMoreElements())
+	while( seci.hasMoreElements() )
 	{
 		secName = seci.peekNextKey();
 		Ogre::ConfigFile::SettingsMultiMap *settings = seci.getNext();
-		Ogre::ConfigFile::SettingsMultiMap::iterator i;
-		for (i = settings->begin(); i != settings->end(); ++i)
-		{
-			typeName = i->first;
-			archName = i->second;
-			Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
-					archName, typeName, secName);
-		}
-	}
-	if(config.GetInt("showConfigDlg"))
-	{
-#if OGRE_VERSION_MINOR>=12 || OGRE_VERSION_MAJOR>=13
-		if(!mRoot->showConfigDialog( OgreBites::getNativeConfigDialog()))
-#else
-		if(!mRoot->showConfigDialog())
-#endif
-		{
-			Msg::error("Configuration canceled");
-		}
-	}
-	else
-	{
 
-		if(!mRoot->restoreConfig())
+		if( secName != "Hlms" )
 		{
-			printf("Displaying configuration dialog...\n");
-#if OGRE_VERSION_MINOR>=12 || OGRE_VERSION_MAJOR>=13
-			if(!mRoot->showConfigDialog( OgreBites::getNativeConfigDialog()))
-#else
-			if(!mRoot->showConfigDialog())
-#endif
+			Ogre::ConfigFile::SettingsMultiMap::iterator i;
+			for (i = settings->begin(); i != settings->end(); ++i)
 			{
-				Msg::error("Configuration canceled");
+				typeName = i->first;
+				archName = i->second;
+				addResourceLocation( archName, typeName, secName );
 			}
 		}
 	}
+	// loadResources
+	registerHlms();
 
-#endif
+	loadTextureCache();
+	loadHlmsDiskCache();
+
+	// Initialise, parse scripts etc
+	Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups( true );
+
+	// Initialize resources for LTC area lights and accurate specular reflections (IBL)
+	Ogre::Hlms *hlms = mRoot->getHlmsManager()->getHlms( Ogre::HLMS_PBS );
+	OGRE_ASSERT_HIGH( dynamic_cast<Ogre::HlmsPbs*>( hlms ) );
+	Ogre::HlmsPbs *hlmsPbs = static_cast<Ogre::HlmsPbs*>( hlms );
+	try
+	{
+		hlmsPbs->loadLtcMatrix();
+	}
+	catch( Ogre::FileNotFoundException &e )
+	{
+		Ogre::LogManager::getSingleton().logMessage( e.getFullDescription(), Ogre::LML_CRITICAL );
+		Ogre::LogManager::getSingleton().logMessage(
+				"WARNING: LTC matrix textures could not be loaded. Accurate specular IBL reflections "
+				"and LTC area lights won't be available or may not function properly!",
+				Ogre::LML_CRITICAL );
+	}
+
 }
+#endif
 
 bool OgreRenderer::isActive()		
 { 
 #ifndef NO_OGRE
-	return mWnd && mWnd->isActive();
+	return mWnd && mWnd->isVisible();
 #else
 	return true;
 #endif
@@ -1066,7 +1465,6 @@ quater ToBase(const Ogre::Quaternion& v)
 	return quater(v.w, v.x, v.y, v.z);
 }
 #endif
-
 void OgreRenderer::renderOneFrame()
 {
 #ifndef NO_OGRE
@@ -1087,18 +1485,103 @@ void OgreRenderer::renderOneFrame()
 		}
 #endif
 		}
+		BaseSystem::finishFrame();
+
+		// update shadowmap
+		Ogre::WindowEventUtilities::messagePump();
+    #ifdef SEP_USE_SDL2
+        SDL_Event evt;
+        while( SDL_PollEvent( &evt ) )
+        {
+            switch( evt.type )
+            {
+            case SDL_WINDOWEVENT:
+                handleWindowEvent( evt );
+                break;
+            case SDL_QUIT:
+                softKill = true;
+                break;
+            default:
+                break;
+            }
+
+			translateSDLEventToFLTK(evt);
+            //mInputHandler->_handleSdlEvents( evt );
+        }
+    #endif
+
+		if( !mWnd->isVisible() )
+		{
+			//Don't burn CPU cycles unnecessary when we're minimized.
+			Ogre::Threads::Sleep( 500 );
+		}
+
 		mRoot->renderOneFrame();
+
+		/*todo2
 		if(mbScreenshot && renderTexture) {
 			TString fn;
 			static int _c=0;
 			fn.format("%s/%05d.jpg", mScreenshotPrefix.ptr(), _c++);
 			renderTexture->writeContentsToFile(fn.ptr());
 		}
-		if(mbScreenshot && mbUseOGREcapture){
+		*/
+		//if(mbScreenshot && mbUseOGREcapture){
+		if(mbScreenshot ){
 			TString fn;
 			static int _c=0;
 			fn.format("%s/%05d.jpg", mScreenshotPrefix.ptr(), _c++);
-			mWnd->writeContentsToFile(fn.ptr());
+			printf("%d\n", mWnd->getTexture()->getNumMipmaps());
+			//
+			//
+#ifdef __APPLE__
+#ifdef __MAC_15_0
+
+			static bool bFirst=true;
+			if(bFirst)
+			{
+				Msg::msgBox("To capture a screenshot on MacOS v15, use the ogre-next3 branch of taesooLib-next.git and ogre-next3.git" );
+				bFirst=false;
+			}
+
+			/*
+			 * everything doesn't work.  
+			CGImageRef screenShot = takeScreenShot(_hWnd);
+			
+			
+
+			CFStringRef file ;
+			file = CFStringCreateWithCString(kCFAllocatorDefault, fn.ptr(), kCFStringEncodingMacRoman);
+			CFStringRef type = CFSTR("public.jpeg");
+			CFURLRef urlRef = CFURLCreateWithFileSystemPath( kCFAllocatorDefault, file, kCFURLPOSIXPathStyle, false );
+			CGImageDestinationRef image_destination = CGImageDestinationCreateWithURL( urlRef, type, 1, NULL );
+			CGImageDestinationAddImage( image_destination, screenShot, NULL );
+			CGImageDestinationFinalize( image_destination );
+			CFRelease(file);
+			*/
+#else
+			//mWnd->getCustomAttribute("WINDOW", &hWnd);
+			Ogre::Rect _r = getWindowBounds(_hWnd);
+			CGRect r=createCGrect(_hWnd);
+
+			CGImageRef screenShot = CGWindowListCreateImage( r, kCGWindowListOptionOnScreenOnly, kCGNullWindowID, kCGWindowImageDefault);
+
+			CFStringRef file ;
+			file = CFStringCreateWithCString(kCFAllocatorDefault, fn.ptr(), kCFStringEncodingMacRoman);
+			CFStringRef type = CFSTR("public.jpeg");
+			CFURLRef urlRef = CFURLCreateWithFileSystemPath( kCFAllocatorDefault, file, kCFURLPOSIXPathStyle, false );
+			CGImageDestinationRef image_destination = CGImageDestinationCreateWithURL( urlRef, type, 1, NULL );
+			CGImageDestinationAddImage( image_destination, screenShot, NULL );
+			CGImageDestinationFinalize( image_destination );
+			CFRelease(file);
+#endif
+#else
+			if(mbUseOGREcapture){
+				fn.format("%s/%05d.png", mScreenshotPrefix.ptr(), _c-1);
+				printf("%s\n", fn.ptr());
+				mWnd->getTexture()->writeContentsToFile(fn.ptr(),0,0);
+			}
+#endif
 		}
 	}
 #else
@@ -1106,6 +1589,50 @@ void OgreRenderer::renderOneFrame()
 	frameEnded(Ogre::FrameEvent());
 #endif
 }
+    #ifdef SEP_USE_SDL2
+    void OgreRenderer::handleWindowEvent( const SDL_Event& evt )
+    {
+		auto* mRenderWindow=mWnd;
+        switch( evt.window.event )
+        {
+            /*case SDL_WINDOWEVENT_MAXIMIZED:
+                SDL_SetWindowBordered( mSdlWindow, SDL_FALSE );
+                break;
+            case SDL_WINDOWEVENT_MINIMIZED:
+            case SDL_WINDOWEVENT_RESTORED:
+                SDL_SetWindowBordered( mSdlWindow, SDL_TRUE );
+                break;*/
+            case SDL_WINDOWEVENT_SIZE_CHANGED:
+                int w,h;
+                SDL_GetWindowSize( mSdlWindow, &w, &h );
+#if OGRE_PLATFORM == OGRE_PLATFORM_LINUX
+                mRenderWindow->requestResolution( w, h );
+#endif
+                mRenderWindow->windowMovedOrResized();
+                break;
+            case SDL_WINDOWEVENT_RESIZED:
+#if OGRE_PLATFORM == OGRE_PLATFORM_LINUX
+                mRenderWindow->requestResolution( evt.window.data1, evt.window.data2 );
+#endif
+                mRenderWindow->windowMovedOrResized();
+                break;
+            case SDL_WINDOWEVENT_CLOSE:
+                break;
+        case SDL_WINDOWEVENT_SHOWN:
+            mRenderWindow->_setVisible( true );
+            break;
+        case SDL_WINDOWEVENT_HIDDEN:
+            mRenderWindow->_setVisible( false );
+            break;
+        case SDL_WINDOWEVENT_FOCUS_GAINED:
+            mRenderWindow->setFocused( true );
+            break;
+        case SDL_WINDOWEVENT_FOCUS_LOST:
+            mRenderWindow->setFocused( false );
+            break;
+        }
+    }
+    #endif
 void OgreRenderer::addNewViewport()
 {
 
@@ -1118,12 +1645,16 @@ void OgreRenderer::addNewViewport()
 #define TEXTURE_MAX_RESOLUTION 2048
 int OgreRenderer::_getOgreTextureWidth(const char* texturename)
 {
+	
 #ifndef NO_OGRE
+	/*todo2
 	Ogre::TexturePtr texture =Ogre::TextureManager::getSingleton().getByName(texturename);
 	if(texture.isNull())
 		return -1;
 	else
 		return texture->getWidth();
+		*/
+	return -1;
 #else
 	return -1;
 #endif
@@ -1131,95 +1662,113 @@ int OgreRenderer::_getOgreTextureWidth(const char* texturename)
 void OgreRenderer::_updateDynamicTexture(const char* texturename, CImage const& image, bool reuse)	
 {
 #ifndef NO_OGRE
-	int width=image.GetWidth();
+	int _width=image.GetWidth();
 	int width2=TEXTURE_MAX_RESOLUTION;
-	while(width2>width) width2/=2;
+	while(width2>_width) width2/=2;
 
 	if(width2<2)
 	{
 		Msg::msgBox( "??? resolution error %d.\n Retry after deleting *.texturecache in the fbx folder.", image.GetWidth());
 	}
-	Ogre::TexturePtr texture =Ogre::TextureManager::getSingleton().getByName(texturename);
-	if (!texture.isNull() && !reuse)
-		Ogre::TextureManager::getSingleton().remove(texturename);
-	if(!reuse || texture.isNull())
-		texture = Ogre::TextureManager::getSingleton().createManual(
-					texturename, // name
-					Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
-					Ogre::TEX_TYPE_2D,      // type
-					width2, width2,         // width & height
-					Ogre::MIP_UNLIMITED,                // number of mipmaps
-					Ogre::PF_BYTE_BGRA,     // pixel format
-					Ogre::TU_DEFAULT);      // usage; should be TU_DYNAMIC_WRITE_ONLY_DISCARDABLE for
-				//Ogre::TU_DYNAMIC_WRITE_ONLY_DISCARDABLE);      // usage; should be TU_DYNAMIC_WRITE_ONLY_DISCARDABLE for
-						  // textures updated very often (e.g. each frame)
-	else
-		width2=texture->getWidth();
-	
-	// Get the pixel buffer
-	Ogre::HardwarePixelBufferSharedPtr pixelBuffer = texture->getBuffer();
-	 
-	// Lock the pixel buffer and get a pixel box
-	pixelBuffer->lock(Ogre::HardwareBuffer::HBL_NORMAL); // for best performance use HBL_DISCARD!
-	//pixelBuffer->lock(Ogre::HardwareBuffer::HBL_DISCARD); // for best performance use HBL_DISCARD!
-	const Ogre::PixelBox& pixelBox = pixelBuffer->getCurrentLock();
-	 
-	Ogre::uint8* pDest = static_cast<Ogre::uint8*>(pixelBox.data);
-	 
 
-	if (image.getOpacityMap())
+	Ogre::TextureGpuManager *textureManager = getRoot()->getRenderSystem()->getTextureGpuManager();
+	bool hasTexture=textureManager-> hasTextureResource( Ogre::String (texturename), 
+			Ogre::ResourceGroupManager:: AUTODETECT_RESOURCE_GROUP_NAME);
+	//printf("has texture %d %d", hasTexture, width2);
+	if (hasTexture && !reuse)
+		Msg::error("I dont' know how to remove texture:%s", texturename);
+	Ogre::TextureGpu* texture=NULL;
+
+	if(!reuse || !hasTexture)
 	{
-		int skip=image.GetWidth()/width2;
-		for (size_t j = 0; j < width2; j++)
-		{
-			int h=j*image.GetHeight()/width2;
-			//printf("%d %d\n", j,j);
-			if(h>image.GetHeight()-1) h=image.GetHeight()-1;
-			//CPixelRGB8* c_line=image.GetPixel(0, h);
-			CPixelRGB8* c_line=image.GetPixel(0, image.GetHeight()-h-1); // flip_y
-			const unsigned char* c_linea=image.getOpacity(0,image.GetHeight()-h-1); // flip_y
+		//printf("creating %s\n", texturename);
 
-			//std::cout << y <<"/"<<image.GetHeight()<<std::endl;
-			for(size_t i = 0; i < width2; i++)
+        Ogre::Image2 origImage;
+        //Load floor diffuse
+        //origImage.load( "BlueCircle.png", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME ); width2=origImage.getWidth();
+        origImage.createEmptyImage( width2, width2, 1, Ogre::TextureTypes::Type2D, Ogre:: PFG_RGBA8_UNORM);
+
+		{
+			Ogre::uint8* pDest = (Ogre::uint8*)origImage.getRawBuffer();
+			Ogre::uint8* originalDest=pDest;
+			size_t bytesPerRow=width2*4;
+
+
+			if (image.getOpacityMap())
 			{
-				*pDest++ = c_line->B; // B
-				*pDest++ = c_line->G ; // G
-				*pDest++ = c_line->R; // R
-				*pDest++ = *c_linea; // A
-				c_line+=skip;
-				c_linea+=skip;
+				int skip=image.GetWidth()/width2;
+				for (size_t j = 0; j < width2; j++)
+				{
+					int h=j*image.GetHeight()/width2;
+					//printf("%d %d\n", j,j);
+					if(h>image.GetHeight()-1) h=image.GetHeight()-1;
+					//CPixelRGB8* c_line=image.GetPixel(0, h);
+					CPixelRGB8* c_line=image.GetPixel(0, image.GetHeight()-h-1); // flip_y
+					const unsigned char* c_linea=image.getOpacity(0,image.GetHeight()-h-1); // flip_y
+
+					//std::cout << y <<"/"<<image.GetHeight()<<std::endl;
+					for(size_t i = 0; i < width2; i++)
+					{
+						*pDest++ = c_line->R; // R
+						*pDest++ = c_line->G ; // G
+						*pDest++ = c_line->B; // B
+						*pDest++ = *c_linea; // A
+						c_line+=skip;
+						c_linea+=skip;
+					}
+				}
+
+			}
+			else
+			{
+				int skip=image.GetWidth()/width2;
+				for (size_t j = 0; j < width2; j++)
+				{
+					int h=j*image.GetHeight()/width2;
+					//printf("%d %d\n", j,j);
+					if(h>image.GetHeight()-1) h=image.GetHeight()-1;
+					//CPixelRGB8* c_line=image.GetPixel(0, h);
+					CPixelRGB8* c_line=image.GetPixel(0, image.GetHeight()-h-1); // flip_y
+
+					//std::cout << y <<"/"<<image.GetHeight()<<std::endl;
+					for(size_t i = 0; i < width2; i++)
+					{
+						*pDest++ = c_line->R; // R
+						*pDest++ = c_line->G ; // G
+						*pDest++ = c_line->B; // B
+						*pDest++ = 255; // A
+						c_line+=skip;
+					}
+
+				}
 			}
 		}
-	 
-		pDest += pixelBox.getRowSkip() * Ogre::PixelUtil::getNumElemBytes(pixelBox.format);
+        origImage.generateMipmaps( true );
+		texture = textureManager->createTexture(
+				Ogre::String(texturename),
+				Ogre::GpuPageOutStrategy::SaveToSystemRam,
+				Ogre::TextureFlags::ManualTexture ,
+				Ogre::TextureTypes::Type2DArray );
+		//texture->setPixelFormat( Ogre::PFG_RGBA8_UINT );
+        texture->setPixelFormat( Ogre::PixelFormatGpuUtils::
+                                getEquivalentSRGB( 
+                                 origImage.getPixelFormat() ) );
+		texture->setNumMipmaps(origImage.getNumMipmaps());
+		texture->setResolution( (Ogre::uint32) width2, (Ogre::uint32) width2 );
+
+        texture->scheduleTransitionTo( Ogre::GpuResidency::Resident );
+
+		//printf("%d \n", texture->getDepthOrSlices());
+
+        origImage.uploadTo( texture, 0, origImage.getNumMipmaps() - 1u, 0u );
 	}
 	else
 	{
-		int skip=image.GetWidth()/width2;
-		for (size_t j = 0; j < width2; j++)
-		{
-			int h=j*image.GetHeight()/width2;
-			//printf("%d %d\n", j,j);
-			if(h>image.GetHeight()-1) h=image.GetHeight()-1;
-			//CPixelRGB8* c_line=image.GetPixel(0, h);
-			CPixelRGB8* c_line=image.GetPixel(0, image.GetHeight()-h-1); // flip_y
-
-			//std::cout << y <<"/"<<image.GetHeight()<<std::endl;
-			for(size_t i = 0; i < width2; i++)
-			{
-				*pDest++ = c_line->B; // B
-				*pDest++ = c_line->G ; // G
-				*pDest++ = c_line->R; // R
-				*pDest++ = 255; // A
-				c_line+=skip;
-			}
-
-			pDest += pixelBox.getRowSkip() * Ogre::PixelUtil::getNumElemBytes(pixelBox.format);
-		}
+		printf("warning! not updating texture %s\n", texturename);
+		//texture=textureMgr->
+		//width2=texture->getWidth();
+		return;
 	}
-	 
-	// Unlock the pixel buffer
-	pixelBuffer->unlock();
 #endif
 }
 // Create the texture
@@ -1233,6 +1782,7 @@ void OgreRenderer::createDynamicTexture(const char* name, CImage const& image)
 	 
 	_updateDynamicTexture( texturename,  image)	;
 
+	/*
 	// Create a material using the texture
 	// change bygth
 	//	const char materialName[]=		"DynamicTextureMaterial"; // name
@@ -1247,8 +1797,11 @@ void OgreRenderer::createDynamicTexture(const char* name, CImage const& image)
 				materialName,
 		Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
 		material->getTechnique(0)->getPass(0)->createTextureUnitState(texturename);
-		material->getTechnique(0)->getPass(0)->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
+		// todo2 material->getTechnique(0)->getPass(0)->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
 	}
+	*/
+
+
 #endif
 }
 void OgreRenderer::createDynamicTexture(const char* name, CImage const& image, vector3 const& diffuseColor, vector3 const& specularColor, double shininess)
@@ -1260,42 +1813,49 @@ void OgreRenderer::createDynamicTexture(const char* name, CImage const& image, v
 	const char* texturename=nameString.c_str();
 	_updateDynamicTexture(texturename, image);
 	 
-	// Create a material using the texture
-	// change bygth
-	//	const char materialName[]=		"DynamicTextureMaterial"; // name
-	const char* materialName=name; // name
-	Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().getByName(materialName);
-	
-	if(material.isNull())
+	Ogre::HlmsManager *hlmsManager = getRoot()->getHlmsManager();
+
+
+	auto* datablock0=hlmsManager->getDatablockNoDefault(name);
+	if(datablock0)
 	{
-		// I hardcoded material "DynamicTextureMaterial" in the CheckBoard.material so the below code won't execute unless you delete the material.
-		// change bygth
-		material=Ogre::MaterialManager::getSingleton().create(
-				materialName,
-		Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-		material->getTechnique(0)->getPass(0)->createTextureUnitState(texturename);
-		if(image.getOpacityMap())
-		{
-			material->getTechnique(0)->getPass(0)->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
-			material->getTechnique(0)->getPass(0)->setDepthWriteEnabled(false);
-		}
-		material->getTechnique(0)->setDiffuse(diffuseColor.x, diffuseColor.y, diffuseColor.z, 1.0);
-		material->getTechnique(0)->setSpecular(specularColor.x, specularColor.y, specularColor.z, 1.0);
-		material->getTechnique(0)->setShininess(shininess); 
+		//printf("hihi %s\n", name);
+		return;
 	}
 	else
 	{
-		material->getTechnique(0)->getPass(0)->removeTextureUnitState(0);
-		material->getTechnique(0)->getPass(0)->createTextureUnitState(texturename);
-		if(image.getOpacityMap())
-		{
-			material->getTechnique(0)->getPass(0)->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
-			material->getTechnique(0)->getPass(0)->setDepthWriteEnabled(false);
-		}
-		material->getTechnique(0)->setDiffuse(diffuseColor.x, diffuseColor.y, diffuseColor.z, 1.0);
-		material->getTechnique(0)->setSpecular(specularColor.x, specularColor.y, specularColor.z, 1.0);
-		material->getTechnique(0)->setShininess(shininess); 
+		//printf("creating %s\n", name);
 	}
+
+	assert( dynamic_cast<Ogre::HlmsPbs*>( hlmsManager->getHlms( Ogre::HLMS_PBS ) ) );
+	Ogre::HlmsPbs *hlmsPbs = static_cast<Ogre::HlmsPbs*>( hlmsManager->getHlms(Ogre::HLMS_PBS) );
+
+	auto macroblock=Ogre::HlmsMacroblock();
+
+	if (image.getOpacityMap())
+		macroblock.mDepthWrite=false;
+
+
+	Ogre::HlmsPbsDatablock *datablock = static_cast<Ogre::HlmsPbsDatablock*>(
+			hlmsPbs->createDatablock( name,
+				name,
+				macroblock,
+				Ogre::HlmsBlendblock(),
+				Ogre::HlmsParamVec() ) );
+
+
+        
+	//datablock->setTexture( Ogre::PBSM_DIFFUSE, "BlueCircle.png" );
+	datablock->setTexture( Ogre::PBSM_DIFFUSE, texturename );
+	datablock->setTexture( Ogre::PBSM_SPECULAR, texturename );
+	if (image.getOpacityMap())
+		datablock->setTransparency(1);
+	datablock->setDiffuse( ToOgre(diffuseColor));
+	datablock->setSpecular( ToOgre(specularColor));
+	//shiness= 100/(100 * roughness + 0.01)
+	double roughness=(100.0/shininess-0.01)/20;
+	
+	datablock->setRoughness( roughness);
 #endif
 }
 void OgreRenderer::_linkMaterialAndTexture(const char* materialName, const char* textureName)
@@ -1317,6 +1877,8 @@ void OgreRenderer::_linkMaterialAndTexture(const char* materialName, const char*
 void OgreRenderer::createMaterial(const char* name, vector3 const& diffuseColor, vector3 const& specularColor, double shininess)
 {
 #ifndef NO_OGRE
+	/*
+	 * legacy material
 	// Create a material that doesn't use any texture
 	const char* materialName=name; // name
 	Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().getByName(materialName);
@@ -1330,6 +1892,43 @@ void OgreRenderer::createMaterial(const char* name, vector3 const& diffuseColor,
 		material->getTechnique(0)->setSpecular(specularColor.x, specularColor.y, specularColor.z, 1.0);
 		material->getTechnique(0)->setShininess(shininess); // overall better than the default value 1.0
 	}
+	*/
+	Ogre::HlmsManager *hlmsManager = getRoot()->getHlmsManager();
+
+	assert( dynamic_cast<Ogre::HlmsPbs*>( hlmsManager->getHlms( Ogre::HLMS_PBS ) ) );
+
+	Ogre::HlmsPbs *hlmsPbs = static_cast<Ogre::HlmsPbs*>( hlmsManager->getHlms(Ogre::HLMS_PBS) );
+
+	auto* datablock0=hlmsManager->getDatablockNoDefault(name);
+	if(datablock0)
+	{
+		return;
+	}
+	Ogre::HlmsPbsDatablock *datablock = static_cast<Ogre::HlmsPbsDatablock*>(
+			hlmsPbs->createDatablock( name,
+				name,
+				Ogre::HlmsMacroblock(),
+				Ogre::HlmsBlendblock(),
+				Ogre::HlmsParamVec() ) );
+
+	/*
+	Ogre::TextureGpu *texture = textureMgr->createOrRetrieveTexture(
+			"SaintPetersBasilica.dds",
+			Ogre::GpuPageOutStrategy::Discard,
+			Ogre::TextureFlags::PrefersLoadingFromFileAsSRGB,
+			Ogre::TextureTypes::TypeCube,
+			Ogre::ResourceGroupManager::
+			AUTODETECT_RESOURCE_GROUP_NAME,
+			Ogre::TextureFilter::TypeGenerateDefaultMipmaps );
+
+	datablock->setTexture( Ogre::PBSM_REFLECTION, texture );
+	*/
+	datablock->setDiffuse( ToOgre(diffuseColor));
+	datablock->setSpecular( ToOgre(specularColor));
+	//shiness= 100/(100 * roughness + 0.01)
+	double roughness=(100.0/shininess-0.01)/30.0;
+	
+	datablock->setRoughness( roughness);
 #endif
 }
 /*
@@ -1345,6 +1944,7 @@ material->getTechnique(0)->getPass(0)->setLightingEnabled(false);
 void OgreRenderer:: createRenderTexture(const char* type, int width, int height, bool useCurrentViewport, const char* name)
 {
 #ifndef NO_OGRE
+	/** todo2
 	Ogre::Camera* pCamera=NULL;
 
 	if (useCurrentViewport)
@@ -1386,33 +1986,32 @@ void OgreRenderer:: createRenderTexture(const char* type, int width, int height,
 	// Register 'this' as a render target listener
 	//depthTarget->addListener(this);
 
-	/* I will do the followings manually in lua scripts.
-	// Get the technique to use when rendering the depth render texture
-	MaterialPtr mDepthMaterial = MaterialManager::getSingleton().getByName("DepthMap");
-	mDepthMaterial->load(); // needs to be loaded manually
-	//mDepthTechnique = mDepthMaterial->getBestTechnique();
-
-	// Create a custom render queue invocation sequence for the depth render texture
-	RenderQueueInvocationSequence* invocationSequence =
-		Root::getSingleton().createRenderQueueInvocationSequence("DepthMap");
-
-	// Add a render queue invocation to the sequence, and disable shadows for it
-	RenderQueueInvocation* invocation = invocationSequence->add(RENDER_QUEUE_MAIN, "main");
-	invocation->setSuppressShadows(true);
-
-	// Set the render queue invocation sequence for the depth render texture viewport
-	depthViewport->setRenderQueueInvocationSequenceName("DepthMap");
+	//// I will do the followings manually in lua scripts.
+	//// Get the technique to use when rendering the depth render texture
+	//MaterialPtr mDepthMaterial = MaterialManager::getSingleton().getByName("DepthMap");
+	//mDepthMaterial->load(); // needs to be loaded manually
+	////mDepthTechnique = mDepthMaterial->getBestTechnique();
+	//// Create a custom render queue invocation sequence for the depth render texture
+	//RenderQueueInvocationSequence* invocationSequence =
+	//	Root::getSingleton().createRenderQueueInvocationSequence("DepthMap");
+	//// Add a render queue invocation to the sequence, and disable shadows for it
+	//RenderQueueInvocation* invocation = invocationSequence->add(RENDER_QUEUE_MAIN, "main");
+	//invocation->setSuppressShadows(true);
+	//// Set the render queue invocation sequence for the depth render texture viewport
+	//depthViewport->setRenderQueueInvocationSequenceName("DepthMap");
 	*/
 #endif
 }
 void OgreRenderer::updateRenderTexture(const char* param)
 {
 #ifndef NO_OGRE
+	/* todo2
 	Ogre::TexturePtr texPtr = Ogre::TextureManager::getSingleton().getByName(param);
 	Msg::verify(!texPtr.isNull(), "ninjadepthmap==null");
 	Ogre::RenderTexture* depth_map = texPtr->getBuffer()->getRenderTarget();
 	mViewports[1]->changeView(*mViewports[1]->m_pViewpoint);
 	depth_map->update();
+	*/
 #endif
 }
 void OgreRenderer::setMaterialParam(const char* mat, const char* paramName, double param_value)
@@ -1470,11 +2069,7 @@ void OgreRenderer::createInputSystems(size_t hWnd)
 					// Get window size
 					unsigned int _width, _height, depth;
 					int left, top;
-#if OGRE_VERSION_MAJOR<13
-					mWnd->getMetrics( _width, _height, depth, left, top );
-#else
 					mWnd->getMetrics( _width, _height, left, top );
-#endif
 					int width=_width;
 					int height=_height;
 
@@ -1487,7 +2082,7 @@ void OgreRenderer::createInputSystems(size_t hWnd)
 #ifdef __APPLE__
 				CGDisplayShowCursor(kCGDirectMainDisplay);
 				CGAssociateMouseAndMouseCursorPosition(TRUE);
-				Ogre::Rect r = getWindowBounds(mWnd);
+				Ogre::Rect r = getWindowBounds((void*)hWnd);
 				CGDisplayMoveCursorToPoint(kCGDirectMainDisplay, CGPointMake(r.left + r.right / 2, r.top - r.bottom / 2));
 #endif
 #endif
@@ -1501,20 +2096,46 @@ void setMacRenderConfig( void* handle, Ogre::NameValuePairList &misc);
 #endif
 void OgreRenderer::createRenderWindow(void* handle, int width, int height)
 {
+
 #ifndef NO_OGRE
-	Ogre::NameValuePairList misc; 
+
+#if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
+	{
+		Ogre::Vector2 screenRes = iOSUtils::getScreenResolutionInPoints();
+		width = static_cast<int>( screenRes.x );
+		height = static_cast<int>( screenRes.y );
+	}
+#endif
+
+	Ogre::ConfigOptionMap& cfgOpts = mRoot->getRenderSystem()->getConfigOptions();
+	Ogre::ConfigOptionMap::iterator opt = cfgOpts.find( "Video Mode" );
+	if( opt != cfgOpts.end() && !opt->second.currentValue.empty() )
+	{
+		//Ignore leading space
+		const Ogre::String::size_type start = opt->second.currentValue.find_first_of("012356789");
+		//Get the width and height
+		Ogre::String::size_type widthEnd = opt->second.currentValue.find(' ', start);
+		// we know that the height starts 3 characters after the width and goes until the next space
+		Ogre::String::size_type heightEnd = opt->second.currentValue.find(' ', widthEnd+3);
+		// Now we can parse out the values
+		width   = Ogre::StringConverter::parseInt( opt->second.currentValue.substr( 0, widthEnd ) );
+		height  = Ogre::StringConverter::parseInt( opt->second.currentValue.substr(
+					widthEnd+3, heightEnd ) );
+	}
+
+	Ogre::NameValuePairList params;
+	Ogre::String winHandle;
 #ifdef _MSC_VER
-	misc["externalWindowHandle"] = Ogre::StringConverter::toString((size_t)handle); 
+	params["externalWindowHandle"] = Ogre::StringConverter::toString((size_t)handle); 
 	mWnd = mRoot->createRenderWindow("My sub render window", width, height, false, &misc); 
 #else
-#if !defined(GLX_EXTERNAL) && defined(__APPLE__)
+#if defined(__APPLE__)
 	//misc["currentGLContext"]=Ogre::String("True");  
-#ifndef NO_GUI
-	setMacRenderConfig(handle, misc);
-#endif
+		winHandle  = Ogre::StringConverter::toString(WindowContentViewHandleFltk(handle));
 	
 #else
 	{
+		/*
 		Ogre::StringVector paramVector;
 		paramVector.push_back(Ogre::StringConverter::toString(fl_display));
 		paramVector.push_back(Ogre::StringConverter::toString(fl_screen));
@@ -1526,10 +2147,30 @@ void OgreRenderer::createRenderWindow(void* handle, int width, int height)
 		//                     StringConverter::toString(reinterpret_cast<unsigned long>(&info));
 		//misc["parentWindowHandle"]=Ogre::StringConverter::toString (paramVector);
 		misc["externalWindowHandle"]=Ogre::StringConverter::toString (paramVector);
+		*/
+
+		winHandle=Ogre::StringConverter::toString(fl_xid((Fl_Window*)handle));
+
 		XSync(fl_display, False);
 	}
 #endif
-	mWnd = mRoot->createRenderWindow("My sub render window", width, height, false, &misc); 
+#if OGRE_PLATFORM == OGRE_PLATFORM_WIN32 || OGRE_PLATFORM == OGRE_PLATFORM_WINRT
+	params.insert( std::make_pair("externalWindowHandle",  winHandle) );
+#else
+	params.insert( std::make_pair("parentWindowHandle",  winHandle) );
+#endif
+
+	params.insert( std::make_pair("title", "win title") );
+	params.insert( std::make_pair("gamma", cfgOpts["sRGB Gamma Conversion"].currentValue) );
+	if( cfgOpts.find( "VSync Method" ) != cfgOpts.end() )
+		params.insert( std::make_pair( "vsync_method", cfgOpts["VSync Method"].currentValue ) );
+	params.insert( std::make_pair("FSAA", cfgOpts["FSAA"].currentValue) );
+	params.insert( std::make_pair("vsync", cfgOpts["VSync"].currentValue) );
+	params.insert( std::make_pair("reverse_depth", "Yes" ) );
+
+	initMiscParamsListener( params );
+
+	mWnd = mRoot->createRenderWindow("My sub render window", width, height, false, &params); 
 #endif // not _MSC_VER
 #endif
 }
@@ -1541,6 +2182,128 @@ void OgreRenderer::ChageTextureImage(const char* name, const char* textureName)
 	material->getTechnique(0)->getPass(0)->getTextureUnitState(0)->setTextureName(textureName);
 #endif
 }
+#ifndef NO_OGRE
+void OgreRenderer::createPcfShadowNode(void)
+{
+	Ogre::CompositorManager2 *compositorManager = mRoot->getCompositorManager2();
+	Ogre::RenderSystem *renderSystem = mRoot->getRenderSystem();
+
+	Ogre::ShadowNodeHelper::ShadowParamVec shadowParams;
+
+	Ogre::ShadowNodeHelper::ShadowParam shadowParam;
+	memset( &shadowParam, 0, sizeof(shadowParam) );
+
+	//First light, directional
+	shadowParam.technique = Ogre::SHADOWMAP_PSSM;
+	shadowParam.numPssmSplits = 3u;
+	shadowParam.resolution[0].x = 2048u;
+	shadowParam.resolution[0].y = 2048u;
+	for( size_t i=1u; i<4u; ++i )
+	{
+		shadowParam.resolution[i].x = 1024u;
+		shadowParam.resolution[i].y = 1024u;
+	}
+	shadowParam.atlasStart[0].x = 0u;
+	shadowParam.atlasStart[0].y = 0u;
+	shadowParam.atlasStart[1].x = 0u;
+	shadowParam.atlasStart[1].y = 2048u;
+	shadowParam.atlasStart[2].x = 1024u;
+	shadowParam.atlasStart[2].y = 2048u;
+
+	shadowParam.supportedLightTypes = 0u;
+	shadowParam.addLightType( Ogre::Light::LT_DIRECTIONAL );
+	shadowParams.push_back( shadowParam );
+
+	//Second light, directional, spot or point
+	shadowParam.technique = Ogre::SHADOWMAP_FOCUSED;
+	shadowParam.resolution[0].x = 2048u;
+	shadowParam.resolution[0].y = 2048u;
+	shadowParam.atlasStart[0].x = 0u;
+	shadowParam.atlasStart[0].y = 2048u + 1024u;
+
+	shadowParam.supportedLightTypes = 0u;
+	shadowParam.addLightType( Ogre::Light::LT_DIRECTIONAL );
+	shadowParam.addLightType( Ogre::Light::LT_POINT );
+	shadowParam.addLightType( Ogre::Light::LT_SPOTLIGHT );
+	shadowParams.push_back( shadowParam );
+
+	//Third light, directional, spot or point
+	shadowParam.atlasStart[0].y = 2048u + 1024u + 2048u;
+	shadowParams.push_back( shadowParam );
+
+	Ogre::ShadowNodeHelper::createShadowNodeWithSettings( compositorManager,
+			renderSystem->getCapabilities(),
+			"ShadowMapFromCodeShadowNode",
+			shadowParams, false );
+}
+
+void OgreRenderer::createEsmShadowNodes(void)
+{
+	Ogre::CompositorManager2 *compositorManager = mRoot->getCompositorManager2();
+	Ogre::RenderSystem *renderSystem = mRoot->getRenderSystem();
+
+	Ogre::ShadowNodeHelper::ShadowParamVec shadowParams;
+
+	Ogre::ShadowNodeHelper::ShadowParam shadowParam;
+	memset( &shadowParam, 0, sizeof(shadowParam) );
+
+	//First light, directional
+	shadowParam.technique = Ogre::SHADOWMAP_PSSM;
+	shadowParam.numPssmSplits = 3u;
+	shadowParam.resolution[0].x = 1024u;
+	shadowParam.resolution[0].y = 1024u;
+	shadowParam.resolution[1].x = 2048u;
+	shadowParam.resolution[1].y = 2048u;
+	shadowParam.resolution[2].x = 1024u;
+	shadowParam.resolution[2].y = 1024u;
+	shadowParam.atlasStart[0].x = 0u;
+	shadowParam.atlasStart[0].y = 0u;
+	shadowParam.atlasStart[1].x = 0u;
+	shadowParam.atlasStart[1].y = 1024u;
+	shadowParam.atlasStart[2].x = 1024u;
+	shadowParam.atlasStart[2].y = 0u;
+
+	shadowParam.supportedLightTypes = 0u;
+	shadowParam.addLightType( Ogre::Light::LT_DIRECTIONAL );
+	shadowParams.push_back( shadowParam );
+
+	//Second light, directional, spot or point
+	shadowParam.technique = Ogre::SHADOWMAP_FOCUSED;
+	shadowParam.resolution[0].x = 1024u;
+	shadowParam.resolution[0].y = 1024u;
+	shadowParam.atlasStart[0].x = 0u;
+	shadowParam.atlasStart[0].y = 2048u + 1024u;
+
+	shadowParam.supportedLightTypes = 0u;
+	shadowParam.addLightType( Ogre::Light::LT_DIRECTIONAL );
+	shadowParam.addLightType( Ogre::Light::LT_POINT );
+	shadowParam.addLightType( Ogre::Light::LT_SPOTLIGHT );
+	shadowParams.push_back( shadowParam );
+
+	//Third light, directional, spot or point
+	shadowParam.atlasStart[0].x = 1024u;
+	shadowParams.push_back( shadowParam );
+
+	const Ogre::RenderSystemCapabilities *capabilities = renderSystem->getCapabilities();
+	Ogre::RenderSystemCapabilities capsCopy = *capabilities;
+
+	//Force the utility to create ESM shadow node with compute filters.
+	//Otherwise it'd create using what's supported by the current GPU.
+	capsCopy.setCapability( Ogre::RSC_COMPUTE_PROGRAM );
+	Ogre::ShadowNodeHelper::createShadowNodeWithSettings(
+			compositorManager, &capsCopy,
+			"ShadowMapFromCodeEsmShadowNodeCompute",
+			shadowParams, true );
+
+	//Force the utility to create ESM shadow node with graphics filters.
+	//Otherwise it'd create using what's supported by the current GPU.
+	capsCopy.unsetCapability( Ogre::RSC_COMPUTE_PROGRAM );
+	Ogre::ShadowNodeHelper::createShadowNodeWithSettings(
+			compositorManager, &capsCopy,
+			"ShadowMapFromCodeEsmShadowNodePixelShader",
+			shadowParams, true );
+}
+#endif
 
 void OgreRenderer::setrotate(m_real degree, const char* name)
 {
@@ -1549,6 +2312,366 @@ void OgreRenderer::setrotate(m_real degree, const char* name)
 	Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().getByName(materialName);
 	material->getTechnique(0)->getPass(0)->getTextureUnitState(0)->setTextureRotate(Ogre::Radian(Ogre::Degree(degree))); 
 #endif
+
 }
 
 
+
+
+#ifndef NO_OGRE
+Ogre::CompositorWorkspace* OgreRenderer::setupCompositor(void)
+{
+	Ogre::CompositorManager2 *compositorManager = mRoot->getCompositorManager2();
+		const Ogre::String workspaceName( "ShadowMapFromCodeWorkspace" );
+
+		if( !compositorManager->hasWorkspaceDefinition( workspaceName ) )
+		{
+			compositorManager->createBasicWorkspaceDef( workspaceName, mBackgroundColour,
+					Ogre::IdString() );
+
+			const Ogre::String nodeDefName = "AutoGen " +
+				Ogre::IdString(workspaceName +
+						"/Node").getReleaseText();
+			Ogre::CompositorNodeDef *nodeDef =
+				compositorManager->getNodeDefinitionNonConst( nodeDefName );
+
+			Ogre::CompositorTargetDef *targetDef = nodeDef->getTargetPass( 0 );
+			const Ogre::CompositorPassDefVec &passes = targetDef->getCompositorPasses();
+
+			assert( dynamic_cast<Ogre::CompositorPassSceneDef*>( passes[0] ) );
+			Ogre::CompositorPassSceneDef *passSceneDef =
+				static_cast<Ogre::CompositorPassSceneDef*>( passes[0] );
+			passSceneDef->mShadowNode = "ShadowMapFromCodeShadowNode";
+
+			createPcfShadowNode();
+			createEsmShadowNodes();
+		}
+
+		mWorkspace = compositorManager->addWorkspace( getSceneManager(), mWnd->getTexture(),
+				getCamera(), "ShadowMapFromCodeWorkspace", true );
+		return mWorkspace;
+}
+
+
+void OgreRenderer::loadTextureCache(void)
+{
+#if !OGRE_NO_JSON
+	Ogre::ArchiveManager &archiveManager = Ogre::ArchiveManager::getSingleton();
+	Ogre::Archive *rwAccessFolderArchive = archiveManager.load( mWriteAccessFolder,
+			"FileSystem", true );
+	try
+	{
+		const Ogre::String filename = "textureMetadataCache.json";
+		if( rwAccessFolderArchive->exists( filename ) )
+		{
+			Ogre::DataStreamPtr stream = rwAccessFolderArchive->open( filename );
+			std::vector<char> fileData;
+			fileData.resize( stream->size() + 1 );
+			if( !fileData.empty() )
+			{
+				stream->read( &fileData[0], stream->size() );
+				//Add null terminator just in case (to prevent bad input)
+				fileData.back() = '\0';
+				Ogre::TextureGpuManager *textureManager =
+					mRoot->getRenderSystem()->getTextureGpuManager();
+				textureManager->importTextureMetadataCache( stream->getName(), &fileData[0], false );
+			}
+		}
+		else
+		{
+			Ogre::LogManager::getSingleton().logMessage(
+					"[INFO] Texture cache not found at " + mWriteAccessFolder +
+					"/textureMetadataCache.json" );
+		}
+	}
+	catch( Ogre::Exception &e )
+	{
+		Ogre::LogManager::getSingleton().logMessage( e.getFullDescription() );
+	}
+
+	archiveManager.unload( rwAccessFolderArchive );
+#endif
+}
+//-----------------------------------------------------------------------------------
+void OgreRenderer::saveTextureCache(void)
+{
+	if( mRoot->getRenderSystem() )
+	{
+		Ogre::TextureGpuManager *textureManager = mRoot->getRenderSystem()->getTextureGpuManager();
+		if( textureManager )
+		{
+			Ogre::String jsonString;
+			textureManager->exportTextureMetadataCache( jsonString );
+			const Ogre::String path = mWriteAccessFolder + "/textureMetadataCache.json";
+			std::ofstream file( path.c_str(), std::ios::binary | std::ios::out );
+			if( file.is_open() )
+				file.write( jsonString.c_str(), static_cast<std::streamsize>( jsonString.size() ) );
+			file.close();
+		}
+	}
+}
+//-----------------------------------------------------------------------------------
+void OgreRenderer::loadHlmsDiskCache(void)
+{
+	if( !mUseMicrocodeCache && !mUseHlmsDiskCache )
+		return;
+
+	Ogre::HlmsManager *hlmsManager = mRoot->getHlmsManager();
+	Ogre::HlmsDiskCache diskCache( hlmsManager );
+
+	Ogre::ArchiveManager &archiveManager = Ogre::ArchiveManager::getSingleton();
+
+	Ogre::Archive *rwAccessFolderArchive = archiveManager.load( mWriteAccessFolder,
+			"FileSystem", true );
+
+	if( mUseMicrocodeCache )
+	{
+		//Make sure the microcode cache is enabled.
+		Ogre::GpuProgramManager::getSingleton().setSaveMicrocodesToCache( true );
+		const Ogre::String filename = "microcodeCodeCache.cache";
+		if( rwAccessFolderArchive->exists( filename ) )
+		{
+			Ogre::DataStreamPtr shaderCacheFile = rwAccessFolderArchive->open( filename );
+			Ogre::GpuProgramManager::getSingleton().loadMicrocodeCache( shaderCacheFile );
+		}
+	}
+
+	if( mUseHlmsDiskCache )
+	{
+		for( size_t i=Ogre::HLMS_LOW_LEVEL + 1u; i<Ogre::HLMS_MAX; ++i )
+		{
+			Ogre::Hlms *hlms = hlmsManager->getHlms( static_cast<Ogre::HlmsTypes>( i ) );
+			if( hlms )
+			{
+				Ogre::String filename = "hlmsDiskCache" +
+					Ogre::StringConverter::toString( i ) + ".bin";
+
+				try
+				{
+					if( rwAccessFolderArchive->exists( filename ) )
+					{
+						Ogre::DataStreamPtr diskCacheFile = rwAccessFolderArchive->open( filename );
+						diskCache.loadFrom( diskCacheFile );
+						diskCache.applyTo( hlms );
+					}
+				}
+				catch( Ogre::Exception& )
+				{
+					Ogre::LogManager::getSingleton().logMessage(
+							"Error loading cache from " + mWriteAccessFolder + "/" +
+							filename + "! If you have issues, try deleting the file "
+							"and restarting the app" );
+				}
+			}
+		}
+	}
+
+	archiveManager.unload( mWriteAccessFolder );
+}
+//-----------------------------------------------------------------------------------
+void OgreRenderer::saveHlmsDiskCache(void)
+{
+	if( mRoot->getRenderSystem() && Ogre::GpuProgramManager::getSingletonPtr() &&
+			(mUseMicrocodeCache || mUseHlmsDiskCache) )
+	{
+		Ogre::HlmsManager *hlmsManager = mRoot->getHlmsManager();
+		Ogre::HlmsDiskCache diskCache( hlmsManager );
+
+		Ogre::ArchiveManager &archiveManager = Ogre::ArchiveManager::getSingleton();
+
+		Ogre::Archive *rwAccessFolderArchive = archiveManager.load( mWriteAccessFolder,
+				"FileSystem", false );
+
+		if( mUseHlmsDiskCache )
+		{
+			for( size_t i=Ogre::HLMS_LOW_LEVEL + 1u; i<Ogre::HLMS_MAX; ++i )
+			{
+				Ogre::Hlms *hlms = hlmsManager->getHlms( static_cast<Ogre::HlmsTypes>( i ) );
+				if( hlms )
+				{
+					diskCache.copyFrom( hlms );
+
+					Ogre::DataStreamPtr diskCacheFile =
+						rwAccessFolderArchive->create( "hlmsDiskCache" +
+								Ogre::StringConverter::toString( i ) +
+								".bin" );
+					diskCache.saveTo( diskCacheFile );
+				}
+			}
+		}
+
+		if( Ogre::GpuProgramManager::getSingleton().isCacheDirty() && mUseMicrocodeCache )
+		{
+			const Ogre::String filename = "microcodeCodeCache.cache";
+			Ogre::DataStreamPtr shaderCacheFile = rwAccessFolderArchive->create( filename );
+			Ogre::GpuProgramManager::getSingleton().saveMicrocodeCache( shaderCacheFile );
+		}
+
+		archiveManager.unload( mWriteAccessFolder );
+	}
+}
+void OgreRenderer::stopCompositor(void)
+{
+	if( mWorkspace )
+	{
+		Ogre::CompositorManager2 *compositorManager = mRoot->getCompositorManager2();
+		compositorManager->removeWorkspace( mWorkspace );
+		mWorkspace = 0;
+	}
+}
+void OgreRenderer::restartCompositor(void)
+{
+	stopCompositor();
+	mWorkspace = setupCompositor();
+}
+void OgreRenderer::registerHlms(void)
+{
+	Ogre::ConfigFile cf;
+	cf.load(  mResourceFile.ptr() ) ;
+
+//#if OGRE_PLATFORM == OGRE_PLATFORM_APPLE || OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
+#if OGRE_PLATFORM == OGRE_PLATFORM_APPLE_IOS
+	Ogre::String rootHlmsFolder = Ogre::macBundlePath() + '/' +
+		cf.getSetting( "DoNotUseAsResource", "Hlms", "" );
+#else
+	std::string mTaesooLib_path=RE::taesooLibPath();
+	std::string mResourcePath=mTaesooLib_path+"Resource/";
+	Ogre::String rootHlmsFolder = mResourcePath + cf.getSetting( "DoNotUseAsResource", "Hlms", "" );
+#endif
+
+	if( rootHlmsFolder.empty() )
+		rootHlmsFolder =  "./";
+	else if( *(rootHlmsFolder.end() - 1) != '/' )
+		rootHlmsFolder += "/";
+
+	//At this point rootHlmsFolder should be a valid path to the Hlms data folder
+
+	Ogre::HlmsUnlit *hlmsUnlit = 0;
+	Ogre::HlmsPbs *hlmsPbs = 0;
+
+	//For retrieval of the paths to the different folders needed
+	Ogre::String mainFolderPath;
+	Ogre::StringVector libraryFoldersPaths;
+	Ogre::StringVector::const_iterator libraryFolderPathIt;
+	Ogre::StringVector::const_iterator libraryFolderPathEn;
+
+	Ogre::ArchiveManager &archiveManager = Ogre::ArchiveManager::getSingleton();
+
+	//const Ogre::String &archiveType = getMediaReadArchiveType();
+	const Ogre::String archiveType = "FileSystem";
+
+	{
+		//Create & Register HlmsUnlit
+		//Get the path to all the subdirectories used by HlmsUnlit
+		Ogre::HlmsUnlit::getDefaultPaths( mainFolderPath, libraryFoldersPaths );
+		Ogre::Archive *archiveUnlit = archiveManager.load( rootHlmsFolder + mainFolderPath,
+				archiveType, true );
+		Ogre::ArchiveVec archiveUnlitLibraryFolders;
+		libraryFolderPathIt = libraryFoldersPaths.begin();
+		libraryFolderPathEn = libraryFoldersPaths.end();
+		while( libraryFolderPathIt != libraryFolderPathEn )
+		{
+			Ogre::Archive *archiveLibrary =
+				archiveManager.load( rootHlmsFolder + *libraryFolderPathIt, archiveType, true );
+			archiveUnlitLibraryFolders.push_back( archiveLibrary );
+			++libraryFolderPathIt;
+		}
+
+		//Create and register the unlit Hlms
+		hlmsUnlit = OGRE_NEW Ogre::HlmsUnlit( archiveUnlit, &archiveUnlitLibraryFolders );
+		Ogre::Root::getSingleton().getHlmsManager()->registerHlms( hlmsUnlit );
+	}
+
+	{
+		//Create & Register HlmsPbs
+		//Do the same for HlmsPbs:
+		Ogre::HlmsPbs::getDefaultPaths( mainFolderPath, libraryFoldersPaths );
+		Ogre::Archive *archivePbs = archiveManager.load( rootHlmsFolder + mainFolderPath,
+				archiveType, true );
+
+		//Get the library archive(s)
+		Ogre::ArchiveVec archivePbsLibraryFolders;
+		libraryFolderPathIt = libraryFoldersPaths.begin();
+		libraryFolderPathEn = libraryFoldersPaths.end();
+		while( libraryFolderPathIt != libraryFolderPathEn )
+		{
+			Ogre::Archive *archiveLibrary =
+				archiveManager.load( rootHlmsFolder + *libraryFolderPathIt, archiveType, true );
+			archivePbsLibraryFolders.push_back( archiveLibrary );
+			++libraryFolderPathIt;
+		}
+
+		//Create and register
+		hlmsPbs = OGRE_NEW Ogre::HlmsPbs( archivePbs, &archivePbsLibraryFolders );
+		Ogre::Root::getSingleton().getHlmsManager()->registerHlms( hlmsPbs );
+	}
+
+
+	Ogre::RenderSystem *renderSystem = mRoot->getRenderSystem();
+	if( renderSystem->getName() == "Direct3D11 Rendering Subsystem" )
+	{
+		//Set lower limits 512kb instead of the default 4MB per Hlms in D3D 11.0
+		//and below to avoid saturating AMD's discard limit (8MB) or
+		//saturate the PCIE bus in some low end machines.
+		bool supportsNoOverwriteOnTextureBuffers;
+		renderSystem->getCustomAttribute( "MapNoOverwriteOnDynamicBufferSRV",
+				&supportsNoOverwriteOnTextureBuffers );
+
+		if( !supportsNoOverwriteOnTextureBuffers )
+		{
+			hlmsPbs->setTextureBufferDefaultSize( 512 * 1024 );
+			hlmsUnlit->setTextureBufferDefaultSize( 512 * 1024 );
+		}
+	}
+}
+void OgreRenderer::initMiscParamsListener( Ogre::NameValuePairList &params )
+{
+}
+void OgreRenderer::setupShadowNode(bool useESM)
+{
+	// use ESM. (high quality)
+	Ogre::Hlms *hlms = mRoot->getHlmsManager()->getHlms( Ogre::HLMS_PBS );
+	OGRE_ASSERT_HIGH( dynamic_cast<Ogre::HlmsPbs*>( hlms ) );
+	Ogre::HlmsPbs *hlmsPbs = static_cast<Ogre::HlmsPbs*>( hlms );
+	printf("current filter %d\n", hlmsPbs->getShadowFilter());
+	if(useESM)
+	{
+		Ogre::HlmsPbs::ShadowFilter newfilter=  Ogre::HlmsPbs::ExponentialShadowMaps ;
+		hlmsPbs->setShadowSettings( newfilter );
+		((ShadowMapFromCodeGameState*)mCurrentGameState)->setupShadowNode( true );
+	}
+	else
+	{
+		//Ogre::HlmsPbs::ShadowFilter newfilter=  Ogre::HlmsPbs:: PCF_3x3;
+		Ogre::HlmsPbs::ShadowFilter newfilter=  Ogre::HlmsPbs:: PCF_6x6;
+		hlmsPbs->setShadowSettings( newfilter );
+		((ShadowMapFromCodeGameState*)mCurrentGameState)->setupShadowNode( false );
+	}
+
+}
+#endif
+
+void OgreRenderer::_toggleHelpMode()
+{
+#ifndef NO_OGRE
+	// called from MotionPanel.
+	ShadowMapFromCodeGameState* out=(ShadowMapFromCodeGameState*)mCurrentGameState;
+    out->mDisplayHelpMode = (out->mDisplayHelpMode + 1) % out->mNumDisplayHelpModes;
+	printf("%d\n", out->mDisplayHelpMode );
+	_updateDebugCaption();
+#endif
+}
+
+#ifndef NO_OGRE
+#include "OgreTextAreaOverlayElement.h"
+#endif
+void OgreRenderer::_updateDebugCaption()
+{
+#ifndef NO_OGRE
+	ShadowMapFromCodeGameState* out=(ShadowMapFromCodeGameState*)mCurrentGameState;
+	Ogre::String finalText;
+	out->generateDebugText( 0, finalText );
+	out->mDebugText->setCaption( finalText );
+	out->mDebugTextShadow->setCaption( finalText );
+#endif
+}

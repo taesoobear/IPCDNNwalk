@@ -1,4 +1,4 @@
--- 사용법.
+-- 사용법. 
 -- [괄효]안에 있는 내용은 optional. 없는 경우 기본값이 사용됨.]
 -- The root bone becomes bones[1]
 -- and other bones follows.
@@ -8,6 +8,8 @@
 -- 	  { name='hipL', offset=vector3(-0.05,-0.1,0), localCOM=vector3(0,0,0), id =3,pid=1, [ jointType='rotate', axis='x', shape={"OBJ", "a.obj", inertia=vector3(1,1,1)}] }
 --  ... 
 -- }
+--
+-- See MujocoLoader.lua for more detailed examples.
 
 --function VRMLexporter.exportWRL(bones, filename, robotname)
 --or 
@@ -145,7 +147,10 @@ local function  packShapeRobot(bone,file, level, pLoader)
 			end
 			if not smass then
 				assert(bone.mass)
-				smass=bone.mass/#bones.shapes
+				smass=bone.mass/#bone.shapes
+			end
+			if smass==0 then
+				smass=1e-3
 			end
 			local colorStr=''
 			if shape.color then
@@ -183,10 +188,18 @@ local function  packShapeRobot(bone,file, level, pLoader)
 				children_shape= children_shape..
 				geometryNode(ori, scom, string.format("geometry %s { radius %f height %f %s}\n", shape[1], radius, height, colorStr))
 			elseif shape[1]=='OBJ' then
-				assert(shape.inertia)
-				vinertia=vinertia+shape.inertia 
 				children_shape= children_shape..
 				geometryNode(ori, scom, string.format('geometry OBJ "%s"\n', shape[2]))
+			elseif shape[1]=='OBJ_no_classify_tri' then
+				if shape.color then
+					local color=shape.color
+					local color_str=string.format(" color %f %f %f %f\n", color.x, color.y, color.z, color.w)
+					children_shape= children_shape..
+					geometryNode(ori, scom, string.format('geometry OBJ_no_classify_tri "%s"\n', shape[2])..color_str)
+				else
+					children_shape= children_shape..
+					geometryNode(ori, scom, string.format('geometry OBJ_no_classify_tri "%s"\n', shape[2]))
+				end
 			else
 				print('not implemented yet!')
 				assert(false)
@@ -196,8 +209,24 @@ local function  packShapeRobot(bone,file, level, pLoader)
 		end
 		com=com/mass
 		children_shape=children_shape.."  ]\n"
+
+
+		if #bone.shapes==0 then
+			children_shape='\n'
+		end
 	else
 		mass, com, vinertia, children_shape=calcDefaultShape(bone)
+	end
+	if bone.localCOM then
+		com=bone.localCOM
+	end
+	if com.x~=com.x then
+		print("?????? nan com")
+		dbg.console()
+		com=vector3(0,0,0)
+	end
+	if bone.inertia then
+		vinertia=bone.inertia
 	end
 
 	if dbg.lunaType(vinertia)=='matrix3' then
@@ -219,6 +248,7 @@ end
 local function packTransformRobot(bone, file, level, skel)
 	local transform=nspace(level);
 	transform=transform..string.format("DEF %s Joint {\n", nameId(bone));
+
 
 	if bone.jointType then
 		transform=transform..string.format("  jointType \""..bone.jointType.."\"\n");
@@ -375,15 +405,27 @@ function VRMLexporter.cleanupWRL(vrmlloader, filename, robotname)
 	VRMLexporter.exportWRL(bones, filename, robotname)
 end
 
-function VRMLexporter.exportWRL(bones, filename, robotname)
-	for i=2,#bones do -- bone 1 is the root.
-		local bone=bones[i]
-		local pid=bone.pid
-		if not bones[pid].children then
-			bones[pid].children={}
+local function packRootInfo(root,file)
+	if root.info then
+		-- root info
+		local info=root.info
+		if info.assetFolder then
+			file:write(' assetFolder "'..info.assetFolder..'"\n')
 		end
-		table.insert(bones[pid].children, bone)
 	end
+end
+function VRMLexporter.exportWRL(bones, filename, robotname)
+	if not bones[1].childrenValid then
+		for i=2,#bones do -- bone 1 is the root.
+			local bone=bones[i]
+			local pid=bone.pid
+			if not bones[pid].children then
+				bones[pid].children={}
+			end
+			table.insert(bones[pid].children, bone)
+		end
+	end
+	bones[1].childrenValid=true
 
 	local file=io.open(filename, "wt");
 	if(not file) then
@@ -391,9 +433,10 @@ function VRMLexporter.exportWRL(bones, filename, robotname)
 	end
 	local scaleFactor, offset
 	do
-		file:write(string.format( "DEF SampleRobot Humanoid { name \"%s\" ", robotname));
-		file:write( "humanoidBody [\n");
+		file:write(string.format( "DEF SampleRobot Humanoid {\n name \"%s\" ", robotname));
 		local root=bones[1]
+		packRootInfo(root, file)
+		file:write( " humanoidBody [\n");
 		scaleFactor,offset=packTransformRobot(root, file,0);
 		file:write( "] } # Humanoid\n");
 		file:close()
@@ -401,14 +444,17 @@ function VRMLexporter.exportWRL(bones, filename, robotname)
 	return (scaleFactor or 1), offset
 end
 function VRMLexporter.generateWRLstring(bones, robotname, url)
-	for i=2,#bones do -- bone 1 is the root.
-		local bone=bones[i]
-		local pid=bone.pid
-		if not bones[pid].children then
-			bones[pid].children={}
+	if not bones[1].childrenValid then
+		for i=2,#bones do -- bone 1 is the root.
+			local bone=bones[i]
+			local pid=bone.pid
+			if not bones[pid].children then
+				bones[pid].children={}
+			end
+			table.insert(bones[pid].children, bone)
 		end
-		table.insert(bones[pid].children, bone)
 	end
+	bones[1].childrenValid=true
 
 	local file={}
 	function file:write(str)
@@ -416,12 +462,13 @@ function VRMLexporter.generateWRLstring(bones, robotname, url)
 	end
 	local scaleFactor, offset
 	do
-		file:write(string.format( "DEF SampleRobot Humanoid { name \"%s\" ", robotname));
+		file:write(string.format( "DEF SampleRobot Humanoid {\n name \"%s\" ", robotname));
 		if url then
 			file:write(string.format( " url \"%s\" ", url));
 		end
-		file:write( "humanoidBody [\n");
 		local root=bones[1]
+		packRootInfo(root, file)
+		file:write( " humanoidBody [\n");
 		scaleFactor,offset=packTransformRobot(root, file,0);
 		file:write( "] } # Humanoid\n");
 	end

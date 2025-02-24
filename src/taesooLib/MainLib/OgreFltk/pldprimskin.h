@@ -36,6 +36,7 @@ public:
 
 	virtual void updateBoneLength(MotionLoader const& loader){}
 	void setSamePose(BoneForwardKinematics  const& in);
+	void setSamePose(ScaledBoneKinematics const& in);
 	virtual void setPose(int iframe);
 	virtual void setPose(const Motion& mot, int iframe);
 	virtual void ApplyAnim(const Motion& mot);
@@ -44,6 +45,7 @@ public:
 	virtual void setThickness(float thick){}
 
 	// only for backward compatibility!
+	virtual int UpdateBone();
 	void SetTranslation(double x , double y, double z) { setTranslation(x,y,z);}
 
 	virtual void setDrawConstraint(int con, float radius, RE::Color c){}

@@ -101,7 +101,7 @@ m_real KovarMetric::CalcDistance(const vectorn& a, const vectorn& b)
 		m_weights.setAllValue(1.0/((m_real)n));
 	}
 
-	static matrixn matA, matB;
+	matrixn matA, matB;
 	matA.setSameSize(m_srcA);
 	matB.setSameSize(m_srcB);
 	quater rot;
@@ -222,7 +222,7 @@ m_real NoRotMetric::CalcDistance(const vectorn& a, const vectorn& b)
 		m_weights.setAllValue(1.0/((m_real)n));
 	}
 
-	static matrixn matA, matB;
+	matrixn matA, matB;
 	matA.setSameSize(m_srcA);
 	matB.setSameSize(m_srcB);
 	quater rot;

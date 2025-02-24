@@ -51,10 +51,12 @@ function PoseTransfer2:__init(loaderA, loaderB, convInfoA, convInfoB, posScaleFa
 		local iboneA=self.loaderA:getTreeIndexByName(convInfoA(i));
 		local iboneB=self.loaderB:getTreeIndexByName(convInfoB(i));
 		assert(iboneA~=-1);
-		assert(iboneB~=-1);
+		--assert(iboneB~=-1);
 		if self.targetIndexAtoB(iboneA)==-1 then
 			self.targetIndexAtoB:set(iboneA, iboneB);
-			BtoA:set(iboneB, iboneA);
+			if iboneB~=-1 then
+				BtoA:set(iboneB, iboneA);
+			end
 		else
 			-- one to many mapping
 			self.rAtoB_additionalAindices:pushBack(iboneA)
@@ -152,7 +154,12 @@ function PoseTransfer2:__init(loaderA, loaderB, convInfoA, convInfoB, posScaleFa
 		self.rootAtoB=self.loaderB:bone(1):getFrame().translation - Aroot.translation 
 	end
 end
-
+function PoseTransfer2:source()
+	return self.loaderA
+end
+function PoseTransfer2:target()
+	return self.loaderB
+end
 function PoseTransfer2:setTargetSkeleton(poseA)
 	local tid=dbg.lunaType(poseA)
 	if tid=='Pose' then
@@ -229,5 +236,10 @@ function PoseTransfer2:setTargetSkeleton(poseA)
 	--print('after:')
 	--print(self.loaderB:bone(24):getFrame().rotation)
 	--print(self.loaderB:bone(54):getFrame().rotation)
+end
+
+function PoseTransfer2:__call(poseA)
+	self:setTargetSkeleton(poseA)
+	return self.loaderB:pose()
 end
 return PoseTransfer2

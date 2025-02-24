@@ -18,6 +18,10 @@ class FrameListener
 {
 public:
 };
+class Renderable
+{
+	public:
+};
 
 class FrameEvent
 {
@@ -53,6 +57,10 @@ class Node
   public:
   };
   class Entity:public MovableObject
+  {
+  public:
+  };
+  class Item:public MovableObject
   {
   public:
   };

@@ -19,6 +19,7 @@ class FrameSensor;
 class FltkRenderer;
 class OgreRenderer;
 class MotionPanel;
+#include <unordered_map>
 namespace RE
 {
 	enum Color { WHITE, BLUE, GREEN, RED, BLACK};
@@ -31,8 +32,12 @@ namespace Ogre
 {
 	class SceneManager;
 	class SceneNode;
-	class Entity;
-	class SimpleRenderable;
+	class ObjectMemoryManager;
+	class Item;
+	namespace v1 {
+		class Entity;
+		class SimpleRenderable;
+	}
 }
 class AbstractTraceManager
 {
@@ -58,9 +63,15 @@ namespace RE
 		MotionPanel* pMotionPanel;
 		std::vector<void*> defaultSkins;
 		int global_mouse_x, global_mouse_y;
+		std::unordered_map<std::string, Ogre::SceneNode*> mNamedSceneNodes;
 	};
 	
+	enum 
+	{
+		BackgroundNode=0
+	};
 
+	void resetToInitialState(Ogre::SceneNode* );
 	void setGlobalMousePos(int x, int y);
 	int getGlobalMouseX();
 	int getGlobalMouseY();
@@ -74,6 +85,7 @@ namespace RE
 	
 	Ogre::SceneManager* ogreSceneManager();
 	Ogre::SceneNode* ogreRootSceneNode();
+	Ogre::ObjectMemoryManager* _objectMemoryManager();
 	
 	// use only in main.cpp or main_standalone.cpp. 
 	OgreRenderer* _createRenderer(int& w, int &rw);
@@ -93,7 +105,7 @@ namespace RE
 	/// create skin using default skin: blob model at first, skin model after changeDefaultSkin.
 	PLDPrimSkin* createSkin(const MotionLoader& skel);
 	PLDPrimSkin* createSkin(const MotionLoader& skel, PLDPrimSkinType t);
-	PLDPrimSkin* createSkin(const PLDPrimOgreSkin& other);	
+	//PLDPrimSkin* createSkin(const PLDPrimOgreSkin& other);	
 	PLDPrimSkin* createSkin(const Motion& mot); //!< utility function. 
 	PLDPrimSkin* createSkin(const Motion& mot, PLDPrimSkinType t); //!< utility function. 
 	PLDPrimSkin* createSkin(const MotionDOF& mot); //!< utility function. 
@@ -107,8 +119,8 @@ namespace RE
 	Ogre::SceneNode* createSceneNode(const char* node_name);
 	Ogre::SceneNode* createChildSceneNode(Ogre::SceneNode* parent, const char* child_name);
 	
-	Ogre::Entity* createPlane(const char* id, m_real width, m_real height, int xsegment, int ysegment, int texSegx, int texSegy);
-	Ogre::Entity* createTerrain(const char* id, const char* filename, int imageSizeX, int imageSizeY, m_real sizeX, m_real sizeZ, m_real heightMax, int ntexSegX, int ntexSegZ);
+	Ogre::Item* createPlane(const char* id, m_real width, m_real height, int xsegment, int ysegment, int texSegx, int texSegy);
+	Ogre::Item* createTerrain(const char* id, const char* filename, int imageSizeX, int imageSizeY, m_real sizeX, m_real sizeZ, m_real heightMax, int ntexSegX, int ntexSegZ);
 
 	// create a scenenode and an entity attached to the scenenode. using these functions simplify library dependencies as you don't need to include some <Ogre~.h>
 	Ogre::SceneNode* createEntity(Ogre::SceneNode* parentNode, const char* node_name, const char* filename); //!< returns a new child scene node.
@@ -117,6 +129,7 @@ namespace RE
 	Ogre::SceneNode* createEntity(const char* node_name, const char* filename, vector3 const& pos);
 	Ogre::SceneNode* createEntity(const char* node_name, const char* filename, quater const& rot, vector3 const& pos);
 	Ogre::SceneNode* createMovableText(const char* node_name, const char* contents, int charHeight = 16, RE::Color c=RE::WHITE, const char* fontName = "TrebuchetMSBold" );
+	Ogre::Item* _createEntity(const char* meshname);
 	FrameSensor* createFrameSensor();
 	
 	// move sceneNode containing entities. using these functions simplify library dependencies as you don't need to include some <Ogre~.h>
@@ -126,17 +139,9 @@ namespace RE
 	void moveEntity(Ogre::SceneNode* node, double scale, vector3 const& pos);
 	void moveEntity(Ogre::SceneNode* node, vector3 const& scale, quater const& q, vector3 const& pos);
 	void moveEntity(Ogre::SceneNode* node, double scale, quater const& q, vector3 const& pos);
-
-	/// change default skin to an ogre skin.
-	void changeDefaultSkin(const MotionLoader& skel, Ogre::Entity* entity, const char* mappingTable=NULL, bool bCurrPoseAsBindPose=true);
-	void resetDefaultSkin(const MotionLoader& skel);
 	
-	/// create ogre skin
-	PLDPrimSkin* createOgreSkin(const MotionLoader& skel, Ogre::Entity* entity, const char* mappingTable=NULL, bool bCurrPoseAsBindPose=true, double scale=1.0);
 
 #ifndef NO_OGRE
-	LineSegment* createLine();
-	LineStrip* createThinLine();
 	Circle* createCircle();
 #endif
 	//	SurfelClouds* createSurfel(ResourceHandle hTexture);
@@ -149,18 +154,17 @@ namespace RE
 	void removeEntity(const char* node_name);
 
 	// get the first entity attached to node.
-	Ogre::Entity* getEntity(Ogre::SceneNode* node);
+	Ogre::v1::Entity* getEntity(Ogre::SceneNode* node);
+	Ogre::Item* getItem(Ogre::SceneNode* node);
 
-	// tip: automatic deletion of Ogre::SceneNode! 
-	// use boost::shared_ptr<Ogre::SceneNode>, or boost::scoped_tpr<Ogre::SceneNode>
-	//  ex:
-	// boost::shared_ptr<Ogre::SceneNode> mNode;
-	// mNode.reset(RE::createSceneNode("graphNode"), (void(*)(Ogre::SceneNode* node))RE::removeEntity);
-	// -> You don't need to worry about deleting mNode.
 
-	TString generateUniqueName();
+	// MovingObject : ID
+	unsigned int generateUniqueID();
 
-	void setColor(Ogre::SimpleRenderable *pRendererble, Color c);
+	// Hash
+	unsigned int nameToUID(const char*);
+
+	void setColor(Ogre::v1::SimpleRenderable *pRendererble, Color c);
 	void setEntityColor(Ogre::SceneNode* pNode, Color c);
 	void setMaterialName(Ogre::SceneNode* pNode, const char* mat);
 	TString getMaterialName(Color c, bool bSolidColor=false);

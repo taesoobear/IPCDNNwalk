@@ -53,8 +53,11 @@ class Loader_wrap: public Fl_Group, public FlCallee
 		mText->align(FL_ALIGN_BOTTOM);
 		mText->textsize(11);
 		mText->hide();
-		L->dofile((RE::renderer().taesooLibPath()+"Resource/loader.lua").c_str());
-		connect(m_menuExperiment);
+		if (RE::rendererValid())
+		{
+			L->dofile((RE::taesooLibPath()+"Resource/loader.lua").c_str());
+			connect(m_menuExperiment);
+		}
 		end();
 	}
 	virtual ~Loader_wrap() {delete _L;}

@@ -9,7 +9,7 @@ function CollisionChecker:__init(...)
 		colType=obj[1]
 		obj=obj[2] or {}
 	end
-	self.nbObj=#obj;
+	self.nbObj=0;
 	-- in cpp, use OpenHRP::createCollisionDetector_libccd() or ..._bullet()
 	if colType=='libccd' then
 		self.collisionDetector=Physics.CollisionSequence.createCollisionDetector_libccd()
@@ -17,8 +17,20 @@ function CollisionChecker:__init(...)
 		self.collisionDetector=Physics.CollisionSequence.createCollisionDetector_fcl()
 	elseif colType=='gjk' then
 		self.collisionDetector=Physics.CollisionSequence.createCollisionDetector_gjk()
-	else
+	elseif colType=='libccd_merged' then
 		self.collisionDetector=Physics.CollisionSequence.createCollisionDetector_libccd_merged()
+	elseif colType=='sdf' then
+		require("Kinematics/meshTools")
+		self.collisionDetector=SDFcollider({debugDraw=false})
+		--self.collisionDetector=Physics.CollisionSequence.createCollisionDetector_gjk()
+		--function Physics.CollisionDetector:calculateNearestSurfacePoint(iloader, ibody, in_global_pos)
+		--	local out_normal=vector3()
+		--	local dist=self:calculateSignedDistance(iloader, ibody, in_global_pos, out_normal)
+		--	return dist, in_global_pos-out_normal*dist
+		--end
+	else
+		print('colType' , colType)
+		self.collisionDetector=Physics.CollisionSequence.createCollisionDetector_gjk()
 	end
 	--self.collisionDetector=Physics.CollisionSequence.createCollisionDetector_libccd_LBS()
 	--self.collisionDetector=Physics.CollisionSequence.createCollisionDetector_bullet()
@@ -27,13 +39,33 @@ function CollisionChecker:__init(...)
 
 	self.pose={}
 	for i,v in ipairs(obj) do
-		local ltype=getmetatable(v).luna_class
-		if ltype=='MainLib.VRMLloader' then
-			self.collisionDetector:addModel(v)
-		else
-			self.collisionDetector:addObstacle(v)
+		self:addObject(v)
+	end
+end
+function CollisionChecker:detectCollisionFrames(motdof, float_options, thr)
+	thr=thr or 0
+	local mChecker=self
+	local col=boolN(motdof:numFrames())
+
+	for i=0, motdof:rows()-1 do
+		mChecker:setPoseDOF(0,motdof:row(i))
+		local bases, maxDepth=mChecker:checkCollision(float_options)
+		if maxDepth>thr then
+			col:set(i, true)
 		end
 	end
+
+	return col
+end
+
+function CollisionChecker:addObject(v)
+	local ltype=getmetatable(v).luna_class
+	if ltype=='MainLib.VRMLloader' then
+		self.collisionDetector:addModel(v)
+	else
+		self.collisionDetector:addObstacle(v)
+	end
+	self.nbObj=self.nbObj+1
 end
 
 -- s: from , t: to in cm scale.
@@ -88,6 +120,8 @@ function CollisionChecker:registerSelfPairs(iloader1, collpairs)
 		local bone_j=loader1:VRMLbone(j)
 		self.collisionDetector:addCollisionPair(loader1, bone_i:treeIndex(), loader1, bone_j:treeIndex())
 	end
+	assert(iloader1==0)
+	self.collpairs=collpairs
 end
 
 function CollisionChecker:registerPair(iloader1, iloader2)
@@ -101,9 +135,14 @@ function CollisionChecker:registerPair(iloader1, iloader2)
 		end
 	end
 end
-function CollisionChecker:checkCollision()
-	self.collisionDetector:testIntersectionsForDefinedPairs(self.collisionSequence)
-	return self.collisionSequence
+function CollisionChecker:checkCollision(float_options)
+	if float_options then
+		local maxDepth=self.collisionDetector:testIntersectionsForDefinedPairs(self.collisionSequence, float_options)
+		return self.collisionSequence, maxDepth
+	else
+		self.collisionDetector:testIntersectionsForDefinedPairs(self.collisionSequence)
+		return self.collisionSequence
+	end
 end
 
 do 
@@ -321,3 +360,139 @@ do
 	end
 
 end
+
+
+Collider2D=LUAclass()
+function Collider2D:__init(info)
+	for k, v in pairs(info) do
+		self[k]=v
+	end
+	assert(self.pos)
+	self.pos.y=0
+	self.colType=info[1]
+	self.color='blue_transparent'
+	if Physics.ConvexShape2D then
+		function vector2:toZX()
+			return vector3(self.y, 0, self.x)
+		end
+		function vector3:projectZX()
+			return vector2(self.z, self.x)
+		end
+		function Physics.ConvexShape2D :setPosition3D(v3)
+			self:setPosition(v3:projectZX())
+		end
+		function Physics.ConvexShape2D :setTransform3D(q3, v3)
+			if q3 then
+				self:setTransform(q3:rotationAngleAboutAxis(vector3(0,1,0)), v3:projectZX())
+			else
+				self:setPosition(v3:projectZX())
+			end
+		end
+		function Physics.ConvexShape2D:getPosition3D()
+			local v=self:getPosition()
+			return v:toZX()
+		end
+		local v
+		if self.colType=='Circle' then
+			v=vector2N(10)
+			for i=0, 9 do
+				local r=vector3(0,0,info.r)
+				local R=quater(sop.map(i, 0,10, -math.pi, math.pi), vector3(0,1,0))*r
+				v(i).x=R.z
+				v(i).y=R.x
+			end
+		else
+			assert(self.colType=='Box')
+			v=vector2N(4)
+			local l=info.localSize*0.5
+			v(0).x=l.z
+			v(0).y=l.x
+			v(1).x=l.z
+			v(1).y=-l.x
+			v(2).x=-l.z
+			v(2).y=-l.x
+			v(3).x=-l.z
+			v(3).y=l.x
+		end
+		self.shape=Physics.ConvexShape2D(v)
+		self.shape:setTransform3D(info.q, info.pos)
+	end
+end
+function Collider2D:draw(i)
+	i = i or 1
+	if self.colType=='Circle' then
+		dbg.draw("Circle", self.pos*100, "_ball"..i, self.color, self.r*100)
+	elseif self.colType=="Box" then
+		dbg.draw("Box", transf(self.q, self.pos), '_box'..i, self.localSize, 100, self.color)
+	end
+end
+function Collider2D:check(other)
+	-- box-box checks are not implemented yet
+	if self.colType=='Circle' and other.colType=='Circle' then
+		local p1=self.pos:copy()
+		local p2=other.pos:copy()
+		p1.y=0 p2.y=0
+		local depth=p1:distance(p2)-(self.r+other.r)
+		if depth<0 then
+			self.idepth=depth*-0.5
+			other.idepth=depth*-0.5
+			self.normal=p1-p2
+			self.normal:normalize()
+			other.normal=self.normal*-1
+			if self.r>other.r then
+				self.contactCenter=other.pos+(other.r-other.idepth)*self.normal
+				self.contactCenter.y=0
+				other.contactCenter=self.contactCenter
+			else
+				other.contactCenter=self.pos+(self.r-self.idepth)*other.normal
+				other.contactCenter.y=0
+				self.contactCenter=other.contactCenter
+			end
+			return true
+		end
+		return false
+	elseif self.shape then
+		self.shape:setTransform3D(self.q, self.pos)
+		other.shape:setTransform3D(other.q, other.pos)
+		local contactInfo=self.shape:testIntersection(other.shape)
+		if contactInfo.depth<=0 then
+			return false
+		else
+			self.contactCenter=contactInfo.posB:toZX()*0.5+contactInfo.posA:toZX()*0.5
+			self.idepth=contactInfo.depth
+			self.normal=contactInfo.normal:toZX()*-0.5
+				other.contactCenter=self.contactCenter
+				other.normal=self.normal*-1
+				other.idepth=self.idepth
+			return true
+		end
+
+	elseif self.colType=='Circle' then
+		return other:check(self)
+	elseif other.colType=='Circle' then
+		local circle=other.pos:copy()
+		circle.y=0
+		local rect=transf(self.q, self.pos)
+		rect.translation.y=0
+
+		local pos=vector3()
+		local normal=vector3()
+		local out=Physics.CollisionDetector_libccd.testSphereBox(circle, other.r, rect,self.localSize, pos, normal) 
+		if out.x==-1 then
+			return false
+		else
+			pos.y=0
+			normal.y=0
+			normal:normalize()
+			self.normal=normal
+			other.normal=normal*-1
+			self.contactCenter=pos
+			other.contactCenter=pos
+			self.idepth=out.y*0.5
+			other.idepth=out.y*0.5
+			return true
+		end
+	end
+	return false
+end
+

@@ -99,11 +99,9 @@ public:
 private:
 	void initBones();
 	friend class VRMLloader;
-	friend class VRMLloader_subtree;
 	
 };
 
-class VRMLloader_subtree;
 // Skeleton 정보를 읽고 tree hierarchy를 만든다. 
 // 또한 skinning에 필요한 모든 정보를 읽어온다.
 class VRMLloader: public MotionLoader
@@ -113,8 +111,16 @@ class VRMLloader: public MotionLoader
 	OBJloader::Terrain* _terrain;// reference
 	friend class TRL::CollisionDetector_fcl ;
 public:
+	class MaterialCreator
+	{
+		public:
+		MaterialCreator(){}
+		virtual void createMaterial(const char* id, const vector3 & diffuse, const vector3& specular, const vector3&  emissive, double shininess){}
+	};
+	static void registerMaterialCreator(MaterialCreator* singletonMatCtr);
 	TString url;
 	TString name;
+	TString assetFolder;
 	TString version;
 	TStrings info;
 
@@ -123,6 +129,7 @@ public:
 	void setPosition(const vector3 & pos); // adjust the fixed root joint 
 	virtual TString getName() { return name;}
 
+	VRMLloader(VRMLloader const& other, int newRootIndex, bool bFreeRootJoint);
 	VRMLloader(OBJloader::Geometry const& mesh, bool useFixedJoint=false);
 	VRMLloader(OBJloader::Terrain *terrain);
 	VRMLloader(const char* vrmlFile);
@@ -157,7 +164,6 @@ public:
 	void changeTotalMass( m_real newtotalMass);
 	static void projectAngles(vectorn & temp1);
 
-	VRMLloader_subtree* makesubtree(int treeIndex) const;
 
 	virtual void loadAnimation(Motion& mot, const char* filename) const;
 	virtual void _initDOFinfo();
@@ -186,33 +192,5 @@ protected:
 };
 
 
-class VRMLloader_subtree : public VRMLloader
-{
-protected:
-	vector3 origindofpos;
-	quater origindofori;
-	friend class VRMLloader;
-	int mdof;    
-	int mtreeindex;
-	VRMLloader_subtree();
-public:
-	const VRMLloader* fullbody;
-	virtual ~VRMLloader_subtree();
-	const VRMLloader* getFullbody()  {return fullbody;}
-	vector3 originpos() const {return origindofpos;}
-	quater originori() const {return origindofori;} 
-
-	int fullDOFindex(int subDOFindex) const { return subDOFindex+mdof+1;}
-	int subDOFindex(int fullDOFindex) const { return fullDOFindex-mdof-1;}
-	int fullTreeindex(int subDOFindex) const { return subDOFindex+mtreeindex-1;}
-	// returns positive integers when found.
-	int subTreeindex(int fulltreeindex) const ;
-
-	void subPoseToFullpose(); // modifies fullbody
-	void subPoseToFullpose(vectorn const & subpose, vectorn &fullpose) const;
-	void FullbodyPoseToSubpose(); // modifies this
-	void fullbodyPoseToSubpose(vectorn const & fullpose, vectorn &subpose) const;
-
-};
 
 #endif

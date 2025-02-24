@@ -586,7 +586,6 @@ TString RE::generateUniqueName()
 }
 std::string RE::taesooLibPath()
 {
-	static char taesooLib_path[100];
 	static int located=0;
 	if (!located)
 	{

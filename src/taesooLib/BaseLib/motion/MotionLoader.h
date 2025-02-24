@@ -16,9 +16,8 @@ protected:
 	TString m_transChannels;
 	TString m_rotChannels;
 	
-	// previously m_AnyrotAxis, m_AnyrotAngle
-	//임의의 축을 설정할 때(jointAxis = "A" , jointAxis2= vector4 값)angle, axis를 저장하는 변수들
-	vector3* m_rotAxes;//임의의 축을 설정할 때(jointAxis = "A" , jointAxis2= vector4 값)angle, axis를 저장하는 변수
+	//임의의 축을 설정할 때(jointAxis = "A" , jointAxis2= vector3 값) axis를 저장하는 변수들
+	vector3* m_jointAxes;//임의의 축을 설정할 때(jointAxis = "A" , jointAxis2= vector3 값) axis를 저장하는 변수
 	transf m_transfOrig; //!< translation후 rotation하는 matrix, initial posture를 저장한다. (BVH 파일에서는 translation만 갖고 있다.)
 
 	friend class MotionLoader;
@@ -327,6 +326,7 @@ public:
 
 	MotionLoader* source()  { return mpSrcSkel;}
 	MotionLoader* target()	{ return mpTgtSkel;}
+	intvectorn targetIndexAtoB;
 private:
 	MotionLoader* mpSrcSkel;
 	MotionLoader* mpTgtSkel;

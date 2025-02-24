@@ -40,7 +40,7 @@ void PointClouds::destructScene()
 {
 	if(m_pSceneNode)
 	{
-		((Ogre::SceneNode*)m_pSceneNode->getParent())->removeAndDestroyChild(m_pSceneNode->getName());
+		m_pSceneNode->getParentSceneNode()->removeAndDestroyChild(m_pSceneNode);
 		m_pSceneNode=NULL;
 	}
 }
@@ -66,7 +66,7 @@ void PointClouds::SetVisible(bool bVisible)
 void PointClouds::setMaterial(const char* mat)
 {
 	for(int i=2; i<mSceneNodes.size(); i++)
-		((Ogre::Entity*)mSceneNodes[i]->getAttachedObject(0))->setMaterialName(mat);
+		((Ogre::v1::Entity*)mSceneNodes[i]->getAttachedObject(0))->setMaterialName(mat);
 }
 
 void PointClouds::update(matrixn const & points)
@@ -84,7 +84,7 @@ void PointClouds::update(matrixn const & points)
 			TString ename;
 			ename.format("spp%d", ientity);
 			ientity++;
-			Ogre::Entity *limbEntity =mRenderer.viewport().mScene->createEntity(ename.ptr(), "sphere1010.mesh");
+			Ogre::v1::Entity *limbEntity =mRenderer.viewport().mScene->createEntity(ename.ptr(), "sphere1010.mesh");
 //			limbEntity ->setNormaliseNormals(true);
 			mSceneNodes[i]->attachObject(limbEntity);
 		}
@@ -97,9 +97,9 @@ void PointClouds::update(matrixn const & points)
 		center.x=points(i,0);
 		center.y=points(i,1);
 		center.z=points(i,2);
-		pNode->resetToInitialState();
-		pNode->scale(mRadius/2,mRadius/2,mRadius/2);
-		pNode->translate(center);
+		pNode->resetOrientation();
+		pNode->setScale(mRadius/2,mRadius/2,mRadius/2);
+		pNode->setPosition(center);
 		pNode->setVisible(true);
 	}
 
@@ -118,11 +118,11 @@ int PointClouds::FrameMove(float fElapsedTime)
 
 
 SelectionRectangle::SelectionRectangle(const char* name)
-: Ogre::ManualObject(name)
+: Ogre::v1::ManualObject(RE::nameToUID(name), RE::_objectMemoryManager(), RE::ogreSceneManager())
 {
 	setUseIdentityProjection(true);
     setUseIdentityView(true);
-	setRenderQueueGroup(Ogre::RENDER_QUEUE_OVERLAY);
+	//setRenderQueueGroup(Ogre::v1::RENDER_QUEUE_OVERLAY);
     setQueryFlags(0);
 	setCastShadows(false);
 }
@@ -153,7 +153,7 @@ void SelectionRectangle::setCorners(float l, float t, float r, float b)
     b = 1 - b * 2;
 	
     clear();
-	begin("solidblue", Ogre::RenderOperation::OT_LINE_STRIP);
+	begin("solidblue", Ogre::OT_LINE_STRIP);
         position(l, t, -1);
         position(r, t, -1);
         position(r, b, -1);
@@ -161,9 +161,9 @@ void SelectionRectangle::setCorners(float l, float t, float r, float b)
         position(l, t, -1);
     end();
 
-	Ogre::AxisAlignedBox box;
-    box.setInfinite();
-    setBoundingBox(box);
+	//todo2 Ogre::AxisAlignedBox box;
+    //box.setInfinite();
+    //setBoundingBox(box);
 }
 
 void SelectionRectangle::constructSelectionVolumn(FltkRenderer const& mRenderer,std::vector<Plane>& vol)

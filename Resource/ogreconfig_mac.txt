@@ -18,10 +18,12 @@ useSeperateOgreWindow 0
 # Please do not change this default setting. 
 # One can instead copy this file to
 # ogreconfig_personal.txt and personalize it.
-#shadowTechnique 33
+# 34(shadowtexture), 37(shadowmap), 18 (stencil shadow)중에 고를 것
+# 37일때는 shadowResolution을 크게 놓고
+# 34일때는 shadowResolution을 작게 놓을 것
+# 34는 Iguana프로젝트가 제대로 동작 안함.
+#shadowTechnique 34  
 shadowTechnique 18
-#shadowTechnique 17
-#shadowTechnique 0
 shadowFarDistance 2000
 # must be power of 2
 #shadowResolution 4096 
@@ -30,7 +32,8 @@ shadowmapCount 10
 shadowColor 0.8
 
 depthShadow 0
-enagleLog 0
+# ogre가 crash나는 경우 set 1 for debugging.
+enableLog 0  
 
 # Warning! orthographic mode doesn't work perfectly.
 useOrthographicProjection 0

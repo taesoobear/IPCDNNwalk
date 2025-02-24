@@ -9,6 +9,7 @@
 struct PoseWrap;
 class MotionLoader;
 class Bone;
+class ScaledBoneKinematics;
 class BoneForwardKinematics
 {
 	MotionLoader* m_skeleton;
@@ -32,6 +33,7 @@ public:
 	void updateBoneLength(MotionLoader const& loader); 
 
 	void operator=(BoneForwardKinematics const& other);
+	void operator=(ScaledBoneKinematics const& other);
 	void setPose(const Posture& pose);
 	void setPoseDOF(const vectorn& poseDOF);
 	void setPoseDOFusingCompatibleDOFinfo(MotionDOFinfo const& dofInfo, const vectorn& poseDOF);
@@ -76,6 +78,56 @@ public:
 
 	inline transf& _global(int i)					{ return m_global[i];}
 	transf& _global(const Bone& bone);
+};
+
+class ScaledBoneKinematics
+{
+	MotionLoader* m_skeleton;
+	mutable quaterN m_local;
+	mutable quaterN m_global;
+	std::vector<matrix4> m_local2;
+	std::vector<matrix4> m_global2;
+	vector3N m_defaultScale;
+	std::vector<matrix4> m_scale; /// lengthScale*defaultScale
+
+public:
+	ScaledBoneKinematics(MotionLoader* );
+	// reset to initial pose of motion data. (The initial pose is the identity pose, most of the case.)
+	void init();
+	// calc global from local.
+	void forwardKinematics();
+
+	int numBone() const { return m_local2.size();}
+
+	void updateBoneLength(MotionLoader const& loader); 
+
+	void operator=(BoneForwardKinematics const& other);
+	void operator=(ScaledBoneKinematics const& other);
+
+	void setScale(const vector3N& scale); // effective only after calling setLengthScale.
+	void setLengthScale(const vectorn& scale);
+	void setPose(const Posture& pose);
+	void setPoseDOF(const vectorn& poseDOF);
+	void setPoseDOFusingCompatibleDOFinfo(MotionDOFinfo const& dofInfo, const vectorn& poseDOF);
+
+	MotionLoader const& getSkeleton() const		{return *m_skeleton;}
+
+	// read operations
+	inline matrix4 const& local(int i) const			{ return m_local2[i];}
+	matrix4 const& local(const Bone& bone) const;
+	inline quater & localRot(int i) const			{ return m_local[i];}
+	inline const matrix4 & localScale(int i) const			{ return m_scale[i];}
+
+	inline matrix4 const& global(int i) const		{ return m_global2[i];}
+	inline quater & globalRot(int i) const		{ return m_global[i];}
+	matrix4 const& global(const Bone& bone) const;
+
+	// write operations
+	inline matrix4& _local(int i)					{ return m_local2[i];}
+	matrix4& _local(const Bone& bone);
+
+	inline matrix4& _global(int i)					{ return m_global2[i];}
+	matrix4& _global(const Bone& bone);
 };
 
 class BoneVelocityForwardKinematics

@@ -13,10 +13,23 @@ int Bone::getLocalTrans(vector3& trans, const double* dof)
 {
 	trans.setValue(0,0,0);
 	int nc=getTranslationalChannels().length(); 
-	for(int c=0; c<nc; c++)
+	if (nc==0) return 0;
+	if (getTranslationalChannels().findChar(0,'A') != -1)
 	{
-		int xyz=getTranslationalChannels()[c]-'X';
-		trans[xyz]=dof[c];
+		for(int i=0;i<nc;i++)
+		{
+			vector3 axis;
+			axis = getArbitraryAxis(i);
+			trans+=axis* dof[i];
+		}
+	}
+	else
+	{
+		for(int c=0; c<nc; c++)
+		{
+			int xyz=getTranslationalChannels()[c]-'X';
+			trans[xyz]=dof[c];
+		}
 	}
 	trans+=getOffsetTransform().translation;
 	return nc;
@@ -25,11 +38,26 @@ int Bone::setLocalTrans(const vector3& trans, double* dof) const
 {
 	vector3 init_pos= getOffsetTransform().translation;
 	int nc=getTranslationalChannels().length();
-	for(int c=0;
-			c<nc; c++)
+	if(nc==0) return 0;
+	if (getTranslationalChannels().findChar(0,'A') != -1)
 	{
-		int xyz=getTranslationalChannels()[c]-'X';
-		dof[c]=trans[xyz]-init_pos[xyz]; // X or Y or Z
+		vector3 tmp=trans-init_pos;
+		for(int i=0;i<nc;i++)
+		{
+			vector3 axis;
+			vector3 temp;
+
+			axis = getArbitraryAxis(i);
+			dof[i]=tmp%axis;
+		}
+	}
+	else
+	{
+		for(int c=0; c<nc; c++)
+		{
+			int xyz=getTranslationalChannels()[c]-'X';
+			dof[c]=trans[xyz]-init_pos[xyz]; // X or Y or Z
+		}
 	}
 	return nc;
 }
@@ -38,27 +66,21 @@ int Bone::getLocalOri(quater& qRot, const double* dof)
 	int nc=getRotationalChannels().length();
 	if (getRotationalChannels().findChar(0,'A') != -1)
 	{
+		qRot.setValue(1, 0,0,0);
 		for(int i=0;i<nc;i++)
 		{
 			vector3 axis;
 			quater temp;
-			qRot.setValue(1, 0,0,0);
 
-			int numChannels=strlen(getRotationalChannels());
-			for(int i=0; i<numChannels; i++)
+			axis = getArbitraryAxis(i);
+			temp.setRotation(axis, dof[i]);
+
+			if(0)//(bRightToLeft)
+				qRot.leftMult(temp);
+			else
 			{
-				axis = getArbitraryAxis(i);
-				temp.setRotation(axis, dof[i]);
-
-				if(0)//(bRightToLeft)
-					qRot.leftMult(temp);
-				else
-				{
-					quater copy(qRot); qRot.mult(copy, temp);			
-				}
-
+				quater copy(qRot); qRot.mult(copy, temp);			
 			}
-
 		}
 	}
 	else
@@ -164,12 +186,12 @@ void Bone::setChannels(const char* tx, const char* rx)
 
 void Bone::setArbitraryAxes(vector3* axisValue)
 {
-	m_rotAxes = axisValue;
+	m_jointAxes = axisValue;
 }
 
 vector3 Bone::getArbitraryAxis(int i) const
 {
-	return m_rotAxes[i];
+	return m_jointAxes[i];
 }
 
 
@@ -1882,6 +1904,7 @@ void PoseTransfer::_ctor_part2(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, T
 	mpSrcSkel=pSrcSkel;
 	mpTgtSkel=pTgtSkel;
 
+	targetIndexAtoB.setSize(pSrcSkel->numBone());
 	m_aTargetIndex.setSize(pSrcSkel->numRotJoint());
 	m_aTargetIndexByTransJoint.setSize(pSrcSkel->numTransJoint());
 	m_aRotOrigComb.setSize(pSrcSkel->numRotJoint());
@@ -1903,18 +1926,27 @@ void PoseTransfer::_ctor_part2(MotionLoader* pSrcSkel, MotionLoader* pTgtSkel, T
 		else
 			m_aTargetIndexByTransJoint[i]=-1;
 	}
-
-	for(int i=0; i<pSrcSkel->numRotJoint(); i++)
+	targetIndexAtoB.setAllValue(-1);
+	for(int ibone=0; ibone<pSrcSkel->numBone(); ibone++)
 	{
-		int ibone=pSrcSkel->getTreeIndexByRotJointIndex(i);
 		if(convTable[ibone].length())
 		{
 			TString const& jointName=convTable[ibone];
 			int iindex=mpTgtSkel->GetIndex(jointName);
-			m_aTargetIndex[i]=iindex;
+			targetIndexAtoB[ibone]=iindex;
 			if(iindex==-1)
 				Msg::print("warning %s not exist\n", jointName.ptr());
-			else
+		}
+	}
+
+	for(int i=0; i<pSrcSkel->numRotJoint(); i++)
+	{
+		int ibone=pSrcSkel->getTreeIndexByRotJointIndex(i);
+		if(targetIndexAtoB[ibone]!=-1)
+		{
+			int iindex=targetIndexAtoB[ibone];
+			m_aTargetIndex[i]=iindex;
+			if(iindex!=-1)
 			{
 				Bone& bone=mpTgtSkel->bone(iindex);
 

@@ -1791,13 +1791,15 @@ void m::linstitch2::calc(matrixn& c, const matrixn& a, const matrixn& b) const
 	At.transpose(A);
 
 	Augmented.range(c.rows(), c.rows()+numCon, c.rows(), c.rows()+numCon).setAllValue(0.0);
-#ifdef USE_NR
+#ifdef USE_LUDCMP
 	DP p;
 	matrixn LU(Augmented);
 	Vec_INT indx(Augmented.rows());
 	NR::ludcmp(LU,indx,p);
-	//matrixn invAugmented;
-	//invAugmented.inverse(Augmented);
+#else
+	matrixn invAugmented;
+	m::LUinvert(invAugmented, Augmented);
+#endif
 	vectorn cc(c.rows()-2);
 
 	for(int dim=0; dim<a.cols(); dim++)
@@ -1831,15 +1833,16 @@ void m::linstitch2::calc(matrixn& c, const matrixn& a, const matrixn& b) const
 		d[c.rows()+3]=fb(b.rows()-1);
 		//NR::frprmn(p, 1.0e-6, iter, fret, linstitch::f, linstitch::df);
 
+#ifdef USE_LUDCMP
 		x=d;
 		NR::lubksb(LU,indx,x);
+#else
+		x.multmat(invAugmented, d);
+#endif
 		// save results.
 		for(int i=0; i<c.rows(); i++)
 			f(i)=x[i];
 	}
-#else
-	Msg::error ("ludcmp");
-#endif
 }
 
 
@@ -1939,7 +1942,7 @@ void m::linstitchMulti::calc(matrixn& c, const matrixn& a, const matrixn& b) con
 	NR::ludcmp(LU,indx,p);
 #else
 	matrixn invAugmented;
-	invAugmented.inverse(Augmented);
+	m::LUinvert(invAugmented, Augmented);
 #endif
 	vectorn cc(nsample-2);
 

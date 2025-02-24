@@ -37,6 +37,8 @@ public:
 	virtual ~BinaryFile();
 	bool openWrite(const char *fileName, bool singlePrecisionMode=false);
 	bool openRead(const char *fileName);
+
+	virtual bool readable() { return m_pFile!=NULL;}
 	virtual void close();
 
 	void packInt(int num);
@@ -44,6 +46,7 @@ public:
 	void packArray(void *buffer, int count, size_t size);
 	void pack(const char *str);
 	void pack(const TString& str) { pack(str.ptr());}
+	void pack(const std::string& str) { pack(str.c_str());}
 	void pack(const vectorn& vec);
 	void pack(const floatvec& vec);
 	void pack(const vector3& vec);
@@ -74,6 +77,7 @@ public:
 	//! 이 함수는 malloc을 해서 unpack을 한다. 반드시 나중에 free해주어야 한다.
 	void unpackArrayMalloc(void **pbuffer, int count, size_t size);
 	void unpack(TString& str);
+	void unpack(std::string& str);
 	void unpack(vectorn& vec);
 	void unpack(vector3& vec);
 	void unpack(quater& vec);

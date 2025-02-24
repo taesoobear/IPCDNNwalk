@@ -55,7 +55,34 @@ Optimizer.methods={
 			lbfgs_opt.opt=opt
 			local initialSol=opt:getVecOptResult()
 			lbfgs_opt:optimize(initialSol)
-			self.opt:setOptResult(lbfgs_opt:getResult())
+			opt:setOptResult(lbfgs_opt:getResult())
+		end
+	},
+	LBFGS_analytic={ 
+		optimize=function(self, opt) -- self: LBFGS table.
+			local epsilon=1e-10
+			local LBFGS_opta=LUAclass(OptimizeAnalytic)
+			function LBFGS_opta:__init()
+			end
+			function LBFGS_opta:_objectiveFunction(pos)
+				assert(false)
+				local out= self.opt:objectiveFunction(pos)
+				return out
+			end
+			function LBFGS_opta:_gradientFunction(pos,grad)
+				local out= self.opt:gradientFunction(pos, grad)
+				return out
+			end
+			local method=Optimize.LBFGS_METHOD(epsilon)
+
+			local lbfgs_opt=LBFGS_opta()
+			local max_step=1 -- do not use normalization
+			--local max_step=opt_dimension[1].max_step
+			lbfgs_opt:init(0, opt.N_opt_dimension,max_step, opt_dimension[1].grad_step,method)
+			lbfgs_opt.opt=opt
+			local initialSol=opt:getVecOptResult()
+			lbfgs_opt:optimize(initialSol)
+			opt:setOptResult(lbfgs_opt:getResult())
 		end
 	}
 }

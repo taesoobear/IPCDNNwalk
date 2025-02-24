@@ -135,8 +135,12 @@ static void are (matrixn & x, matrixn const& a, matrixn & b, matrixn & c)
 void lqr (matrixn &k, matrixn const& a, matrixn const&b, matrixn &q, matrixn const&r)
 {
 #ifdef EXCLUDE_CLAPACK
-   TString fn("_LQR_CACHE_", a.rows());
-   BinaryFile f(false, (fn+TString(".DAT")).ptr());
+
+   TString fn("work/_LQR_CACHE_", a.rows());
+   BinaryFile f(false, (TString(RE::taesooLibPath().c_str())+fn+TString(".DAT")).ptr());
+   Msg::verify(f.readable(), "failed to open: %s%s", RE::taesooLibPath().c_str(), (fn+TString(".DAT")).ptr());
+
+
    f.unpack( k);
    matrixn aa;
    f.unpack( aa);

@@ -1,104 +1,14 @@
-local EW=require('subRoutines/exportOgreEntityToVRML')
+require('subRoutines/OgreLoader')
+-- deprecated.
+-- only for backward compatibility
+AnimOgreEntity=LUAclass(OgreLoader)
 
-AnimOgreEntity=LUAclass()
-
-
--- AnimOgreEntity는 OgreEntity의 skeleton을 그대로 사용하거나, 축과 관절이름이 호환되는 skeleton에 대해서 쓸 수 있다.
--- AnimOgreEntity는 skinningInfo를 만들기 위해 configSkin.lua를 실행할 필요가 없기 때문에, 사용이 간단하다.
--- AnimOgreSkin은 loader와 OgreEntity의 스켈레톤이 호환되지 않을 때 쓴다.
-
--- entityScale : entity (표면메시) 그릴때 몇배 스케일 할건지
--- skinScale : skeleton을 그릴때 몇배 스케일할건지.
---
--- outputs:
--- self.sf  -> loader의 pose의 translation을 몇배 scale해야 표면 메시와 호환되는지.
 function AnimOgreEntity:__init(meshFileName, entityScale, _optional_skinScale, _optional_skelScale, _buildEdgeList)
-	local s2=_optional_skelScale or 1	
+	OgreLoader:__init(meshFileName, entityScale, _optional_skinScale, _optional_skelScale, _buildEdgeList)
+
 	self.trans=vector3(0,0,0)
-	self.entityScale=entityScale
-	self.scale=_optional_skinScale or 100
-	self.meshFile=meshFileName
-
-	if AnimOgreEntity.count==nil then
-		AnimOgreEntity.count=0
-	else
-		AnimOgreEntity.count=AnimOgreEntity.count+1
-	end
-	
-	self.entityName=meshFileName.."_AOE_"..AnimOgreEntity.count
-	-- ogre entity is for visualizing the bind pose
-	self.ogreEntity=RE.ogreSceneManager():createEntity(self.entityName.."_raw", self.meshFile)
-	if _buildEdgeList then
-		RE.buildEdgeList(self.meshFile)
-	end
-
 	self.ogreNode=RE.createChildSceneNode(RE.ogreRootSceneNode(),self.entityName.."_raw_node")
 	self.ogreNode:attachObject(self.ogreEntity)
-
-	local s=entityScale
-	self.ogreNode:setScale(s,s,s)
-
-	local skinScale=self.scale
-	do
-		local config={ entityScale=self.entityScale, skinScale=self.scale}
-
-		--local file='_temp.wrl'
-		local file=CTextFile() -- use a memory file.
-		local sf=EW.convert(self.ogreEntity, file, 'entity', 1/entityScale*skinScale/100/s2)
-		sf=sf*config.entityScale/config.skinScale*s2
-		self.loader=MainLib.VRMLloader (file)
-		self.loader:Scale(sf)
-		self.sf=sf
-		for i=1, self.loader:numBone()-1 do
-			local name=self.loader:bone(i):name()
-			name=string.gsub(name,'__SPACE__', ' ')
-			self.loader:bone(i):setName(name)
-		end
-
-		local Pose=EW.getPoseFromOgreEntity(self.loader, self.ogreEntity, config)
-		Pose.translations(0):rmult(sf)
-
-
-
-
-		self.loader:setPose(Pose)
-	end
-	self.bindpose=vectorn()
-	self.loader:getPoseDOF(self.bindpose)
-
-	self.BIndex_to_RI=vectorn()
-	self.BIndex_to_TI=vectorn()
-	self.BIndex_to_BI=vectorn()
-	do
-		local loader=self.loader
-		local entity=self.ogreEntity
-		local bones, root=EW.getBones(entity)
-		assert(root.id==0)
-		self.BIndex_to_RI:setSize(#bones+1)
-		self.BIndex_to_TI:setSize(#bones+1)
-		self.BIndex_to_BI:setSize(#bones+1)
-		for i=root.id, #bones do
-			local bone=bones[i]
-			local bi=loader:getTreeIndexByName(bone.name)
-			if bi~=-1 then
-				assert(ti~=-1)
-				local lbone=loader:bone(bi)
-				local ri=lbone:rotJointIndex()
-				local ti=lbone:transJointIndex()
-				if ri~=-1 then
-					bone.bone:setManuallyControlled(true)
-				end
-				self.BIndex_to_RI:set(i, ri)
-				self.BIndex_to_TI:set(i, ti)
-				self.BIndex_to_BI:set(i, bi)
-			else
-				self.BIndex_to_RI:set(i, -1)
-				self.BIndex_to_TI:set(i, -1)
-				self.BIndex_to_BI:set(i, -1)
-			end
-		end
-	end
-	--self:startDebugMode()
 end
 
 function AnimOgreEntity:dtor()

@@ -146,6 +146,9 @@ function MainLib.WRLloader(input)
 					if geom[1]=='Box' then
 						local density=997 -- water density
 						return density*geom.size.x*geom.size.y*geom.size.z
+					elseif geom[1]=='Ellipsoid' then
+						local density=997 -- water density
+						return density*4.0*3.14/3.0*geom.size.x*geom.size.y*geom.size.z
 					elseif geom[1]=='Sphere' then
 						local density=997 -- water density
 						return density*4.0*3.14/3.0*geom.size.x*geom.size.y*geom.size.z
@@ -346,7 +349,11 @@ function MainLib.VRMLloader:toTable()
 		bone.jointType=b:jointType()
 		bone.jointAxis=b:jointAxis()
 		bone.translation=b:getOffset()
-		bone.geometry=b:getMesh():toTable()[3]
+		bone.mass=b:mass()
+		assert(b:hasShape())
+		if b:hasShape() then
+			bone.geometry=b:getMesh():toTable()[3]
+		end
 		if b:numChildren()>0 then
 			bone.children={}
 		end

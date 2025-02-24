@@ -29,60 +29,33 @@ if(UNIX)
 	#endif()
 	message("Unix OS")
 	set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -ftemplate-depth-100 -Wno-deprecated -std=c++11")
+	find_package(PkgConfig REQUIRED)
+	pkg_check_modules(EIGEN eigen3 REQUIRED)
+	pkg_check_modules(LUA lua5.1 REQUIRED)
+	include_directories(${EIGEN_INCLUDE_DIRS})
+	set(LUA_INCLUDE ${LUA_INCLUDE_DIRS})
 	if (APPLE)
-		find_package(PkgConfig REQUIRED)
-		pkg_check_modules(EIGEN eigen3 REQUIRED)
-		pkg_check_modules(LUA lua5.1 REQUIRED)
-		include_directories(${EIGEN_INCLUDE_DIRS})
-		set(LUA_INCLUDE ${LUA_INCLUDE_DIRS})
-		set(LUA_LIB ${LUA_LIBRARIES})
+		set(LUA_LIB ${LUA_LIBRARIES}) # this is a static library
 		set(HOMEBREW_DIR /opt/homebrew)
 
-		set(OGRE_INCLUDE 
+		set(DEFAULT_INCLUDE 
 			${HOMEBREW_DIR}/include
 			"/usr/local/include/"
-			"/usr/local/include/OGRE"
-			)
+		)
 		link_directories(
 			${HOMEBREW_DIR}/lib
 			/usr/local/lib
 			/opt/homebrew/lib
 			)
+
 	else()
-		set(OGRE_INCLUDE 
-			"/usr/include/OGRE"
-			"/usr/include/OGRE/Bites"
-			"/usr/include/OGRE/RTShaderSystem"
-			"/usr/include/OIS"
-		"/usr/local/include/OGRE"
-		"/usr/local/include/OGRE/Bites"
-		"/usr/local/include/OGRE/RTShaderSystem"
-			)
-		if(UseLuaJit)
-			set(LUA_INCLUDE 
-				"/usr/include/luajit-2.0"
-				"/usr/include/luajit-2.1"
-				)
-			set(LUA_LIB "luajit-5.1")
-		else()
-			set(LUA_INCLUDE 
-				"/usr/include/lua5.1"
-				"${TAESOOLIB_DIR}/../dependencies_mpi/lua-5.1.5/src"
-				)
-			if(EXISTS "/usr/lib64/liblua.so")
-				set(LUA_LIB "lua")
-			elseif(EXISTS "${TAESOOLIB_DIR}/../dependencies_mpi/lua-5.1.5/src/liblua.a")
-				set(LUA_LIB "${TAESOOLIB_DIR}/../dependencies_mpi/lua-5.1.5/src/liblua.a")
-			else()
-				set(LUA_LIB "lua5.1")
-			endif()
-		endif()
+		set(LUA_LIB lua51) # this is a shared library
 	endif()
 else()
 	message("Windows OS")
 	add_definitions(-D_SCL_SECURE_NO_DEPRECATE)
 	# unused settings
-	set(OGRE_INCLUDE )
+	set(DEFAULT_INCLUDE )
 	set(LUA_INCLUDE )
 	set(LUA_LIB )
 	set(EIGEN3_INCLUDE_DIR "${TAESOOLIB_DIR}/../windows_dependencies/eigen-3.4.0")
@@ -90,7 +63,7 @@ else()
 endif()
 
 include_directories (	
-	${OGRE_INCLUDE}
+	${DEFAULT_INCLUDE}
 	${LUA_INCLUDE}
 	)
 

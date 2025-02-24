@@ -33,6 +33,12 @@ include_directories (
 # Make sure the compiler can find include files from our Hello library.
 
 set(src 
+	OgreFltk/BaseSystem.h
+	OgreFltk/BaseSystem.cpp
+	OgreFltk/ShadowMapFromCodeGameState.cpp
+	OgreFltk/ShadowMapFromCodeGameState.h
+	OgreFltk/StaticPluginLoader.cpp
+	OgreFltk/StaticPluginLoader.h
   "./OgreFltk/Joystick.cpp"
   "./MainLib.h"
   "./MainLib.cpp"
@@ -56,9 +62,6 @@ set(src
   "./OgreFltk/MotionPanel.cpp"
   "./OgreFltk/MotionPanel.h"
   "./OgreFltk/FltkScrollPanel.h"
-  "./OgreFltk/OgreMotionLoader.cpp"
-  "./OgreFltk/OgreMotionLoader.h"
-  "./Ogre/PLDPrimCustumSkin.cpp"
   "./OgreFltk/pldprimskin.cpp"
   "./OgreFltk/pldprimskin.h"
   "./OgreFltk/pldprimskin_impl.h"
@@ -75,11 +78,9 @@ set(src
 
 if(useShared)
 	list(REMOVE_ITEM src 
-  "./Ogre/PLDPrimCustumSkin.cpp"
   )
 endif()
 
-if(WIN32)
 set(Ogre
   "./OgreFltk/Circle.cpp"
   "./OgreFltk/dynamicRenderable.cpp"
@@ -87,33 +88,10 @@ set(Ogre
   "./OgreFltk/LineSegment.cpp"
   "./OgreFltk/LineStrip.cpp"
   "./OgreFltk/Mesh.cpp"
+  "./OgreFltk/Mesh.h"
   "./OgreFltk/MovableText.cpp"
   "./OgreFltk/objectList.cpp"
   )
-else()
-set(Ogre
-  "./OgreFltk/Circle.cpp"
-  "./OgreFltk/dynamicRenderable.cpp"
-  "./OgreFltk/Line3D.cpp"
-  "./OgreFltk/LineSegment.cpp"
-  "./OgreFltk/LineStrip.cpp"
-  "./OgreFltk/Mesh.cpp"
-  "./OgreFltk/MovableText.cpp"
-  "./OgreFltk/objectList.cpp"
-   "./Ogre/OgreSkinEntity.cpp"
-   "./Ogre/OgreSkinEntity.h"
-   "./Ogre/OgreSkinSubEntity.cpp"
-   "./Ogre/OgreSkinSubEntity.h"
-	)
-if (useShared ) 
-	list(REMOVE_ITEM Ogre 
-  "./Ogre/OgreSkinEntity.cpp"
-   "./Ogre/OgreSkinEntity.h"
-   "./Ogre/OgreSkinSubEntity.cpp"
-   "./Ogre/OgreSkinSubEntity.h"
-   )
-endif()
-endif()
 
 set(console
   "./console/dummies.cpp"
@@ -163,6 +141,8 @@ LIST(APPEND src
 	"./WrapperLua/FlLayoutLua.h"
   "./WrapperLua/ScriptWin.cpp"
   "./WrapperLua/ScriptWin.h"
+  #  "./WrapperLua/ThreadedScript.cpp"
+  #"./WrapperLua/ThreadedScript.h"
 	)
 
 if(WIN32)
@@ -173,7 +153,11 @@ LIST(APPEND src
 elseif(APPLE)
 	if (BUILD_CONSOLE )
 	else()
-		LIST(APPEND src "./OgreFltk/mac/OgreFltk.mm")
+		LIST(APPEND src 
+			OgreFltk/mac/OgreFltk.mm
+			OgreFltk/OSXUtils.h
+			OgreFltk/OSXUtils.mm
+		)
 	endif()
 endif()
 

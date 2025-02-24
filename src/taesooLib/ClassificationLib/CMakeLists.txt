@@ -55,6 +55,53 @@ set(src
 	)
 set(src_gui
 	)
+	# currently unused
+set(src_unused
+./motion/PhysicalHuman.cpp
+./motion/PhysicalHuman.h
+./motion/Parameter.cpp
+./motion/Parameter.h
+./motion/MotionClustering.h
+./motion/FeatureExtractor.h
+./motion/MotionInterpolation.cpp
+./motion/MotionInterpolation.h
+./motion/ParseGrpFile.cpp
+./motion/PoseFeatureExtractor.cpp
+./motion/MotionClustering.cpp
+./motion/MotionClustering.h
+./motion/ParseGrcFile.h
+./motion/ParseGrpFile.h
+./motion/ParseGrcFile.cpp
+./motion/FeatureExtractor.cpp
+./motion/PoseFeatureExtractor.h
+./motion/TwoPosture.cpp
+./motion/Action.cpp
+./motion/Tokenizer.cpp
+./motion/Tokenizer.h
+./motion/MotionTokenizer.cpp
+./motion/MotionTokenizer.h
+./motion/Similarity.cpp
+./motion/Similarity.h
+./motion/PoseTrajWin.cpp
+./motion/PoseTrajWin.h
+./motion/ParamSpaceWin.cpp
+./motion/ParamSpaceWin.h
+./motion/SegmentationWin.cpp
+./motion/SegmentationWin.h
+./motion/ClassifyBySVM.h
+./motion/ClassifyBySVM.cpp
+./motion/ClusterWin.cpp
+./motion/ClusterWin.h
+./motion/ClassifyWin.cpp
+./motion/ClassifyWin.h
+./motion/ClassifyPoseBySVMs.h
+./motion/ClassifyPoseBySVMs.cpp
+./motion/SegWin.cpp
+./motion/ClassifyBySVMs.cpp
+./motion/ClassifyBySVMs.h
+#./motion/LocalPoseSpaceWin.cpp
+#./motion/LocalPoseSpaceWin.h
+)
 set(luna_script "${ClassificationLib_SOURCE_DIR}")
 set(LUNA_GEN ${ClassificationLib_SOURCE_DIR}/../MainLib/WrapperLua/luna_gen.lua)
 
