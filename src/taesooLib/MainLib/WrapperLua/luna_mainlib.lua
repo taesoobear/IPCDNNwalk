@@ -4368,7 +4368,7 @@ staticMemberFunctions={[[
 			static void setParameter(Ogre::v1::OverlayElement* p, const char* c, const char* d)
 			]]},
 			memberFunctions=[[
-			void setPosition(int, int);
+			void setPosition(float, float);
 			]]
 		},
 		{
@@ -4378,7 +4378,7 @@ staticMemberFunctions={[[
 			inheritsFrom='Ogre::v1::OverlayElement',
 			memberFunctions={[[
 			void addChild(Ogre::v1::OverlayElement* elem);
-			void setPosition(int, int);
+			void setPosition(float, float);
 			]]}
 		},
 		{

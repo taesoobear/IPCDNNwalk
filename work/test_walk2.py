@@ -57,10 +57,10 @@ def loadNN( fn, useDot):
     #matfeature=lua.getglobal_mat('g_dataset', 1)
     #matdataall=lua.getglobal_mat('g_dataset', 2)
 
-    net=torch.load(fn)
+    net=torch.load(fn, weights_only=False)
     _globals[0]=net
     if useDot:
-        net2=torch.load('dot'+fn)
+        net2=torch.load('dot'+fn, weights_only=False)
         _globals[1]=net2
 
 # note that the above functions are called from lua using a different python module (test_walk2 !=  __main__)
