@@ -36,6 +36,9 @@
 #include <BaseLib/motion/MotionLoader.h>
 
 #ifndef NO_OGRE
+#ifdef None
+#undef None
+#endif
 #include "Ogre.h"
 #include "OgreStringConverter.h"
 #include "OgreException.h"
