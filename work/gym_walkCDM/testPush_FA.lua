@@ -36,6 +36,7 @@ function ctor()
 
 		initiateChangeMotionType()
 	end
+		this:updateLayout()
 
 	planner:replan()
 end

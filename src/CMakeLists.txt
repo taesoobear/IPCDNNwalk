@@ -53,7 +53,7 @@ include(Common_mainlib)
 
 # PhysicsLib settings
 set(NoAISTsim TRUE) # use TRL_LCP instead!
-set(NoGMBSsim TRUE) # use TRL_LCP instead!
+set(NoGMBSsim FALSE) # use TRL_LCP instead!
 set(NoUTsim TRUE) # use TRL_LCP instead!
 set(NoBulletSim TRUE) # use TRL_LCP instead!
 if(BUILD_CONSOLE)

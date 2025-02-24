@@ -20,7 +20,8 @@ postprocess_run: # necessary once after training
 	sh analyze.sh run4 run2-v1 60
 test:
 	python3 test_sample_python.py gym_cdm2/testShowRefMotion.lua
-
+urdf:
+	python3 test_sample_python.py showRobotFile.lua
 # siggraph 2020: Fast and flexible multilegged locomotion using learned centroidal dynamics
 walknn:
 	python3 test_walk2.py gym_walkCDM/testWalkV2_FA.lua
