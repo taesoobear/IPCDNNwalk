@@ -34,7 +34,7 @@ def loadAgent(spec_id, filename):
     if not (hasattr(settings, 'agents')):
         settings.agents={}
 
-    ac, ob_rms= torch.load(filename)
+    ac, ob_rms= torch.load(filename, weights_only=False)
     vec_norm =EnvNormalize(ob_rms);
     agent={
             'actor_critic': ac, 

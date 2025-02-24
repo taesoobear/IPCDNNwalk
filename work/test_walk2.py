@@ -79,11 +79,11 @@ def main():
         option=sys.argv[1]
         scriptFile=sys.argv[2]
     uiscale=1
-    if option=='--sep':
-        if platform.system()=='Darwin':
-            m.createMainWin(int((10+220)*uiscale),int((400+100)*uiscale), int(10*uiscale), int(400*uiscale),uiscale, "../Resource/ogreconfig_linux_sepwin.txt", "plugins_mac.cfg", "ogre_mac.cfg")
-        else:
-            m.createMainWin(int((10+220)*uiscale),int((400+100)*uiscale), int(10*uiscale), int(400*uiscale),uiscale, "../Resource/ogreconfig_linux_sepwin.txt", "plugins_linux.cfg", "ogre_linux.cfg")
+    if m.getOgreVersionMinor()==2 and platform.system()!='Darwin':
+        rw=1920
+        rh=1080
+        uiscale=1.5
+        m.createMainWin(int(rw+180*uiscale),int(rh+100*uiscale), int(rw), int(rh),uiscale)
     else:
         m.createMainWin(int((1024+180)*uiscale),int((600+100)*uiscale), int(1024*uiscale), int(600*uiscale),uiscale)
     m.showMainWin()

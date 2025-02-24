@@ -18,6 +18,10 @@ def createMotionLoaderExt(fn):
     loader=m.createMotionLoaderExt_cpp(fn)
     doNotGarbageCollect.append(loader)
     return loader
+def setViewZup():
+    lua.F('setViewYUp', False)
+def setViewYup(yup):
+    lua.F('setViewYUp', yup)
 def viewpoint():
     return m.viewpoint()
 def console():
@@ -54,7 +58,11 @@ def updateBillboards(fElapsedTime):
 def createColorBuffer(mesh):
     lua.require("Kinematics/meshTools")
     lua.M0(mesh,'createColorBuffer')
+def createTextureBuffer(mesh):
+    lua.require("Kinematics/meshTools")
+    lua.M0(mesh,'createTextureBuffer')
 m.Mesh.createColorBuffer=createColorBuffer # register
+m.Mesh.createTextureBuffer=createTextureBuffer # register
 def drawMesh(mesh, materialName, nodeName):
     lua.require("Kinematics/meshTools")
     lua.M0(mesh,'drawMesh', materialName, nodeName)
@@ -68,7 +76,7 @@ def removeEntityByName(name):
 def turnOffSoftShadows():
     lua.F(("RE","turnOffSoftShadows"))
 def renderOneFrame(check):
-    m.renderOneFrame(check)
+    return m.renderOneFrame(check)
 def output(key, *args):
     m._output(key,str(args),1)
 
@@ -76,6 +84,8 @@ def output2(key, *args):
     m._output(key,str(args),2)
 
 def createSkin(loader):
+    if isinstance(loader, m.VRMLloader):
+        return m.createVRMLskin(loader, False)
     return m.createSkin(loader)
 def createFBXskin(fbx, drawSkeleton=None):
     return FBXskin(fbx, drawSkeleton)
@@ -176,6 +186,66 @@ class FBXloader(lua.instance):
     def loadSMPLmotion(self, mocap_framerate, trans, poses,_convertYUP=False):
         return lua.F('SMPL.loadMotion', lua.instance((self.var_name,'dd')), lua.instance((self.var_name,'loader')), mocap_framerate, trans, poses, _convertYUP).copy()
     loader=property( fget=_get_loader,)
+
+# options: {'groundPlane':False} 
+#see MujocoLoader.lua for more details. 
+def writeMujocoXML(loader, xmlfile, options=None):
+    if options==None:
+        options={'groundPlane':False}
+    lua.dostring('if not MujocoLoader then require("RigidBodyWin/subRoutines/MujocoLoader") end')
+    lua.F('writeMujocoXML', loader, xmlfile, options)
+
+def MujocoLoader(filename):
+    if filename[-4:]=='.wrl' :
+        loader=m.VRMLloader(filename)
+        xmlfile=filename[:-4]+'.mujoco.xml'
+        writeMujocoXML(loader, xmlfile, {'groundPlane':False})
+        return loader
+    else:
+        # creates a temporary file
+        wrlfile=filename+'.wrl'
+        import os.path
+        lua.dostring('if not MujocoLoader then require("RigidBodyWin/subRoutines/MujocoLoader") end')
+        lua.dostring('MujocoParser("'+ filename+'","'+ wrlfile+'", { useVisualMesh=true})')
+        return m.VRMLloader(wrlfile)
+
+def URDFloader(filename):
+    # creates a temporary file
+    wrlfile=filename+'.wrl'
+    import os.path
+    lua.dostring('if not URDFloader then require("RigidBodyWin/subRoutines/URDFloader") end')
+    lua.dostring('URDFparser("'+ filename+'","'+ wrlfile+'", { useVisualMesh=true})')
+    return m.VRMLloader(wrlfile)
+def flatten(dofs_idx2d):
+    out=[]
+    for e in dofs_idx2d:
+        if isinstance(e, int):
+            out+=[e]
+        else:
+            out+=e
+    return out
+def genesisIndexMap(robot, mLoader):
+    # 가끔 genesis가 xml에 적혀있는 본의 순서를 무시하고 로딩하는 경우가 있어서 아래와 같은 index매핑 필요.
+    actuated_bones=[]
+    for i in range(1, mLoader.numBone()):
+        if mLoader.dofInfo.numDOF(i)>0:
+            actuated_bones.append(i)
+
+    dofs_TL_qidx2d= [robot.get_link(mLoader.bone(i).name()).joint.q_idx_local for i in actuated_bones] 
+    # quaternion dofs (qpos) ordered according to taesooLib convention 
+    return flatten(dofs_TL_qidx2d)
+def getTLpose(robot, dofs_TL_qidx, irow=None):
+    qpos=robot.get_qpos(qs_idx_local=dofs_TL_qidx)
+    if irow!=None:
+        return lua.vec(qpos[irow])
+    else:
+        return lua.vec(qpos)
+def setTLpose(robot, TLpose): # setTLpose(robot, taesooLibPose.ref()) 여기서 .ref()는 taesooLibPose의 타입이 vectorn인 경우 필요. 
+    robot.set_qpos(TLpose, qs_idx_local=dofs_TL_qidx)
+def _setGenesisPose(skin, robot, dofs_TL_qidx, irow=None):
+    skin.setPoseDOF(getTLpose(robot, dofs_TL_qidx, irow))
+
+m.PLDPrimVRML.setGenesisPose=_setGenesisPose
 
 def createSMPLskeleton(bm_path:str, betas=None):
     uid=m.generateUniqueName()
@@ -354,6 +424,20 @@ def loadRawMotions(*args):
 
     return mot[1].motion, mot[1]
 
+def createLuaEnvOnly():
+    # here, you cannot use renderer!!! but all other non-rendering-related classes can be used.
+    # this is different from console.mainlib in that console.mainlib supports skins and renderer too.
+    uiscale=1
+    taesooLibPath=''
+    if not os.path.exists(taesooLibPath+ "../Resource/ogreconfig_linux_sepwin.txt"):
+        taesooLibPath= 'work/taesooLib'
+
+    m._createInvisibleMainWin()
+    m.getPythonWin().loadEmptyScript()
+
+def releaseLuaEnv():
+    m.releaseMainWin()
+
 def createMainWin(argv):
     import platform
     options=[]
@@ -371,10 +455,22 @@ def createMainWin(argv):
     if not os.path.exists(taesooLibPath+ "../Resource/ogreconfig_linux_sepwin.txt"):
         taesooLibPath= 'work/taesooLib'
 
-    m.createMainWin(int((1024+180)*uiscale),int((600+100)*uiscale), int(1024*uiscale), int(600*uiscale),uiscale)
+    if m.getOgreVersionMinor()==2 and platform.system()!='Darwin':
+        rw=1920
+        rh=1080
+        uiscale=1.5
+        m.createMainWin(int(rw+180*uiscale),int(rh+100*uiscale), int(rw), int(rh),uiscale)
+    else:
+        m.createMainWin(int((1024+180)*uiscale),int((600+100)*uiscale), int(1024*uiscale), int(600*uiscale),uiscale)
     m.showMainWin()
     m.getPythonWin().loadEmptyScript()
     if dostring:
         m.getPythonWin().dostring(dostring)
 
+def FlLayout_addFloatSlider(self, title, val, vmin, vmax):
+    self.create("Value_Slider", title, title,1)
+    self.widget(0).sliderRange(vmin, vmax)
+    self.widget(0).sliderStep((vmax-vmin)/20)
+    self.widget(0).sliderValue(val)
 
+m.FlLayout.addFloatSlider=FlLayout_addFloatSlider

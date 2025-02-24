@@ -11,6 +11,7 @@ import pdb # use pdb.set_trace() for debugging
 #import code # or use code.interact(local=dict(globals(), **locals())) for debugging. see below.
 import numpy as np
 import platform
+import torch
 relative=False
 try:
     import settings
@@ -82,23 +83,27 @@ def pycallFromLua(a):
     # print(a)
     # print type name
     # for i in range(len(a)): print( type(a[i]).__name__)
-    if a[0]=="F":
-        m=importlib.import_module(a[1])
-        getattr(m, a[2])(*a[3:])
-    elif a[0]=="FC":
-        b=[]
-        for i in range(3, len(a)): 
-            tn=type(a[i]).__name__[0:7]
-            if tn=='vectorn' or tn=='matrixn' or tn=='hyperma': # this includes hypermatrixn, vectornView, matrixnView
-                b.append(a[i].ref())
-            else:
-                b.append(a[i])
+    try:
+        if a[0]=="F":
+            m=importlib.import_module(a[1])
+            getattr(m, a[2])(*a[3:])
+        elif a[0]=="FC":
+            b=[]
+            for i in range(3, len(a)): 
+                tn=type(a[i]).__name__[0:7]
+                if tn=='vectorn' or tn=='matrixn' or tn=='hyperma': # this includes hypermatrixn, vectornView, matrixnView
+                    b.append(a[i].ref())
+                else:
+                    b.append(a[i])
 
-        m=importlib.import_module(a[1])
-        getattr(m, a[2])(*b)
-    else:
-        print('??? unknown format')
-        print(a)
+            m=importlib.import_module(a[1])
+            getattr(m, a[2])(*b)
+        else:
+            print('??? unknown format')
+            print(a)
+            pdb.set_trace()
+    except Exception as e:
+        print(e)
         pdb.set_trace()
 
 
@@ -563,9 +568,20 @@ def dofile(fn):
 def vec(*args):
     out=mlib.vectorn()
     if len(args)==1:
-        if not isinstance(args[0], float):
-            out.assign(args[0])
-            return out
+        v=args[0]
+        if isinstance(v, np.ndarray):
+            out.setSize(v.shape[0])
+            if(out.size()>0):
+                out.ref()[:]=v
+        elif isinstance(v, torch.Tensor):
+            #return vec(v.detach().cpu().numpy())
+            v=v.detach().cpu().numpy()
+            out.setSize(v.shape[0])
+            if(out.size()>0):
+                out.ref()[:]=v
+        elif not isinstance(v, float):
+            out.assign(v)
+        return out
     out.setSize(len(args))
     out.ref()[:]=args
     return out
@@ -816,6 +832,8 @@ def _popUserdata(l, tn):
         return l.popQuaterN()
     elif tn=='vector3':
         return l.popvector3()
+    elif tn=='vector2':
+        return l.popvector2()
     elif tn=='quater':
         return l.popquater()
     elif tn[-12:]=='MotionLoader':
@@ -830,6 +848,8 @@ def _popUserdata(l, tn):
         return l.poptransf()
     elif tn=='Tensor':
         return l.popTensor()
+    elif tn=='matrix3':
+        return l.popMatrix3()
     else:
         print('luamodule._popUserdata: this case not implemented yet:', tn)
         pdb.set_trace()
@@ -842,7 +862,7 @@ def _push(l, arg, tempvar):
     elif isinstance(arg, ArgumentProcessor):
         arg.push(l)
     elif isinstance(arg, bool):
-        l.push(arg)
+        l.pushBoolean(arg)
     elif isinstance(arg, dict):
         l.newtable()  # push a lua table
         for k, v in arg.items():
@@ -898,6 +918,8 @@ def escapeString(a_string):
                                           "$":  r"\$",
                                           "*":  r"\*",
                                           ".":  r"\."}))
+def console():
+    dostring('dbg.console()')
 def addPackagePath(path):
     script="""
     package.path=package.path..';"""+ str(path)+"/?.lua'"
