@@ -68,7 +68,7 @@ end
 		{'rradius', 'rhand', vector3(0,0,0), reversed=true},
 }
 ]]--
-solvers={ LimbIKsolver=1, LimbIKsolver2=2, MultiTarget=3 , MultiTarget_lbfgs=4, MultiTarget_selected=5, MultiTarget_selected2=6, COM_IK=7, JT=8, LUA=9 , UTPoser=9, LimbIKsolverHybrid=10, MultiTarget_relative=11, MultiTarget_relative_lbfgs=12}
+solvers={ LimbIKsolver=1, LimbIKsolver2=2, MultiTarget=3 , MultiTarget_lbfgs=4, MultiTarget_selected=5, MultiTarget_selected2=6, COM_IK=7, JT=8, LUA=9 , UTPoser=9, LimbIKsolverHybrid=10, MultiTarget_relative=11, MultiTarget_relative_lbfgs=12, LimbIKsolverT=13}
 function createIKsolver(solverType, loader, config)
 	local out={}
 	local mEffectors=MotionUtil.Effectors()
@@ -91,17 +91,23 @@ function createIKsolver(solverType, loader, config)
 			local lhip=loader:getBoneByName(conInfo[1])
 			_hipIndex:set(i, lhip:treeIndex())
 			kneeInfo=2
+		elseif #conInfo==2 then
+			kneeInfo=0
 		end
-		local lknee=loader:getBoneByName(conInfo[kneeInfo])
 		mEffectors(i):init(loader:getBoneByName(conInfo[kneeInfo+1]), conInfo[kneeInfo+2])
-		kneeIndex:set(i, lknee:treeIndex())
+		if kneeInfo==0 then
+			kneeIndex:set(i, -1)
+		else
+			local lknee=loader:getBoneByName(conInfo[kneeInfo])
+			kneeIndex:set(i, lknee:treeIndex())
+		end
 		if conInfo.reversed then
 			axis:set(i,-1)
 		else
 			axis:set(i,1)
 		end
 	end
-	out.solver=_createIKsolver(solverType,loader,mEffectors, kneeIndex, axis, _hipIndex)
+	out.solver=_createIKsolver(solverType,loader,mEffectors, kneeIndex, axis, _hipIndex, config)
 	return out
 end
 
@@ -142,8 +148,164 @@ function createIKsolver_sub(solverType, loader, config)
 	out.solver=_createIKsolver(solverType,loader,mEffectors, kneeIndex, axis, _hipIndex)
 	return out
 end
+function Bone:getAxis(i)
+	if i<0 then
+		i=self:getRotationalChannels():len()+i
+	end
+	assert(i<self:getRotationalChannels():len())
+	local c=self:getRotationalChannels():sub(i+1,i+1)
+	if c=='X' then
+		return vector3(1,0,0)
+	elseif c=='Y' then
+		return vector3(0,1,0)
+	elseif c=='Z' then
+		return vector3(0,0,1)
+	elseif c=='A' then
+		return self:getArbitraryAxis(i)
+	end
+end
 
-function _createIKsolver(solverType, loader, eff, kneeIndex, axis , _hipIndex)
+LimbIKsolverT=LUAclass()
+function LimbIKsolverT:__init(dofInfo, eff, kneeIndex, axis, config)
+	self.dofInfo=dofInfo
+	self.skel=dofInfo:skeleton()
+	self.effectors=eff
+	self.kneeIndex=kneeIndex
+	self.axis=axis
+	self.config=deepCopyTable(config)
+	for i, limbConfig in ipairs(self.config) do
+		if limbConfig[#limbConfig]:length()==0 then
+			local ankle=self.effectors(i-1).bone
+			if ankle:parent():treeIndex()~=kneeIndex(i-1) then
+				local newoffset=ankle:getOffset()
+				self.effectors(i-1):init(ankle:parent(), newoffset)
+				local con_i=self.config[i]
+				con_i[#con_i-1]=ankle:parent():name()
+				con_i[#con_i]=newoffset:copy()
+			end
+
+		end
+		if limbConfig.childCon then
+			local c=limbConfig.childCon
+			self.config[c].unused=true
+			self.config[c].localpos=self.effectors(c-1).localpos:copy()
+			if self.effectors(c-1).bone:parent()==self.effectors(i-1).bone then
+				self.config[c].localpos:radd(self.effectors(c-1).bone:getOffset())
+			end
+		end
+	end
+	self.options={}
+end
+function LimbIKsolverT:setValue()
+end
+function LimbIKsolverT:setOption(type, value)
+	self.options[type]=value
+end
+function LimbIKsolverT:IKsolve(pose, conPos)
+
+	local origRootTF=pose:toTransf(0)
+
+	local skel=self.skel
+	skel:setPoseDOF(pose)
+
+	local goal=vector3()
+	local sh=vector3() 
+	local elb=vector3() 
+	local v1=vector3() 
+	local v2=vector3() 
+	local v3=vector3() 
+	local v4=vector3() 
+	local wrist=vector3()
+	local hand=vector3()
+
+	local q0=quater()
+	local q1=quater()
+	local q2=quater()
+	local q3=quater()
+	local qo1=quater()
+	local qo2=quater()
+	local qt=quater()
+
+	local len={}
+	for c=0, self.effectors:size()-1 do
+		local limbconfig=self.config[c+1]
+		if not limbconfig.unused then
+			local kneeBone=skel:bone(self.kneeIndex(c))
+			local hipBone=kneeBone:parent()
+			local ankleBone=self.effectors(c).bone
+			local ankleGlobal=ankleBone:getFrame().rotation:copy()
+			hipBone:parent():getRotation(q0)
+			hipBone:getTranslation(sh);
+			hipBone:getRotation(q1);
+			kneeBone:getTranslation(elb);
+			kneeBone:getRotation(q2);
+			ankleBone:getTranslation(wrist);
+			v1=q1:inverse()*(elb-sh)
+			v2=q2:inverse()*(wrist-elb)
+
+			local ccon=limbconfig.childCon 
+			if ccon then
+				local lpos= self.config[ccon].localpos
+				local gpos=ankleBone:getFrame()*lpos
+
+				local curr_dir=gpos-ankleBone:getFrame()*self.effectors(c).localpos;
+				local desired_dir=conPos(ccon-1)-conPos(c)
+				local delta=quater()
+				delta:axisToAxis(curr_dir, desired_dir)
+				
+				-- adjust  global ankle orientation.
+				ankleGlobal:leftMult(delta)
+				ankleBone:getFrame().rotation:assign(ankleGlobal)
+				--local hand=ankleBone:getFrame()*self.effectors(ccon-1).localpos;
+				--goal=conPos(ccon-1)-hand+wrist;
+				local hand=ankleBone:getFrame()*self.effectors(c).localpos;
+				goal=conPos(c)-hand+wrist;
+			else
+				-- preserve original global ankle orientation.
+				ankleBone:getFrame().rotation:assign(ankleGlobal)
+				assert(self.effectors(c).bone==ankleBone)
+				local hand=ankleBone:getFrame()*self.effectors(c).localpos;
+				goal=conPos(c)-hand+wrist;
+			end
+
+			v3:difference(sh, elb);
+			v4:difference(elb, ankleBone:getTranslation());
+
+			local useKneeDamping=true
+
+			qo1=q1;
+			qo2=q2;
+
+			local r=0
+			if self.options.lengthAdjust then
+				r=MotionUtil.limbIK_1DOFknee(goal, sh, v1, v2, v3, v4, q1, q2, kneeBone:getAxis(-1)*self.axis(c), useKneeDamping, 1.0, true);
+
+				local d1=v3:length()
+				local d2=v4:length()
+				len[c+1]={hipBone:treeIndex(), (d1+r)/d1, kneeBone:treeIndex(), (d2+r)/d2}
+			else
+				MotionUtil.limbIK_1DOFknee(goal, sh, v1, v2, v3, v4, q1, q2, kneeBone:getAxis(-1)*self.axis(c), useKneeDamping);
+			end
+
+			hipBone:getLocalFrame().rotation:assign(q0:inverse()*q1);
+			kneeBone:getLocalFrame().rotation:assign(q1:inverse()*q2);
+			ankleBone:getLocalFrame().rotation:assign(q2:inverse()*ankleGlobal);
+			skel:fkSolver():setChain(ankleBone)
+		end
+	end
+	skel:getPoseDOF(pose)
+	if #len>0 then
+		local lenScale=vectorn(skel:numBone())
+		lenScale:setAllValue(1.0)
+		for i, v in ipairs(len) do
+			lenScale:set(v[1], v[2])
+			lenScale:set(v[3], v[4])
+		end
+		return lenScale
+	end
+end
+
+function _createIKsolver(solverType, loader, eff, kneeIndex, axis , _hipIndex, config)
 
 	if solverType==solvers.LimbIKsolver2 then
 		local solver= LimbIKsolver2(loader.dofInfo,eff, kneeIndex, axis)
@@ -155,6 +317,9 @@ function _createIKsolver(solverType, loader, eff, kneeIndex, axis , _hipIndex)
 		ValN = ValN or 10
 		iterNum = iterNum or 2
 		solver:setValue(ValL,ValM,ValN,iterNum)
+		return solver
+	elseif solverType==solvers.LimbIKsolverT then 
+		solver=LimbIKsolverT(loader.dofInfo,eff, kneeIndex, axis, config)
 		return solver
 	elseif solverType==solvers.LimbIKsolverHybrid then
 		local solver
@@ -477,9 +642,19 @@ function loadMotion(skel, motion, skinScale)
 			end
 		else
 
-			if string.upper(string.sub(skel,-3))=='FBX' then
+			if string.upper(string.sub(skel,-3))=='FBX' or
+				string.upper(string.sub(skel,-8))=='.FBX.DAT' then
 				FBXloader=require("FBXloader")
-				loader=FBXloader.motionLoader(skel)
+				fbx=FBXloader(skel)
+				loader=fbx.loader
+				mot.fbx=fbx
+			elseif string.upper(string.sub(skel,-3))=='NPZ' then
+				assert(type(motion)=='table')
+				assert(motion.fbxLoader)
+				assert(motion.motion)
+				mot.fbx=motion.fbxLoader
+				loader=mot.fbx.loader
+				motion=motion.motion
 			else
 				loader=RE.createMotionLoaderExt(skel)
 			end
@@ -488,19 +663,28 @@ function loadMotion(skel, motion, skinScale)
 		if motion and motion~='' then
 			mot.motionDOFcontainer=MotionDOFcontainer(mot.loader.dofInfo, motion)
 		else
-			if mot.loader.mMotion then
+			if mot.loader.mMotion and mot.loader.mMotion:numFrames()>0 then
 				mot.motionDOFcontainer=MotionDOFcontainer(mot.loader.dofInfo)
 				mot.motionDOFcontainer.mot:set(mot.loader.mMotion)
 				mot.motionDOFcontainer:resize(mot.loader.mMotion:numFrames())
 
 				mot.motion=mot.loader.mMotion:copy()
 			else
-				assert(false)
+				mot.motion=Motion(mot.loader)
+				mot.motion:resize(10)
+				local pose=mot.loader:pose()
+				for i=0,9 do
+					mot.motion:pose(i):assign(pose)
+				end
+
+				mot.motionDOFcontainer=MotionDOFcontainer(mot.loader.dofInfo)
+				mot.motionDOFcontainer.mot:set(mot.motion)
+				mot.motionDOFcontainer:resize(mot.motion:numFrames())
 			end
 		end
 	end
 	if skinScale then
-		mot.skin=createSkin(skel, mot.loader, skinScale)
+		mot.skin=createSkin(skel, mot, skinScale)
 		if mot.motion then
 			mot.skin:applyAnim(mot.motion)
 		else
@@ -567,14 +751,24 @@ function annotateEndEffectors(skel, config)
 end
 
 function createSkin(skel, loader, skinScale)
+	if type(loader)=='table' then
+		loader=loader.fbx or loader.loader
+	end
+
 	local skin
 	if skel and string.upper(string.sub(skel,-3))=='WRL' then
 		skin= RE.createVRMLskin(loader, false);	-- to create character
+	elseif skel and string.upper(string.sub(skel,-7))=='FBX.DAT' then
+		skin= RE.createFBXskin(loader, false);	-- to create character
+	elseif skel and string.upper(string.sub(skel,-3))=='FBX' then
+		skin= RE.createFBXskin(loader, false);	-- to create character
+	elseif skel and string.upper(string.sub(skel,-3))=='NPZ' then
+		skin= RE.createFBXskin(loader, false);	-- to create character
 	else
 		skin= RE.createSkin(loader);	-- to create character
 	end
 	local s=skinScale 
-	skin:scale(s,s,s);					-- motion data is in meter unit while visualization uses cm unit.
+	skin:setScale(s,s,s);					-- motion data is in meter unit while visualization uses cm unit.
 	skin:setMaterial('lightgrey_transparent')
 	return skin
 end
@@ -611,7 +805,7 @@ function createIKsolverForRetargetting(loader, marker_bone_indices,  markerDista
 		-- count markers 
 		for ii=0, marker_bone_indices:size()-1 do
 			local i=marker_bone_indices(ii)
-			local srcbone=loader:VRMLbone(i)
+			local srcbone=loader:bone(i)
 			c=c+3
 			--if srcbone:childHead()==nil then
 			if not hasMarkerBoneChild(srcbone:childHead()) then
@@ -625,7 +819,7 @@ function createIKsolverForRetargetting(loader, marker_bone_indices,  markerDista
 
 	for ii=0, marker_bone_indices:size()-1 do
 		local i=marker_bone_indices(ii)
-		local bone=loader:VRMLbone(i)
+		local bone=loader:bone(i)
 		local md=markerDistance
 		if markerDistanceOverride and markerDistanceOverride[bone:name()] then
 			md=markerDistanceOverride[bone:name()]
@@ -644,7 +838,10 @@ function createIKsolverForRetargetting(loader, marker_bone_indices,  markerDista
 		if not hasMarkerBoneChild(bone:childHead()) then
 			print(bone:name() ..' is a SITE bone for IK')
 			-- add SITE markers
-			local offset=bone:localCOM()
+			local offset=vector3(0,0,0)
+			if bone.localCOM then
+				offset=bone:localCOM()
+			end
 			print("SITE", bone, srcbone, offset)
 			local mlen=markerDistance*2.5 -- ankle orientation is very important
 			effectors:at(c):init(bone, vector3(mlen,0,0)+offset*2)
@@ -815,3 +1012,13 @@ function MotionLoader:rotateBoneGlobal(bone, q_delta)
 	self:fkSolver():forwardKinematics()
 end
 MainLib.VRMLloader.rotateBoneGlobal=MotionLoader.rotateBoneGlobal
+
+function MotionLoader:setAxesForIK()
+	local loaderClean=self
+	loaderClean:bone(1):setChannels('XYZ', 'YZX') -- trans, rot
+	for i=2, loaderClean:numBone()-1 do
+		loaderClean:bone(i):setChannels('', 'YZX') -- trans, rot
+	end
+	loaderClean:getBoneByVoca(MotionLoader.LEFTSHOULDER):setChannels('', 'ZXY') -- trans, rot
+	loaderClean:getBoneByVoca(MotionLoader.RIGHTSHOULDER):setChannels('', 'ZXY') -- trans, rot
+end

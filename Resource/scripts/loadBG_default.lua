@@ -16,7 +16,7 @@ dofile(taesooLibPath.."Resource/scripts/createLight_default.lua")
 
 --ent= RE.createPlane("MyPlane", 16000, 16000, 80, 80, 80, 80)
 --repeat 16m x 16m floor nrep times.
-if RE.getOgreVersionMinor()==2 then
+if RE.getOgreVersionMinor()<=3 then
 
 	if true then
 		local nrep=3

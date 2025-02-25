@@ -33,6 +33,7 @@ function lunaType(obj)
 end
 
 
+
 --[[
 print_old=print
 function print(...)
@@ -215,6 +216,8 @@ function util.NPYarray:reshape(size1, size2, size3, size4)
 end
 end
 function setViewYUp(YUP)
+	local osm=RE.ogreSceneManager()
+	if not osm then return end
 	if YUP then
 		RE.viewpoint():setYUp();
 		local bgnode=RE.ogreSceneManager():getSceneNode("BackgroundNode")
@@ -225,7 +228,6 @@ function setViewYUp(YUP)
 		bgnode:setOrientation(quater(1,0,0,0))
 		bgnode:rotate(quater(math.pi*0.5, vector3(1,0,0)))
 	end
-	local osm=RE.ogreSceneManager()
 	if osm and osm:hasSceneNode("LightNode") then
 		local lightnode=osm:getSceneNode("LightNode")
 		lightnode:setOrientation(quater(1,0,0,0))
@@ -538,14 +540,40 @@ end
 -- motionFile can be a table like this. 
 --	{"../../Mixamo/fbx/Macarena Dance.fbx", identity_pose='../../Mixamo/fbx/T-Pose.fbx'},
 function RE.loadMotion(loader, motionFile)
+	if type(loader)=='table' then
+		loader=loader.loader
+	end
 	if type(motionFile)=='string' and motionFile:sub(-5)=='.mot2' then
 		local mot=Motion(loader)
 		mot:importBinary(motionFile)
 		return mot
+	elseif type(motionFile)=='string' and motionFile:sub(-4)=='.dof' then
+		local motionDOFcontainer=MotionDOFcontainer(loader.dofInfo, motionFile)
+		local mot=Motion(motionDOFcontainer.mot)
+		local motion=mot:getMotionMap():copyMotion(loader)
+		return motion
 	else
 		local loader2=RE.createMotionLoaderExt(motionFile)
 		local motion=loader2.mMotion:getMotionMap():copyMotion(loader)
 		return motion
+	end
+end
+
+function RE.loadMotionDOF(loader, motionDOFfile)
+	if type(loader)=='table' then
+		loader=loader.loader
+	end
+	return MotionDOFcontainer(loader.dofInfo, motionDOFfile)
+end
+
+function RE.ogreVersion()
+	-- simplified version for taesooLib
+	if RE.getOgreVersionMinor()>=12 then
+		return 1
+	elseif RE.getOgreVersionMinor()<=3 then
+		return 2
+	else
+		return 0 -- upto versio 1.11
 	end
 end
 -- input skel file can be anything (including nil), and a VRMLloader is created from it.
@@ -592,6 +620,9 @@ function RE.loadMotions(skelFile, motionFiles)
 	elseif skelFile:sub(-4)=='.bvh' then
 		local l=RE.createMotionLoaderExt_cpp(skelFile)
 		_loader=l:toVRMLloader()
+	elseif skelFile:sub(-4)=='.fbx' or skelFile:sub(-8)=='.fbx.dat'then
+		local FBXloader=require("FBXloader")
+		_loader=FBXloader.motionLoader(skelFile)
 	else
 		_loader=MainLib.WRLloader (skelFile)
 	end
@@ -722,181 +753,7 @@ function RE.checkCtrlAndAlt(self, ev, button)
 	end
 end
 
--- mainlight colors, filllight colors. and shadow color.  see default values
-function RE.createLight(ambient, light1D, light1S, lightFD, lightFS, sc, _optionalNumMainLights, _optionalLightVariance) 
-	if not ambient then ambient=0.4 end
-	if not light1D then light1D=0.9 end
-	if not light1S then light1S=0.8 end
-	if not lightFD then lightFD=0.3 end
-	if not lightFS then lightFS=0.3 end
-	if not sc then sc=0.95 end
-	local f=io.open('../Resource/scripts/ogreConfig_personal.lua','r')
-	if f then
-		f:close()
-		dofile('../Resource/scripts/ogreConfig_personal.lua')
-	else
-		dofile('../Resource/scripts/ogreConfig.lua')
-	end
-	if not _optionalNumMainLights then _optionalNumMainLights =numMainLights end
-	if not _optionalLightVariance then _optionalLightVariance=0.02 end
-
-	numMainLights=_optionalNumMainLights
-	local lightVar=_optionalLightVariance
-
-
-	local rootnode =RE.ogreRootSceneNode()
-	if rootnode then
-		local lightnode=RE.createChildSceneNode(rootnode, "LightNode")
-		RE.ogreSceneManager():setAmbientLight(ambient, ambient, ambient)
-
-		if RE.getOgreVersionMinor()>=12 then
-
-			sc= math.pow(sc, 2/math.pow(numMainLights,0.8)) --heuristic to maintain shadow color
-			local function randomNormal()
-				return (math.random()-0.5)*2
-			end
-
-			assert(stencilShadow)
-
-			local lightOD=0.0
-			local lightOS=0.0
-			local highQualityRendering=false -- set this true for high quality render
-
-
-			if false and numMainLights>20 then
-				local function randomNormal()
-					while true do
-						local u = 2 * math.random() - 1;
-						local v = 2 * math.random() - 1;
-						local w = math.pow(u, 2) + math.pow(v, 2);
-						if w<1 then
-							local z = math.sqrt((-2 * math.log(w)) / w);
-							local x = u * z;
-							local y = v * z;
-							return x
-						end
-					end
-				end
-			end
-
-			RE.ogreSceneManager():setShadowColour(sc,sc,sc)
-
-
-			for i=1,numMainLights do
-				local light
-				if i==1 then
-					light=RE.ogreSceneManager():createLight("Mainlight")
-				else
-					light=RE.ogreSceneManager():createLight("Mainlight"..i)
-				end
-				light:setType("LT_DIRECTIONAL")
-
-				if RE.getOgreVersionMinor()==12 then
-					light:setDirection(-0.5+lightVar*(randomNormal()),-0.7,0.5+lightVar*(randomNormal()))
-					lightnode:attachObject(light)
-				else
-					local node=lightnode:createChildSceneNode("mainlightnode"..i)
-					node:setDirection(vector3(-0.5+lightVar*(randomNormal()),-0.7,0.5+lightVar*(randomNormal())))
-					node:attachObject(light)
-				end
-				if i==1 then
-					light:setDiffuseColour(light1D,light1D,light1D)
-					light:setSpecularColour(light1S,light1S,light1S)
-				else
-					light:setDiffuseColour(lightOD,lightOD,lightOD)
-					light:setSpecularColour(lightOS,lightOS,lightOS)
-				end
-				light:setCastShadows(true)
-
-			end
-			light=RE.ogreSceneManager():createLight("FillLight")
-			light:setType("LT_DIRECTIONAL")
-			light:setDirection(0.5,0.7,-0.5)
-			light:setDiffuseColour(lightFD,lightFD,lightFD)
-			light:setSpecularColour(lightFS,lightFS,lightFS)
-			light:setCastShadows(false)
-			lightnode:attachObject(light)
-		else
-			print('not supported')
-		end
-	end
-
-end
-
--- for faster rendering
-function RE.turnOffSoftShadows()
-	-- replace the default light setting in (createLight_default.lua)
-	--
-	rootnode =RE.ogreRootSceneNode()
-	lightnode=RE.createChildSceneNode(rootnode, "LightNode")
-	light=RE.ogreSceneManager():createLight("MainlightNew")
-	light:setType("LT_DIRECTIONAL")
-	light:setDiffuseColour(0.8,0.8,0.8)
-	light:setSpecularColour(0.2,0.2,0.2)
-	light:setCastShadows(true)
-	local sc=0.8
-	RE.ogreSceneManager():setShadowColour(sc,sc,sc)
-
-	if RE.getOgreVersionMinor()<=12 then
-		light:setDirection(-0.5,-0.7,0.5)
-		lightnode:attachObject(light)
-	else
-		local node=lightnode:createChildSceneNode("mainlightnodenew")
-		node:setDirection(vector3(-0.5,-0.7, 0.5))
-		node:attachObject(light)
-	end
-end
-
-function RE.turnOffShadows()
-	RE.ogreSceneManager():setShadowTechnique(0)
-end
-function RE.turnOnShadows()
-	RE.ogreSceneManager():setShadowTechnique(18)
-end
-TextArea=LUAclass()
-function TextArea:__init(overlayname, containername, textareaname,x,y,sx,sy ,fontsize)
-   if RE.motionPanelValid()==false then return end
-   self.overlay=Ogre.createOverlay(overlayname)
-   self.overlay:setZOrder(500)
-   self.container=Ogre.createContainer(x,y,sx,sy, containername)
-   --self.container:setMaterialName("redCircle")
-   self.container:setParameter("border_size", "0 0 0 0")
-   
-   self.element=Ogre.createTextArea(textareaname, 720-6,480-6, 2, 2, fontsize, textareaname,true);
-   self.element:setParameter("colour_top", "0 0 0")
-   self.element:setParameter("colour_bottom", "0 0 0")	
-   --	self.element:setParameter("font_name", "BlueHighway_mod");	
-   --	self.element:setParameter("font_name", "IronMaiden")
-   self.element:setParameter("font_name", "StarWars")
-   --	self.element:setParameter("font_name", "Ogre")
-   self.container:addChild(self.element)
-   
-   self.overlay:add2D(self.container)
-   self.overlay:show()
-
-   self.overlayname=overlayname
-   self.containername=containername
-   self.textareaname=textareaname
-end
-
-function TextArea:setCaption(caption)
-   if self.overlay ~= nil then
-      self.element:setCaption(caption)
-   end
-end
-
-function TextArea:kill()
-   if self.overlay~=nil then
-      Ogre.destroyOverlayElement(self.textareaname)-- textArea
-      Ogre.destroyOverlayElement(self.containername) -- container
-      --      Ogre.destroyAllOverlayElements()
-      Ogre.destroyOverlay(self.overlayname)
-      self.overlay=nil
-   end
-end
-function TextArea:__finalize()
-   self:kill()
-end
+require('_ogre_module')
 
 titlebar={}
 
@@ -1097,6 +954,10 @@ function dbg.startDebug()
    debug.sethook(dbg.remember, "l")
 end
 
+function dbg.trace()
+	local dd=require('debugger')
+	dd()
+end
 function dbg.remember(event, line)
    local dbg=dbg   
    local s=debug.getinfo(2).short_src   
@@ -1263,21 +1124,6 @@ function dbg.colorToVec3(color)
 	else
 		assert(dbg.lunaType(color)=='vector3')
 		return color
-	end
-end
-function dbg.drawTraj(objectlist, matrix, nameid, color, thickness, linetype)
-	if nameid==nil then
-		nameid=RE.generateUniqueName()
-	end
-	linetype=linetype or "LineList"
-	if linetype=='ArrowsM' then
-		local c=color or dbg.linecolor
-		objectlist:registerObject(nameid, 'ColorWidthBillboardLineList', c, dbg.linesToArrows(matrix, c, thickness or 0, 100), 0)
-	elseif linetype=='Arrows' then
-		local c=color or dbg.linecolor
-		objectlist:registerObject(nameid, 'ColorWidthBillboardLineList', c, dbg.linesToArrows(matrix, c, thickness or 0, 1), 0)
-	else
-		objectlist:registerObject(nameid, linetype, color or dbg.linecolor, matrix, thickness or 0)
 	end
 end
 function dbg.timedDrawTraj(objectlist, time, matrix, color, thickness, linetype)
@@ -2259,12 +2105,6 @@ function RE.removeEntityByName(name)
 		RE.removeEntity(n)
 	end
 end
-function RE.createAutoSkin(skel, drawSkeleton)
-	if dbg.lunaType(skel)=="MainLib.VRMLloader" then
-		return RE.createVRMLskin(skel, drawSkeleton)
-	end
-	return RE.createSkin(skel)
-end
 
 
 function RE.createConnectedVRMLskin(skel, mot)
@@ -2482,7 +2322,11 @@ if USE_LUNA_GEN then
 			vec:setValues(...)
 			return vec
 		elseif type(firstElt)=='table' then
-		 	vec:setValues( unpack(select(1,...)))
+			local tbl=firstElt
+			vec:setSize(#tbl)
+			for i=1,#tbl do
+				vec:set(i-1,tbl[i])
+			end
 		 	return vec
 		else
 			vec:assign(firstElt)
@@ -2496,7 +2340,12 @@ if USE_LUNA_GEN then
 		if( type(firstElt)=='number' ) then
 			vec:setValues(...)
 		else
-		 	vec:setValues( unpack(select(1,...)))
+			local tbl=firstElt
+			vec:setSize(#tbl)
+			for i=1,#tbl do
+				vec:set(i-1,tbl[i])
+			end
+		 	return vec
 		end
 		return vec
 	end
@@ -2549,24 +2398,6 @@ else
 		local mat=matrixn()
 		mat:assign({row1,...})
 		return mat
-	end
-	function CT.vec(...)
-		tbl={...}
-		local tid=type(tbl[1])
-		if tid=="table" then 
-			tbl=tbl[1] 
-		elseif tid=="userdata" then
-			if dbg.lunaType(tbl[1])=="vector3" then
-				local vec=vectorn(3)
-				vec:setVec3(0,tbl[1])
-				return vec
-			end
-		end
-		local vec=vectorn(#tbl)
-		for i=1,#tbl do
-			vec:set(i-1,tbl[i])
-		end
-		return vec
 	end
 	function CT.ivec(...)
 		tbl={...}
@@ -2895,6 +2726,21 @@ function Bone:isDescendent(parent)
    end
    return false
 end
+-- including self.
+function Bone:children()
+	local out={}
+	local b=self
+	local function dfs(out, b)
+		table.insert(out, b)
+		b=b:childHead()
+		while b do
+			dfs(out, b)
+			b=b:sibling()
+		end
+	end
+	dfs(out, b)
+	return out
+end
 function Bone:parentRotJointIndex()
 	
 	local p=self:parent()
@@ -3215,11 +3061,6 @@ function math.copy(valseq)
    return valseq:copy()
 end
 
-if shortvector3 then
-	function shortvector3:__tostring()
-		return string.format("(%.10g %.10g %.10g", self.x, self.y, self.z)
-	end
-end
 function vector3:maximum()
 	return math.max(self.x, self.y, self.z)
 end
@@ -4647,6 +4488,32 @@ function transf:copy()
    return a
 end
 
+-- poseA, poseB: posedof or transf
+function transf.delta2D_global(poseA, poseB)
+	if dbg.lunaType(poseA):sub(1,7)=='vectorn' then
+		poseA=poseA:toTransf()
+	end
+	if dbg.lunaType(poseB):sub(1,7)=='vectorn' then
+		poseB=poseB:toTransf()
+	end
+	local delta=transf()
+	delta:difference(poseA:project2D(), poseB:project2D())
+	return delta
+end
+
+function MotionDOF.align2D(motA, motB, delta)
+	local out=MotionDOF(motA.dofInfo)
+	if not delta then
+		out:alignSimple(motA, motB)
+		return out
+	end
+	out:changeLength(motA:length()+motB:length())
+	out:range(0, motA:rows()):assign(motA)
+	out:range(motA:rows(), out:rows()):assign(motB:range(1,motB:rows()))
+	out:range(motA:rows(), out:rows()):transform(delta)
+	return out
+end
+
 function transf:translate(x)
 	local a=self:copy()
 	a.translation:radd(x)
@@ -5720,6 +5587,12 @@ function MotionDOF.convertDPoseToDState(pose, dpose, numSphericalJoint)
 	return dstate
 end
 
+function MotionDOF:pose(i)
+	if i<0 then
+		return self(self:rows()+i)
+	end
+	return self(i)
+end
 
 -- smoothness:-1, 0 (C0 - recommended), 1 (c1), or 2 (c2)
 function MotionDOF:Stitch(otherMot, spread, smoothness)
@@ -5945,14 +5818,27 @@ function MainLib.VRMLloader:calcTotalMass()
 	end
 	return mass
 end
-function MainLib.VRMLloader:convertToConvexes(useSpheres)
+function MainLib.VRMLloader:convertToConvexes(options)
+	if not options then 
+		options={}
+	end
+	if type(options)=='boolean' then
+		options={useSpheres=options}
+	end
+
 	local loader=self
 	local function meshToSpheres(out, newmesh, decomp)
 		local nvoxel=decomp:numSurfaceVoxels()
-		local ndiv=4
+		local ndiv=options.ndiv or 4
+
+		local getVoxelIndex=decomp.getSurfaceVoxelIndex
+		if options.useInteriorVoxels then
+			nvoxel=decomp:numInteriorVoxels()
+			getVoxelIndex=decomp.getInteriorVoxelIndex
+		end
 
 		local div=function(x) return math.floor(x/ndiv) end
-		local size=vector3(math.floor(decomp:getDimensions().x-1/ndiv)+1,
+		local size=vector3(math.floor((decomp:getDimensions().x-1)/ndiv)+1,
 		math.floor((decomp:getDimensions().y-1)/ndiv)+1,
 		math.floor((decomp:getDimensions().z-1)/ndiv)+1)
 		local newGrid=Image3D(size.x, size.y, size.z,0)
@@ -5960,9 +5846,14 @@ function MainLib.VRMLloader:convertToConvexes(useSpheres)
 
 		local timer=util.Timer()
 		timer:start()
+
+		--local vis=vector3N()
 		for i=0, nvoxel-1 do
 			--voxelcenter(i):assign(decomp:getWorldPosition(decomp:getSurfaceVoxelIndex(i)) *scale+vector3(-offset_x,0,0))
-			local voxelIndex=decomp:getSurfaceVoxelIndex(i) -- 3D index
+			--vis:pushBack(decomp:getWorldPosition(decomp:getSurfaceVoxelIndex(i))+vector3(1,0.3,0))
+
+			local voxelIndex=getVoxelIndex(decomp, i) -- 3D index
+			print(voxelIndex)
 			local Ix=div(voxelIndex.x)
 			local Iy=div(voxelIndex.y)
 			local Iz=div(voxelIndex.z)
@@ -5970,8 +5861,10 @@ function MainLib.VRMLloader:convertToConvexes(useSpheres)
 		end
 		print(timer:stop2()/1e6)
 		local geom=Geometry()
-		local s=decomp:getVoxelScale()*ndiv*0.5
-		local offset=math.floor(ndiv/2)
+		local s=decomp:getVoxelScale()*decomp:getScale()*ndiv
+		local offset=math.floor(ndiv/2-1e-3)
+		local sum=vector3()
+		local nc=0
 		for i=0, size.x-1 do
 			for j=0, size.y-1 do
 				for k=0, size.z-1 do
@@ -5982,19 +5875,45 @@ function MainLib.VRMLloader:convertToConvexes(useSpheres)
 						i*ndiv+offset,
 						j*ndiv+offset,
 						k*ndiv+offset))
+
 						geom2:rigidTransform(transf(quater(1,0,0,0), pos))
 						geom:merge(geom, geom2)
+
+						sum:radd(pos)
+						nc=nc+1
+						--vis:pushBack(pos+vector3(1,0.3,0))
 					end
 				end
 			end
 		end
+
+		--dbg.draw('SphereM',sum/nc+vector3(1,0.3,0),'center','red',0.1)
+		if true then
+			print('scale:', decomp:getVoxelScale(), decomp:getScale())
+			--print(decomp:getScale()*math.max(size.x, size.y, size.z))
+
+			local center=sum/nc
+
+			local scaleFactor=decomp:getScale()/(decomp:getScale()+s*2)
+			--print(scaleFactor)
+			local M=matrix4()
+			M:identity()
+			M:leftMultTranslation(-center)
+			M:leftMultScaling(scaleFactor, scaleFactor, scaleFactor)
+			M:leftMultTranslation(center)
+			geom:scaleAndRigidTransform(M)
+		end
+
+
+		local thickness=10 -- thickness doesn't work for PointList
+		--dbg.drawBillboard( vis:matView()*100, 'line3', 'redCircle', thickness, 'QuadListV') -- QuadListV is view-dependent -> use drawBillboard
 		out:assign(geom)
 	end
 	for i=1, loader:numBone()-1 do
 		local bone=loader:VRMLbone(i)
 		if bone:hasShape() then
 			local mesh=bone:getMesh()
-			local res=8 -- for efficiency 
+			local res=options.resolution or 8 -- for efficiency.  이 숫자를 조절해서 sphere의 크기 조절 가능. 
 			local maxConvex=8
 			local decomp=ConvexDecomp(mesh, true, res*res*res, maxConvex, 1)
 
@@ -6004,7 +5923,7 @@ function MainLib.VRMLloader:convertToConvexes(useSpheres)
 			end
 			if newmesh:numVertex()>3 then
 				bone:createNewShape()
-				if useSpheres then
+				if options.useSpheres then
 					meshToSpheres(bone:getMesh(), newmesh, decomp)
 				else
 					bone:getMesh():assignMesh(newmesh)
@@ -6509,6 +6428,9 @@ function MotionDOFcontainer:copy()
 end
 --param: dofInfo (or motionDOF), and (optional) filename
 function MotionDOFcontainer:__init(dofInfo, filename)
+	if dbg.lunaType(dofInfo)=='MainLib.VRMLloader' then
+		dofInfo=dofInfo.dofInfo
+	end
 	if dbg.lunaType(dofInfo)~='MotionDOFinfo' then
 		-- motionDOF is given as sole input
 		assert(dofInfo.dofInfo)
@@ -7862,6 +7784,7 @@ end
 function FlLayout:button(id)
 	self:create("Button", id, id)
 end
+-- use this:addMenu instead!!!
 function FlLayout:menuItems(...)
 	local tbl={...}
 	if type(tbl[1])=='table' then
@@ -8201,7 +8124,7 @@ function MotionDOF:blendStitch(new, _optional_blend_startPosition)
 	end
 	return output
 end
-defineDerived(MotionDOF, {MotionDOFview}, {"removeDiscontinuity", "exportMot", "slice", "blendStitch","setAllValue"})
+defineDerived(MotionDOF, {MotionDOFview}, {'pose', "removeDiscontinuity", "exportMot", "slice", "blendStitch","setAllValue"})
 
 function Motion:setMotionMap(motionMap)
 
@@ -8237,6 +8160,12 @@ function MotionLoader:pose()
 	local pose=Pose()
 	self:getPose(pose)
 	return pose
+end
+
+function Motion:getPoseMap(iframe, _optional_cache_prev)
+	local loader=self:skeleton()
+	loader:setPose(self:pose(iframe))
+	return loader:getPoseMap(_optional_cache_prev)
 end
 -- a pose map can be applied to compatible skeletons having different number of bones
 function MotionLoader:getPoseMap(_optional_cache_prev)
@@ -8561,16 +8490,75 @@ if RE.motionPanel==nil or (not torch and RE.motionPanel()==nil ) then
 	end
 end
 
-function RE.createSkinAuto(loader)
-	local skin
-	if dbg.lunaType(loader)=='MainLib.VRMLloader' then
-		skin= RE.createVRMLskin(loader, false);	-- to create character
-	else
-		skin= RE.createSkin(loader);	-- to create character
-		skin:setThickness(0.03)
-	end
-	return skin
+RE._createVRMLskin=RE.createVRMLskin
+RE._createSkin=RE.createSkin
+
+function RE.createVRMLskin(skel, drawSkeleton)
+	assert(dbg.lunaType(skel):sub(1,18) =="MainLib.VRMLloader")
+	return RE._createVRMLskin(skel, drawSkeleton)
 end
+
+-- 향후 완전 자동으로 수정 예정 
+function RE.createLoader(filename ,_options)
+	if filename:sub(-3)=='wrl' then
+		return { loader=MainLib.VRMLloader(filename)}
+	elseif filename:sub(-4)=='mesh' then
+		require("subRoutines/AnimOgreEntity")
+		if not _options then
+			_options={
+				entityScale=1,
+				skinScale=100,
+			}
+		end
+		return OgreLoader(filename, _options.entityScale or 1, _options.skinScale or 100, _options)
+	elseif filename:sub(-3)=='fbx' then
+		local FBXloader=require('FBXloader')
+		if not _options then
+			_options={
+				skinScale=100,
+				useTexture=true
+			}
+		end
+		return FBXloader(filename, _options)
+	end
+end
+
+-- 현재 ogre mesh는 지원안하는데 향후 완전 자동으로 수정 예정. 
+function RE.createSkin(loader_or_motion, option)
+	local ltype=dbg.lunaType(loader_or_motion)
+	if ltype=='table' then
+		local loader=loader_or_motion
+		if loader.fbxInfo then
+			local FBXloader=require('FBXloader')
+			return RE.createFBXskin(loader, option)
+		elseif loader.meshFile then
+			return RE.createOgreSkin(loader, option)
+		elseif loader.loader then
+			return RE.createSkin(loader.loader, option)
+		else
+			assert(false)
+		end
+	end
+	if ltype=='MainLib.VRMLloader' and type(option)~='number' then
+		return RE.createVRMLskin(loader_or_motion, option or false);	-- to create character
+	elseif type(option)=='bool' then
+		return RE._createSkin(loader_or_motion)
+	elseif option then
+		return RE._createSkin(loader_or_motion, option)
+	else
+		return RE._createSkin(loader_or_motion)
+	end
+end
+
+-- deprecated
+function RE.createSkinAuto(loader)
+	return RE.createSkin(loader)
+end
+-- deprecated
+function RE.createAutoSkin(skel, drawSkeleton)
+	return RE.createSkin(skel, drawSkeleton)
+end
+
 function os.execute_command(command)
     local tmpfile = '/tmp/lua_execute_tmp_file'
     local exit = os.execute(command .. ' > ' .. tmpfile .. ' 2> ' .. tmpfile .. '.err')
@@ -8823,30 +8811,80 @@ if MotionClustering then
 end
 
 
-if ThreadedScript then
+if ThreadedScript and LuaScript then
+	LuaScript.getglobal_cpp=LuaScript.getglobal
+
+	function ThreadScriptPoolWithPhysicsLib(nthread)
+		local out=ThreadScriptPool(nthread)
+		for i=0, out:numThreads()-1 do
+			local thr=out:env(i)
+			Eigen.LuaScript_registerQP(thr)
+		end
+		return out
+	end
+
+	function LuaScript:getglobal(key)
+		if select(1,string.find(key,'%.')) then
+			local keys=string.tokenize(key,'%.')
+			self:getglobal_cpp(keys[1])
+			for i=2, #keys do
+				self:replaceTop(keys[i])
+				assert(not self:isnil(-1))
+			end
+		else
+			self:getglobal_cpp(key)
+		end
+	end
+	function LuaScript:getGlobal(varname)
+		self:getglobal(varname)
+		self:saveCurrentTop()
+		return self:_getResults()
+	end
+
 	-- threaded-call. returns immediately (the job runs on the background)
-	function ThreadedScript:blockingCall(...)
+	function LuaScript:blockingCall(...)
 		local args={...}
 
-		funcname=args[1]
+		local funcname=args[1]
 		local l=self
 		l:getglobal(funcname)
+		l:saveCurrentTop()
 		local ctop=l:gettop()-1
 
 		for i=2, #args do
 			l:pushAuto( args[i])
 		end
 		local temp=l:call(#args-1)
-		l:_getResults()
+		return l:_getResults()
 	end
-	function ThreadedScript:pushAuto(v)
-		if type(v)=='table' then
+	function LuaScript:setGlobal(varname, value)
+		self:blockingCall('python.setGlobal', varname, value)
+	end
+	function LuaScript:require(modulename)
+		-- blocking call
+		self:getglobal('require')
+		self:push(modulename)
+		self:call(1, 0)
+	end
+	function LuaScript:requireas(modulename, outname)
+		-- blocking call
+		self:getglobal('require')
+		self:push(modulename)
+		self:call(1, 1)
+		assert(self:luaType(-1)==5)
+		self:_setglobal(outname)
+	end
+	function LuaScript:pushAuto(v)
+		local tid=type(v)
+		if tid=='table' then
 			self:pushTable(v)
+		elseif tid=='function' then
+			self:push('function')
 		else
 			self:push( v)
 		end
 	end
-	function ThreadedScript:pushTable(tbl)
+	function LuaScript:pushTable(tbl)
 		local l=self
         l:newtable()  -- push a lua table
 		for k, v in pairs(tbl) do
@@ -8868,7 +8906,11 @@ if ThreadedScript then
 		end
 		l:threadedCall(#args-1)
 	end
-	function ThreadedScript:popUserdata( tn)
+	function LuaScript:dbgconsole()
+		io.write('LuaEnv: ')
+		self:blockingCall('dbg.console')
+	end
+	function LuaScript:popUserdata( tn)
 		local l=self
 		if tn:sub(1,7)=='matrixn' then
 			return l:popmatrixn()
@@ -8910,16 +8952,70 @@ if ThreadedScript then
 		self:waitUntilFinished()
 		return self:_getResults()
 	end
-	function ThreadedScript:_getResults()
+	function LuaScript:popAuto(doNotCleanupStack) -- reference
+		local tid=self:luaType(-1)
+		if tid==7 then
+			tn=self:lunaType(-1)
+			return self:popUserdata(tn)
+		elseif tid==4 then
+			return self:popstring()
+		elseif tid==3 then
+			return self:popnumber()
+		elseif tid==0 then
+			self:pop()
+			return nil
+		elseif tid==1 then
+			return self:popboolean()
+		elseif tid==2 then
+			self:pop()
+			return "lightuserdata" -- lightuserdata
+		elseif tid==6 then
+			self:pop()
+			return "function" -- function
+		elseif tid==5 then
+			-- nested table? not yet.
+			self:pushnil();
+			local out={}
+			local c=0
+			while (self:next(-2)) do
+				c=c+1
+				-- stack now contains: -1 => value; -2 => key; -3 => table
+				-- copy the key so that lua_tostring does not modify the original
+				self:pushvalue(-2);
+				--self:printStack()
+				-- stack now contains: -1 => key; -2 => value; -3 => key; -4 => table
+				local key=self:popAuto()
+				if key=='__index' then
+					-- ignore
+					self:pop()
+				else
+					local value=self:popAuto()
+					out[key]=value
+				end
+			end
+			if not doNotCleanupStack then
+				self:pop()
+			end
+			if #out>0 then
+				return out
+			end
+		else
+			print('other cases not implemented yet',tid=='',tid )
+			self:printStack()
+			dbg.console()
+		end
+	end
+				
+	function LuaScript:_getResults()
 		local l=self
 		local numOut=l:gettop()-l:getPreviousTop()+1
 		if numOut>0 then
 			local out={}
 			for i=1, numOut do
-				tid=l:luaType(-1)
+				local tid=l:luaType(-1)
 				if tid==7 then -- userdata -> copy
-					tn=l:lunaType(-1)
-					table.insert(out,1, l:popUserdata(l,tn).copy())
+					local tn=l:lunaType(-1)
+					table.insert(out,1, l:popUserdata(tn):copy())
 				elseif tid==0 then --nil
 					-- simply ignore
 				elseif tid==1 then --bool
@@ -8929,9 +9025,10 @@ if ThreadedScript then
 				elseif tid==3 then --number
 					table.insert(out,1, l:popnumber())
 				elseif tid==5 then -- table -> make a global backup in lua, and return a reference
-					res=l:popAuto(l, False) -- no stack cleanup for backup
+					local res=l:popAuto(true) -- no stack cleanup for backup
 					table.insert(out,1, res) -- reference
-					var_name='out_'..RE.generateUniqueName()
+
+					local var_name='out_'..RE.generateUniqueName()
 					-- backup to lua global to prevent garbage collection
 					if type(res)=='table' then
 						res.var_name=var_name 
@@ -8947,6 +9044,24 @@ if ThreadedScript then
 			return unpack(out)
 		end
 	end
+	function ThreadScriptPool:waitUntilAllJobsFinish()
+		while pool:busy() do RE.usleep(1e2) end
+	end
+	function ThreadScriptPool:setGlobal(varname, val)
+		local numThreads=threads:numThreads()
+		for i=1, numThreads do
+			local thr=threads:env(i-1)
+			thr:setGlobal(varname, val)
+		end
+	end
+	function ThreadScriptPool:dostring(str)
+		local numThreads=threads:numThreads()
+		for i=1, numThreads do
+			local thr=threads:env(i-1)
+			thr:dostring(str)
+		end
+	end
+	defineDerived(LuaScript, {ThreadedScript}, {'getglobal_cpp', 'getglobal', 'blockingCall','setGlobal', 'require', 'requireas', 'pushAuto','pushTable','dbgconsole','popUserdata','popAuto','_getResults'})
 end
 -- multiple line strings are not indented correctly in emacs lua-mode. 
 -- so I defined them separately here.

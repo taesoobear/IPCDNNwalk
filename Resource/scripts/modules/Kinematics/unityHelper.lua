@@ -512,6 +512,55 @@ function MotionUtil.loadFBXinfo(file, skinScale, _root_bone_name)
 	return output
 end
 
+-- optional: _cleanupInfo ={ 'Head', 'Left wrist'} - 이 본과 부모 본들외에는 날린다.
+function MotionUtil.createVRMLloader(names, parentNames, jointpos, jointori, _cleanupInfo)
+	local _1,_2
+	if type(names)=='table' then
+		local o=names
+		names=TStrings()
+		names:fromTable(o)
+	end
+	if type(parentNames)=='table' then
+		local o=parentNames
+		parentNames=TStrings()
+		parentNames:fromTable(o)
+	end
+	if jointpos.vec3View then
+		_1=jointpos
+		jointpos=jointpos:vec3View() 
+	end
+	if jointori.quatView then
+		_2=jointori
+		jointori=jointori:quatView() 
+	end
+	local tbl, bindPose, bones=MotionUtil.generateWRLfromRawInfo('robot', 0.05, names, parentNames, jointpos, jointori)
+	local targetIndex
+	if _cleanupInfo then
+		targetIndex, bindPose=MotionUtil.cleanupBones(tbl, bones, _cleanupInfo, bindPose)
+	else
+		targetIndex=CT.colon(0, #bones)
+	end
+	for i, v in ipairs(bones) do
+		v.name=string.gsub(v.name,'%s', '_')
+	end
+
+	local loaderA=MainLib.WRLloader(tbl)
+
+	for i=1, loaderA:numBone()-1 do
+		local name=loaderA:bone(i):name()
+		assert(bones[targetIndex(i-1)+1].name==name)
+		--name=string.gsub(name, '__SPACE__', '_')
+		--loaderA:bone(i):setName(name)
+	end
+	loaderA:setPose(bindPose)
+	local out ={
+		loader=loaderA,
+		bindPose=bindPose,
+		targetIndex=targetIndex,
+	}
+	return out
+end
+
 function MotionUtil.createSkinningInfo(fbx_info, drawDebugSkin, skinScale)
 	local si=SkinnedMeshFromVertexInfo()
 	assert(fbx_info.mesh:numVertex()==fbx_info.indices:size()/4)
@@ -618,6 +667,7 @@ end
 
 function MotionUtil.getMergedMesh(tempSkel)
 	local mesh=Mesh()
+	assert(tempSkel)
 	local vert_indices=intvectorn(tempSkel:numBone())
 	vert_indices:set(0,0)
 	for i=1, tempSkel:numBone()-1 do

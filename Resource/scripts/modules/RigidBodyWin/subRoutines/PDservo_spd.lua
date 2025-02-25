@@ -244,6 +244,7 @@ function PDservo:DQtoDpose(dq)
 	return dq:slice(0,3).. CT.vec(0)..dq:slice(-3,0)..dq:slice(3,-3)
 end
 function PDservo:poseToQ(pose)
+	assert(pose:size()>7)
 	return pose:slice(0,3)..pose:slice(7,0)..pose:slice(3,7)
 end
 
@@ -266,7 +267,9 @@ function PDservo:initPDservo(startf, endf,motionDOF, dmotionDOF, simulator)
 	self.skeletonIndex=0
 
 
-	simulator:setStablePDparam(self.skeletonIndex, self:dposeToDQ(self.kp), self:dposeToDQ(self.kd))
+	local kp=self:poseToQ(self.kp)
+	local kd=self:dposeToDQ(self.kd)
+	simulator:setStablePDparam(self.skeletonIndex, kp, kd)
 end
 
 -- generate FBtorque
@@ -286,6 +289,7 @@ end
 
 --gTimer=util.Timer()
 function PDservo:stepSimul(simulator, drawDebugInformation)
+
 	simulator:setLinkData(0, Physics.DynamicsSimulator.JOINT_TORQUE, self.controlforce)
 	if drawDebugInformation then
 		simulator:drawDebugInformation()

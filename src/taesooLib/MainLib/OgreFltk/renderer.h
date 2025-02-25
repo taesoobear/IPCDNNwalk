@@ -55,6 +55,8 @@ namespace Ogre
 	class MovableTextFactory;
 }
 #endif
+
+// Ogre의 GraphicsSystem.cpp를 많이 참고함. 
 #ifndef NO_OGRE
 #include "BaseSystem.h"
 class OgreRenderer : public Ogre::FrameListener, public BaseSystem

@@ -29,9 +29,11 @@ if(WIN32)
 		)
 else()
 	if(APPLE)
-		set(OGRENEXT_PATH /opt/homebrew/include/ogre-2.3)
+		#set(OGRENEXT_PATH /opt/homebrew/include/ogre-2.3)
+		set(OGRENEXT_PATH /opt/homebrew/include/ogre-3)
 		link_directories(
 			/usr/local/lib
+			${HOMEBREW_DIR}/lib/ogre-3
 		)
 		set(FLTK_LIBS
 			fltk_images
@@ -41,10 +43,11 @@ else()
 		if(CMAKE_BUILD_TYPE MATCHES Release)
 			set(OGRE_LIBS
 				OIS
-				${HOMEBREW_DIR}/lib/libOgreMain.2.3.4.dylib
-				${HOMEBREW_DIR}/lib/libOgreOverlay.2.3.4.dylib
-				${HOMEBREW_DIR}/lib/libOgreHlmsPbs.2.3.4.dylib
-				${HOMEBREW_DIR}/lib/libOgreHlmsUnlit.2.3.4.dylib
+				libOgreNextMain.4.0.dylib
+				libOgreNextOverlay.4.0.dylib
+				libOgreNextHlmsPbs.4.0.dylib
+				libOgreNextHlmsUnlit.4.0.dylib
+				libOgreNextAtmosphere.4.0.dylib
 				#/opt/local/Library/Frameworks/Ogre.framework
 				#/opt/local/Library/Frameworks/OgreOverlay.framework
 				/System/Library/Frameworks/CoreFoundation.framework
@@ -55,10 +58,11 @@ else()
 		else()
 			set(OGRE_LIBS
 				OIS
-				${HOMEBREW_DIR}/lib/Debug/libOgreMain.2.3.4.dylib
-				${HOMEBREW_DIR}/lib/Debug/libOgreOverlay.2.3.4.dylib
-				${HOMEBREW_DIR}/lib/Debug/libOgreHlmsPbs.2.3.4.dylib
-				${HOMEBREW_DIR}/lib/Debug/libOgreHlmsUnlit.2.3.4.dylib
+				${HOMEBREW_DIR}/lib/ogre-3/Debug/libOgreNextMain.4.0.dylib
+				${HOMEBREW_DIR}/lib/ogre-3/Debug/libOgreNextOverlay.4.0.dylib
+				${HOMEBREW_DIR}/lib/ogre-3/Debug/libOgreNextHlmsPbs.4.0.dylib
+				${HOMEBREW_DIR}/lib/ogre-3/Debug/libOgreNextHlmsUnlit.4.0.dylib
+				${HOMEBREW_DIR}/lib/ogre-3/Debug/libOgreNextAtmosphere.4.0.dylib
 				#/opt/local/Library/Frameworks/Ogre.framework
 				#/opt/local/Library/Frameworks/OgreOverlay.framework
 				/System/Library/Frameworks/CoreFoundation.framework
@@ -80,9 +84,9 @@ else()
 	else()
 		PKG_SEARCH_MODULE(SDL2 REQUIRED sdl2)
 		# linux
-		set(OGRENEXT_PATH /usr/local/include/OGRE)
+		set(OGRENEXT_PATH /usr/local/include/OGRE-Next)
 		link_directories(
-			/usr/local/lib/OGRE
+			/usr/local/lib/OGRE-Next
 		)
 		set(FLTK_LIBS
 			fltk_images
@@ -108,19 +112,23 @@ else()
 		if(CMAKE_BUILD_TYPE MATCHES Release)
 			set(OGRE_LIBS
 				OIS
-				libOgreMain.so.2.3.4
-				libOgreOverlay.so.2.3.4
-				libOgreHlmsPbs.so.2.3.4
-				libOgreHlmsUnlit.so.2.3.4
+				libOgreNextMain.so.4.0
+				libOgreNextMeshLodGenerator.so.4.0
+				libOgreNextOverlay.so.4.0
+				libOgreNextHlmsPbs.so.4.0
+				libOgreNextHlmsUnlit.so.4.0
+				libOgreNextAtmosphere.so.4.0
 				SDL2
 			)
 		else()
 			set(OGRE_LIBS
 				OIS
-				libOgreMain_d.so.2.3.4
-				libOgreOverlay_d.so.2.3.4
-				libOgreHlmsPbs_d.so.2.3.4
-				libOgreHlmsUnlit_d.so.2.3.4
+				libOgreNextMain_d.so.4.0
+				libOgreNextMeshLodGenerator.so.4.0
+				libOgreNextOverlay_d.so.4.0
+				libOgreNextHlmsPbs_d.so.4.0
+				libOgreNextHlmsUnlit_d.so.4.0
+				libOgreNextAtmosphere_d.so.4.0
 				SDL2
 			)
 		endif()

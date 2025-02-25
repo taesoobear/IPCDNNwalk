@@ -20,10 +20,13 @@
 #include "RE.h"
 #ifndef NO_OGRE
 #include <Ogre.h>
+// 아래줄에서 에러나면 ogre-next3.git 을 클론해서 설치해주세요. ogre-next2.3에서 3로 버젼업 했습니다. 
+#include "OgreAbiUtils.h"
 #include <OgreOverlay.h>
 #include <OgreWindow.h>
 #include "OgreOverlaySystem.h"
 #include "OgreOverlayManager.h"
+#include "Compositor/OgreCompositorWorkspace.h"
 #include "MovableText.h"
 
 #include "OgreCamera.h"
@@ -62,6 +65,8 @@
 #include "OgreLogManager.h"
 
 #include "OgrePlatformInformation.h"
+#include "OgreAtmosphereComponent.h"
+
 #ifdef SEP_USE_SDL2
     #include <SDL_syswm.h>
 #include <FL/Fl_Window.H>
@@ -202,7 +207,7 @@ static bool mbUseOGREcapture=false;
 void OgreRenderer::setBackgroundColour(float r, float g, float b)
 {
 #ifndef NO_OGRE
-	printf("OgreRenderer::setBackgroundColour currently doesn't work.\n If necessary, adjust the 1st line of OgreRenderer::_construct(...) in renderer.cpp directly!!!\n");
+	printf("setBackgroundColour currently not working!!!\n Adjust the 1st line of OgreRenderer::_construct(...) in renderer.cpp directly!!!\n");
 	/* todo2
 	viewport().mView->setBackgroundColour(Ogre::ColourValue(r,g,b,1.f));
 	if(mbUseRTTcapture){
@@ -450,19 +455,19 @@ OgreRenderer::OgreRenderer()
 
 #ifdef _MSC_VER // WINDOWS
 #if defined(_DEBUG)
-	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig.txt").c_str(),(mPluginPath+"plugins2_d.cfg").c_str(), (mPluginPath+"ogre2.cfg").c_str());
+	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig.txt").c_str(),(mPluginPath+"plugins3_d.cfg").c_str(), (mPluginPath+"ogre3.cfg").c_str());
 #else
-	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig.txt").c_str(),(mPluginPath+"plugins2.cfg").c_str(), (mPluginPath+"ogre2.cfg").c_str());
+	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig.txt").c_str(),(mPluginPath+"plugins3.cfg").c_str(), (mPluginPath+"ogre3.cfg").c_str());
 #endif
 #elif defined(__APPLE__) 
 #if defined(_DEBUG)
-	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig_mac.txt").c_str(),(mPluginPath+"plugins2_mac_d.cfg").c_str(), (mPluginPath+"ogre2_mac.cfg").c_str());
+	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig_mac.txt").c_str(),(mPluginPath+"plugins3_mac_d.cfg").c_str(), (mPluginPath+"ogre3_mac.cfg").c_str());
 #else
-	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig_mac.txt").c_str(),(mPluginPath+"plugins2_mac.cfg").c_str(), (mPluginPath+"ogre2_mac.cfg").c_str());
+	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig_mac.txt").c_str(),(mPluginPath+"plugins3_mac.cfg").c_str(), (mPluginPath+"ogre3_mac.cfg").c_str());
 #endif
 #else // LINUX
 
-	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig_linux.txt").c_str(), (mPluginPath+"plugins2_linux.cfg").c_str(), (mPluginPath+"ogre2_linux.cfg").c_str());
+	_constructor((mTaesooLib_path+"Resource/ogreconfig_personal.txt").c_str(), (mTaesooLib_path+"Resource/ogreconfig_linux.txt").c_str(), (mPluginPath+"plugins3_linux.cfg").c_str(), (mPluginPath+"ogre3_linux.cfg").c_str());
 #endif
 }
 
@@ -522,11 +527,11 @@ void OgreRenderer::_constructor(const char* fallback_configFileName, const char*
 	auto mTaesooLib_path=RE::taesooLibPath();
 	if(mTaesooLib_path=="../")
 	{
-		mResourceFile=(mTaesooLib_path+"Resource/resources2.cfg").c_str();
+		mResourceFile=(mTaesooLib_path+"Resource/resources3.cfg").c_str();
 	}
 	else
 	{
-		mResourceFile=(mTaesooLib_path+"Resource/resources2_relative.cfg").c_str();
+		mResourceFile=(mTaesooLib_path+"Resource/resources3_relative.cfg").c_str();
 	}
 	mWriteAccessFolder=mTaesooLib_path+"Resource/";
 
@@ -544,7 +549,8 @@ void OgreRenderer::_constructor(const char* fallback_configFileName, const char*
 	printf("."); fflush(stdout);
 
 
-	mRoot = new Ogre::Root(plugins_file, ogre_config, (log)?"":"Ogre.log");
+	const Ogre::AbiCookie abiCookie = Ogre::generateAbiCookie();
+	mRoot = new Ogre::Root(&abiCookie, plugins_file, ogre_config, (log)?"":"Ogre.log");
 	printf("."); fflush(stdout);
 
 	static Ogre::MovableTextFactory _mMovableTextFactory;
@@ -1035,8 +1041,9 @@ void OgreRenderer::initialize(void* handle, int width, int height)
 
 		// todo2: leak : OgreMaterialCreator
 		VRMLloader::registerMaterialCreator(new OgreMaterialCreator());
+#ifdef __APPLE__
 		setupShadowNode(true);
-
+#endif
 	}
 	catch(Ogre::Exception &e)
 	{
@@ -1414,6 +1421,17 @@ void OgreRenderer::setupResources(void)
 	// Initialise, parse scripts etc
 	Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups( true );
 
+	try
+	{
+		mRoot->getHlmsManager()->loadBlueNoise();
+	}
+	catch( Ogre::FileNotFoundException &e )
+	{
+		Ogre::LogManager::getSingleton().logMessage( e.getFullDescription(), Ogre::LML_CRITICAL );
+		Ogre::LogManager::getSingleton().logMessage(
+				"WARNING: Blue Noise textures could not be loaded.", Ogre::LML_CRITICAL );
+	}
+
 	// Initialize resources for LTC area lights and accurate specular reflections (IBL)
 	Ogre::Hlms *hlms = mRoot->getHlmsManager()->getHlms( Ogre::HLMS_PBS );
 	OGRE_ASSERT_HIGH( dynamic_cast<Ogre::HlmsPbs*>( hlms ) );
@@ -1515,6 +1533,19 @@ void OgreRenderer::renderOneFrame()
 			//Don't burn CPU cycles unnecessary when we're minimized.
 			Ogre::Threads::Sleep( 500 );
 		}
+#ifdef __APPLE__
+#ifdef __MAC_15_0
+		if(mbScreenshot ){
+			static bool bFirst=true;
+			if(bFirst)
+			{
+				mWnd->setWantsToDownload( true );
+				bFirst=false;
+			}
+			mWnd->setManualSwapRelease( true );
+		}
+#endif
+#endif
 
 		mRoot->renderOneFrame();
 
@@ -1536,14 +1567,6 @@ void OgreRenderer::renderOneFrame()
 			//
 #ifdef __APPLE__
 #ifdef __MAC_15_0
-
-			static bool bFirst=true;
-			if(bFirst)
-			{
-				Msg::msgBox("To capture a screenshot on MacOS v15, use the ogre-next3 branch of taesooLib-next.git and ogre-next3.git" );
-				bFirst=false;
-			}
-
 			/*
 			 * everything doesn't work.  
 			CGImageRef screenShot = takeScreenShot(_hWnd);
@@ -1559,6 +1582,20 @@ void OgreRenderer::renderOneFrame()
 			CGImageDestinationFinalize( image_destination );
 			CFRelease(file);
 			*/
+			// Call only once.
+
+			//mWorkspace ->_update();
+
+			if( mWnd->canDownloadData() )
+			{
+				Ogre::Image2 img;
+				Ogre::TextureGpu *texture = mWnd->getTexture();
+				img.convertFromTexture( texture, 0u, texture->getNumMipmaps() - 1u );
+				img.save( fn.ptr(), 0, img.getNumMipmaps() );
+			}
+
+			mWnd->performManualRelease();
+			mWnd->setManualSwapRelease( false );		
 #else
 			//mWnd->getCustomAttribute("WINDOW", &hWnd);
 			Ogre::Rect _r = getWindowBounds(_hWnd);
@@ -2424,6 +2461,16 @@ void OgreRenderer::loadHlmsDiskCache(void)
 	Ogre::Archive *rwAccessFolderArchive = archiveManager.load( mWriteAccessFolder,
 			"FileSystem", true );
 
+
+	if( mUseMicrocodeCache /* mUsePipelineCache */ )
+	{
+		const Ogre::String filename = "pipelineCache.cache";
+		if( rwAccessFolderArchive->exists( filename ) )
+		{
+			Ogre::DataStreamPtr pipelineCacheFile = rwAccessFolderArchive->open( filename );
+			mRoot->getRenderSystem()->loadPipelineCache( pipelineCacheFile );
+		}
+	}
 	if( mUseMicrocodeCache )
 	{
 		//Make sure the microcode cache is enabled.
@@ -2438,13 +2485,15 @@ void OgreRenderer::loadHlmsDiskCache(void)
 
 	if( mUseHlmsDiskCache )
 	{
-		for( size_t i=Ogre::HLMS_LOW_LEVEL + 1u; i<Ogre::HLMS_MAX; ++i )
+		const size_t numThreads =
+			std::max<size_t>( 1u, Ogre::PlatformInformation::getNumLogicalCores() );
+		for( size_t i = Ogre::HLMS_LOW_LEVEL + 1u; i < Ogre::HLMS_MAX; ++i )
 		{
 			Ogre::Hlms *hlms = hlmsManager->getHlms( static_cast<Ogre::HlmsTypes>( i ) );
 			if( hlms )
 			{
-				Ogre::String filename = "hlmsDiskCache" +
-					Ogre::StringConverter::toString( i ) + ".bin";
+				Ogre::String filename =
+					"hlmsDiskCache" + Ogre::StringConverter::toString( i ) + ".bin";
 
 				try
 				{
@@ -2452,14 +2501,14 @@ void OgreRenderer::loadHlmsDiskCache(void)
 					{
 						Ogre::DataStreamPtr diskCacheFile = rwAccessFolderArchive->open( filename );
 						diskCache.loadFrom( diskCacheFile );
-						diskCache.applyTo( hlms );
+						diskCache.applyTo( hlms, numThreads );
 					}
 				}
-				catch( Ogre::Exception& )
+				catch( Ogre::Exception & )
 				{
 					Ogre::LogManager::getSingleton().logMessage(
-							"Error loading cache from " + mWriteAccessFolder + "/" +
-							filename + "! If you have issues, try deleting the file "
+							"Error loading cache from " + mWriteAccessFolder + "/" + filename +
+							"! If you have issues, try deleting the file "
 							"and restarting the app" );
 				}
 			}
@@ -2505,6 +2554,13 @@ void OgreRenderer::saveHlmsDiskCache(void)
 			const Ogre::String filename = "microcodeCodeCache.cache";
 			Ogre::DataStreamPtr shaderCacheFile = rwAccessFolderArchive->create( filename );
 			Ogre::GpuProgramManager::getSingleton().saveMicrocodeCache( shaderCacheFile );
+		}
+
+		if( mUseMicrocodeCache /* mUsePipelineCache */ )
+		{
+			const Ogre::String filename = "pipelineCache.cache";
+			Ogre::DataStreamPtr shaderCacheFile = rwAccessFolderArchive->create( filename );
+			mRoot->getRenderSystem()->savePipelineCache( shaderCacheFile );
 		}
 
 		archiveManager.unload( mWriteAccessFolder );

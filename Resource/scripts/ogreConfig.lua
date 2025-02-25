@@ -28,6 +28,6 @@ if RE.getOgreVersionMinor()>=12 then
 	if depthShadow then
 		numMainLights=1 -- no difference
 	end
-elseif RE.getOgreVersionMinor()==2 then
+elseif RE.getOgreVersionMinor()<=3 then
 	numMainLights=5
 end

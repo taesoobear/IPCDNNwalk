@@ -7,15 +7,13 @@
 #include "BSpline.h"
 #ifdef USE_NR
 #include "nr/nr.h"
+#define USE_LUDCMP
 #else
 #include "../../PhysicsLib/TRL/eigenSupport.h"
 #endif
 #include "conversion.h"
 #include "../utility/operatorString.h"
 
-#ifdef USE_NR
-#define USE_LUDCMP
-#endif
 
 HessianQuadratic::HessianQuadratic(int dim)
 {

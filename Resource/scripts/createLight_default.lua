@@ -127,7 +127,7 @@ if RE.getOgreVersionMinor()>=12 then
 	light:setSpecularColour(0.4,0.4,0.4)
 	light:setCastShadows(false)
 	lightnode:attachObject(light)
-elseif RE.getOgreVersionMinor()==2 then
+elseif RE.getOgreVersionMinor()<=3 then
 	local function randomNormal()
 		return (math.random()-0.5)*2
 	end

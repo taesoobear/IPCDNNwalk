@@ -12,16 +12,16 @@ How to build (Linux)
 ```
 	sudo apt install libfltk1.3-dev libreadline-dev  wxpython-tools
 	cd dependenceies/lua5.1; make install_linux 
-  mkdir ogre-next-source;  cd ogre-next-source; git clone https://github.com/OGRECave/ogre-next.git; cd ogre-next; git checkout -b v2-3 remotes/origin/v2-3
-	cd dependenceies/ogre-next; cp -rf ../ogre-next-source/ogre-next/* . 
+  mkdir ogre-next-source;  cd ogre-next-source; git clone https://github.com/OGRECave/ogre-next.git; cd ogre-next; git checkout 50bbee7d
+	cd dependenceies/ogre-next3; cp -rf ../ogre-next-source/ogre-next/* . 
 ```
-  Then you need to apply the patch file in the dependencies/ogre-next as follows (untested). 
+  Then you need to apply the patch file in the dependencies/ogre-next3 as follows (untested. you can do this manually by looking at the patch file). 
 ```
-    cd dependences/ogre-next;patch -p0 < ogre-v2.3.patch
+    cd dependences/ogre-next3;patch -p0 < ogre-latest_50bbee7d.patch
 ```
-   2. Now you can build ogre-next:
+   2. Now you can build ogre-next (latest):
 ```
-   cd dependencies/ogre-next
+   cd dependencies/ogre-next3
 make linuxbuild
 ```
   3.  Also install python3 and pip3 (versions do not matter.)
@@ -41,17 +41,17 @@ How to build (Mac)
   pip3 install wxPython
 	cd dependenceies/lua5.1; make install_macosx 
   mkdir ogre-next-source;  cd ogre-next-source; git clone https://github.com/OGRECave/ogre-next.git; cd ogre-next; git checkout -b v2-3 remotes/origin/v2-3
-	cd dependenceies/ogre-next; cp -rf ../ogre-next-source/ogre-next/* . 
+	cd dependenceies/ogre-next3; cp -rf ../ogre-next-source/ogre-next/* . 
 ```
 
-  Then you need to apply the patch file in the dependencies/ogre-next as follows (untested). 
+  Then you need to apply the patch file in the dependencies/ogre-next3 as follows (untested. you can do this manually by looking at the patch file). 
 ```
-	cd dependences/ogre-next/ogre-next-deps/src/freetype/src;git checkout -f gzip/zconf.h;patch -p1 gzip/zconf.h < ../../../../zconf.patch
-    cd dependences/ogre-next;patch -p0 < ogre-v2.3.patch
+	cd dependences/ogre-next3/ogre-next-deps/src/freetype/src;git checkout -f gzip/zconf.h;patch -p1 gzip/zconf.h < ../../../../zconf.patch
+    cd dependences/ogre-next3;patch -p0 < ogre-latest_50bbee7d.patch
 ```
-   2. Now you can build ogre-next:
+   2. Now you can build ogre-next3 (latest):
 ```
-   cd dependencies/ogre-next
+   cd dependencies/ogre-next3
 make macbuild
 ```
 3.   Also install python3 and pip3 (versions do not matter.)
