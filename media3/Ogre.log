@@ -1,0 +1,205 @@
+15:15:54: Creating resource group General
+15:15:54: Creating resource group Internal
+15:15:54: Creating resource group Autodetect
+15:15:54: SceneManagerFactory for type 'DefaultSceneManager' registered.
+15:15:54: Registering ResourceManager for type Material
+15:15:54: Registering ResourceManager for type Mesh
+15:15:54: Registering ResourceManager for type Mesh2
+15:15:54: Registering ResourceManager for type OldSkeleton
+15:15:54: MovableObjectFactory for type 'ParticleSystem' registered.
+15:15:54: ArchiveFactory for archive type FileSystem registered.
+15:15:54: ArchiveFactory for archive type Zip registered.
+15:15:54: ArchiveFactory for archive type EmbeddedZip registered.
+15:15:54: DDS codec registering
+15:15:54: FreeImage version: 3.18.0
+15:15:54: This program uses FreeImage, a free, open source image library supporting all common bitmap formats. See http://freeimage.sourceforge.net for details
+15:15:54: Supported formats: bmp,ico,jpg,jif,jpeg,jpe,jng,koa,iff,lbm,mng,pbm,pbm,pcd,pcx,pgm,pgm,png,ppm,ppm,ras,tga,targa,tif,tiff,wap,wbmp,wbm,psd,psb,cut,xbm,xpm,gif,hdr,g3,sgi,rgb,rgba,bw,exr,j2k,j2c,jp2,pfm,pct,pict,pic,3fr,arw,bay,bmq,cap,cine,cr2,crw,cs1,dc2,dcr,drf,dsc,dng,erf,fff,ia,iiq,k25,kc2,kdc,mdc,mef,mos,mrw,nef,nrw,orf,pef,ptx,pxn,qtk,raf,raw,rdc,rw2,rwl,rwz,sr2,srf,srw,sti,x3f,webp,jxr,wdp,hdp
+15:15:54: OITD codec registering
+15:15:54: Registering ResourceManager for type HighLevelGpuProgram
+15:15:54: WARNING: NS Bundle Identifier not set!
+15:15:54: WARNING: NS Bundle Identifier not set!
+15:15:54: MovableObjectFactory for type 'Decal' registered.
+15:15:54: MovableObjectFactory for type 'InternalCubemapProbe' registered.
+15:15:54: MovableObjectFactory for type 'Entity' registered.
+15:15:54: MovableObjectFactory for type 'Item' registered.
+15:15:54: MovableObjectFactory for type 'Light' registered.
+15:15:54: MovableObjectFactory for type 'ParticleSystem2' registered.
+15:15:54: MovableObjectFactory for type 'Rectangle2Dv2' registered.
+15:15:54: MovableObjectFactory for type 'BillboardSet' registered.
+15:15:54: MovableObjectFactory for type 'ManualObject2' registered.
+15:15:54: MovableObjectFactory for type 'BillboardChain' registered.
+15:15:54: MovableObjectFactory for type 'RibbonTrail' registered.
+15:15:54: MovableObjectFactory for type 'WireAabb' registered.
+15:15:54: Loading library RenderSystem_Metal
+15:15:54: Installing plugin: Metal RenderSystem
+15:15:54: Metal: Devices Detection Starts
+15:15:54: Metal: "Apple M3"
+15:15:54: Metal: Devices Detection Ends
+15:15:54: Plugin successfully installed
+15:15:54: Loading library Plugin_ParticleFX
+15:15:54: Installing plugin: ParticleFX
+15:15:54: Particle Emitter Type 'Point' registered
+15:15:54: Particle Emitter Type 'Box' registered
+15:15:54: Particle Emitter Type 'Ellipsoid' registered
+15:15:54: Particle Emitter Type 'Cylinder' registered
+15:15:54: Particle Emitter Type 'Ring' registered
+15:15:54: Particle Emitter Type 'HollowEllipsoid' registered
+15:15:54: Particle Affector Type 'LinearForce' registered
+15:15:54: Particle Affector Type 'ColourFader' registered
+15:15:54: Particle Affector Type 'ColourFader2' registered
+15:15:54: Particle Affector Type 'ColourImage' registered
+15:15:54: Particle Affector Type 'ColourInterpolator' registered
+15:15:54: Particle Affector Type 'ScaleInterpolator' registered
+15:15:54: Particle Affector Type 'Scaler' registered
+15:15:54: Particle Affector Type 'Rotator' registered
+15:15:54: Particle Affector Type 'DirectionRandomiser' registered
+15:15:54: Particle Affector Type 'DeflectorPlane' registered
+15:15:54: Plugin successfully installed
+15:15:54: Loading library Plugin_ParticleFX2
+15:15:54: Installing plugin: ParticleFX2
+15:15:54: Plugin successfully installed
+15:15:54: *-*-* OGRE Initialising
+15:15:54: *-*-* Version 4.0.0unstable (F)
+15:15:55: CPU Identifier & Features
+15:15:55: -------------------------
+15:15:55:  *   CPU ID: ARM64E
+15:15:55:  *   Logical cores: 8
+15:15:55:  *     NEON: yes
+15:15:55: -------------------------
+15:15:55: Metal: Devices Detection Starts
+15:15:55: Metal: "Apple M3"
+15:15:55: Metal: Devices Detection Ends
+15:15:55: Metal: Requested "(default)", selected "Apple M3 (system default)"
+15:15:55: Supports: OSX_GPUFamily1_v1
+15:15:55: Registering ResourceManager for type GpuProgram
+15:15:55: Device IS tiler. TilerMemoryless flag will be: allowed.
+15:15:55: DefaultWorkQueue('Root') initialising on thread main.
+15:15:55: Particle Renderer Type 'billboard' registered
+15:15:55: OverlayElementFactory for type Panel registered.
+15:15:55: OverlayElementFactory for type BorderPanel registered.
+15:15:55: OverlayElementFactory for type TextArea registered.
+15:15:55: Registering ResourceManager for type Font
+15:15:55: Creating resource group Essential
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/DebugPack.zip' of type 'Zip' to resource group 'Essential'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/CornellBox.zip' of type 'Zip' to resource group 'Essential'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/2.0/scripts/materials/Common' of type 'FileSystem' to resource group 'General'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/2.0/scripts/materials/Common/Any' of type 'FileSystem' to resource group 'General'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/2.0/scripts/materials/Common/GLSL' of type 'FileSystem' to resource group 'General'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/2.0/scripts/materials/Common/HLSL' of type 'FileSystem' to resource group 'General'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/2.0/scripts/materials/Common/Metal' of type 'FileSystem' to resource group 'General'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/Hlms/Common/Any' of type 'FileSystem' to resource group 'General'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/Hlms/Common/GLSL' of type 'FileSystem' to resource group 'General'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/Hlms/Common/HLSL' of type 'FileSystem' to resource group 'General'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/Hlms/Common/Metal' of type 'FileSystem' to resource group 'General'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/Compute/Algorithms/IBL' of type 'FileSystem' to resource group 'General'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/Compute/Tools/Any' of type 'FileSystem' to resource group 'General'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/Compute/Tools/GLSL' of type 'FileSystem' to resource group 'General'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/Compute/Tools/HLSL' of type 'FileSystem' to resource group 'General'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/Compute/Tools/Metal' of type 'FileSystem' to resource group 'General'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/Compute/Tools' of type 'FileSystem' to resource group 'General'
+15:15:55: Creating resource group Popular
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/2.0/scripts/Compositors' of type 'FileSystem' to resource group 'Popular'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/models' of type 'FileSystem' to resource group 'Popular'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/textures' of type 'FileSystem' to resource group 'Popular'
+15:15:55: Added resource location '/Users/taesookwon/gh/ogre-next/work/Contents/Resources/textures/Cubemaps' of type 'FileSystem' to resource group 'Popular'
+15:15:55: WARNING: NS Bundle Identifier not set!
+15:15:55: WARNING: NS Bundle Identifier not set!
+15:15:55: Loading HlmsDiskCache from hlmsDiskCache1.bin
+15:15:55: Applying HlmsDiskCache 1
+15:15:55: Shader 100000000VertexShader_vs compiled successfully.
+15:15:55: Shader 100000001VertexShader_vs compiled successfully.
+15:15:55: Shader 100000002VertexShader_vs compiled successfully.
+15:15:55: Shader 100000002PixelShader_ps compiled successfully.
+15:15:55: Shader 100000003VertexShader_vs compiled successfully.
+15:15:55: Shader 100000003PixelShader_ps compiled successfully.
+15:15:55: Shader 100000004VertexShader_vs compiled successfully.
+15:15:55: Shader 100000004PixelShader_ps compiled successfully.
+15:15:55: Loading HlmsDiskCache from hlmsDiskCache3.bin
+15:15:55: Applying HlmsDiskCache 3
+15:15:55: Shader 300000000VertexShader_vs compiled successfully.
+15:15:55: Shader 300000000PixelShader_ps compiled successfully.
+15:15:55: Shader 300000001VertexShader_vs compiled successfully.
+15:15:55: Shader 300000001PixelShader_ps compiled successfully.
+15:15:55: Parsing scripts for resource group Autodetect
+15:15:55: Finished parsing scripts for resource group Autodetect
+15:15:55: Creating resources for group Autodetect
+15:15:55: All done
+15:15:55: Parsing scripts for resource group Essential
+15:15:55: Parsing script Materials.material
+15:15:55: Parsing script CornellBox.material.json
+15:15:55: Parsing script DebugFont.fontdef
+15:15:55: Finished parsing scripts for resource group Essential
+15:15:55: Creating resources for group Essential
+15:15:55: All done
+15:15:55: Parsing scripts for resource group General
+15:15:55: Parsing script Quad.program
+15:15:55: Shader Ogre/Compositor/Quad_vs_Metal compiled successfully.
+15:15:55: Shader Ogre/Compositor/QuadCameraDir_vs_Metal compiled successfully.
+15:15:55: Shader Ogre/Compositor/QuadCameraDirNoUV_vs_Metal compiled successfully.
+15:15:55: Parsing script HiddenAreaMeshVr.material
+15:15:55: Shader Ogre/VR/HiddenAreaMeshVr_vs_Metal compiled successfully.
+15:15:55: Shader Ogre/VR/HiddenAreaMeshVr_ps_Metal compiled successfully.
+15:15:55: Parsing script EsmGaussianBlurLogFilter.material
+15:15:55: Shader ESM/GaussianLogFilterH_ps_Metal compiled successfully.
+15:15:55: Shader ESM/GaussianLogFilterV_ps_Metal compiled successfully.
+15:15:55: Parsing script RadialDensityMask.material
+15:15:55: Shader Ogre/Compositor/RadialDensityMask_vs_Metal compiled successfully.
+15:15:55: Shader Ogre/VR/RadialDensityMask_ps_Metal compiled successfully.
+15:15:55: Parsing script DPSM.material
+15:15:55: Shader Ogre/DPSM/CubeToDpsm_ps_Metal compiled successfully.
+15:15:55: Shader Ogre/DPSM/CubeToDpsm_Colour_ps_Metal compiled successfully.
+15:15:55: Parsing script Atmosphere.material
+15:15:55: OGRE EXCEPTION(6:FileNotFoundException): Cannot locate resource metal_stdlib in resource group General or any other group. in ResourceGroupManager::openResource at /Users/taesookwon/gh/ogre-next/OgreMain/src/OgreResourceGroupManager.cpp (line 737)
+15:15:55: Shader Ogre/Atmo/NprSky_ps_Metal compiled successfully.
+15:15:55: Parsing script DPM.material
+15:15:55: Shader Ogre/DPM/CubeToDpm_4xFP16_ps_Metal compiled successfully.
+15:15:55: Parsing script PccDepthCompressor.material
+15:15:55: OGRE EXCEPTION(6:FileNotFoundException): Cannot locate resource metal_stdlib in resource group General or any other group. in ResourceGroupManager::openResource at /Users/taesookwon/gh/ogre-next/OgreMain/src/OgreResourceGroupManager.cpp (line 737)
+15:15:55: Shader PccDepthCompressor_ps_Metal compiled successfully.
+15:15:55: Parsing script DepthUtils.material
+15:15:55: Shader Ogre/Depth/DownscaleMax_ps_Metal compiled successfully.
+15:15:55: Shader Ogre/Depth/DownscaleMax_Subsample0_ps_Metal compiled successfully.
+15:15:55: Parsing script Sky.material
+15:15:55: Shader Ogre/Sky/Cubemap_ps_Metal compiled successfully.
+15:15:55: Shader Ogre/Sky/Equirectangular_ps_Metal compiled successfully.
+15:15:55: Parsing script Copyback.material
+15:15:55: Shader Ogre/Copy/4xFP32_ps_Metal compiled successfully.
+15:15:55: Shader Ogre/Copy/4xFP32_2DArray_ps_Metal compiled successfully.
+15:15:55: Shader Ogre/Copy/1xFP32_ps_Metal compiled successfully.
+15:15:55: Shader Ogre/Resolve/1xFP32_Subsample0_ps_Metal compiled successfully.
+15:15:55: Parsing script EsmGaussianBlurLogFilter.material.json
+15:15:55: Parsing script Mipmaps.material.json
+15:15:55: Parsing script IBL.material.json
+15:15:55: Parsing script ClearUav.material.json
+15:15:55: Finished parsing scripts for resource group General
+15:15:55: Creating resources for group General
+15:15:55: All done
+15:15:55: Parsing scripts for resource group Internal
+15:15:55: Finished parsing scripts for resource group Internal
+15:15:55: Creating resources for group Internal
+15:15:55: All done
+15:15:55: Parsing scripts for resource group Popular
+15:15:55: Parsing script LocalCubemaps.compositor
+15:15:55: Parsing script StencilTest.compositor
+15:15:55: Parsing script TutorialUav02_Setup.compositor
+15:15:55: Parsing script StereoRendering.compositor
+15:15:55: Parsing script ScreenSpaceReflections.compositor
+15:15:55: Parsing script StaticShadowMaps.compositor
+15:15:55: Parsing script UvBaking.compositor
+15:15:55: Parsing script ShadowMapDebugging.compositor
+15:15:55: Parsing script Refractions.compositor
+15:15:55: Parsing script Tutorial_DynamicCubemap.compositor
+15:15:55: Parsing script IrradianceFieldRaster.compositor
+15:15:55: Parsing script PbsMaterials.compositor
+15:15:55: Parsing script Tutorial_Terrain.compositor
+15:15:55: Parsing script InstancedStereo.compositor
+15:15:55: Parsing script Tutorial_OpenVRWorkspace.compositor
+15:15:55: Parsing script TutorialUav01_Setup.compositor
+15:15:55: Parsing script TutorialSky_Postprocess.compositor
+15:15:55: Parsing script Tutorial_ReconstructPosFromDepth.compositor
+15:15:55: Parsing script PlanarReflections.compositor
+15:15:55: Finished parsing scripts for resource group Popular
+15:15:55: Creating resources for group Popular
+15:15:55: All done
+15:15:55: Mesh: Loading Cube_d.mesh.
+15:15:55: WARNING: Cube_d.mesh is an older format ([MeshSerializer_v2.1 R1]); you should upgrade it as soon as possible using the OgreMeshTool tool.

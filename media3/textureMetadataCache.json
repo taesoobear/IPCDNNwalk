@@ -1,0 +1,52 @@
+{
+	"reserved_pool_ids" :
+	[
+		{
+			"poolId" : 992044,
+			"resolution" : [64, 64, 1],
+			"mipmaps" : 1,
+			"format" : "PFG_R8_UNORM"
+		},
+		{
+			"poolId" : 992044,
+			"resolution" : [64, 64, 3],
+			"mipmaps" : 1,
+			"format" : "PFG_RGBA16_FLOAT"
+		}
+	],
+	"textures" :
+	{
+		"ltcMatrix1.dds" : 
+		{
+			"resolution" : [64, 64, 1],
+			"mipmaps" : 1,
+			"format" : "PFG_RGBA16_FLOAT",
+			"texture_type" : 3,
+			"poolId" : 992044
+		},
+		"brtfLutDfg.dds" : 
+		{
+			"resolution" : [64, 64, 1],
+			"mipmaps" : 1,
+			"format" : "PFG_RGBA16_FLOAT",
+			"texture_type" : 3,
+			"poolId" : 992044
+		},
+		"LDR_R_0.png" : 
+		{
+			"resolution" : [64, 64, 1],
+			"mipmaps" : 1,
+			"format" : "PFG_R8_UNORM",
+			"texture_type" : 3,
+			"poolId" : 992044
+		},
+		"ltcMatrix0.dds" : 
+		{
+			"resolution" : [64, 64, 1],
+			"mipmaps" : 1,
+			"format" : "PFG_RGBA16_FLOAT",
+			"texture_type" : 3,
+			"poolId" : 992044
+		}
+	}
+}

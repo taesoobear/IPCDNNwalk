@@ -1,0 +1,61 @@
+compositor_node TutorialComputeTest01_UavTextureRenderingNode
+{
+	in 0 rt_renderwindow
+
+	texture testTexture target_width target_height PFG_RGBA8_UNORM depth_pool 0 uav
+
+	target
+	{
+		pass compute
+		{
+			job	TestJob
+			
+			//uav # textureName read write allow_write_after_write
+			uav 0 testTexture	write
+			//input 0 mrtTexture 1
+		}
+	}
+
+	target rt_renderwindow
+	{
+		//Compositor will issue the appropiate barriers because
+		//it knows testTexture will be used as a texture.
+		pass render_quad
+		{
+			load
+			{
+				all		dont_care
+			}
+			store
+			{
+				depth	dont_care
+				stencil	dont_care
+			}
+
+			material Ogre/Copy/4xFP32
+			input 0 testTexture
+		}
+
+		pass render_scene
+		{
+			// We must set depth & stencil to dont_care because the
+			// Window's DepthBuffer is Memoryless by default and Overlays break the pass.
+			load
+			{
+				depth	clear
+				stencil	clear
+			}
+			store
+			{
+				depth	dont_care
+				stencil	dont_care
+			}
+			overlays	on
+		}
+	}
+}
+
+workspace TutorialComputeTest01_UavTextureWorkspace
+{
+	connect_output TutorialComputeTest01_UavTextureRenderingNode 0
+}
