@@ -32,7 +32,7 @@ def main():
         option=sys.argv[1]
         scriptFile=sys.argv[2]
     uiscale=1
-    if m.getOgreVersionMinor()==2 and platform.system()!='Darwin':
+    if m.getOgreVersionMinor()<=3 and platform.system()!='Darwin':
         rw=1920
         rh=1080
         uiscale=1.5
