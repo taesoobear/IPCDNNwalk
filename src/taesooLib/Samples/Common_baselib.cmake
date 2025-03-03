@@ -40,7 +40,7 @@ if(UNIX)
 
 		set(DEFAULT_INCLUDE 
 			${HOMEBREW_DIR}/include
-			"/usr/local/include/"
+			#"/usr/local/include/" # moved to Common_mainlib.cmake
 		)
 		link_directories(
 			${HOMEBREW_DIR}/lib

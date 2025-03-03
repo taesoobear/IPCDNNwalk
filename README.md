@@ -79,3 +79,24 @@ How to run AdaptiveSRB 2023
 ```
 
 
+The folder structure
+= 
+I will explain the folder structure of this project.
+
+work/gym_cdm2 contains the source codes of "Adaptive Tracking of a Single-Rigid-Body Character in Various Environments".
+
+work/gym_walkCDM contains the source codes of "Fast and Flexible Multilegged Locomotion Using Learned Centroidal Dynamics".
+
+src/taesooLib contains the taesooLib. All of my research projects rely on this library, which contains C++ code related to motion loading, inverse kinematics (IK), rendering, and more.
+
+src/taesooLib/BaseLib contains the core library which is GUI-independent.
+
+src/taesooLib/MainLib extends the core library with Ogre3D and FLTK-based GUI components.
+
+src/taesooLib/PhysicsLib contains a few rigid-body simulators.
+
+src/taesooLib/MainLib/WrapperLua/luna_mainlib.lua defines the functions and classes that can be used in lua scripts.
+
+src/taesooLib/MainLib/python/MainlibPython.hpp defines the functions and classes that can be used in python scripts.
+
+

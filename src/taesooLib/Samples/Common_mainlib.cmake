@@ -100,14 +100,8 @@ else()
 			${OGRENEXT_PATH}/Hlms/Common
 			${OGRENEXT_PATH}/Hlms/Pbs
 			${OGRENEXT_PATH}/Hlms/Unlit
-		)
-		set(OGRE_INCLUDE_DIRS
-			${OGRENEXT_PATH}/Overlay
-			${OGRENEXT_PATH}
-			${OGRENEXT_PATH}/Hlms/Common
-			${OGRENEXT_PATH}/Hlms/Pbs
-			${OGRENEXT_PATH}/Hlms/Unlit
 			${SDL2_INCLUDE_DIRS}
+			"/usr/local/include/" 
 		)
 		if(CMAKE_BUILD_TYPE MATCHES Release)
 			set(OGRE_LIBS
