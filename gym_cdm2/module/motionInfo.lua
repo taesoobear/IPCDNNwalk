@@ -3,8 +3,8 @@ require("gym_cdm2/module/info_hyunwooLowDOF")
 local motionInfos={}
 motionInfos.run2={
 	isDeepmimicMot=true,
-	--skel="../Resource/motion/locomotion_hyunwoo/hyunwoo_lowdof_T3_boxfoot.wrl",
-	skel="../Resource/motion/MOB1/hanyang_lowdof_T.wrl",
+	--skel="work/taesooLib/Resource/motion/locomotion_hyunwoo/hyunwoo_lowdof_T3_boxfoot.wrl",
+	skel="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T.wrl",
 	fn='gym_deepmimic/motions/humanoid3d_run.txt',
 	fn2='gym_cdm2/spec/refTraj_run2.dat',
 	fixDOF= input.fixDOF_humanoid3d_run,
@@ -16,9 +16,9 @@ motionInfos.run2={
 }
 motionInfos.backflip={
 	isDeepmimicMot=true,
-	--skel="../Resource/motion/locomotion_hyunwoo/hyunwoo_lowdof_T3_boxfoot.wrl",
+	--skel="work/taesooLib/Resource/motion/locomotion_hyunwoo/hyunwoo_lowdof_T3_boxfoot.wrl",
 	skel_deepmimic='gym_deepmimic/module/humanoid3d.txt',
-	skel="../Resource/motion/MOB1/hanyang_lowdof_T.wrl",
+	skel="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T.wrl",
 	fn='gym_deepmimic/motions/humanoid3d_backflip.txt',
 	fn2='gym_cdm2/spec/refTraj_backflip.dat',
 	fixDOF= input.fixDOF_backflip,
@@ -31,9 +31,9 @@ motionInfos.backflip={
 }
 motionInfos.walk2={
 	isDeepmimicMot=true,
-	--skel="../Resource/motion/locomotion_hyunwoo/hyunwoo_lowdof_T3_boxfoot.wrl",
+	--skel="work/taesooLib/Resource/motion/locomotion_hyunwoo/hyunwoo_lowdof_T3_boxfoot.wrl",
 	skel_deepmimic='gym_deepmimic/module/humanoid3d.txt',
-	skel="../Resource/motion/MOB1/hanyang_lowdof_T.wrl",
+	skel="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T.wrl",
 	fn='gym_deepmimic/motions/humanoid3d_walk.txt',
 	fn2='gym_cdm2/spec/refTraj_walk2.dat',
 	fixDOF= input.fixDOF_walk,
@@ -55,8 +55,8 @@ motionInfos.walk2={
 }
 motionInfos.run3={
 	isDeepmimicMot=false,
-	skel="../Resource/motion/MOB1/hanyang_lowdof_T.wrl",
-	fn="../Resource/motion/MOB1/hanyang_lowdof_T_MOB1_Run_F_Loop.fbx.dof" ,
+	skel="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T.wrl",
+	fn="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T_MOB1_Run_F_Loop.fbx.dof" ,
 	fn2='gym_cdm2/spec/refTraj_run3.dat',
 	unlimitedLeglen=true,
 	fixDOF= function (loader, motdof)
@@ -132,9 +132,9 @@ motionInfos.run3={
 }
 motionInfos.run4={
 	isDeepmimicMot=false,
-	skel="../Resource/motion/MOB1/hanyang_lowdof_T.wrl",
-	--fn="../Resource/motion/MOB1/hanyang_lowdof_T_lafan1_run.mot2" ,
-	fn="../Resource/motion/MOB1/hanyang_lowdof_T_lafan1_run_3750.dof" ,
+	skel="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T.wrl",
+	--fn="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T_lafan1_run.mot2" ,
+	fn="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T_lafan1_run_3750.dof" ,
 	fn2='gym_cdm2/spec/refTraj_run3.dat',
 	unlimitedLeglen=true,
 	fixDOF= function (loader, motdof)
@@ -143,7 +143,7 @@ motionInfos.run4={
 			-- 3750,
 			local temp=motdof:range(3750, 3773+1):copy()
 			temp:transform(temp:row(0):toTransf(0):project2D():inverse())
-			temp:exportMot("../Resource/motion/MOB1/hanyang_lowdof_T_lafan1_run_3750.dof" )
+			temp:exportMot("work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T_lafan1_run_3750.dof" )
 			motdof:assign(temp)
 		end
 	end,
@@ -184,8 +184,8 @@ motionInfos.run4={
 }
 motionInfos.jog={
 	isDeepmimicMot=false,
-	skel="../Resource/motion/MOB1/hanyang_lowdof_T.wrl",
-	fn="../Resource/motion/MOB1/hanyang_lowdof_T_MOB1_Jog_F_Loop.fbx.dof" ,
+	skel="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T.wrl",
+	fn="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T_MOB1_Jog_F_Loop.fbx.dof" ,
 	fn2='gym_cdm2/spec/refTraj_jog.dat',
 	fixDOF= function (loader, motdof)
 		local startL=loader.dofInfo:startR(loader:getTreeIndexByVoca(MotionLoader.LEFTANKLE))
@@ -287,8 +287,8 @@ motionInfos.jog={
 
 motionInfos.walk3={
 	isDeepmimicMot=false,
-	skel="../Resource/motion/MOB1/hanyang_lowdof_T.wrl",
-	fn="../Resource/motion/MOB1/hanyang_lowdof_T_MOB1_Walk_F_Loop.fbx.dof" ,
+	skel="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T.wrl",
+	fn="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T_MOB1_Walk_F_Loop.fbx.dof" ,
 	fn2='gym_cdm2/spec/refTraj_walk3.dat',
 	minSwingPhase=0.25,
 	fixDOF= function (loader, motdof)
@@ -337,9 +337,9 @@ motionInfos.walk3={
 }
 motionInfos.walk4={
 	isDeepmimicMot=false,
-	skel="../Resource/motion/MOB1/hanyang_lowdof_T.wrl",
-	--fn="../Resource/motion/MOB1/hanyang_lowdof_T_lafan1_walk.mot2" ,
-	fn="../Resource/motion/MOB1/hanyang_lowdof_T_lafan1_walk_2915.dof" ,
+	skel="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T.wrl",
+	--fn="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T_lafan1_walk.mot2" ,
+	fn="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T_lafan1_walk_2915.dof" ,
 	fn2='gym_cdm2/spec/refTraj_walk3.dat',
 	minSwingPhase=0.25,
 	fixDOF= function (loader, motdof)
@@ -348,7 +348,7 @@ motionInfos.walk4={
 			local temp=motdof:range(2916-1, 2949-1):copy()
 			temp:transform(temp:row(0):toTransf(0):project2D():inverse())
 
-			temp:exportMot("../Resource/motion/MOB1/hanyang_lowdof_T_lafan1_walk_2915.dof" )
+			temp:exportMot("work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T_lafan1_walk_2915.dof" )
 			motdof:assign(temp)
 		end
 	end,
@@ -386,8 +386,8 @@ motionInfos.fastwalk={
 	isDeepmimicMot=false,
 	doNotSolveIK=false,
 	doNotUseConWeight=true,
-	skel="../Resource/motion/MOB1/hanyang_lowdof_T.wrl",
-	fn="../Resource/motion/CMU/fastwalk/132_21.amc.dof" ,
+	skel="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T.wrl",
+	fn="work/taesooLib/Resource/motion/CMU/fastwalk/132_21.amc.dof" ,
 	fn2='gym_cdm2/spec/refTraj_fastwalk.dat',
 	minSwingPhase=0.25,
 	fixDOF= function (loader, motdof)
@@ -489,8 +489,8 @@ motionInfos.fastwalk={
 }
 motionInfos['runjump2']={
 	isDeepmimicMot=false,
-	skel="../Resource/motion/MOB1/hanyang_lowdof_T.wrl",
-	fn="../Resource/motion/MOB1/hanyang_lowdof_T_MOB1_Run_F_Jump.dof" ,
+	skel="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T.wrl",
+	fn="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T_MOB1_Run_F_Jump.dof" ,
 	fn2='gym_cdm2/spec/refTraj_runjump2.dat',
 	start=0,
 	fixDOF= function (loader, motdof)
@@ -553,8 +553,8 @@ motionInfos['runjump2']={
 
 motionInfos['run180']={
 	isDeepmimicMot=false,
-	skel="../Resource/motion/MOB1/hanyang_lowdof_T.wrl",
-	fn="../Resource/motion/MOB1/hanyang_lowdof_T_MOB1_Run_L_180.dof" ,
+	skel="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T.wrl",
+	fn="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T_MOB1_Run_L_180.dof" ,
 	fn2='gym_cdm2/spec/refTraj_run180.dat',
 	start=2,
 	noLooping=true,
@@ -622,8 +622,8 @@ motionInfos['run180_3'].fn2='gym_cdm2/spec/refTraj_run180_3.dat'
 
 motionInfos['run90']={
 	isDeepmimicMot=false,
-	skel="../Resource/motion/MOB1/hanyang_lowdof_T.wrl",
-	fn="../Resource/motion/MOB1/hanyang_lowdof_T_MOB1_Run_L_90.dof" ,
+	skel="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T.wrl",
+	fn="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T_MOB1_Run_L_90.dof" ,
 	fn2='gym_cdm2/spec/refTraj_run90.dat',
 	start=2,
 	noLooping=true,
@@ -665,8 +665,8 @@ motionInfos['run90']={
 }
 motionInfos['run90R']={
 	isDeepmimicMot=false,
-	skel="../Resource/motion/MOB1/hanyang_lowdof_T.wrl",
-	fn="../Resource/motion/MOB1/hanyang_lowdof_T_MOB1_Run_R_90.dof" ,
+	skel="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T.wrl",
+	fn="work/taesooLib/Resource/motion/MOB1/hanyang_lowdof_T_MOB1_Run_R_90.dof" ,
 	fn2='gym_cdm2/spec/refTraj_run90R.dat',
 	start=4,
 	noLooping=true,
