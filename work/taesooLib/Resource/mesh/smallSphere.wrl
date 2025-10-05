@@ -1,0 +1,21 @@
+DEF SampleRobot Humanoid { 
+name "small_sphere"
+humanoidBody [
+DEF root Joint {
+  jointType "free"
+  translation 0.000000 0.000000 0.000000
+  children [
+    Segment { 
+     centerOfMass 0.000000 0.000000 0.000000
+     mass 1 momentsOfInertia [0.004 0 0 0 0.004 0 0 0 0.004]
+	 children [ Transform { 
+		rotation -0.000000 -0.000000 -0.000000 0.000000 
+		translation -0.000000 -0.000000 -0.000000 
+		scale 0.01 0.01 0.01
+		children Shape { geometry Ellipsoid { size 5 5 5}}} ]
+		# "small_sphere6.obj"}}]
+    }
+    ]
+}]
+}
+
