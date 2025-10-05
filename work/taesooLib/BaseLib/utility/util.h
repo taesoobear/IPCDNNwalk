@@ -72,5 +72,7 @@ int Hash(const char* string);
 namespace RE {
 	TString generateUniqueName();
 	std::string taesooLibPath();
+	// path should ends with '/'
+	void setTaesooLibPath(const char* path);
 }
 #endif

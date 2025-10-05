@@ -392,7 +392,7 @@ m_real OBJloader::Terrain::height(vector2 x) const
 	return r.getPoint(res.second).y;
 }
 
-void OBJloader::Terrain::_init(Raw2Bytes& image, int sizeX, int sizeY, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ)
+void OBJloader::Terrain::_init(Raw2Bytes& image, int sizeX, int sizeY, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ, bool normalize)
 {
 	_tileAlongZ=tileAlongZ;
 	if(tileAlongZ)
@@ -436,6 +436,19 @@ void OBJloader::Terrain::_init(Raw2Bytes& image, int sizeX, int sizeY, m_real wi
 			mHeight(y,x)=heightMax*m_real(image(y,x))/65536.0;
 		}
 	}
+	if(normalize)
+	{
+		double minv=mHeight.minimum();
+		double maxv=mHeight.maximum();
+		for(int y=0; y<sizeY; y++)
+		{
+			for(int x=0; x<sizeX; x++)
+			{
+				mHeight(y,x)-=minv;
+			}
+		}
+		mHeight*=heightMax/(maxv-minv);
+	}
 
 
 
@@ -454,7 +467,7 @@ void OBJloader::Terrain::_init(Raw2Bytes& image, int sizeX, int sizeY, m_real wi
 		}
 	}
 
-	OBJloader::_createTerrain(*this, image, sizeX, sizeY, width, height, heightMax, ntexSegX, ntexSegZ);
+	OBJloader::_createTerrain(*this, image, sizeX, sizeY, width, height, heightMax, ntexSegX, ntexSegZ, normalize);
 }
 OBJloader::Terrain::Terrain(const char *filename, int sizeX, int sizeY, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ)
 :Mesh()
@@ -490,6 +503,19 @@ OBJloader::Terrain::Terrain(const char *filename, int sizeX, int sizeY, m_real w
 	}
 #endif
 	_init(image, sizeX, sizeY, width, height, heightMax, ntexSegX, ntexSegZ, tileAlongZ);
+
+}
+OBJloader::Terrain::Terrain(Raw2Bytes * pimage, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ, bool normalize)
+:Mesh()
+{
+	auto& image=*pimage;
+	mSize.x=width;
+	mSize.z=height;
+	mSize.y=heightMax;
+	int sizeX=image.cols();
+	int sizeY=image.rows(); 
+	ASSERT(sizeof(short)==2);
+	_init(image, sizeX, sizeY, width, height, heightMax, ntexSegX, ntexSegZ, tileAlongZ, normalize);
 
 }
 OBJloader::Terrain::Terrain(const std::string& filename, int sizeX, int sizeY, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ)

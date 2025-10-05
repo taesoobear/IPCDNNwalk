@@ -9,6 +9,43 @@
 #include "MotionDOF.h"
 #include "MotionWrap.h"
 
+inline static vector3 getAxis(const char axis)
+{
+	switch(axis)
+	{
+		case 'X':
+			return vector3(1,0,0);
+		case 'Y':
+			return vector3(0,1,0);
+		case 'Z':
+			return vector3(0,0,1);
+	}
+	Msg::error("axis %c", axis);
+	return vector3(0,0,0);
+}
+
+vector3 Bone::getJointAxis(int i) const
+{
+	if(getRotationalChannels().length()>i)
+	{
+		const char axis=getRotationalChannels()[i];
+		if (axis=='A')
+			return getArbitraryAxis(i);
+		else
+			return getAxis(axis);
+	}
+	else if(getTranslationalChannels().length()>i)
+	{
+		const char axis=getTranslationalChannels()[i];
+		if (axis=='A')
+			return getArbitraryAxis(i);
+		else
+			return getAxis(axis);
+	}
+	else Msg::error("getJointAxis %d", i);
+	return vector3(0,0,0);
+}
+
 int Bone::getLocalTrans(vector3& trans, const double* dof)
 {
 	trans.setValue(0,0,0);
@@ -134,14 +171,7 @@ Bone::Bone()
 
 vector3 Bone::axis(int ichannel)
 {
-	switch(getRotationalChannels() [ichannel])
-	{
-	case 'X':
-		return vector3(1,0,0);
-	case 'Y':
-		return vector3(0,1,0);
-	}
-	return vector3(0,0,1);
+	return getJointAxis(ichannel);
 }
 
 
@@ -497,35 +527,48 @@ void MotionLoader::_updateTreeIndex()
 
 void MotionLoader::setCurPoseAsInitialPose()
 {
-	exportSkeleton("__temp.skl");
-	MotionLoader backup("__temp.skl");
-	// The above lines should become backup=*this later.
-
 	Posture curpose;
 	m_defaultFK.getPoseFromGlobal(curpose);	// assuming that at least global rotations are valid.
 
 	m_defaultFK.setPose(curpose);	// to make sure all of the global and local transformations are valid.
 
-	// Now, make curpose as initial pose (=identity rotations.)
-	backup.setPose(curpose);
-
-	for(int i=1; i<numBone(); i++)
+	if (m_cPostureIP.numFrames()>0)
 	{
-		bone(i)._getOffsetTransform().rotation.identity();
-		bone(i)._getOffsetTransform().translation.difference(bone(i).parent()->getTranslation(), bone(i).getTranslation());
+		exportSkeleton("__temp.skl");
+		MotionLoader backup("__temp.skl");
+		// The above lines should become backup=*this later.
+		
+
+		for(int i=1; i<numBone(); i++)
+		{
+			bone(i)._getOffsetTransform().rotation.identity();
+			bone(i)._getOffsetTransform().translation.difference(bone(i).parent()->getTranslation(), bone(i).getTranslation());
+		}
+		UpdateInitialBone();
+
+		// Now, make curpose as initial pose (=identity rotations.)
+		backup.setPose(curpose);
+
+		// Transfer motion data.
+		PoseTransfer pt(&backup, this, NULL, true);
+
+		for(int i=0; i<m_cPostureIP.numFrames(); i++)
+		{
+			// read pose
+			pt.setTargetSkeleton(m_cPostureIP.pose(i));
+
+			// overwrite pose
+			getPose(m_cPostureIP.pose(i));
+		}
 	}
-	UpdateInitialBone();
-
-	// Transfer motion data.
-	PoseTransfer pt(&backup, this, NULL, true);
-
-	for(int i=0; i<m_cPostureIP.numFrames(); i++)
+	else
 	{
-		// read pose
-		pt.setTargetSkeleton(m_cPostureIP.pose(i));
-
-		// overwrite pose
-		getPose(m_cPostureIP.pose(i));
+		for(int i=1; i<numBone(); i++)
+		{
+			bone(i)._getOffsetTransform().rotation.identity();
+			bone(i)._getOffsetTransform().translation.difference(bone(i).parent()->getTranslation(), bone(i).getTranslation());
+		}
+		UpdateInitialBone();
 	}
 }
 
@@ -1532,9 +1575,13 @@ Bone& dep_GetBoneFromCon(MotionLoader const& ml, int constraint)
 		bone=&ml.getBoneByVoca(MotionLoader::RIGHTWRIST);
 		break;
 	}
+	ASSERT(bone);
 
-	if(bSite)
+	if(bSite )
+	{
+		ASSERT(bone->child());
 		return *bone->child();
+	}
 	else
 		return *bone;
 }
@@ -1844,7 +1891,7 @@ static void readMappingFile(TStrings & convTable, MotionLoader* pSrcSkel, const 
 	Msg::verify(file.OpenReadFile(convfilename), "file open error %s", convfilename);
 
 	char *token;
-	while(token=file.GetToken())
+	while( (token=file.GetToken()))
 	{
 		char* jointName=token;
 
@@ -2174,8 +2221,10 @@ PoseTransfer2::PoseTransfer2(MotionLoader* loaderA, MotionLoader* loaderB)
 	convInfoB.resize(loaderA->numBone()-1);
 	for (int i=1;i< loaderA->numBone();i++)
 	{
-		convInfoA[i-1]= loaderA->bone(i).name();
-		convInfoB[i-1]=loaderA->bone(i).name();
+		TString name=loaderA->bone(i).name();
+		Msg::verify (loaderB->getTreeIndexByName(name)!=-1, "missing Bone %s in B", name.ptr());
+		convInfoA[i-1]= name;
+		convInfoB[i-1]=name;
 	}
 	_ctor(loaderA, loaderB, convInfoA, convInfoB, 1.0);
 }

@@ -468,7 +468,7 @@ bindTargetPhysics={
 						//			printf("y=%s \n", c->chain->global(5).translation.output().ptr());
 						prim.SetPose(pose, *c->skeleton);
 						*/
-						prim.setPose(s.getWorldState(ichara));
+						prim.setSamePose(s.getWorldState(ichara));
 					}
 					static void setPose(PLDPrimVRML& prim, Posture const& pose)
 					{

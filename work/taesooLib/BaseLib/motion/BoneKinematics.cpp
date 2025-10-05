@@ -527,6 +527,25 @@ void BoneVelocityForwardKinematics::computeDQfromDS(BoneForwardKinematics const&
 	matrix4 & ScaledBoneKinematics::_global(const Bone& bone) 	{ return m_global2[bone.treeIndex()];}
 	matrix4 & ScaledBoneKinematics::_local(const Bone& bone) 	{ return m_local2[bone.treeIndex()];}
 
+void ScaledBoneKinematics::getPoseFromLocal(Posture& pose) const
+{
+	pose.Init(m_skeleton->numRotJoint(), m_skeleton->numTransJoint());
+
+	// update root position and rotations
+	for(int ijoint=0, nj=m_skeleton->numRotJoint(); ijoint<nj; ijoint++)
+	{
+		// update rotations
+		int target=m_skeleton->getTreeIndexByRotJointIndex(ijoint);
+		pose.m_aRotations[ijoint]=m_local[target];
+	}
+
+	for(int ijoint=0, nj=m_skeleton->numTransJoint(); ijoint<nj; ijoint++)
+	{
+		// update translations
+		int target=m_skeleton->getTreeIndexByTransJointIndex(ijoint);
+		pose.m_aTranslations[ijoint]=m_local2[target].translation();
+	}
+}
 
 ScaledBoneKinematics::ScaledBoneKinematics(MotionLoader* pskel)
 :m_skeleton(pskel)

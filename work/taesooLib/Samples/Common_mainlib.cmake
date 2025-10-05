@@ -6,7 +6,6 @@ if(WIN32)
 	include_directories(
 		${MainLib_SOURCE_DIR}/../../windows_dependencies/fltk-1.3.8
 		${MainLib_SOURCE_DIR}/../../windows_dependencies/fltk-1.3.8/build_win
-		${MainLib_SOURCE_DIR}/../../windows_dependencies/lua-5.1.5/src
 		)
 	set(FLTK_LIBS
 		ws2_32.lib
@@ -26,7 +25,42 @@ if(WIN32)
 		${MainLib_SOURCE_DIR}/../../windows_dependencies/fltk-1.3.8/build_win/lib/Release/libfltk_png.lib
 		)
 	set(OGRE_LIBS
+		${MainLib_SOURCE_DIR}/../../ogre-next3/build/lib/Release/OgreNextAtmosphere.lib
+		${MainLib_SOURCE_DIR}/../../ogre-next3/build/lib/Release/OgreNextHlmsPbs.lib
+		${MainLib_SOURCE_DIR}/../../ogre-next3/build/lib/Release/OgreNextHlmsUnlit.lib
+		${MainLib_SOURCE_DIR}/../../ogre-next3/build/lib/Release/OgreNextMain.lib
+		${MainLib_SOURCE_DIR}/../../ogre-next3/build/lib/Release/OgreNextMeshLodGenerator.lib
+		${MainLib_SOURCE_DIR}/../../ogre-next3/build/lib/Release/OgreNextOverlay.lib
+		#${MainLib_SOURCE_DIR}/../../ogre-next3/build/lib/Release/OgreNextProperty.lib
+		${MainLib_SOURCE_DIR}/../../ogre-next3/build/lib/Release/OgreNextSceneFormat.lib
 		)
+	set(OGRE_DEBUG_LIBS
+		${MainLib_SOURCE_DIR}/../../ogre-next3/build/lib/Debug/OgreNextAtmosphere_d.lib
+		${MainLib_SOURCE_DIR}/../../ogre-next3/build/lib/Debug/OgreNextHlmsPbs_d.lib
+		${MainLib_SOURCE_DIR}/../../ogre-next3/build/lib/Debug/OgreNextHlmsUnlit_d.lib
+		${MainLib_SOURCE_DIR}/../../ogre-next3/build/lib/Debug/OgreNextMain_d.lib
+		${MainLib_SOURCE_DIR}/../../ogre-next3/build/lib/Debug/OgreNextMeshLodGenerator_d.lib
+		${MainLib_SOURCE_DIR}/../../ogre-next3/build/lib/Debug/OgreNextOverlay_d.lib
+		#${MainLib_SOURCE_DIR}/../../ogre-next3/build/lib/Debug/OgreNextProperty_d.lib
+		${MainLib_SOURCE_DIR}/../../ogre-next3/build/lib/Debug/OgreNextSceneFormat_d.lib
+		)
+		set(OGRENEXT_PATH ${MainLib_SOURCE_DIR}/../../ogre-next3)
+		set(OGRE_INCLUDE_DIRS
+			${OGRENEXT_PATH}/Components/Overlay/include
+			${OGRENEXT_PATH}/OgreMain/include 
+			${OGRENEXT_PATH}/OgreMain/include/Animation
+			${OGRENEXT_PATH}/OgreMain/include/Math/Array
+			${OGRENEXT_PATH}/Components/Hlms/Common/include
+			${OGRENEXT_PATH}/Components/Hlms/Pbs/include
+			${OGRENEXT_PATH}/Components/Hlms/Unlit/include
+			${OGRENEXT_PATH}/build/include
+		)
+
+	include_directories(
+		${OGRE_INCLUDE_DIRS}
+		${EIGEN_INCLUDE_DIRS}
+		${LUA_INCLUDE_DIRS}
+	)
 else()
 	if(APPLE)
 		#set(OGRENEXT_PATH /opt/homebrew/include/ogre-2.3)
@@ -101,7 +135,7 @@ else()
 			${OGRENEXT_PATH}/Hlms/Pbs
 			${OGRENEXT_PATH}/Hlms/Unlit
 			${SDL2_INCLUDE_DIRS}
-			"/usr/local/include/" 
+			"/usr/local/include/"
 		)
 		if(CMAKE_BUILD_TYPE MATCHES Release)
 			set(OGRE_LIBS
@@ -118,7 +152,7 @@ else()
 			set(OGRE_LIBS
 				OIS
 				libOgreNextMain_d.so.4.0
-				libOgreNextMeshLodGenerator.so.4.0
+				libOgreNextMeshLodGenerator_d.so.4.0
 				libOgreNextOverlay_d.so.4.0
 				libOgreNextHlmsPbs_d.so.4.0
 				libOgreNextHlmsUnlit_d.so.4.0

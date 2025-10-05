@@ -60,6 +60,7 @@ public:
 
 
 	BaseLib::BitArray constraint;
+	inline bool getConstraint(int econ) { return constraint[econ];}
 
 	///////////////////////////////////////////////
 	// Inter-frame difference관련 시작

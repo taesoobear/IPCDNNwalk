@@ -59,11 +59,15 @@ Motion::Motion(const Motion& srcMotion, int startFrame, int endFrame)
 }
 void Motion::__initFromMotionDOF(const MotionDOF& srcMotion, int startFrame, int endFrame)
 {
+	float fFrameTime=1.0/srcMotion.mInfo.frameRate();
+	MotionLoader * skel=(MotionLoader*)&srcMotion.mInfo.skeleton();
+	__init(fFrameTime, skel, srcMotion, startFrame, endFrame);
+}
+void Motion::__init(float fFrameTime, MotionLoader* skel, const matrixn& srcMotion, int startFrame, int endFrame)
+{
 	if(startFrame<0) startFrame=0;
 	if(endFrame>srcMotion.numFrames()) endFrame=srcMotion.numFrames();
 
-	float fFrameTime=1.0/srcMotion.mInfo.frameRate();
-	MotionLoader * skel=(MotionLoader*)&srcMotion.mInfo.skeleton();
 	InitEmpty(skel, endFrame-startFrame, fFrameTime);
 
 	for(int i=startFrame; i<endFrame; i++){
@@ -75,6 +79,10 @@ void Motion::__initFromMotionDOF(const MotionDOF& srcMotion, int startFrame, int
 Motion::Motion(const MotionDOF& srcMotion, int startFrame, int endFrame)
 {
 	__initFromMotionDOF(srcMotion, startFrame, endFrame);
+}
+Motion::Motion(MotionLoader*pSource, const matrixn& srcMotionDOF)
+{
+	__init(1.0/30.0, pSource, srcMotionDOF);
 }
 
 Motion::Motion(const MotionDOFcontainer& srcMotion, int startFrame, int endFrame)
@@ -96,8 +104,7 @@ void Motion::setSkeleton(int iframe) const
 void Motion::InitSkeleton(MotionLoader* pSkeleton)
 {
 	if(mInfo.m_pSkeleton && !(mInfo.m_pSkeleton->numRotJoint()==pSkeleton->numRotJoint() &&
-			mInfo.m_pSkeleton->numTransJoint()==pSkeleton->numTransJoint() &&
-			mInfo.m_pSkeleton->numBone()==pSkeleton->numBone() ) && numFrames()!=0)
+			mInfo.m_pSkeleton->numTransJoint()==pSkeleton->numTransJoint() ) && numFrames()!=0)
 	{
 		// has Incompatible motion data
 		setSize(0);
@@ -406,7 +413,8 @@ void Motion::Resize(int Frames)
 
 	for(int i=numPosture; i<Frames; i++)
 		setDiscontinuity(i, false);
-	setDiscontinuity(numPosture, true);
+	if(numPosture<Frames)
+		setDiscontinuity(numPosture, true);
 /*	if(numPosture<Frames)
 	{
 		keyvalue.resize(MIN(m_maxCapacity, Frames));
@@ -1423,10 +1431,27 @@ boolN Motion::getDiscontinuity() const
 	for(int i=0; i<numFrames(); i++)
 		t.set(i, isDiscontinuous(i)); return t;
 }
-
+boolN Motion::getConstraint(int eCon) const
+{
+	boolN t;
+	t.resize(numFrames());
+	for(int i=0; i<numFrames(); i++)
+		t.set(i, isConstraint(i, eCon)); return t;
+}
 void Motion::setDiscontinuity(bitvectorn const& bit)
 {
 	ASSERT(bit.size()==numFrames());
 	for(int i=0; i<numFrames(); i++)
 		setDiscontinuity(i, bit[i]);
+}
+
+void Motion::setConstraint(int eCon, bitvectorn const& bit)
+{
+	ASSERT(bit.size()==numFrames());
+	for(int i=0; i<numFrames(); i++)
+		setConstraint(i, eCon, bit[i]);
+}
+
+vectorn Motion::row(int iframe) const { 
+	vectorn out; skeleton().dofInfo.getDOF(pose(iframe), out); return out;
 }

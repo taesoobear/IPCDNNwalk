@@ -6,18 +6,17 @@
 #ifdef NO_GUI
 
 #include "../OgreFltk/renderer.h"
+#include "../OgreFltk/RE.h"
+
 namespace RE
 {
-	namespace _private
-	{
-		extern bool g_bOutput;
-	}
+	extern Globals* g_pGlobals;
 }
 
 TraceManager::TraceManager()
 :FrameMoveObject()
 {
-	RE::g_traceManagers.push_back(this);
+	RE::g_pGlobals->g_traceManagers.push_back(this);
 /*
 	// start a new file
 	FILE* file=fopen("trace.txt", "w");

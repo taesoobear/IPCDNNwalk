@@ -10,6 +10,16 @@ hlms red pbs
 	emissive 0.0 0.0 0.00
 
 }
+hlms yellow pbs
+{
+	//Note: Internally the diffuse colour is divided by PI.
+	diffuse		1 1 0
+
+	specular	1 1 0
+
+	emissive 0.0 0.0 0.00
+
+}
 hlms shiny pbs
 {
 	diffuse		0.1 0.1 0.1
@@ -61,6 +71,15 @@ hlms blueCircle unlit
 	depth_write false // optional, but recommended for alpha blended geometry
     scene_blend alpha_blend
 	diffuse_map BlueCircle.png
+}
+hlms lightBlueCircle unlit
+{
+	diffuse		1 1 1
+	specular 0 0 0
+	emissive 0.0 0.0 0.00
+	depth_write false // optional, but recommended for alpha blended geometry
+    scene_blend alpha_blend
+	diffuse_map LightBlueCircle.png
 }
 hlms greenCircle unlit
 {
@@ -125,6 +144,12 @@ hlms grey_transparent pbs
 	depth_write off
    transparency_mode transparent
    transparency 0.7 // Play with this value
+}
+hlms grey pbs
+{
+	diffuse 0.28 0.28 0.3 
+	specular 0.8 0.8 0.8 
+	emissive 0.0 0.0 0.0 
 }
 hlms lightgrey_verytransparent pbs
 {
@@ -213,6 +238,13 @@ hlms CrowdEdit/Terrain2 pbs
 	emissive 0.00000 0.00000 0.00000 
 	diffuse_map dead_grass.png
 }
+hlms grass_1024 pbs
+{
+	diffuse		1 1 1
+	specular	0 0 0
+	emissive 0.00000 0.00000 0.00000 
+	diffuse_map grass_1024.jpg
+}
 hlms lightgrey pbs
 {
 	diffuse 0.5 0.5 0.5 
@@ -240,5 +272,20 @@ hlms lambert1 pbs
 	diffuse 0.436006 1 0.341 
 	specular 0 0 0 
 }
+hlms checkboard_64 pbs
+{
+diffuse	1 1 1
+specular	0 0 0
+emissive 0.00000 0.00000 0.00000 
+diffuse_map checkerboard_64cells.png
+}
 
 // checkboard/crowdEditing is defined in example.material.json 
+
+hlms grid_only pbs
+{
+diffuse 0.5 0.5 0.5
+specular 0 0 0
+emissive 0.00000 0.00000 0.00000
+diffuse_map grid_only_64.png
+}

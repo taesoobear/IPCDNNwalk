@@ -7,30 +7,26 @@
 #include "TraceManager.h"
 #endif
 #include "renderer.h"
+#include "RE.h"
 
 namespace RE
 {
-	namespace _private
-	{
-		extern bool g_bOutput;
-	}
-	std::vector<AbstractTraceManager*> g_traceManagers;
+	extern Globals* g_pGlobals;
 }
 
 extern float mfScaleFactor;
 
-bool RE::_private::g_bOutput=true;
 
 void RE::outputState(bool bOutput)
 {
-	_private::g_bOutput=bOutput;
+	RE::g_pGlobals->g_bOutput=bOutput;
 }
 void RE::output(const char* key, const char* pszFormat, ...)
 {
-	if(!_private::g_bOutput) return;
-	if(g_traceManagers.size()>0)
+	if(!RE::g_pGlobals->g_bOutput) return;
+	if(RE::g_pGlobals->g_traceManagers.size()>0)
 	{
-		AbstractTraceManager* pTraceManager=g_traceManagers.back();
+		AbstractTraceManager* pTraceManager=RE::g_pGlobals->g_traceManagers.back();
 		TString temp;
 		va_list argptr ;
 		va_start(argptr, pszFormat);
@@ -41,27 +37,27 @@ void RE::output(const char* key, const char* pszFormat, ...)
 
 void RE_dumpOutput(TStrings& output, int itracemanager)
 {
-	if(!RE::_private::g_bOutput) return;
-	if(RE::g_traceManagers.size()>=itracemanager)
+	if(!RE::g_pGlobals->g_bOutput) return;
+	if(RE::g_pGlobals->g_traceManagers.size()>=itracemanager)
 	{
-		(*(RE::g_traceManagers.end()-itracemanager))->dumpMessage(output);
+		(*(RE::g_pGlobals->g_traceManagers.end()-itracemanager))->dumpMessage(output);
 	}
 }
 void RE_outputRaw(const char* key, const char* output, int itracemanager)
 {
-	if(!RE::_private::g_bOutput) return;
-	if(RE::g_traceManagers.size()>=itracemanager)
+	if(!RE::g_pGlobals->g_bOutput) return;
+	if(RE::g_pGlobals->g_traceManagers.size()>=itracemanager)
 	{
-		(*(RE::g_traceManagers.end()-itracemanager))->message(key, output);
+		(*(RE::g_pGlobals->g_traceManagers.end()-itracemanager))->message(key, output);
 	}
 }
 
 void RE_outputEraseAll(int itracemanager)
 {
-	if(!RE::_private::g_bOutput) return;
-	if(RE::g_traceManagers.size()>=itracemanager)
+	if(!RE::g_pGlobals->g_bOutput) return;
+	if(RE::g_pGlobals->g_traceManagers.size()>=itracemanager)
 	{
-		((TraceBase*) (*(RE::g_traceManagers.end()-itracemanager)))->eraseAll();
+		((TraceBase*) (*(RE::g_pGlobals->g_traceManagers.end()-itracemanager)))->eraseAll();
 	}
 }
 void TraceBase::erase(const char *id)
@@ -122,7 +118,11 @@ TraceManager::TraceManager(int x, int y, int w, int h)
 : Fl_Double_Window(x,y,w,h)
 {
 	end();
-	RE::g_traceManagers.push_back(this);
+		printf("\r\rm5"); fflush(stdout);
+		printf("%p\n", &RE::g_pGlobals->g_traceManagers);
+		printf("%d\n", RE::g_pGlobals->g_traceManagers.size());
+	RE::g_pGlobals->g_traceManagers.push_back(this);
+		printf("\r\rm6"); fflush(stdout);
 }
 
 TraceManager::~TraceManager(void)
@@ -238,7 +238,7 @@ namespace Ogre
 OgreTraceManager::OgreTraceManager(int x, int y, int w, int h)
 	:FrameMoveObject()
 {
-	RE::g_traceManagers.push_back(this);
+	RE::g_pGlobals->g_traceManagers.push_back(this);
 	RE::renderer().addAfterFrameMoveObject(this);
 	tid="  ";
 }

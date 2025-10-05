@@ -66,6 +66,8 @@ public:
 	int HRPjointIndex(int i) const;
 	int DOFindex(int i) const;
 	int DQindex(int i) const;
+
+	void setJointAxis(vector3 const& axis);
 	TString HRPjointName(int i) const;
 	HRP_JOINT::jointType_T HRPjointType(int i) const;
 	TString HRPjointAxis(int i) const;
@@ -80,6 +82,7 @@ public:
 	matrix3 const& momentsOfInertia() const; // full.
 	void setMass(double m);
 	void setInertia(double ix, double iy, double iz);
+	void setInertia(matrix3 const& I);
 	void scaleMass( m_real scalef);
 	void translateMesh( vector3 const& trans);
 	// set joint position relative to its parent joint.
@@ -109,6 +112,7 @@ class VRMLloader: public MotionLoader
 	double _frameRate;
 
 	OBJloader::Terrain* _terrain;// reference
+	bool _own_terrain;
 	friend class TRL::CollisionDetector_fcl ;
 public:
 	class MaterialCreator
@@ -128,9 +132,11 @@ public:
 	void setURL(const char* u) { url=u;}
 	void setPosition(const vector3 & pos); // adjust the fixed root joint 
 	virtual TString getName() { return name;}
-
+	OBJloader::Terrain* _get_terrain() { return _terrain;}
 	VRMLloader(VRMLloader const& other, int newRootIndex, bool bFreeRootJoint);
 	VRMLloader(OBJloader::Geometry const& mesh, bool useFixedJoint=false);
+
+	VRMLloader(const char* terrain_filename, m_real sizeX, m_real sizeZ, m_real heightMax, int ntexSegX, int ntexSegZ);
 	VRMLloader(OBJloader::Terrain *terrain);
 	VRMLloader(const char* vrmlFile);
 	VRMLloader(const std::string & vrmlFile);

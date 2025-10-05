@@ -339,6 +339,7 @@ function RetargetSkin:_setPoseFromLoaderAB()
 			if ri~=-1 then bone:setOrientation(q) end -- necessary. I don't know why.
 			if bi>1 then
 				local gpos=loaderB:bone(bi):getFrame().translation
+				dbg.console()
 				bone:_setDerivedOrientation(loaderB:bone(bi):getFrame().rotation)
 
 				local biA=BtoA(bi)

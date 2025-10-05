@@ -61,7 +61,8 @@ public:
 	typedef	__gnu_cxx::hash_map<TString, DynamicMessage*> namedmapTDM;
 #endif
 #else
-	typedef std::unordered_map<std::string, DynamicMessage*> namedmapTDM;
+	//typedef std::unordered_map<std::string, DynamicMessage*> namedmapTDM;
+	typedef std::map<std::string, DynamicMessage*> namedmapTDM;
 #endif
 
 	void erase(const char *id);

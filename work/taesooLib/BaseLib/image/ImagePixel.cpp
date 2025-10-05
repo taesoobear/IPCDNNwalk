@@ -407,13 +407,13 @@ void CImagePixel::DrawSubPattern(int x, int y, const CImagePixel& patternPixel, 
 	}
 }
 
-void CImagePixel::DrawText(int x, int y, const char* str, bool bUserColorKey, CPixelRGB8 colorkey)
+void CImagePixel::drawText(int x, int y, const char* str, bool bUserColorKey, CPixelRGB8 colorkey)
 {
 	static CImage* pText=NULL;
 	if(!pText)
 	{
 		pText=new CImage();
-		pText->Load("../Resource/default/ascii.bmp");
+		pText->Load((RE::taesooLibPath()+"Resource/default/ascii.bmp").c_str());
 	}
 	CImage& cText=*pText;
     

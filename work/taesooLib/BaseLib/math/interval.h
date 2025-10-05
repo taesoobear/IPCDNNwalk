@@ -53,8 +53,8 @@ class interval
     friend void adjust_interval( interval& );
 
     // stream
-//    friend ostream& operator<<( ostream&, interval const& );
-  //  friend istream& operator>>( istream&, interval& );
+    friend std::ostream& operator<<( std::ostream&, interval const& );
+    friend std::istream& operator>>( std::istream&, interval& );
 
   public:
     // constructors

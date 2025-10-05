@@ -78,10 +78,17 @@ static TString _FlChooseFile_python(const char* message, const char* path, const
 	// use filechooser.py on linux
 	TString cmd;
 #ifdef __APPLE__
+	TString fileChooser("filechooser_wx.py");
+	auto t=RE::taesooLibPath();
+	t[4]=0;
+	if (t.substr(0,4)=="work")
+		fileChooser=(RE::taesooLibPath()+"work/filechooser_wx.py");
+	else if(t.substr(0,1)=="/")
+		fileChooser=(RE::taesooLibPath()+"filechooser_wx.py");
 	if(bCreate)
-		cmd.format("python3 filechooser_wx.py '%s' '%s' '%s' SAVE", message, Mask, path);
+		cmd.format("python3 '%s' '%s' '%s' '%s' SAVE", fileChooser.c_str(), message, Mask, path);
 	else
-		cmd.format("python3 filechooser_wx.py '%s' '%s' '%s' OPEN", message, Mask, path);
+		cmd.format("python3 '%s' '%s' '%s' '%s' OPEN", fileChooser.c_str(), message, Mask, path);
 #else
 	if(IsFileExist("/usr/bin/python3"))
 	{

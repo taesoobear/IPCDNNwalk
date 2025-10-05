@@ -22,6 +22,25 @@ namespace m
 	// in=>u*diag(s)*vT. in is replaced by u.
 	void SVdecompose(matrixn& in_u, vectorn & s, matrixn &v);
 	void LUsolve(matrixn const & A, vectorn const& b, vectorn& x);
+
+	class LDLT
+	{
+		void* _data;
+		public:
+		LDLT(matrixn const& A);
+		virtual ~LDLT();
+		vectorn solve(const vectorn& b);
+	};
+
+	class PartialPivLU
+	{
+		void* _data;
+		public:
+		PartialPivLU(matrixn const& A);
+		virtual ~PartialPivLU();
+		vectorn solve(const vectorn& b);
+	};
+
 	void PIsolve(matrixn const & A, vectorn const& b, vectorn& x);
 
 	m_real determinant(const matrixn& E);

@@ -8,9 +8,12 @@
 #include "../MainLib/OgreFltk/RE.h"
 #include "VRMLloader_internal.h"
 #include "VRMLexporter.h"
+#include "Terrain.h"
+#include "../image/Image.h"
 //#define TEST_MEMORYLEAK
 using namespace std;
 
+#define DEFAULT_ROT_CHANNELS   "YZX" // YZX is better for YUP characters.
 _HRP_JOINT::_HRP_JOINT()
 	{
 		jointType=HRP_JOINT::FREE;
@@ -102,6 +105,7 @@ VRMLTransform::~VRMLTransform()
   delete mSegment;
   delete mShape;
   delete mTransform;
+
 }
 void VRMLTransform::printHierarchy(int depth)
 {
@@ -264,6 +268,12 @@ void VRMLTransform::setInertia(double ix, double iy, double iz)
 		bone.mSegment->momentsOfInertia._22=iy;
 		bone.mSegment->momentsOfInertia._33=iz;
 	}
+}
+void VRMLTransform::setInertia(matrix3 const& I)
+{
+	VRMLTransform& bone=*this;
+	if(bone.mSegment)
+		bone.mSegment->momentsOfInertia=I;
 }
 static TString nameId(Bone& bone)
 {
@@ -604,6 +614,8 @@ VRMLloader::~VRMLloader()
   Msg::msgBox("dtor loader %s", url.ptr());
 #endif 	
 
+  if(_own_terrain&& _terrain)
+	  delete _terrain;
 
 	
 }
@@ -613,6 +625,13 @@ void VRMLloader::operator=(VRMLloader const& other)
 	MemoryFile m;
 	other._exportBinary(m);
 	_importBinary(m);
+	bone(1)._getOffsetTransform()=other.bone(1).getOffsetTransform();
+	(*this).fkSolver()=other.fkSolver();
+	if (other._terrain)
+	{
+		_terrain=new OBJloader::Terrain(*other._terrain);
+		_own_terrain=true;
+	}
 }
 
 void VRMLloader::insertChildJoint(Bone& parent, const char* trans_channels, const char* rot_channels, const char* nameId, bool bMoveChildren)
@@ -1348,7 +1367,8 @@ void VRMLTransform::setJointAxes(const char* axes)
 		  }
 		  else
 		  {
-			  Msg::msgBox("Error! cannot change axes (case1 - not implemented yet). %s:%s:%d", NameId , mVRMLtype.ptr(), mJoint->jointType);
+			  mJoint->jointAxis=axes;
+			  setChannels("XYZ", mJoint->jointAxis);//
 		  }
 	  }
   }
@@ -1399,6 +1419,34 @@ void VRMLloader::changeAllJointsToSpherical()
 	_initDOFinfo(); 
 	setPose(pose);
 }
+void VRMLTransform::setJointAxis(vector3 const& axis)
+{
+	if(mVRMLtype=="Joint")
+	{
+      if(mJoint->jointType==HRP_JOINT::ROTATE || mJoint->jointType==HRP_JOINT::SLIDE)
+	  {
+		  if(mJoint->jointAxis=="A")
+		  {
+			  mJoint->jointAxis2[0]=axis;
+			  setArbitraryAxes(mJoint->jointAxis2);
+			  return;
+		  }
+		  else
+		  {
+			  setChannels("","A");
+			  mJoint->jointAxis="A";
+			  mJoint->AxisNum=1;
+			  if(!mJoint->jointAxis2 )
+				  mJoint->jointAxis2 = new vector3[1];
+			  mJoint->jointAxis2[0]=axis;
+			  setArbitraryAxes(mJoint->jointAxis2);
+			  return;
+		  }
+	  }
+	}
+	Msg::error("VRMLTransform::setJointAxis - this case is not supported yet");
+}
+
 void VRMLTransform::initBones()
 {
   if(mVRMLtype=="Joint")
@@ -1407,14 +1455,14 @@ void VRMLTransform::initBones()
       if(mJoint->jointType==HRP_JOINT::FREE)
 	{
 		if(getRotationalChannels().length()!=3)
-			m_rotChannels="ZYX";
+			m_rotChannels=DEFAULT_ROT_CHANNELS;
 
 	  setChannels("XYZ", getRotationalChannels());
 	}
 	  else if (mJoint->jointType==HRP_JOINT::BALL)
 	  {
 		if(getRotationalChannels().length()!=3)
-			m_rotChannels="ZYX";
+			m_rotChannels=DEFAULT_ROT_CHANNELS;
 		  setChannels("",getRotationalChannels());
 	  }
       else if(mJoint->jointType==HRP_JOINT::ROTATE)
@@ -1836,7 +1884,7 @@ VRMLloader::VRMLloader(VRMLloader const& other, int newRootIndex, bool bFreeRoot
 	if(bFreeRootJoint) {
 		root->mJoint->jointType=HRP_JOINT::FREE;
 		//root->setChannels("XYZ", "ZYX");
-		root->setChannels("XYZ", "ZXY"); // ZXY is better for YUP characters.
+		root->setChannels("XYZ", DEFAULT_ROT_CHANNELS); 
 	}
 
 	VRMLTransform* n=((VRMLTransform*)(m_pTreeRoot->m_pChildHead));
@@ -1856,6 +1904,14 @@ VRMLloader::VRMLloader(VRMLloader const& other)
 	_importBinary(m);
 	url=other.url;
 	assetFolder=url.left(-4)+"_sd"; // default asset folder
+									//
+	bone(1)._getOffsetTransform()=other.bone(1).getOffsetTransform();
+	(*this).fkSolver()=other.fkSolver();
+	if (other._terrain)
+	{
+		_terrain=new OBJloader::Terrain(*other._terrain);
+		_own_terrain=true;
+	}
 }
 VRMLloader::VRMLloader()
  :MotionLoader()
@@ -1948,12 +2004,90 @@ VRMLloader::VRMLloader(OBJloader::Geometry const& mesh, bool useFixedJoint)
 	_initDOFinfo();
 	//VRMLloader_updateMeshEntity(*l);
 }
+VRMLloader::VRMLloader(const char* terrain_filename, m_real sizeX, m_real sizeZ, m_real heightMax, int ntexSegX, int ntexSegZ)
+:MotionLoader()
+{
+	int _sizeX, _sizeY;
+	OBJloader::Raw2Bytes image;
+	if(TString(terrain_filename).right(3)=="raw")
+	{
+		_sizeX=256;
+		_sizeY=256;
+		image.setSize(_sizeY, _sizeX);
+		FILE* file=fopen(terrain_filename, "rb");
+		fread( (void*)(&image(0,0)), sizeof(short), _sizeX*_sizeY, file);
+		fclose(file);
+	}
+	else
+	{
+		// transposed image so that it is compatible with mujoco
+		CImage temp;
+		int sx=1;
+		int sy=1;
+
+		temp.Load(terrain_filename);
+
+		_sizeY=temp.GetHeight();
+		_sizeX=temp.GetWidth();
+
+		image.setSize(_sizeX, _sizeY);
+		for(int y=0; y<_sizeY; y++)
+		{
+			for(int x=0; x<_sizeX; x++)
+			{
+				int index=y*_sizeX+x;
+
+				unsigned char color=temp.GetPixel(x,y)->R;
+				image(x*sx, y*sy)=color*256;
+			}
+		}
+	}
+
+	RANGE_ASSERT(sizeof(short)==2);
+
+	OBJloader::Terrain* terrain=new OBJloader::Terrain(&image, sizeX*2.0, sizeZ*2.0, heightMax, ntexSegX, ntexSegZ, false, true);
+
+	_frameRate=30;
+	_terrain=terrain;
+	_own_terrain=true;
+	m_pTreeRoot=new VRMLTransform();
+	m_pTreeRoot->SetNameId("floor");
+	VRMLTransform* root=new VRMLTransform();
+	MemoryFile m;
+
+	// VRMLTransform::pack
+	m.packInt(0);
+	m.pack("WAIST");
+	m.packInt(HRP_JOINT::FIXED);
+	m.pack("");
+
+	m.packInt(0);
+	m.pack(vector3(0,0,0)); //joint->translation
+
+	name.format("terrain%s,%f, %f, %f,%s", RE::generateUniqueName().ptr(), sizeX, sizeZ, heightMax, terrain_filename);
+	url=terrain_filename;
+	HRP_SEGMENT mSegment;
+	OBJloader::Geometry mesh;
+	mesh.assignTerrain(*terrain, vector3(0,0,0));
+	pack_HRP_SEGMENT(m, &mSegment, url, TString("WAIST"), mesh);
+	m.packInt(0);
+	m.pack("WAIST");
+	root->unpack(*this, m);
+	m_pTreeRoot->AddChild(root);
+	_initDOFinfo(); 
+	//name=RE::generateUniqueName();
+	url=TString(terrain_filename)+".wrl";
+	assetFolder=url.left(-4)+"_sd"; // default asset folder
+
+	_initDOFinfo();
+	//VRMLloader_updateMeshEntity(*l);
+}
 VRMLloader::VRMLloader(OBJloader::Terrain* terrain)
 	:MotionLoader()
 {
 	_frameRate=30;
 	_terrain=terrain;
-
+	_own_terrain=false;
 	m_pTreeRoot=new VRMLTransform();
 	m_pTreeRoot->SetNameId("floor");
 	VRMLTransform* root=new VRMLTransform();
@@ -2140,7 +2274,20 @@ void VRMLloader::setCurPoseAsInitialPose()
 		bone(i).getOffset(o(i));
 
 	for (int i=1; i<numBone(); i++)
-		VRMLbone(i).setJointPosition(o(i));
+	{
+		auto& bone=VRMLbone(i);
+		bone.setJointPosition(o(i));
+		if(bone.mJoint->jointType!=HRP_JOINT::FREE &&
+				bone.mJoint->jointType!=HRP_JOINT::FIXED &&
+				bone.numHRPjoints()==1)
+		{
+			vector3 axis=bone.getJointAxis(0);
+			bone.setJointAxis(qo(bone.treeIndex())*axis);
+			//cout<< "axis"<<i<<qo(bone.treeIndex())*axis<<" "<<axis<< endl;
+			//cout<<"axis out"<<bone.getJointAxis(0);
+			//cout<<"this"<<this<< ":"<< &bone<<endl;
+		}
+	}
 
 	for (int i=1; i<numBone(); i++)
 	{

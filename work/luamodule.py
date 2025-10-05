@@ -7,46 +7,76 @@ m=lua.taesooLib()
 # F : function calls. ex) numBone=lua.F('dbg.draw','Sphere', m.vector3(1,1,1), "ball3", "green", 10)
 # M : member fucntion calls. ex) numBone=lua.M('mLoader_in_lua','numBone')
 """
-import pdb # use pdb.set_trace() for debugging
+import pdb, re # use pdb.set_trace() for debugging
 #import code # or use code.interact(local=dict(globals(), **locals())) for debugging. see below.
 import numpy as np
-import platform
-import torch
-relative=False
+import platform, os
+hasTorch=True
+try:
+    import torch
+except:
+    print("Warning! install torch. Otherwise, many functionalities won't work")
+    hasTorch=False
+
 try:
     import settings
 except:
     import work.settings as settings
-    relative=True
+    settings.relativeMode=True
 
-if relative :
-    if hasattr(settings,'useConsole') and settings.useConsole: 
-        import work.console.libmainlib as mlib  # built using make console
-    else:
-        import work.libmainlib as mlib
-else:
-    if hasattr(settings,'useConsole') and settings.useConsole: 
-        import console.libmainlib as mlib  # built using make console
-    else:
-        import libmainlib as mlib
+settings._loadMlib()
+mlib=settings.mlib
 import importlib
 from easydict import EasyDict as edict # pip3 install easydict
 
 def taesooLib():
     return mlib
-def zeros(n):
+def zeros(n,m=None):
+    if m:
+        out=mlib.matrixn(n,m)
+        out.setAllValue(0)
+        return out
     out=mlib.vectorn()
     out.resize(n);
     out.setAllValue(0)
     return out
+def ones(n,m=None):
+    if m:
+        out=mlib.matrixn(n,m)
+        out.setAllValue(1.0)
+        return out
+    out=mlib.vectorn()
+    out.resize(n);
+    out.setAllValue(1.0)
+    return out
+def eye(n):
+    out=mlib.matrixn(n,n)
+    out.setAllValue(0)
+    out.diag().setAllValue(1)
+    return out
+def rand(m,n=None):
+    if not n:
+        return vec(np.random.rand(m))
+    return mat(np.random.rand(m,n))
+
 def require(filename):
     dostring('require("'+filename+'")')
+def require_as(filename, var_name):
+    dostring(var_name+'=require("'+filename+'")')
+def module(filename):
+    var_name= mlib.generateUniqueName()
+    dostring(var_name+'=require("'+filename+'")')
+    return instance(var_name)
 
 def collectgarbage(obj=None):
     if not obj:
         dostring('collectgarbage()')
     elif 'var_name' in obj:
         dostring(obj.var_name+'=nil' )
+def new(typename, *args):
+    var_name=re.sub(r'\W+', '', typename)+mlib.generateUniqueName()
+    F_lua(var_name, typename, *args)
+    return instance(var_name)
 
 def out(*args):
     l=mlib.getPythonWin()
@@ -136,6 +166,21 @@ def m(varname, funcname, *args):
     return F(('python', 'luaCall'), varname, funcname, *args)
 def M(varname, funcname, *args):
     return F(('python', 'luaCall'), varname, funcname, *args)
+def M_nocopy_userdata(varname, funcname, *args):
+    return F_nocopy_userdata(('python', 'luaCall'), varname, funcname, *args)
+def M_lua(out_name, varname, funcname, *args):
+    F_lua(out_name, ('python', 'luaCall'), varname, funcname, *args)
+
+def call(funcname, *args):
+    out_varname=mlib.generateUniqueName()
+    F_lua(out_varname, funcname, *args)
+    return instance(out_varname)
+
+def callM(var, funcname, *args):
+    out_varname=mlib.generateUniqueName()
+    M_lua(out_varname, var, funcname, *args)
+    return instance(out_varname)
+
 
 def M0(varname, funcname, *args):
     _m(0, varname, funcname, *args)
@@ -179,9 +224,15 @@ def setGlobal(varname, value):
 
 
 # G (getGlobal) functions returns a reference (==native taesooLib class).
-def G(varname):
-    _getGlobal(varname)
-    return _popAuto(mlib.getPythonWin()) 
+def G(*args):
+    l=mlib.getPythonWin()
+    _getGlobal(*args)
+    return _popAuto(l)
+
+def G_copy(*args):
+    l=mlib.getPythonWin()
+    _getGlobal(*args)
+    return _popAutoCopy(l)
 def G_int(varname):
     _getGlobal(varname)
     return int(_popnumber())
@@ -263,17 +314,27 @@ def G_motionDOF(varname):
     return l.popMotionDOF()
 
 
-def _getGlobal(varname):
+# you probably want to use G  instead of _getGlobal
+# _getGlobal don't bring the results to python-side. 
+# it just leaves them in the lua stack.
+def _getGlobal(*args):
     l=mlib.getPythonWin()
     if not l.isLuaReady() : return
-    if '.' in varname:
-        varname=varname.split('.')
-        l.getglobal(*varname)
 
-    elif isinstance(varname,tuple):
-        l.getglobal(*varname)
-    else:
-        l.getglobal(varname)
+    if len(args)==1:
+        if isinstance(args[0], instance):
+            args=[args[0].var_name]
+        if isinstance(args[0], tuple) or isinstance(args[0], list):
+            args=args[0]
+        else:
+            assert(isinstance(args[0], str))
+            if '.' in args[0]:
+                args=args[0].split('.')
+
+    l.getglobal(args[0])
+    for i in range(1, len(args)):
+        l.replaceTop(args[i])
+
 def _getGlobalNoCheck(varname):
     l=mlib.getPythonWin()
     if not l.isLuaReady() : return
@@ -295,7 +356,7 @@ def F(*args):
     l=mlib.getPythonWin()
     ctop=l.gettop()-1
 
-    tempvar=[]
+    tempvar=[] # this list prevents immediate garbage collection of temporary python-variables during a single lua function call.
     for i in range(1,len(args)):
         _push(l, args[i], tempvar)
     stack=l.call(len(args)-1)
@@ -323,7 +384,7 @@ def F(*args):
                 var_name='out_'+mlib.generateUniqueName()
                 # backup to lua global to prevent garbage collection
                 if isinstance(res, dict):
-                    res.var_name=var_name 
+                    res['var_name']=var_name 
                 l.set(var_name)
             else:
                 print('other cases not implemented yet')
@@ -333,6 +394,51 @@ def F(*args):
             return out[0]
         return tuple(out)
 
+
+# do not use unless you know what you are doing
+def F_nocopy_userdata(*args):
+    funcname=args[0]
+    _getGlobal(funcname)
+    l=mlib.getPythonWin()
+    ctop=l.gettop()-1
+
+    tempvar=[] # this list prevents immediate garbage collection of temporary python-variables during a single lua function call.
+    for i in range(1,len(args)):
+        _push(l, args[i], tempvar)
+    stack=l.call(len(args)-1)
+
+    numOut=l.gettop()-ctop
+    if numOut>0:
+        out=[]
+        for i in range(numOut):
+            tid=l.luaType(-1)
+            if tid==7: # userdata -> no copy
+                tn=l.lunaType(-1)
+                out.insert(0, _popUserdata(l,tn))
+            elif tid==0: #nil
+                # simply ignore
+                pass
+            elif tid==1: #bool
+                out.insert(0, _popboolean())
+            elif tid==4: # string
+                out.insert(0, _popstring())
+            elif tid==3: #number
+                out.insert(0, _popnumber())
+            elif tid==5: # table -> make a global backup in lua, and return a reference
+                res=_popAuto(l, False) # no stack cleanup for backup
+                out.insert(0, res) # reference
+                var_name='out_'+mlib.generateUniqueName()
+                # backup to lua global to prevent garbage collection
+                if isinstance(res, dict):
+                    res['var_name']=var_name 
+                l.set(var_name)
+            else:
+                print('other cases not implemented yet')
+                l.printStack()
+                pdb.set_trace()
+        if len(out)==1:
+            return out[0]
+        return tuple(out)
 
 def F_lua(out_name, *args):
     _F(1, *args)
@@ -346,6 +452,8 @@ def F1_mat(*args):
 def F1_npmat(*args):
     _F(1, *args)
     return _popNumpyMat()
+def F0(*args): # discard return values
+    _F(0, *args)
 
 def _popMat():
     l=mlib.getPythonWin()
@@ -503,9 +611,13 @@ def _Fref(numout, *args):
             else:
                 assert(False)
 def init_console():
-    # absolutely necessary. The mainWin won't be shown without m.showMainWin() though.
-    uiscale=1.5
-    mlib.createMainWin(int((1024+180)*uiscale),int((600+100)*uiscale), int(1024*uiscale), int(600*uiscale),uiscale)
+    # here, you cannot use renderer!!! but all other non-rendering-related classes can be used.
+    # this is different from console.mainlib in that console.mainlib supports skins and renderer too.
+    uiscale=1
+    taesooLibPath=''
+    if not os.path.exists(taesooLibPath+ "../Resource/ogreconfig_linux_sepwin.txt"):
+        taesooLibPath= 'work/taesooLib'
+    mlib._createInvisibleMainWin()
     mlib.getPythonWin().loadEmptyScript()
 
 # simply forward events to lua
@@ -529,7 +641,7 @@ def handleRendererEvent(ev, button, x, y):
 
     #l.printStack()
     if not l.isLuaReady() : return 0
-    l.getglobal("handleRendererEvent")
+    l.getglobalNoCheck("handleRendererEvent")
     if not l.isnil(l.gettop()):
         l.push(ev)
         l.push(button)
@@ -557,15 +669,18 @@ def frameMove(fElapsedTime):
     l=mlib.getPythonWin()
     if not l.isLuaReady() : return
     # lua function call
-    l.getglobal("frameMove")
-    l.push(fElapsedTime)
-    l.call(1,0)
+    l.getglobalNoCheck("frameMove")
+    if l.isnil(l.gettop()):
+        l.pop()
+    else:
+        l.push(fElapsedTime)
+        l.call(1,0)
 
 def dofile(fn):
     mlib.getPythonWin().dofile(fn)
 
 
-def vec(*args):
+def vec(*args): # fot float arrays
     out=mlib.vectorn()
     if len(args)==1:
         v=args[0]
@@ -585,23 +700,101 @@ def vec(*args):
     out.setSize(len(args))
     out.ref()[:]=args
     return out
-def ivec(*args):
+def ivec(*args): # for int or boolean arrays
+    if len(args)==1:
+        v=args[0]
+        if isinstance(v, np.ndarray):
+            if v.size==0:
+                return mlib.intvectorn()
+            elif isinstance(v[0],np.bool_):
+                out=mlib.boolN(v.size)
+                out.assign(v)
+                return out
+            else:
+                out=mlib.intvectorn(v.size)
+                out.ref()[:]=v
+                return out
+        elif isinstance(v, list):
+            out=mlib.intvectorn(len(v))
+            out.assign(v)
+            return out
+        elif isinstance(v, torch.Tensor):
+            #return vec(v.detach().cpu().numpy())
+            return ivec(v.detach().cpu().numpy())
+
     out=mlib.intvectorn()
     out.setSize(len(args))
     out.ref()[:]=args
     return out
-def mat(n,m, *args):
-    out=mlib.matrixn()
-    out.setSize(n,m)
-    c=0
-    assert(len(args)==n*m)
-    for i in range(n):
-        for j in range(m):
-            out.set(i,j,args[c])
-            c+=1
-    return out
+def mat(*args):
+    if len(args)==1:
+        v=args[0]
+        out=mlib.matrixn()
+        if isinstance(v, np.ndarray):
+            out.setSize(v.shape[0], v.shape[1])
+            out.ref()[:,:]=v
+        elif isinstance(v, torch.Tensor):
+            v=v.detach().cpu().numpy()
+            out.setSize(v.shape[0], v.shape[1])
+            out.ref()[:,:]=v
+        else:
+            ncol=len(v[0])
+            out.setSize(len(v), ncol)
+            for i in range(len(v)):
+                out.row(i).assign(v[i])
+        return out
 
-def tempFunc(self, bones):
+    else:
+        out=mlib.matrixn()
+        n=args[0]
+        m=args[1]
+        out.setSize(n,m)
+        assert(len(args)==n*m+2)
+        c=2
+        for i in range(n):
+            for j in range(m):
+                out.set(i,j,args[c])
+                c+=1
+        return out
+
+def tensor(v):
+    if len(v.shape)==1:
+        return vec(v)
+    elif len(v.shape)==2:
+        return mat(v)
+    else:
+        if isinstance(v, np.ndarray):
+            out=mlib.Tensor(*v.shape)
+            np.copyto(out.ref(),v)
+            return out
+        elif isinstance(v, torch.Tensor):
+            v=v.detach().cpu().numpy()
+            out=mlib.Tensor(*v.shape)
+            np.copyto(out.ref(),v)
+            return out
+        else:
+            pdb.set_trace()
+
+def tempFunc(self):
+   rot_y=mlib.quater()
+   offset=mlib.quater()
+   self.decompose(rot_y, offset)
+   return offset
+mlib.quater.offsetQ=tempFunc
+def tempFunc(self, xPos, out):
+    return M(self, 'getTerrainHeight', xPos, out)
+mlib.VRMLloader.getTerrainHeight=tempFunc
+def tempFunc(self, ray, normal):
+    return M(self, 'pickTerrain', ray, normal)
+mlib.VRMLloader.pickTerrain=tempFunc
+
+def tempFunc(self, bones=None):
+    if bones is None :
+        # automatic annotation
+        require_as('retargetting/module/retarget_common', 'RET')
+        F('RET.setVoca', self)
+        return
+
     strToVoca={     
             "hips":mlib.Voca.HIPS,
             "left_hip":mlib.Voca.LEFTHIP,
@@ -631,14 +824,15 @@ def tempFunc(self, bones):
         print(k,v)
         if self.getTreeIndexByName(v)>0:
             if isinstance(k, str):
-                if strToVoca[k] :
-                    print(strToVoca[k])
+                if strToVoca[k]!=None :
                     self._changeVoca(strToVoca[k], self.getBoneByName(v))
                 else:
                     print("error?", k)
+                    pdb.set_trace()
             else:
                 self._changeVoca(v, self.getBoneByName(v))
         else:
+            print("can't find", v)
             pdb.set_trace()
 
     # automatic vocaburary assignment of child bones
@@ -661,7 +855,42 @@ def tempFunc(self, bones):
 
 mlib.MotionLoader.setVoca=tempFunc
 tempFunc=None
+def tempFunc(self , row, minimumNumRows=None):
+    if minimumNumRows and self.rows()<minimumNumRows:
+        self.pushBack(row)
+        return
+    self.ref()[:-1, :]=self.ref()[1:,:]
+    self.ref()[-1]=row.ref()
+mlib.matrixn.enqueue=tempFunc # rows는 그대로 둔채 앞에서 하나 빠지고 뒤로 하나 추가됨. 
+mlib.vector3N.enqueue=tempFunc # rows는 그대로 둔채 앞에서 하나 빠지고 뒤로 하나 추가됨. 
 
+def tempFunc(self, frame_rate, discontinuity=None):
+    return M(self, 'derivative', frame_rate, discontinuity)
+mlib.matrixn.derivative=tempFunc
+
+def tempFunc(self,other):
+    self_ref=self.ref()
+    if isinstance(other, float):
+        self_ref+=other
+    else:
+        self_ref+=other.ref()
+mlib.matrixn.radd=tempFunc
+
+def tempFunc(self , nrows):
+    if nrows<=self.rows():
+        self.resize(self.rows()-nrows,self.cols())
+    else:
+        self.resize(0,self.cols())
+mlib.matrixn.popBack=tempFunc # rows는 그대로 둔채 앞에서 하나 빠지고 뒤로 하나 추가됨. 
+
+def tempFunc(self , nrows=1):
+    out=mat(self.ref()[:nrows,:])
+    self.ref()[:-nrows, :]=self.ref()[nrows:,:]
+    self.resize(self.rows()-nrows, self.cols())
+    return out
+mlib.matrixn.dequeue=tempFunc # 앞에서 nrows개 빠짐. 
+
+tempFunc=None
 def tempFunc(self ):
     out=None
     m=mlib
@@ -718,8 +947,6 @@ def tempFunc(self ):
 
 mlib.BinaryFile.unpackAny=tempFunc
 tempFunc=None
-
-
 def tempFunc(self):
     v=mlib.vectorn(6)
     V=mlib.se3()
@@ -728,9 +955,27 @@ def tempFunc(self):
     v.setVec3(3, V.V())
     return v
 mlib.transf.toLogVec=tempFunc
+def tempFunc(self, t):
+    out=self.copy()
+    out.translation.radd(t)
+    return out
+mlib.transf.translate=tempFunc
+tempFunc=None
+def tempFunc(self):
+    V=mlib.se3()
+    V.W().assign(self.toVector3(0))
+    V.V().assign(self.toVector3(3))
+    return V
+mlib.vectorn.to_se3=tempFunc
+tempFunc=None
+def tempFunc(self):
+    out=mlib.vectorn(7)
+    out.setTransf(0, self)
+    return out
+mlib.transf.toVector=tempFunc
 tempFunc=None
 
-# a=dynamic_list()   a[3]=7   이런식으로 초기화 없이 즉시 사용가능한 list
+# a=dynamic_list()   a[3]=7   이런식으로 초기화 없이 즉시 사용가능한 list. 0-indexed
 class dynamic_list(list):
     def __init__(self,num_gen=0):
         self._num_gen = num_gen
@@ -781,8 +1026,71 @@ def _popAuto(l,stackCleanup=True): # reference
     elif tid==1:
         return l.popboolean()
     elif tid==2:
+        l.pop()
         return "lightuserdata" # lightuserdata
     elif tid==6:
+        l.pop()
+        return "function" # function
+    elif tid==5:
+        # nested table? not yet.
+        l.pushnil();
+        out2=Table()
+        out=[]
+        isDict=False
+        while (l.next(-2)):
+            # stack now contains: -1 => value; -2 => key; -3 => table
+            # copy the key so that lua_tostring does not modify the original
+            l.pushvalue(-2);
+            # stack now contains: -1 => key; -2 => value; -3 => key; -4 => table
+            key=_popAuto(l)
+            value=_popAuto(l)
+            if not isDict and isinstance(key, str):
+                try:
+                    out2[key]=value
+                except:
+                    isDict=True
+                    out2=dict(out2)
+                    out2[key]=value
+            elif out!=None and key==len(out)+1:
+                out.append(value)
+            else: # easydict only supports string keys so switch to native dict.
+                isDict=True
+                out2=dict(out2)
+                out2[key]=value
+            if isDict and out:
+                for ii in range(len(out)):
+                    out2[ii+1]=out[ii] # +1 so that it is compatible with other keys. (lua uses 1-indexing)
+                out=None
+        if stackCleanup:
+            l.pop()
+        if out!=None and len(out)>0:
+            if len(out2)>0:
+                out2['_Table__list']=out
+                return out2
+            return out
+        return out2
+    else:
+        print('other cases not implemented yet')
+        l.printStack()
+        pdb.set_trace()
+def _popAutoCopy(l,stackCleanup=True): # reference
+    tid=l.luaType(-1)
+    if tid==7:
+        tn=l.lunaType(-1)
+        return _popUserdata(l, tn).copy()
+    elif tid==4:
+        return l.popstring()
+    elif tid==3:
+        return l.popnumber()
+    elif tid==0:
+        return None
+    elif tid==1:
+        return l.popboolean()
+    elif tid==2:
+        l.pop()
+        return "lightuserdata" # lightuserdata
+    elif tid==6:
+        l.pop()
         return "function" # function
     elif tid==5:
         # nested table? not yet.
@@ -794,8 +1102,8 @@ def _popAuto(l,stackCleanup=True): # reference
             # copy the key so that lua_tostring does not modify the original
             l.pushvalue(-2);
             # stack now contains: -1 => key; -2 => value; -3 => key; -4 => table
-            key=_popAuto(l)
-            value=_popAuto(l)
+            key=_popAutoCopy(l)
+            value=_popAutoCopy(l)
             if isinstance(key, str):
                 out2[key]=value
             else:
@@ -836,6 +1144,10 @@ def _popUserdata(l, tn):
         return l.popvector2()
     elif tn=='quater':
         return l.popquater()
+    elif tn=='matrix4':
+        return l.popmatrix4()
+    elif tn=='TStrings':
+        return l.popTStrings()
     elif tn[-12:]=='MotionLoader':
         return l.poploader()
     elif tn=='Motion':
@@ -850,9 +1162,22 @@ def _popUserdata(l, tn):
         return l.popTensor()
     elif tn=='matrix3':
         return l.popMatrix3()
+    elif tn=='intIntervals':
+        return l.popIntIntervals()
+    elif tn[-20:]=="ScaledBoneKinematics":
+        return l.popScaledBoneKinematics()
+    elif tn[-14:]=="BoneForwardKinematics":
+        return l.popBoneForwardKinematics()
     else:
-        print('luamodule._popUserdata: this case not implemented yet:', tn)
-        pdb.set_trace()
+        print('warning! luamodule._popUserdata: this case not implemented yet:', tn)
+        l.pop()
+        return tn
+def _pushList(l, arg, tempvar):
+    n=len(arg)
+    for j in range(n):
+        l.push(j+1) # convert to 1-indexing
+        _push(l, arg[j], tempvar)
+        l.settable(-3)
 
 def _push(l, arg, tempvar):
     if isinstance(arg,np.ndarray):
@@ -866,23 +1191,25 @@ def _push(l, arg, tempvar):
     elif isinstance(arg, dict):
         l.newtable()  # push a lua table
         for k, v in arg.items():
-            l.push(k)
-            _push(l,v, tempvar)
-            l.settable(-3)
-    elif isinstance(arg, list):
+            if k=='_Table__list' :
+                if v is not None:
+                    _pushList(l, v, tempvar)
+            else:
+                l.push(k)
+                _push(l,v, tempvar)
+                l.settable(-3)
+    elif isinstance(arg, list) or isinstance(arg, tuple):
         l.newtable()  # push a lua table
-        n=len(arg)
-        for j in range(n):
-            l.push(j+1) # convert to 1-indexing
-            l.push(arg[j])
-            l.settable(-3)
-    elif arg!=None:
+        _pushList(l, arg, tempvar)
+    elif arg is None:
+        l.pushnil()
+    else:
         try:
             l.push(arg)
         except:
-            print('push: unknown type', arg)
-    else:
-        l.pushnil()
+            if arg!=None:
+                print('push: unknown type.', arg)
+            l.pushnil()
 class ArgumentProcessor:
     def __init__(self):
         pass
@@ -898,18 +1225,81 @@ class toTable(ArgumentProcessor):
         l.insert(-2)
         l.pop()
 
+"""
+a wrapper class of a lua variable (any type)
+"""
 class instance(ArgumentProcessor):
+    # lua.instance("lua variable name") can also be used as an lua.F(*) argument.
     def __init__(self, python_var):
         if isinstance(python_var, str):
             self.var_name=python_var
         elif isinstance(python_var, tuple):
+            self.var_name=list(python_var)
+        elif isinstance(python_var, list):
             self.var_name=python_var
         else:
             self.var_name=python_var.var_name
+        self.dependent=[]
     def push(self, l):
         _getGlobal(self.var_name)
-def toDict(python_str: str):
-    return F('python.identityFunction', toTable('return '+python_str))
+    def _addToVarName(self, str_name):
+        var_name=self.var_name
+        if isinstance(var_name, list):
+            return var_name+[str_name]
+        elif isinstance(var_name, tuple):
+            return list(var_name)+[str_name]
+        else:
+            return [var_name, str_name]
+    # member access functions
+    def len(self):
+        return F('table.getn', self)
+    def __getattr__(self, name):
+        return instance(self._addToVarName(name))
+    def __getitem__(self, index):
+        return instance(self._addToVarName(index))
+
+    def get(self, propertyName): # reference
+        #return G(self.var_name, propertyName)
+        return F_nocopy_userdata('python.getGlobal', self._addToVarName( propertyName))
+    def copyget(self, propertyName): # copy
+        return G_copy(self.var_name, propertyName)
+    def set(self, propertyName, value):
+        return setGlobal(self._addToVarName(propertyName), value)
+    def hasKey(self, key):
+        return F('python.hasKey', self, key)
+    # function calls
+    # e.g. variable('functionName', arg1, ...)
+    def __call__(self, funcname, *args):   
+        # copies user data
+        return M(self, funcname, *args)
+    def call_nocopy(self, *args):
+        return M_nocopy_userdata(self, *args)
+
+    # use when return value has to be a lua instance. otherwise, use __call__
+    def call(self, funcname, *args):
+        # hashing
+        var_name=('_'.join(self.var_name)+funcname).replace(".", "_")
+        if var_name not in self.dependent:
+            self.dependent.append(var_name)
+        M_lua(var_name, self.var_name, funcname, *args)
+        return instance(var_name)
+
+    def __repr__(self):
+        return 'lua instance :\n'+F('dbg.tostring', self)
+    def collect(self): # manual collection. (automatic collection is possible, but often is dangerous, so I didn't implement it.)
+        dostring(self.var_name+'=nil')
+        for i in self.dependent:
+            dostring(d+'=nil')
+def toDict(python_str):
+    if isinstance(python_str , str):
+        return F('python.identityFunction', toTable('return '+python_str))
+    elif isinstance(python_str, list):
+        out={}
+        for i in range(len(python_str)):
+            v=python_str[i]
+            out[i+1]=v # lua uses 1-indexing.
+        return out
+        
 def escapeString(a_string):
     return a_string.translate(str.maketrans({"-":  r"\-",
                                           "]":  r"\]",
@@ -928,3 +1318,127 @@ def addPackagePath(path):
         package.path=package.path..';"""+ escapeString(str(path))+"\\\\?.lua'"
     print(script)
     dostring(script)
+
+    
+def vector3N_slice(self, s, e):
+    if s<0:
+        s=self.size()+s
+    if e<=0:
+        e=self.size()+e
+        return self.range(s,e)
+mlib.vector3N.slice=vector3N_slice
+del vector3N_slice
+mlib.matrixn.slice=mlib.matrixn.sub
+
+def convertFloatTableToInt(tbl):
+    out=None
+    if isinstance(tbl, edict):
+        out=edict()
+    elif isinstance(tbl, dict):
+        out={}
+    elif isinstance(tbl, list):
+        out=[None]*len(tbl)
+        for i , v in enumerate(tbl):
+            if isinstance(v, float):
+                if v.is_integer():
+                    out[i]=int(v)
+                    continue
+            out[i]=convertFloatTableToInt(v)
+        return out
+    elif isinstance(tbl, float) and tbl.is_integer():
+        return int(tbl)
+    else:
+        return tbl
+
+    for k , v in tbl.items():
+        if isinstance(k, float):
+            if k.is_integer():
+                out[int(k)]=convertFloatTableToInt(v)
+                continue
+        out[k]=convertFloatTableToInt(v)
+    return out
+
+def printVec(v):
+    print('lua.vec(np.'+ np.array_repr(v.ref())+')')
+mlib.VRMLloader.findBone=mlib.VRMLloader.getBoneByName
+def tempFunc(self, n):
+    pn=self.size()
+    self.resize(max(n,pn))
+    self.resize(pn)
+mlib.intvectorn.reserve=tempFunc
+
+def tempFunc(self,value):
+    indices=mlib.intvectorn()
+    indices.findIndex(self, value)
+    out=mlib.boolN(self.size())
+    for i in range(indices.size()):
+        out.set(indices(i), True)
+    return out
+mlib.intvectorn.getMask=tempFunc
+
+def tempFunc(self, w_id, items):
+    self.create("Choice", w_id,'', 0)
+    self.widget(0).menuSize(len(items))
+    for i in range(len(items)):
+        self.widget(0).menuItem(i, items[i])
+    self.widget(0).menuValue(0)
+mlib.FlLayout.addMenu=tempFunc
+def tempFunc(self):
+    return self.ref().copy()
+mlib.vectorn.numpy=tempFunc
+mlib.matrixn.numpy=tempFunc
+mlib.vector3.numpy=tempFunc
+mlib.quater.numpy=tempFunc
+mlib.vector3N.numpy=tempFunc
+mlib.quaterN.numpy=tempFunc
+mlib.Tensor.numpy=tempFunc
+
+def tempFunc(self, fcn, *args):
+    return M(self, fcn, *args)
+
+mlib.LuaScript.__call__=tempFunc
+mlib.ThreadScriptPool.__call__=tempFunc
+
+del tempFunc
+
+# dict + list. see testTable.py
+class Table(dict):
+    def __init__(self,*args, **kwargs):
+        for key in kwargs:
+            self[key]=kwargs[key]
+        if len(args)>0:
+            self.__list=list(args)
+
+    def __getattr__(self, key):
+        if key in self:
+            return self[key]
+        return None
+    def __setattr__(self, key, value):
+        self[key]=value
+    def __call__(self, key):
+        return self.__list[key-1]  # 1-indexing
+    def set(self, i, v):
+        self.__list[i-1]=v  # 1-indexing
+
+    def get_array(self):
+        return self.__list
+
+    def set_array(self, new_value):
+        self.__list = new_value
+
+    def del_array(self):
+        del self.__list
+    def __repr__(self):
+        out='L('
+        if self.array is not None and len(self.array)>0:
+            out+=list.__repr__(self.array)[1:-1]+', '
+        for k, v in self.items():
+            if k=='_Table__list' :
+                pass
+            else:
+                out+=f"{k}={v}, "
+        out+=')'
+        return out
+
+
+    array = property(get_array, set_array, del_array, "This is an array property")

@@ -27,6 +27,34 @@ vector3N vector3N::operator*(m_real s) const
 		out[i]*=s;
 	return out;
 }
+vector3N vector3N::operator+(vector3N const& s) const
+{
+	vector3N out=*this;
+	for(int i=0; i<out.size(); i++)
+		out[i]+=s[i];
+	return out;
+}
+vector3N vector3N::operator+(vector3 const& s) const
+{
+	vector3N out=*this;
+	for(int i=0; i<out.size(); i++)
+		out[i]+=s;
+	return out;
+}
+vector3N vector3N::operator-(vector3N const& s) const
+{
+	vector3N out=*this;
+	for(int i=0; i<out.size(); i++)
+		out[i]-=s[i];
+	return out;
+}
+vector3N vector3N::operator-(vector3 const& s) const
+{
+	vector3N out=*this;
+	for(int i=0; i<out.size(); i++)
+		out[i]-=s;
+	return out;
+}
 
 
 vector3N::vector3N()

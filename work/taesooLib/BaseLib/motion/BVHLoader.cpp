@@ -323,8 +323,9 @@ void BVHLoader::loadAnimation(Motion& mot, const char* filename) const
 		cBVHIP.Unpack(&file);
 		((BVHLoader*)this)->MakePositionIPfromBVHIP(mot, cBVHIP);
 		
-		if(file.getToken()!="")
-			printf("EOF warning\n");
+		//token=file.getToken();
+		//if(token!="")
+		//	printf("EOF warning\n");
 	}
 	else
 		MotionLoader::loadAnimation(mot, filename);

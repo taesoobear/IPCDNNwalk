@@ -1,3 +1,4 @@
+#ifdef INCLUDE_LOADER
 #include "stdafx.h"
 #ifndef NO_GUI
 #include "Loader.h"
@@ -361,6 +362,10 @@ void Loader::onCallback(Fl_Widget* pWidget, int userData)
 
 void Loader::calcInterCon()
 {
+	calcInterCon(mTargetMotion);
+}
+void Loader::calcInterCon(Motion* mTargetMotion)
+{
 	mTargetMotion->CalcInterFrameDifference();
 	constraintAutomaticMarking(*mTargetMotion);
 	if(mTargetMotion2 && mTargetMotion2->numFrames())
@@ -621,11 +626,11 @@ void Loader::constraintAutomaticMarking(Motion& mot)
 #ifdef USE_LUABIND
 	L.setVal<const char*>("motionId", mot.GetIdentifier());
 #else
-	lunaStack l(L.L);
-	l<<"motionId"<<mot.GetIdentifier() ;
-	l.settable();
+	TString temp;
+	temp.format("motionId=\"%s\"", mot.GetIdentifier());
+	L.dostring(temp);
 #endif
-	L.dofile("../resource/constraint.lua");
+	L.dofile("../Resource/constraint.lua");
 
 	double toe_height_thr;
 	double toe_speed_thr;
@@ -638,22 +643,17 @@ void Loader::constraintAutomaticMarking(Motion& mot)
 	int reducecon;
 	bool bIKtest;
 
-#ifdef USE_LUABIND
-	L.getVal<double>( "toe_height_thr", toe_height_thr);
-	L.getVal<double>( "toe_speed_thr", toe_speed_thr);
-	L.getVal<double>( "heel_height_thr", heel_height_thr);
-	L.getVal<double>( "heel_speed_thr",heel_speed_thr);
-	L.getVal<int>( "howToChooseConstraint", eHowToChooseConstraint);
-	L.getVal<int>( "cleanup", bCleanup);
-	L.getVal<int>(  "fillGap", bFillGap);
+	toe_height_thr=L.getDouble( "toe_height_thr" );
+	toe_speed_thr=L.getDouble( "toe_speed_thr" );
+	heel_height_thr=L.getDouble( "heel_height_thr" );
+	heel_speed_thr=L.getDouble( "heel_speed_thr");
+	eHowToChooseConstraint=L.getInt( "howToChooseConstraint" );
+	bCleanup=L.getBool( "cleanup");
+	bFillGap=L.getBool(  "fillGap");
 
-	L.getVal<int>(  "minConDuration", mincon);
-	L.getVal<int>(  "reduceCon", reducecon);
-	L.getVal<bool>("checkIKPossible", bIKtest);
-#else
-
-	assert(false);
-#endif
+	mincon=L.getInt(  "minConDuration");
+	reducecon=L.getInt(  "reduceCon" );
+	bIKtest=L.getBool("checkIKPossible");
 
 
 	MotionUtil::ConstraintMarking cm(&mot, bCleanup, bFillGap, mincon, reducecon);
@@ -746,4 +746,5 @@ void Loader::constraintAutomaticMarking(Motion& mot)
 	}
 }
 
+#endif
 #endif

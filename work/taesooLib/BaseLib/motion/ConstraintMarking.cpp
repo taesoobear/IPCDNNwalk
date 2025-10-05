@@ -437,6 +437,7 @@ void ConstraintMarking::calcConstraintPos(int constraint)
 			}
 
 			// fill gap (linearly blend constraint positions inbetween constrained frames.)
+			if (numConGrp>0)
 			for(int grp=0; grp<=numConGrp; grp++)
 			{
 				int prevEnd, nextStart;

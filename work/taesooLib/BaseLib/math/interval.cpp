@@ -21,21 +21,18 @@ bool interval::isInside(m_real value) const
 	return true;
 }
 
-/*
-ostream& operator<<( ostream& os, interval const& a )
+std::ostream& operator<<( std::ostream& os, interval const& a )
 {
-    os << "[ " << a.m_start << " , " << a.end << " ]";
+    os << "[ " << a.m_start << " , " << a.end_pt() << " ]";
     return os;
 }
 
-istream& operator>>( istream& is, interval& a )
+std::istream& operator>>( std::istream& is, interval& a )
 {
 	static char	buf[256];
-    //is >> "[" >> a.m_start >> "," >> a.end >> "]";
-	is >> buf >> a.m_start >> buf >> a.end >> buf;
+	is >> a.m_start >> a.end() ;
     return is;
 }
-*/
 interval operator-( interval const& a )
 {
     return interval( -a.m_end, -a.m_start );

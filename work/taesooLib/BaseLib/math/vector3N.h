@@ -54,6 +54,10 @@ public:
 	}
 
 	vector3N operator*(m_real) const;
+	vector3N operator+(vector3N const&) const;
+	vector3N operator+(vector3 const&) const;
+	vector3N operator-(vector3N const&) const;
+	vector3N operator-(vector3 const&) const;
 
 	// void derivative(const vector3N& other);
 

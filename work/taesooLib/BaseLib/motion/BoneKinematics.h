@@ -112,6 +112,8 @@ public:
 
 	MotionLoader const& getSkeleton() const		{return *m_skeleton;}
 
+	void getPoseFromLocal(Posture& pose) const;
+	inline Posture getPose() { Posture pose; getPoseFromLocal(pose); return pose;}
 	// read operations
 	inline matrix4 const& local(int i) const			{ return m_local2[i];}
 	matrix4 const& local(const Bone& bone) const;

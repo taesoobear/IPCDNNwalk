@@ -62,6 +62,17 @@ function FBXloader:_bakeBindPose()
 
 	self.fbx=nil -- disconnect from the original fbx file.
 end
+
+-- slow so please export using output_loader:exportBinary('aaa.fbx.wrl.dat')
+function FBXloader:toVRMLloader(totalMass, nConvex)
+	require("Kinematics/meshTools")
+	nConvex = nConvex or 6
+	local fbx_info=self:createSkinningInfo()
+	local temp=SkinToWRL(fbx_info, { maxConvex= nConvex })
+	temp.skel:setTotalMass(totalMass)
+	return temp.skel
+end
+
 function FBXloader:_bindPoseUpdated()
 	local loader=self.loader
 	for i,meshInfo in ipairs(self.fbxInfo) do
@@ -299,6 +310,30 @@ function FBXloader:genSkelTable(fbx, options)
 					rootTF.rotation:assign(jointori(i))
 					rootTF.translation:assign(jointpos(i))
 				else
+					local function findParent(bones, i)
+						for j=1, #bones do
+							local bone=bones[j]
+							if bone.children then
+								for k, child in ipairs(bone.children) do
+									if child.name==bones[i].name then
+										return bone,k
+									end
+								end
+							end
+						end
+						return nil
+					end
+					local pbone, cindex=findParent(bones, i)
+					if pbone and #pbone.children>1 then
+						-- strange. let's move children to the new rootbone
+						for k, child in ipairs(pbone.children) do
+							if k~=cindex then
+								assert(child.name~=_root_bone_name)
+								table.insert(bones[i].children, child)
+							end
+						end
+					end
+					
 					targetIndex= FBXloader.changeRoot(tbl, bones, i, targetIndex)
 					rootTF.rotation:assign(jointori(i-1))
 					rootTF.translation:assign(jointpos(i-1))
@@ -369,6 +404,8 @@ function FBXloader:scale(scaleFactor)
 	local function scalePose(pose,sf)
 		pose.translations(0):scale(sf)
 	end
+	local pose=self.loader:pose()
+	scalePose(pose, scaleFactor)
 	scalePose(self.bindpose, scaleFactor)
 	if self.currentPose~=self.bindpose then
 		scalePose(self.currentPose, scaleFactor)
@@ -387,10 +424,12 @@ function FBXloader:scale(scaleFactor)
 			skin:localPos(i):matView():assign(skin:localPos(i):matView()*scaleFactor)
 		end
 	end
-	self.loader:setPose(self.currentPose)
+	--self.loader:setPose(self.currentPose)
+	self.loader:setPose(pose) -- 이유는 기억안나는데 loader.pose() != self.currentPose
 end
 
 function FBXloader:scaleSubtree(ibone, scaleFactor)
+	local pose=self.loader:pose()
 	if ibone==1 then
 		self:scale(scaleFactor)
 	else
@@ -418,6 +457,7 @@ function FBXloader:scaleSubtree(ibone, scaleFactor)
 			end
 		end
 	end
+	self.loader:setPose(pose)
 end
 function FBXloader:scaleBone(ibone, scaleFactor)
 	local b=self.loader:bone(ibone)
@@ -617,7 +657,7 @@ function FBXloader:_getAnim(ianim, loader, motion)
 			motion:initEmpty(loader, nkey, frameTime)
 			if ilimb~=0 then
 				assert(ilimb==1)
-				local traj0, keytime0=unpack(trajCache[0])
+				local keytime0, traj0=unpack(trajCache[0])
 				for j=0, nkey-1 do
 					local tf0=getTF(traj0,j)
 					local tf=tf0*getTF(traj,j)
@@ -860,7 +900,7 @@ function FBXloader:exportBinary(fn)
 	assert(string.sub(fn,-8)=='.fbx.dat')
 	local s= util.BinaryFile()
 	s:openWrite(fn, true) 
-	s:packInt(0) -- version
+	s:packInt(1) -- version
 	s:_pack(self.loader)
 	if self.rigidBody then
 		s:packInt(1)
@@ -887,11 +927,12 @@ function FBXloader:exportBinary(fn)
 	s:_pack(self.currentPose)
 	s:_pack(self.loader:pose())
 	s:pack(self.bindpose_global)
+	self.loader.mMotion:_pack(s,5) -- mot version5
 	s:close()
 end
 function FBXloader:__unpackBinary(s, filename)
 	local version=s:unpackInt() -- version
-	assert(version==0)
+	assert(version==0 or version==1)
 	self.loader=MotionLoader()
 	s:_unpack(self.loader)
 	self.fbx={}
@@ -912,10 +953,39 @@ function FBXloader:__unpackBinary(s, filename)
 	self.loader:setPose(cpose2)
 	self.bindpose_global=quaterN()
 	s:unpack(self.bindpose_global)
+	if version==1 then
+		self.loader.mMotion:initSkeleton(self.loader)
+		local tid=s:unpackInt()
+		assert(tid==12) -- postureip
+		self.loader.mMotion:_unpack(s, 5) -- mot version 5
+	end
 
 	self.uid=RE.generateUniqueName()
 	for i, meshInfo in ipairs(self.fbxInfo) do
+		print('texture', filename)
 		self:_loadTexture(meshInfo, filename)
+	end
+	self.textureLoaded=false -- not loaded into the gpu yet.
+end
+function FBXloader:_loadAllTextures()
+	self.textureLoaded=true
+	for i, meshInfo in ipairs(self.fbxInfo) do
+		if RE.ogreSceneManager() and meshInfo.diffuseTexture then
+			local image=meshInfo.image
+			if RE.renderer().createMaterial then
+				-- latest taesooLib
+				meshInfo.material=self.uid..meshInfo.diffuseTexture
+				if image then
+					RE.renderer():createDynamicTexture(self.uid..meshInfo.diffuseTexture,image , meshInfo.diffuseColor, meshInfo.specularColor, meshInfo.shininess or 10)
+				else
+					RE.renderer():createMaterial(self.uid..meshInfo.diffuseTexture, meshInfo.diffuseColor, meshInfo.specularColor, meshInfo.shininess or 10)
+				end
+			elseif image then
+				RE.renderer():createDynamicTexture(self.uid..meshInfo.diffuseTexture,image , meshInfo.diffuseColor, meshInfo.specularColor)
+				meshInfo.material=self.uid..meshInfo.diffuseTexture
+				print("Error! cannot load "..meshInfo.diffuseTexture)
+			end
+		end
 	end
 end
 function FBXloader:_setBindPose(mloader)
@@ -978,19 +1048,7 @@ function FBXloader:_loadTexture(meshInfo,filename)
 				image:Load(diffuseTexture)
 			end
 		end
-		if RE.renderer().createMaterial then
-			-- latest taesooLib
-			meshInfo.material=self.uid..meshInfo.diffuseTexture
-			if image then
-				RE.renderer():createDynamicTexture(self.uid..meshInfo.diffuseTexture,image , meshInfo.diffuseColor, meshInfo.specularColor, meshInfo.shininess or 10)
-			else
-				RE.renderer():createMaterial(self.uid..meshInfo.diffuseTexture, meshInfo.diffuseColor, meshInfo.specularColor, meshInfo.shininess or 10)
-			end
-		elseif image then
-			RE.renderer():createDynamicTexture(self.uid..meshInfo.diffuseTexture,image , meshInfo.diffuseColor, meshInfo.specularColor)
-			meshInfo.material=self.uid..meshInfo.diffuseTexture
-			print("Error! cannot load "..meshInfo.diffuseTexture)
-		end
+		meshInfo.image=image
 	end
 end
 function FBXloader.getIndexMap(loader_i, loader)
@@ -1037,6 +1095,7 @@ function FBXloader:__init(filename, options)
 		self:_postprocessOptions(filename, options)
 		return 
 	end
+	assert(os.isFileExist(filename))
 	local fbx=util.FBXimporter(filename)
 
 	self.fbx=fbx
@@ -1115,6 +1174,9 @@ function FBXloader:__init(filename, options)
 			local origTreeIndex=ti(i)+1
 			invMap[origTreeIndex]=treeIndex
 		end
+		if invMap[1]==nil then
+			invMap[1]=1 
+		end
 		local originalBones, pid=unpack(self.wrlInfo.originalBones)
 		local nameToOrigTreeIndex={}
 		for i=0, originalBones:size()-1 do
@@ -1190,6 +1252,9 @@ function FBXloader:__init(filename, options)
 		for i=0, mesh_count-1 do
 			meshList[i+1]=i
 		end
+	end
+	if mesh_count==0 then
+		meshList={}
 	end
 	local fbxInfo={}
 	for ilist, i in ipairs(meshList) do
@@ -1311,6 +1376,36 @@ function FBXloader:__init(filename, options)
 			end
 		end
 
+		-- todo: options.simplifyMesh
+		if options.simplifyMesh then
+			local reduceFraction=0.5
+			local agressiveness=7.0
+			if type(options.simplifyMesh)=='table' then
+				reduceFraction=options.simplifyMesh.reduceFraction
+				agressiveness=options.simplifyMesh.agressiveness
+			end
+			local nv=skin:numVertex()
+			local weights=CT.zeros(nv, loader:numBone())
+			for vi=0, nv-1 do
+				local indices=skin:treeIndices(vi)
+				weights:row(vi):setAt(indices, skin:weights(vi))
+			end
+			local mesh2=Mesh()
+			local weights2=matrixn()
+			local succeeded=meshInfo[1]:simplify(mesh2, weights, weights2, reduceFraction, agressiveness)
+
+			if succeeded then
+				meshInfo[1]=mesh2
+				skin:resize(weights2:rows())
+				local nv=weights2:rows()
+				for i=0, nv-1 do
+					local values=weights2:row(i):extractNonZeroValues(skin:treeIndices(i))
+					assert(values:sum()>0.9)
+					skin:weights(i):assign(values)
+				end
+				mesh=mesh2
+			end
+		end
 
 		local bindpose_global=quaterN(loader:numBone())
 		for i=1, loader:numBone()-1 do
@@ -1400,6 +1495,13 @@ function FBXloader:_postprocessOptions(filename,options)
 	if options.scale then
 		self:scale(options.scale)
 	end
+	if options.boneScale then
+		for k, v in pairs(options.boneScale) do
+			local ibone=self.loader:getTreeIndexByName(k)
+			assert(ibone~=-1)
+			self:scaleSubtree(ibone, v)
+		end
+	end
 	if options.currentPoseAsIdentity then
 		self:setCurPoseAsInitialPose()
 	end
@@ -1409,7 +1511,10 @@ function FBXloader:_postprocessOptions(filename,options)
 	if options.cacheCollisionMesh then
 		if type(options.cacheCollisionMesh )=='string' then
 			assert( type(filename)=='string' )
-			assert(options.cacheCollisionMesh :sub(-10,-2)=='.colcache')
+			assert(
+			options.cacheCollisionMesh :sub(-10,-2)=='.colcache' or 
+			options.cacheCollisionMesh :sub(-11,-3)=='.colcache' 
+			)
 			assert(tonumber(options.cacheCollisionMesh :sub(-1))~=nil)
 			self.cacheCollisionMesh=filename..options.cacheCollisionMesh 
 		elseif type(filename)=='string' then
@@ -1552,6 +1657,9 @@ function FBXloader.Skin:__init(fbxloader, option)
 	self.scale=vector3(1,1,1)
 	self.fbx=fbxloader
 	self.fkSolver=fbxloader.loader:fkSolver():copy()
+	if not fbxloader.fbxInfo then
+		option.drawSkeleton=true
+	end
 	if option.drawSkeleton then
 		self.skelSkin=RE.createSkin(fbxloader.loader, PLDPrimSkin.LINE)
 		self.skelSkin:setPose(fbxloader.loader:pose())
@@ -1560,9 +1668,12 @@ function FBXloader.Skin:__init(fbxloader, option)
 
 	self.nodes={}
 	self.ME={}
-	if not RE.ogreSceneManager() then return end
 
+	if not fbxloader.fbxInfo then
+		return
+	end
 	for i, meshInfo in ipairs(fbxloader.fbxInfo) do
+		local node, meshToEntity, entity
 		if RE.ogreSceneManager() then
 			local mesh=meshInfo[1]
 
@@ -1582,34 +1693,36 @@ function FBXloader.Skin:__init(fbxloader, option)
 				useColor=true
 			end
 			-- scale 100 for rendering 
-			local meshToEntity=MeshToEntity(mesh, self.uid..'meshName'..i, buildEdgeList, dynamicUpdate, useNormal, useTexCoord, useColor)
+			meshToEntity=MeshToEntity(mesh, self.uid..'meshName'..i, buildEdgeList, dynamicUpdate, useNormal, useTexCoord, useColor)
 
 			self.ME[i]=meshToEntity
-		end
-		local meshToEntity=self.ME[i]
-		local entity=meshToEntity:createEntity('entityName'..self.uid..'_'..i )
-		--entity:setMaterialName('white')
-		if option.material then
-			entity:setMaterialName(option.material )
-		elseif meshInfo.material then
-			entity:setMaterialName(meshInfo.material )
+			meshToEntity=self.ME[i]
+			entity=meshToEntity:createEntity('entityName'..self.uid..'_'..i )
+			--entity:setMaterialName('white')
+			if option.material then
+				entity:setMaterialName(option.material )
+			elseif meshInfo.material then
+				entity:setMaterialName(meshInfo.material )
+			else
+				entity:setMaterialName('grey_transparent')
+			end
+			node=RE.createChildSceneNode(RE.ogreRootSceneNode(), self.uid..'_'..i)
+			if self.fbx.rigidBody then
+				local node2=RE.createChildSceneNode(node, self.uid..'__'..i)
+				node2:attachObject(entity)
+
+				if not self.nodes2 then
+					self.nodes2={}
+				end
+				self.nodes2[i]=node2
+			else
+				node:attachObject(entity)
+			end
 		else
-			entity:setMaterialName('grey_transparent')
+			node=Ogre.SceneNode()
 		end
-		local node=RE.createChildSceneNode(RE.ogreRootSceneNode(), self.uid..'_'..i)
 		self.nodes[i]= {node, vector3(0,0,0), vector3N()}
 
-		if self.fbx.rigidBody then
-			local node2=RE.createChildSceneNode(node, self.uid..'__'..i)
-			node2:attachObject(entity)
-
-			if not self.nodes2 then
-				self.nodes2={}
-			end
-			self.nodes2[i]=node2
-		else
-			node:attachObject(entity)
-		end
 	end
 	self:setPose(fbxloader.loader:pose())
 end
@@ -1697,12 +1810,20 @@ end
 -- poseconv=MotionUtil.PoseTransfer(mLoader, mLoader_orig, true)
 function FBXloader.Skin:setPoseTransfer(poseconv)
 	self.poseMap=poseconv
+	if poseconv.pt then
+		self.angleRetarget=poseconv
+		self.poseMap=poseconv.pt
+	end
 end
 function FBXloader.Skin:setPose(pose)
 	if self.poseMap then
-		self.poseMap:setTargetSkeleton(pose)
-		pose=Pose()
-		self.poseMap:target():getPose(pose)
+		if self.angleRetarget then
+			pose=self.angleRetarget(pose)
+		else
+			self.poseMap:setTargetSkeleton(pose)
+			pose=Pose()
+			self.poseMap:target():getPose(pose)
+		end
 	end
 	self.fkSolver:setPose(pose)
 	self:setSamePose(self.fkSolver)
@@ -1712,11 +1833,15 @@ function FBXloader.Skin:_setPose(pose, loader)
 end
 function FBXloader.Skin:setPoseDOF(pose)
 	if self.poseMap then
-		self.poseMap:source():setPoseDOF(pose)
-		pose=Pose()
-		self.poseMap:source():getPose(pose)
-		self.poseMap:setTargetSkeleton(pose)
-		self.poseMap:target():getPose(pose)
+		if self.angleRetarget then
+			pose=self.angleRetarget(pose)
+		else
+			self.poseMap:source():setPoseDOF(pose)
+			pose=Pose()
+			self.poseMap:source():getPose(pose)
+			self.poseMap:setTargetSkeleton(pose)
+			self.poseMap:target():getPose(pose)
+		end
 		self.fkSolver:setPose(pose)
 	else
 		self.fkSolver:setPoseDOF(pose)
@@ -1750,6 +1875,9 @@ function FBXloader.Skin:setSamePose(fk)
 		self.prevPose=currJointPos
 	end
 
+	if not fbxloader.fbxInfo then
+		return 
+	end
 	for i, meshInfo in ipairs(fbxloader.fbxInfo) do
 		local ME=self.ME[i]
 		local node=self.nodes[i]
@@ -1877,6 +2005,9 @@ function FBXloader.Skin:setTranslation(x,y,z)
 end
 
 function RE.createFBXskin(fbxloader, drawSkeleton)
+	if not fbxloader.textureLoaded then
+		fbxloader:_loadAllTextures()
+	end
 	if not fbxloader.loader then
 		return RE.createSkinAuto(fbxloader)
 	end
@@ -2148,9 +2279,9 @@ function FBXloader.AdjustableSkin:__init(fbxloader, option)
 
 	self.nodes={}
 	self.ME={}
-	if not RE.ogreSceneManager() then return end
 
 	for i, meshInfo in ipairs(fbxloader.fbxInfo) do
+		local meshToEntity, entity, node
 		if RE.ogreSceneManager() then
 			local mesh=meshInfo[1]
 
@@ -2170,34 +2301,35 @@ function FBXloader.AdjustableSkin:__init(fbxloader, option)
 				useColor=true
 			end
 			-- scale 100 for rendering 
-			local meshToEntity=MeshToEntity(mesh, self.uid..'meshName'..i, buildEdgeList, dynamicUpdate, useNormal, useTexCoord, useColor)
+			meshToEntity=MeshToEntity(mesh, self.uid..'meshName'..i, buildEdgeList, dynamicUpdate, useNormal, useTexCoord, useColor)
 
 			self.ME[i]=meshToEntity
-		end
-		local meshToEntity=self.ME[i]
-		local entity=meshToEntity:createEntity('entityName'..self.uid..'_'..i )
-		--entity:setMaterialName('white')
-		if option.material then
-			entity:setMaterialName(option.material )
-		elseif meshInfo.material then
-			entity:setMaterialName(meshInfo.material )
+			entity=meshToEntity:createEntity('entityName'..self.uid..'_'..i )
+			--entity:setMaterialName('white')
+			if option.material then
+				entity:setMaterialName(option.material )
+			elseif meshInfo.material then
+				entity:setMaterialName(meshInfo.material )
+			else
+				entity:setMaterialName('grey_transparent')
+			end
+			node=RE.createChildSceneNode(RE.ogreRootSceneNode(), self.uid..'_'..i)
+			if self.fbx.rigidBody then
+				local node2=RE.createChildSceneNode(node, self.uid..'__'..i)
+				node2:attachObject(entity)
+
+				if not self.nodes2 then
+					self.nodes2={}
+				end
+				self.nodes2[i]=node2
+			else
+				node:attachObject(entity)
+			end
 		else
-			entity:setMaterialName('grey_transparent')
+			node=Ogre.SceneNode()
 		end
-		local node=RE.createChildSceneNode(RE.ogreRootSceneNode(), self.uid..'_'..i)
 		self.nodes[i]= {node, vector3(0,0,0), vector3N()}
 
-		if self.fbx.rigidBody then
-			local node2=RE.createChildSceneNode(node, self.uid..'__'..i)
-			node2:attachObject(entity)
-
-			if not self.nodes2 then
-				self.nodes2={}
-			end
-			self.nodes2[i]=node2
-		else
-			node:attachObject(entity)
-		end
 	end
 	self:setPose(fbxloader.loader:pose())
 end
@@ -2222,7 +2354,9 @@ function FBXloader.AdjustableSkin:_setLengthOnly(length_scale)
 		length_scale=CT.ones(self.poseMap:target():numBone())
 		local AtoB=self.poseMap.targetIndexAtoB
 		for i=1, AtoB:size()-1 do
-			length_scale:set(AtoB(i), length_scale_orig(i))
+			if AtoB(i)~=-1 then
+				length_scale:set(AtoB(i), length_scale_orig(i))
+			end
 		end
 	end
 	self.fkSolver:setLengthScale(length_scale)
@@ -2268,14 +2402,20 @@ function FBXloader.AdjustableSkin:setSamePose(fk)
 		mesh:transform(removeRootTrans)
 
 		local useNormal=mesh:numNormal()>0
-		ME:setBuildEdgeList(buildEdgeList)
+		if ME then
+			ME:setBuildEdgeList(buildEdgeList)
+		end
 
 		--ME:setBuildEdgeList(false)
 		if useNormal then
 			skin:calcVertexNormals(self.fkSolver, fbxloader:_getBindPoseGlobal(i), meshInfo.localNormal, mesh)
-			ME:updatePositionsAndNormals()
+			if ME then
+				ME:updatePositionsAndNormals()
+			end
 		else
-			ME:updatePositions()
+			if ME then
+				ME:updatePositions()
+			end
 		end
 		if mesh.getVertices then
 			mesh:getVertices(node[3]) -- backup current mesh pose

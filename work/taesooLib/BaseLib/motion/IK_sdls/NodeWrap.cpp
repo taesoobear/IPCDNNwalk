@@ -1268,6 +1268,7 @@ void IK_sdls::LoaderToTree::_init(MotionLoader& skeleton, std::vector<MotionUtil
 	USE_EULER_ROOT=useEulerRoot;
 	USE_FIXED_ROOTPOS=useFixedRootPos;
 	skeleton.UpdateInitialBone();
+	_originalLoader=&skeleton;
 
 	/*
 	   아래 주석 처리된 코드와 유사한 내용이 리커시브하게 수행된다.

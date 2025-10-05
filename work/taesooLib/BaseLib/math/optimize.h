@@ -10,11 +10,6 @@
 #include "nr/nr.h"
 #else
 #include "Operator_NR.h"
-#endif
-
-#ifdef USE_NR
-
-#else
 typedef double  DP;
 typedef vectorn Vec_I_DP;
 typedef vectorn Vec_O_DP;

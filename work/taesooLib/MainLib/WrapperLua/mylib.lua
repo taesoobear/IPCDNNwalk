@@ -469,11 +469,16 @@ function dbg.console(msg, stackoffset)
 					print(output[2])
 				else
 					printTable(output[2]) 
-					io.write('keys:\t')
+					io.write('keys:  ')
 					local keys=table.keys(output[2])
+					local c=0
 					for i, v in ipairs(keys) do
-						io.write(v..', ')
+						if type(v)~='number' then
+							io.write(v..', ')
+							c=c+1
+						end
 					end
+					if c==0 then io.write('\b\b\b\b\b\b\b') end
 					print()
 				end
 			elseif output[2] then
@@ -1315,6 +1320,16 @@ function table.findKey(tbl, value)
 	end
 	return nil
 end
+function table.filterKeys(tbl, keypattern)
+	local out={}
+	for k, v in pairs(tbl) do
+		if select(1, string.find(k, keypattern)) then
+			table.insert(out, k)
+		end
+	end
+	return out
+end
+
 
 function array:pushBackIfNotExist(a)
 	for i, v in ipairs(self) do
@@ -1402,9 +1417,16 @@ function table.keys(tbl)
 	local kset={}
 	local n=0
 
+	local hasNonStrKey=false
 	for k,v in pairs(tbl) do
 		n=n+1
 		kset[n]=k
+		if type(k)~='string' then
+			hasNonStrKey=true
+		end
+	end
+	if not hasNonStrKey then
+		table.sort(kset)
 	end
 	return kset
 end
@@ -2003,6 +2025,7 @@ function copyTable(t)
 end
 
 function deepCopyTable(t)
+	if t==nil then return nil end
 	assert(type(t)=="table", "You must specify a table to copy")
 
 	local result={}
@@ -2097,6 +2120,59 @@ function os.print(t)
    end
 end
 
+function dbg.tostring(tbl)
+	if type(tbl)=='table' then 
+		local mtbl=getmetatable(tbl) 
+		if mtbl and mtbl.__tostring then
+			print(tbl)
+		else
+			local out={}
+			local function packValue(v)
+				local tv=type(v)
+				if tv=="number" or tv=="boolean" then
+					return tostring(v)
+				elseif tv=="string" then
+					v=string.gsub(v, '"', '\\"')
+					return '"'..tostring(v)..'"'
+				elseif tv=="table" then
+					return 'table'
+				else 
+					return tostring(v)
+				end
+			end
+			if mtbl then
+				table.insert(out,'LuaClass: {')
+			else
+				table.insert(out,'{')
+			end
+			for i,v in pairs(tbl) do
+				local line=packValue(v)..", "
+				if string.len(line)>100 then
+					table.insert(out,'\n   ['..i..']=     <'..line:sub(1,100)..'...>')
+				elseif string.len(line)>10 then
+					table.insert(out,'\n   ['..i..']=     '..line)
+				else
+					table.insert(out,'\n   ['..i..']='..line)
+				end
+			end
+			table.insert(out, '\n}\nkeys:\t')
+			local keys=table.keys(tbl)
+			for i, v in ipairs(keys) do
+				table.insert(out, v..', ')
+			end
+			if mtbl then
+				table.insert(out, '\n}\nlua methods:\t')
+				local keys=table.keys(mtbl)
+				for i, v in ipairs(keys) do
+					table.insert(out, v..', ')
+				end
+			end
+			return table.concat(out,'')
+		end
+	else
+		return tostring(tbl)
+	end
+end
 function dbg.print(...)
 	local arr={...}
 	for k,v in ipairs(arr) do

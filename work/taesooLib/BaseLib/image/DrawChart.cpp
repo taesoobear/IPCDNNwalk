@@ -96,7 +96,7 @@ void DrawChart::drawMatrix(matrixn const& matrix)
 	m_real max=matrix.maximum();
 	m_real min=matrix.minimum();
 
-	mpCanvas.DrawText(canvasX(mInterval[0].start()), AXISY+20, sz1::format("min, max %f %f", min, max));
+	mpCanvas.drawText(canvasX(mInterval[0].start()), AXISY+20, sz1::format("min, max %f %f", min, max));
 
 
 	if(min==max)
@@ -167,10 +167,10 @@ void DrawChart::drawScatteredData(matrixn const& matrix, CPixelRGB8 color, char*
 
 void DrawChart::save(const char* filename)
 {
-	mpCanvas.DrawText(0, canvasY(mInterval[1].start()), sz1::format("%f", mInterval[1].start()));
-	mpCanvas.DrawText(0, canvasY(mInterval[1].end()), sz1::format("%f", mInterval[1].end()));
-	mpCanvas.DrawText( canvasX(mInterval[0].start()), AXISY+10, sz1::format("%f", mInterval[0].start()));
-	mpCanvas.DrawText( canvasX(mInterval[0].end()), AXISY+10, sz1::format("%f", mInterval[0].end()));
+	mpCanvas.drawText(0, canvasY(mInterval[1].start()), sz1::format("%f", mInterval[1].start()));
+	mpCanvas.drawText(0, canvasY(mInterval[1].end()), sz1::format("%f", mInterval[1].end()));
+	mpCanvas.drawText( canvasX(mInterval[0].start()), AXISY+10, sz1::format("%f", mInterval[0].start()));
+	mpCanvas.drawText( canvasX(mInterval[0].end()), AXISY+10, sz1::format("%f", mInterval[0].end()));
 
 	mpImage->Save(filename);
 }

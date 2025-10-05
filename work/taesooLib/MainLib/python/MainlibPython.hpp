@@ -9,6 +9,7 @@
 #include "../../BaseLib/math/hyperMatrixN.h"
 #include "../../BaseLib/math/conversion.h"
 #include "../../BaseLib/math/BSpline.h"
+#include "../../BaseLib/image/ImagePixel.h"
 #include "../../BaseLib/motion/VRMLloader.h"
 #include "../../BaseLib/motion/viewpoint.h"
 #include "../../BaseLib/motion/FullbodyIK_MotionDOF.h"
@@ -19,6 +20,7 @@
 #include "../../MainLib/OgreFltk/RE.h"
 #include "../../MainLib/OgreFltk/Mesh.h"
 #include "../../MainLib/OgreFltk/FltkAddon.h"
+#include "../../MainLib/OgreFltk/FltkScrollPanel.h"
 #include "../../MainLib/OgreFltk/FltkMotionWindow.h"
 #include "../../MainLib/OgreFltk/FlLayout.h"
 #include "../../MainLib/OgreFltk/VRMLloader.h"
@@ -30,6 +32,7 @@
 #include "../../PhysicsLib/luna_physics.h"
 #include "../../MainLib/WrapperLua/mainliblua_wrap.h"
 #include "../../BaseLib/motion/Terrain.h"
+#include "../../MainLib/Ogre/intersectionTest.h"
 #include "../../BaseLib/motion/MotionUtil.h"
 #include "../../BaseLib/motion/LimbIKsolver.h"
 #include "../../BaseLib/motion/LimbIKsolver2.h"
@@ -39,6 +42,8 @@
 #include "../../BaseLib/motion/Liegroup.h"
 #include "../../BaseLib/math/Operator.h"
 #include "../../PhysicsLib/physicsLib.h"
+#include "../../PhysicsLib/physicsLib.h"
+#include "../../ClassificationLib/motion/Locomotion/vehicle.h"
 #define EXCLUDE_UT_SIM
 #define EXCLUDE_AIST_SIM
 #ifndef EXCLUDE_UT_SIM
@@ -107,6 +112,7 @@ void VRMLloader_checkMass(VRMLloader& l);
 
 using namespace pybind11;
 #include <pybind11/operators.h>
+#include <pybind11/numpy.h>
 
 #if PY_MAJOR_VERSION >= 3
 #define IS_PY3K
@@ -150,6 +156,8 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 #define OGRE_VOID(x)
 #define OGRE_PTR(x) return NULL
 #endif
+ // defined in main.cpp in the latest sample_python
+void _createMainWin(int w, int h, int rw, int rh, float UIscaleFactor, OgreRenderer* _renderer);
 void createMainWin(int, int, int ,int, float);
 void releaseMainWin();
 void _createInvisibleMainWin();
@@ -223,6 +231,25 @@ std::string toUpper(std::string const& in){
 	std::transform(str.begin(), str.end(),str.begin(), ::toupper);
 	return str;
 }
+		struct matrixn_
+		{
+			// does not copy memory.
+			static PyObject* ref(matrixn const& v)
+			{
+				npy_intp dims[2];
+				dims[0]=v.rows();
+				dims[1]=v.cols();
+				npy_intp strides[2];
+				strides[0]=sizeof(double)*v._getStride();
+				strides[1]=sizeof(double);
+				double* vv=&v[0][0];
+				PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 2, dims, strides, vv, 
+						//NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE
+						NPY_ARRAY_CARRAY | NPY_ARRAY_WRITEABLE
+						, NULL);
+				return o;
+			}
+		};
 
 
 #define RETURN_REFERENCE return_value_policy::reference
@@ -483,6 +510,7 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("viewUnlock", viewUnlock)
 		.def("getOgreVersionMinor", &RE::getOgreVersionMinor)
 		.def("buildEdgeList", &RE::buildEdgeList) // 1458
+		.def("_createMainWin", _createMainWin)
 		.def("createMainWin", createMainWin1)
 		.def("createMainWin", createMainWin2)
 		.def("releaseMainWin", releaseMainWin)
@@ -499,6 +527,7 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("clamp", [](double i, double a, double b){ return MIN(MAX(i,a), b);})
 		.def("clampMap", (m_real (*)(m_real t, m_real min, m_real max, m_real v1, m_real v2))&sop::clampMap) // 1458
 		.def("sigmoid", (m_real (*)(m_real x))&sop::sigmoid)          // 1458
+		.def("LUsolve", &m::LUsolve)
 		.def("ogreRootSceneNode", (Ogre ::SceneNode * (*)())&RE::ogreRootSceneNode, RETURN_REFERENCE) // 1446
 		.def("createFullbodyIk_LimbIK", (MotionUtil ::FullbodyIK * (*)(MotionLoader& skeleton, std::vector<MotionUtil::Effector>& effectors))&MotionUtil::createFullbodyIk_LimbIK, return_value_policy::reference) // 1463
 		.def("createFullbodyIk_MotionDOF_MultiTarget", (MotionUtil ::FullbodyIK_MotionDOF * (*)(MotionDOFinfo const& info, std::vector<MotionUtil::Effector>& effectors))&MotionUtil::createFullbodyIk_MotionDOF_MultiTarget, return_value_policy::reference) // 1463
@@ -529,6 +558,9 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("viewpoint", (Viewpoint * (*)(int))&RE_::getViewpoint, return_value_policy::reference) // 1465
 		.def("rendererValid", (bool (*)())&RE::rendererValid)        // 1446
 		.def("motionPanelValid", (bool (*)())&RE::motionPanelValid)  // 1446
+		.def("renderer", (OgreRenderer & (*)())&RE::renderer, return_value_policy::reference) // 1469
+		.def("_createRenderer", &RE::_createRenderer, return_value_policy::reference) // 1469
+		.def("FltkRenderer", (FltkRenderer & (*)())&RE::FltkRenderer, return_value_policy::reference) // 1469
 		.def("renderOneFrame", (bool (*)(bool check))&RE_::renderOneFrame) // 1446
 		.def("loadPose", (void (*)(Posture& pose, const char* fn))&::loadPose) // 1446
 		.def("savePose", (void (*)(Posture& pose, const char* fn))&::savePose) // 1446
@@ -542,6 +574,8 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("createChildSceneNode", (Ogre ::SceneNode * (*)(Ogre::SceneNode* parent, const char* child_name))&RE::createChildSceneNode, RETURN_REFERENCE) // 1446
 		.def("generateUniqueName", []()->std::string{
 				return std::string(RE::generateUniqueName().ptr());})
+		.def("taesooLibPath", &RE::taesooLibPath)
+		.def("setTaesooLibPath", &RE::setTaesooLibPath)
 		;
 
 	/////////////////////////////////////////////////////////////////
@@ -559,20 +593,13 @@ PYBIND11_MODULE(libmainlib, mainlib)
 	class_<vector3>(mainlib, "vector3")
 		.def(init<>())
 		.def(init<m_real, m_real, m_real>())
+		.def(init<m_real>())
 		.def_readwrite("x", &vector3::x)
 		.def_readwrite("y", &vector3::y)
 		.def_readwrite("z", &vector3::z)
-		.def("ref",  [](vector3 const& v){ 
-				npy_intp dims[1];
-				dims[0]=3;
-				npy_intp strides[1];
-				strides[0]=sizeof(double);
-				double* vv=const_cast<double*>(&v.x);
-				PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 1, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE , NULL);
-				return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
-				})
+		.def_property_readonly("array",[](vector3 const& v){ npy_intp dims[1]; dims[0]=3; npy_intp strides[1]; strides[0]=sizeof(double); double* vv=const_cast<double*>(&v.x); PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 1, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE , NULL); return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+		.def("ref",  [](vector3 const& v){ npy_intp dims[1]; dims[0]=3; npy_intp strides[1]; strides[0]=sizeof(double); double* vv=const_cast<double*>(&v.x); PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 1, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE , NULL); return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 		.def("copy", [](vector3 const&v )->vector3 *{ return new vector3(v);}, TAKE_OWNERSHIP )
-		.def("assign", (&vector3::operator=))
 		.def("add", (void (vector3::*)(const vector3&, const vector3&) )&vector3::add)
 		.def("__repr__", &vector3_output)
 		.def("sub", sub1)
@@ -621,7 +648,11 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def(quater()*self)
 		.def("dotProduct", (double (vector3::*)(vector3 const& b))&vector3::operator%) // 1460
 		.def("set", (void (vector3::*)(double ,double, double))&vector3::setValue) // 1460
+		.def("set", [](vector3& v, int i, double vv){ v[i]=vv;})
+		.def("__call__", [](vector3& v, int i)->double { return v[i];})
 	;
+
+	
 	{
 		struct vector2_wrap
 		{
@@ -635,15 +666,8 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def(init<m_real, m_real>())
 			.def_property("x", &vector2_wrap::getX, &vector2_wrap::setX)
 			.def_property("y", &vector2_wrap::getY, &vector2_wrap::setY)
-			.def("ref",  [](vector2 const& v){ 
-					npy_intp dims[1];
-					dims[0]=2;
-					npy_intp strides[1];
-					strides[0]=sizeof(double);
-					double* vv=const_cast<double*>(&v.x());
-					PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 1, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE , NULL);
-					return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
-					})
+			.def_property_readonly("array",[](vector2 const& v){ npy_intp dims[1]; dims[0]=2; npy_intp strides[1]; strides[0]=sizeof(double); double* vv=const_cast<double*>(&v.x()); PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 1, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE , NULL); return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def("ref",  [](vector2 const& v){ npy_intp dims[1]; dims[0]=2; npy_intp strides[1]; strides[0]=sizeof(double); double* vv=const_cast<double*>(&v.x()); PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 1, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE , NULL); return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 			.def("copy", [](vector2 const&v )->vector2 *{ return new vector2(v);}, TAKE_OWNERSHIP )
 			.def("assign", [](vector2& l, WRAP_PY::list ll){
 					if(len(ll)!=2) throw std::range_error("vector2_assign");
@@ -706,6 +730,10 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		{
 			q.setRotation(aChannel, euler);
 		}
+		static void setRotation2(quater &q, const char* aChannel, vector3 & euler, bool bRightToLeft)
+		{
+			q.setRotation(aChannel, euler, bRightToLeft);
+		}
 		static void getRotation(quater const&q, const char* aChannel, vector3 & euler)
 		{
 			q.getRotation(aChannel, euler);
@@ -740,15 +768,11 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def_readwrite("y", &quater::y)
 		.def_readwrite("z", &quater::z)
 		.def_readwrite("w", &quater::w)
-		.def("ref",  [](quater const& v){ 
-				npy_intp dims[1];
-				dims[0]=4;
-				npy_intp strides[1];
-				strides[0]=sizeof(double);
-				double* vv=const_cast<double*>(&v.w);
-				PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 1, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE , NULL);
-				return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
-				})
+		.def("__call__", [](quater& v, int i)->double { return v[i];})
+		.def("set", [](quater& v, int i, double vv){ v[i]=vv;})
+		.def_property_readonly("array",  [](quater const& v){ npy_intp dims[1]; dims[0]=4; npy_intp strides[1]; strides[0]=sizeof(double); double* vv=const_cast<double*>(&v.w); PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 1, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE , NULL); return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+		.def("ref",  [](quater const& v){ npy_intp dims[1]; dims[0]=4; npy_intp strides[1]; strides[0]=sizeof(double); double* vv=const_cast<double*>(&v.w); PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 1, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE , NULL); return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
 		.def("copy", [](quater const&v )->quater *{ return new quater(v);}, TAKE_OWNERSHIP )
 		.def("getFrameAxis", &quater::getFrameAxis) // 1445
 		.def("setFrameAxesYZ", &quater::setFrameAxesYZ) // 1445
@@ -795,6 +819,7 @@ PYBIND11_MODULE(libmainlib, mainlib)
 ::rotate) // 1458
 		.def("setRotation", (void (*)(quater &q, const char* aChannel, vector3 & euler))&__pybindgen___quater_wrapper
 ::setRotation) // 1458
+		.def("setRotation", &__pybindgen___quater_wrapper ::setRotation2) // 1458
 		.def("getRotation", (void (*)(quater const&q, const char* aChannel, vector3 & euler))&__pybindgen___quater_wrapper
 ::getRotation) // 1458
 		.def("getRotation", (vector3 (*)(quater const&q, const char* aChannel))&__pybindgen___quater_wrapper
@@ -851,6 +876,69 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("twist_nonlinear",&Liegroup ::twist_nonlinear)
 			;
 	}
+	{
+		struct matrix3_
+		{
+			// does not copy memory.
+			static PyObject* ref(matrix3 const& v)
+			{
+				npy_intp dims[2];
+				dims[0]=3;
+				dims[1]=3;
+				npy_intp strides[2];
+				strides[0]=sizeof(double)*3;
+				strides[1]=sizeof(double);
+				double* vv=(double*)&v._11;
+				PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 2, dims, strides, vv, 
+						//NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE
+						NPY_ARRAY_CARRAY | NPY_ARRAY_WRITEABLE
+						, NULL);
+				return o;
+			}
+			// does not copy memory.
+			static PyObject* ref1D(matrix3 const& v)
+			{
+				npy_intp dims[1];
+				dims[0]=9;
+				npy_intp strides[1];
+				strides[0]=sizeof(double);
+				double* vv=(double*)&v._11;
+				PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 1, dims, strides, vv, 
+						//NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE
+						NPY_ARRAY_CARRAY | NPY_ARRAY_WRITEABLE
+						, NULL);
+				return o;
+			}
+		};
+		
+		class_<matrix3 > (mainlib, "matrix3")                     // 1389
+																  // : number denotes the line number of luna_gen.lua that generated the sentence // 1392
+			.def(init<>())                                                // 1426
+			.def(init<matrix3 const &>())                                 // 1426
+			.def(init<quater const &>())                                  // 1426
+			.def("setValue", (void (matrix3::*)( m_real a00, m_real a01, m_real a02, m_real a10, m_real a11, m_real a12, m_real a20, m_real a21, m_real a22 ))&matrix3::setValue) // 1446
+			.def("setValue", (void (matrix3::*)( vector3 const&row1, vector3 const&row2, vector3 const&row3 ))&matrix3::setValue) // 1446
+			.def("zero", &matrix3::zero)                                  // 1445
+			.def("identity", &matrix3::identity)                          // 1445
+			.def("transpose", (void (matrix3::*)( void ))&matrix3::transpose) // 1446
+			.def("negate", &matrix3::negate)                              // 1445
+			.def("inverse", (bool (matrix3::*)(matrix3 const& a))&matrix3::inverse) // 1446
+			.def("setTilde", (void (matrix3::*)( vector3 const &v ))&matrix3::setTilde) // 1446
+			.def("setFromQuaternion", &matrix3::setFromQuaternion)        // 1445
+			.def("mult", (void (matrix3::*)(matrix3 const& a,matrix3 const& b))&matrix3::mult) // 1446
+			.def("mult", (void (matrix3::*)(matrix3 const& a, m_real b))&matrix3::mult) // 1446
+			.def("toQuater", &matrix3::toQuater)																						// .def
+			.def(self-self)
+			.def(self+self)
+			.def(self*vector3())
+			.def(self*self)
+			.def_property_readonly("array",  [](matrix3 const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrix3_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def("ref",  [](matrix3 const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrix3_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
+			.def("ref1D",  [](matrix3 const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrix3_::ref1D(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
+			;
+	}
 	// matrix4
 	{
 		struct wrap_matrix4
@@ -879,11 +967,49 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			//a.assign([0 1 2 3 4 4 5 5 6 6 7 ])
 
 		};
+		struct matrix4_
+		{
+			// does not copy memory.
+			static PyObject* ref(matrix4 const& v)
+			{
+				npy_intp dims[2];
+				dims[0]=4;
+				dims[1]=4;
+				npy_intp strides[2];
+				strides[0]=sizeof(double)*4;
+				strides[1]=sizeof(double);
+				double* vv=(double*) &v._11;
+				PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 2, dims, strides, vv, 
+						//NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE
+						NPY_ARRAY_CARRAY | NPY_ARRAY_WRITEABLE
+						, NULL);
+				return o;
+			}
+			// does not copy memory.
+			static PyObject* ref1D(matrix4 const& v)
+			{
+				npy_intp dims[1];
+				dims[0]=16;
+				npy_intp strides[1];
+				strides[0]=sizeof(double);
+				double* vv=(double*)&v._11;
+				PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 1, dims, strides, vv, 
+						//NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE
+						NPY_ARRAY_CARRAY | NPY_ARRAY_WRITEABLE
+						, NULL);
+				return o;
+			}
+		};
 		
 		class_<matrix4>(mainlib, "matrix4")
 			.def(init<>())                                                // 1426
 			.def(init<const quater &,const vector3 &>())                  // 1426
 			.def(init<const transf &>())                                  // 1426
+			.def_property_readonly("array", [](matrix4 const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrix4_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def("ref",  [](matrix4 const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrix4_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
+			.def("ref1D",  [](matrix4 const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrix4_::ref1D(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
 			.def_readwrite("_11", &matrix4::_11)
 			.def_readwrite("_12", &matrix4::_12)
 			.def_readwrite("_13", &matrix4::_13)
@@ -941,34 +1067,29 @@ PYBIND11_MODULE(libmainlib, mainlib)
 
 
 	{
-		struct matrixn_
-		{
-			// does not copy memory.
-			static PyObject* ref(matrixn const& v)
-			{
-				npy_intp dims[2];
-				dims[0]=v.rows();
-				dims[1]=v.cols();
-				npy_intp strides[2];
-				strides[0]=sizeof(double)*v._getStride();
-				strides[1]=sizeof(double);
-				double* vv=&v[0][0];
-				PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 2, dims, strides, vv, 
-						//NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE
-						NPY_ARRAY_CARRAY | NPY_ARRAY_WRITEABLE
-						, NULL);
-				return o;
-			}
-		};
 		void	(matrixn::*setAllValue)(m_real d)=&matrixn::setAllValue;
 		matrixnView (matrixn::*range)(int startr, int endr, int startc, int endc)=&matrixn::range;
+
 		class_<matrixn>(mainlib, "matrixn")
 			.def(init<>())
 			.def(init<int,int>())
+			.def("quatViewCol", &quatViewCol)
+			.def("vec3ViewCol", &vec3ViewCol)
 			.def("copy", [](matrixn const&v )->matrixn *{ return new matrixn(v);}, TAKE_OWNERSHIP )
-			.def("ref",  [](matrixn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrixn_::ref(v)); })
-			.def("__repr__", [](matrixn const& in)->std::string{ return in.shortOutput().tostring();})
+			.def_property_readonly("array", [](matrixn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrixn_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def("ref",  [](matrixn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrixn_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
+			.def("__repr__", [](matrixn const& in)->std::string{ return std::string("matrixn")+in.shortOutput().tostring();})
+			// concat
+			.def("__or__",[](const matrixn& self, const matrixn& b)->matrixn{
+					if(self.rows()!=b.rows()) throw std::range_error("matrixn column concatenation (|)");
+					matrixn out(self.rows(), self.cols()+b.cols());
+					out.range(0, self.rows(), 0, self.cols())=self;
+					out.range(0, self.rows(), self.cols(), out.cols())=b;
+					return out;
+					})
 			// slicing
+			.def("zero",  [](matrixn & v){ v.setAllValue(0.0);})
 			.def("sub",[](matrixn & inout, int srow, int erow, int scol, int ecol)->matrixnView{
 					if (srow<0 ) srow=inout.rows()+srow;
 					if (erow<=0 ) erow=inout.rows()+erow;
@@ -998,6 +1119,7 @@ PYBIND11_MODULE(libmainlib, mainlib)
 						return out;
 						}))
 			.def("derivative",&matrixn::derivative)
+			.def("derivative_forward",&matrixn::derivative_forward)
 			.def("MotionDOF_calcDerivative", (matrixn (*)(matrixn const& dof, double frameRate))&MotionDOF_calcDerivative)																																		//
 			.def("assign", (matrixn& (matrixn::*)(const matrixn&))(&matrixn::assign), RETURN_REFERENCE)
 			.def("row", &matrixn::row)
@@ -1007,7 +1129,7 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def(self * double()) // mul
 			.def("__getitem__",
 			   [](matrixn const&v, int i) -> vectornView {
-					while(i<0) i+=v.rows();
+					if(i<0) i+=v.rows();
 				   if (i >= v.rows())
 					   throw index_error();
 					return v.row(i);
@@ -1028,9 +1150,10 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("resize", &matrixn::resize)
 			.def("setAllValue", setAllValue)
 			.def("__call__", &matrixn::getValue)
-			.def("range", static_cast<matrixnView (matrixn::*)(int, int, int, int)>(&matrixn::range), "startRow"_a, "endRow"_a,"startColumn"_a=0,"endColumn"_a=INT_MAX)
+			.def("range", static_cast<matrixnView (matrixn::*)(int, int, int, int)>(&matrixn::range), WRAP_PY::keep_alive<0,1>(), "startRow"_a, "endRow"_a,"startColumn"_a=0,"endColumn"_a=INT_MAX)
 			.def("minimum", (double (matrixn::*)())&matrixn::minimum)     // 1445
 			.def("maximum", (double (matrixn::*)())&matrixn::maximum)     // 1445
+			.def("mean",[](matrixn const& a)->vectorn{vectorn v; v.mean(a); return v;})
 			.def("sum", (double (matrixn::*)())&matrixn::sum)             // 1445
 			.def("pushBack", (void (matrixn::*)(vectorn const& o))&matrixn::pushBack) // 1445
 			.def("mult", [](matrixn &m, matrixn const& a, matrixn const&b ){ m.mult(a,b);})
@@ -1083,7 +1206,20 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("setSize",&hypermatrixn::setSize)
 			.def("setSameSize",&hypermatrixn::setSameSize)
 			.def("page",&wrap_hyper::page)
-			.def("ref",  [](hypermatrixn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(wrap_hyper::ref(v)); })
+			.def_property_readonly("array",  [](hypermatrixn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(wrap_hyper::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def("ref",  [](hypermatrixn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(wrap_hyper::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
+			.def("resize", &hypermatrixn::resize)                         // 1445
+			.def("pushBack", &hypermatrixn::pushBack)                     // 1445
+			.def("column", &hypermatrixn::column)                         // 1445
+			.def("setColumn", &hypermatrixn::setColumn)                   // 1445
+			.def("row", &hypermatrixn::row)                               // 1445
+			.def("setRow", &hypermatrixn::setRow)                         // 1445
+			.def("weightedAverage", &hypermatrixn::weightedAverage)       // 1445
+			.def("tensorView", (TensorView (*)(const hypermatrixn& other))&tensorView, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+ // 1459
+			.def("assign", &hypermatrixn::operator=)                      // 1445
+			.def("__call__", (double & (hypermatrixn::*)(int i, int j, int k))&hypermatrixn::operator(),return_value_policy::reference ) // 1451
 		;
 	}
 	{
@@ -1113,9 +1249,44 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def(init<int, int, int>())
 			.def(init<int, int, int, int>())
 			.def(init<int, int, int, int, int>())
-			.def("slice_1d", &Tensor::slice_1d)
-			.def("ref",  [](Tensor const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(wrap_tensor::ref(v)); })
+			.def("slice_1d", &Tensor::slice_1d, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
+			.def_property_readonly("array", [](Tensor const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(wrap_tensor::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def("ref",  [](Tensor const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(wrap_tensor::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
+			.def("shape", (intvectornView (Tensor::*)() const)&Tensor::shape)                                 // 1445
+			.def("pages", &Tensor::pages)                                 // 1445
+			.def("rows", &Tensor::rows)                                   // 1445
+			.def("cols", &Tensor::cols)                                   // 1445
+			.def("setAllValue", &Tensor::setAllValue)																		  //
+			.def("__call__", (double (Tensor::*)(int i, int j, int k))&Tensor::get) // 1446
+			.def("set", (void (Tensor::*)(int i, int j, int k, double f))&Tensor::set) // 1446
+			.def("__call__", (double (Tensor::*)(int i, int j, int k, int l))&Tensor::get) // 1446
+			.def("set", (void (Tensor::*)(int i, int j, int k, int l, double f))&Tensor::set) // 1446
+			.def("__call__", (double (Tensor::*)(const intvectorn& indices))&Tensor::get_ref) // 1446
+			.def("set", (void (Tensor::*)(const intvectorn& indices, double f))&Tensor::set) // 1446
+			.def("__call__", &Tensor::page)//1446
+			.def("slice", (TensorView (Tensor::*)(const intvectorn& _indices))&Tensor::slice, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+ // 1446
+			.def("slice", [](Tensor const& in, int i, int j, int k)->TensorView { 
+					return in.slice(intvectorn(3, i,j,k));
+					}, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+ // 1458
+			.def("slice", [](Tensor const& in, int i, int j, int k, int l)->TensorView { 
+					return in.slice(intvectorn(4, i,j,k,l));
+					}, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+ // 1458
+			.def("assign", (void (Tensor::*)(floatTensor const& other))&Tensor::assign) // 1446
+			.def("assign", (void (Tensor::*)(Tensor const& other))&Tensor::assign) // 1446
+			.def("assign", (void (Tensor::*)(floatvec const& other))&Tensor::assign) // 1446
+			.def("assign", (void (Tensor::*)(vectorn const& other))&Tensor::assign) // 1446
+			.def("assign", (void (Tensor::*)(matrixn const& other))&Tensor::assign) // 1446
+			.def("assign", (void (Tensor::*)(hypermatrixn const& other))&Tensor::assign) // 1446
+			.def("toMat", &Tensor::toMat)                                 // 1445
+			.def("__repr__", [](Tensor const& in)->std::string{ return in.shortOutput().tostring();})
 		;
+		class_<TensorView ,Tensor> (mainlib, "TensorView")               
+			; // end of class impl___pybindgen___TensorView               // 1506
 	}
 	// quaterN
 	{
@@ -1125,13 +1296,22 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def(init<int>())                                             // 1426
 			.def("copy", [](quaterN const&v )->quaterN *{ return new quaterN(v);}, TAKE_OWNERSHIP )
 			.def("value", &quaterN::value, RETURN_REFERENCE)
+			.def_property_readonly("array",  [](quaterN const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrixn_::ref(matView(v))); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def("ref",  [](quaterN const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrixn_::ref(matView(v))); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
 			.def("row", &quaterN::row, RETURN_REFERENCE)
 			.def("row", &quaterN::rows)
 			.def("__repr__", [](quaterN const& in)->std::string{ return std::string("quaterN")+matView(in).shortOutput().tostring();})
 			.def("__call__", &quaterN::row, RETURN_REFERENCE)
-			.def("__getitem__", &quaterN::row, RETURN_REFERENCE)
+			.def("__getitem__", 
+			   [](quaterN const&v, int i) -> quater& {
+					if(i<0) i+=v.size();
+				   if (i >= v.size())
+					   throw index_error();
+					return v(i);
+				 }, WRAP_PY::return_value_policy::reference_internal)
 			.def("__len__", &quaterN::size)
-			.def("range", static_cast<quaterNView (quaterN::*)(int, int, int)>(&quaterN::range), "start"_a, "end"_a,"step"_a=1)
+			.def("range", static_cast<quaterNView (quaterN::*)(int, int, int)>(&quaterN::range),WRAP_PY::keep_alive<0,1>(), "start"_a, "end"_a,"step"_a=1 ) // return value(0) depends on self(1).
 			.def("assign", assign1)
 			.def("align", (void (quaterN::*)())&quaterN::align)           // 1445
 			.def("hermite", [](quaterN& qq,const quater& a, const quater& b, int duration, const quater& c, const quater& d){ qq.hermite(a,b,duration, c, d);})
@@ -1143,8 +1323,8 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("setSize", (void (quaterN::*)(int))&quaterN::setSize)    // 1445
 			.def("resize", (void (quaterN::*)(int))&quaterN::resize)      // 1445
 			.def("reserve", (void (quaterN::*)(int))&quaterN::reserve)    // 1445
-			.def("range", (quaterNView (quaterN::*)(int,int))&quaterN::range) // 1445
-			.def("range", (quaterNView (quaterN::*)(int,int,int))&quaterN::range) // 1445
+			.def("range", (quaterNView (quaterN::*)(int,int))&quaterN::range, WRAP_PY::keep_alive<0,1>()) // 1445
+			.def("range", (quaterNView (quaterN::*)(int,int,int))&quaterN::range, WRAP_PY::keep_alive<0,1>()) // 1445
 			.def("assign", (void (quaterN::*)(quaterN const&))&quaterN::assign) // 1445
 			.def("row", (quater & (quaterN::*)(int))&quaterN::at,return_value_policy::reference ) // 1450
 			.def("at", (quater & (quaterN::*)(int))&quaterN::at,return_value_policy::reference ) // 1450
@@ -1153,8 +1333,10 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("pushBack", (void (quaterN::*)(quater const& o))&quaterN::pushBack) // 1445
 			.def("pushFront", (void (quaterN::*)(quater const& o))&quaterN::pushFront) // 1445
 			.def("sampleRow", [](quaterN const& in, m_real criticalTime)->quater { return in.sampleRow(criticalTime);}) // 1458
-			.def("matView", (matrixnView (*)(quaterN const& a, int start, int end))&matView) // 1458
-			.def("matView", [](quaterN const& a)->matrixnView { return matView(a);})
+			.def("matView", (matrixnView (*)(quaterN const& a, int start, int end))&matView, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+ // 1458
+			.def("matView", [](quaterN const& a)->matrixnView { return matView(a);}, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
 			.def("__repr__", [](quaterN const& in)->std::string{ return std::string("quaterN")+matView(in).output().tostring();})
 		;
 
@@ -1170,22 +1352,30 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def(init<matrixn>())
 			.def(init<matrixnView>())
 			.def("copy", [](vector3N const&v )->vector3N *{ return new vector3N(v);}, TAKE_OWNERSHIP )
+			.def_property_readonly("array",  [](vector3N const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrixn_::ref(matView(v))); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def("ref",  [](vector3N const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrixn_::ref(matView(v))); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
 			.def("value", &vector3N::value, RETURN_REFERENCE)
 			.def("row", &vector3N::row, RETURN_REFERENCE)
 			.def("__repr__", [](vector3N const& in)->std::string{ return std::string("vector3N")+matView(in).shortOutput().tostring();})
 			.def("__call__", &vector3N::row, RETURN_REFERENCE)
-			.def("__getitem__", &vector3N::row, RETURN_REFERENCE)
+			.def("__getitem__", 
+			   [](vector3N const&v, int i) -> vector3& {
+					if(i<0) i+=v.size();
+				   if (i >= v.size())
+					   throw index_error();
+					return v(i);
+				 }, WRAP_PY::return_value_policy::reference_internal)
 			.def("__len__", &vector3N::size)
 			.def("row", &vector3N::rows)
 			.def("rows", &vector3N::rows)
 			.def("size", &vector3N::size)
 			.def("setSize", &vector3N::setSize)
-			.def("matView", (matrixnView (*)(vector3N const&))(&matView))
 			.def("reserve", &vector3N::reserve)
 			.def("translate", &vector3N::translate)
 			.def("rotate", (void (vector3N::*)(const quater& q))&vector3N::rotate)
 			.def("rotate", (void (vector3N::*)(const vector3& center, const quater& q))&vector3N::rotate)
-			.def("range", static_cast<vector3NView (vector3N::*)(int, int, int)>(&vector3N::range), "start"_a, "end"_a,"step"_a=1)
+			.def("range", static_cast<vector3NView (vector3N::*)(int, int, int)>(&vector3N::range), WRAP_PY::keep_alive<0,1>(), "start"_a, "end"_a,"step"_a=1)
 			.def("assign", assign1)
 			.def("setAllValue",(void (vector3N::*)(vector3))(&vector3N::setAllValue))
 			.def("pushBack",(void (vector3N::*)(vector3))(&vector3N::pushBack))
@@ -1193,14 +1383,50 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("y",&vector3N::y)
 			.def("z",&vector3N::z)
 			.def("sampleRow", [](vector3N const& in, m_real criticalTime)->vector3 { return in.sampleRow(criticalTime);}) // 1458
-			.def("matView", (matrixnView (*)(vector3N const& a, int start, int end))&matView) // 1458
-			.def("matView", [](vector3N const& a)->matrixnView { return matView(a);})
+			.def("matView", (matrixnView (*)(vector3N const&))(&matView), WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def("matView", (matrixnView (*)(vector3N const& a, int start, int end))&matView, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+ // 1458
+
 			.def("__repr__", [](vector3N const& in)->std::string{ return std::string("vector3N")+matView(in).output().tostring();})
+			.def(self*double())
+			.def(self+self)
+			.def(self-self)
+			.def(self+vector3())
+			.def(self-vector3())
 		;
 
 		class_<vector3NView, vector3N >(mainlib, "vector3NView");
 	}
 
+	{
+		class_<intIntervals > (mainlib, "intIntervals")           // 1393
+			.def(init<>())                                                // 1431
+			.def("copy", [](intIntervals const&v )->intIntervals *{ return new intIntervals(v);}, TAKE_OWNERSHIP )
+			.def("numInterval", &intIntervals::numInterval)               // 1450
+			.def("size", &intIntervals::size)                             // 1450
+			.def("setSize", &intIntervals::setSize)                       // 1450
+			.def("resize", &intIntervals::resize)                         // 1450
+			.def("removeInterval", &intIntervals::removeInterval)         // 1450
+			.def("startI", &intIntervals::start)                          // 1450
+			.def("endI", &intIntervals::end)                              // 1450
+			.def("load", &intIntervals::load)                             // 1450
+			.def("pushBack", &intIntervals::pushBack)                     // 1450
+			.def("findOverlap", (int (intIntervals ::*)(int start, int end, int startInterval))&intIntervals::findOverlap) // 1451
+			.def("findOverlap", [](intIntervals & v,int start, int end)->int{return v.findOverlap(start, end);}) // 1451
+			.def("runLengthEncode", [](intIntervals& a, const boolN& source) { a.runLengthEncode(source); })
+			.def("runLengthEncode", (void (intIntervals::*)(const boolN& source , int start, int end))&intIntervals::runLengthEncode) // 1451
+			.def("findConsecutiveIntervals", &intIntervals::findConsecutiveIntervals) // 1450
+			.def("runLengthEncodeCut", &intIntervals::runLengthEncodeCut) // 1450
+			.def("encodeIntoVector", &intIntervals::encodeIntoVector)     // 1450
+			.def("decodeFromVector", &intIntervals::decodeFromVector)     // 1450
+			.def("offset", &intIntervals::offset)                         // 1450
+			.def("toBitvector", &intIntervals::toBitvector)               // 1450
+			.def("set", [](intIntervals& v, int iint, int s, int e){
+					v.start(iint)=s;
+					v.end(iint)=e;
+					})
+			; // end of class impl___pybindgen___intIntervals             // 1511
+	}
 	// BinaryFile, intvectorn 
 	{
 		struct __pybindgen__util_BinaryFile_wrapper
@@ -1313,6 +1539,31 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("copy", [](boolN const&v )->boolN *{ return new boolN(v);}, TAKE_OWNERSHIP )
 			.def("count", &boolN::count, "bVal"_a=true) // 1445
 			.def("assign", &boolN::assign) // 1445
+			.def("assign", [](boolN & v, WRAP_PY::array_t<bool> const&array) {
+					v.resize(array.size());
+					//ssize_t stride=array.strides()[0];
+					for(int i=0; i<v.size(); i++)
+						v.set(i, *array.data(i));
+					})
+			.def(-self) // neg (unary minus)
+			.def("setAt", (void (boolN::*)( const intvectorn&))&boolN::setAt)
+			.def("clearAt", (void (boolN::*)( const intvectorn&))&boolN::clearAt)
+			.def("numpy", [](boolN const& v) {
+					// Allocate and initialize some data; make this big so
+					// we can see the impact on the process memory use:
+					size_t size = v.size();
+					bool *foo = new bool[size];
+					for (size_t i = 0; i < size; i++) foo[i] = v(i);
+
+					// Create a Python object that will free the allocated memory when destroyed:
+					WRAP_PY::capsule free_when_done(foo, [](void *f) { double *foo = reinterpret_cast<double *>(f); delete[] foo; });
+
+					return WRAP_PY::array_t<bool>(
+							{v.size()}, // shape
+							{sizeof(bool)}, // C-style contiguous strides for double
+							foo, // the data pointer
+							free_when_done); // numpy array references this parent
+			})
 			.def("set", &boolN::set)      // 1445
 			.def("setAllValue", &boolN::setAllValue) // 1445
 			.def("resize", &boolN::resize)        // 1445
@@ -1329,9 +1580,32 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("findPrev", (int (boolN::*)(int i, bool bValue))&boolN::findPrev) // 1445
 			.def("_or", (void (boolN::*)(const boolN& a, const boolN& b))&boolN::_or) // 1445
 			.def("_and", (void (boolN::*)(const boolN& a, const boolN& b))&boolN::_and) // 1445
-			.def("__or__", (void (boolN::*)(const boolN& a, const boolN& b))&boolN::_or) // 1445
-			.def("__and__", (void (boolN::*)(const boolN& a, const boolN& b))&boolN::_and) // 1445
-			.def("range", (boolNView (*)(boolN const& a, int start, int end))&__pybindgen___boolN_wrapper::_range) // 1458
+			.def("__or__",[](const boolN& a, const boolN& b)->boolN{ boolN c; c._or(a,b); return c;})
+			.def("__and__",[](const boolN& a, const boolN& b)->boolN{ boolN c; c._and(a,b); return c;})
+			.def("__invert__",[](const boolN& a)->boolN{ boolN c; c.negate(a); return c;})
+			// concat
+			.def("__add__",[](const boolN& self, const boolN& b)->boolN{
+					boolN c(self.size()+b.size());
+					c.range(0, self.size()).assign(self);
+					c.range(self.size(), c.size()).assign(b);
+					return c;
+					})
+			.def("range", (boolNView (*)(boolN const& a, int start, int end))&__pybindgen___boolN_wrapper::_range, WRAP_PY::keep_alive<0,1>()) // 1458
+			.def("slice", [](boolN const& self, int scol, int ecol)->boolNView{
+					if (scol<0 )
+					scol=self.size()+scol;
+					if (ecol<=0 )
+					ecol=self.size()+ecol;
+					return self.range(scol, ecol);
+					}, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
+			.def("__getitem__",
+			   [](boolN const&v, int i) -> bool {
+					if(i<0) i+=v.size();
+				   if (i >= v.size())
+					   throw index_error();
+					return v[i];
+				 })
 			; // end of class impl___pybindgen___boolN                    // 1505
 		class_<boolNView , boolN> (mainlib, "boolNView")                       // 1389
 																  // : number denotes the line number of luna_gen.lua that generated the sentence // 1392
@@ -1383,6 +1657,13 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		class_<intvectorn>(mainlib, "intvectorn")
 			.def(init<>())
 			.def(init<int>())                                             
+			// concat
+			.def("__or__",[](const intvectorn& self, const intvectorn& b)->intvectorn{
+					intvectorn c(self.size()+b.size());
+					c.range(0, self.size()).assign(self);
+					c.range(self.size(), c.size()).assign(b);
+					return c;
+					})
 			.def("copy", [](intvectorn const&v )->intvectorn *{ return new intvectorn(v);}, TAKE_OWNERSHIP )
 			.def("assign", &intvectorn_::assign)
 			.def("value", getValue1)
@@ -1390,6 +1671,11 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("size", &intvectorn::size)
 			.def("setSize", &intvectorn::setSize)
 			.def("resize", &intvectorn::resize)
+			.def("find", [](intvectorn const& self, int v)->intvectorn{
+					intvectorn out;
+					out.findIndex(self, v);
+					return out;
+					})
 			.def("__setitem__",
 				[](intvectorn &v, int i, int t) {
 					while(i<0) i+=v.size();
@@ -1399,14 +1685,16 @@ PYBIND11_MODULE(libmainlib, mainlib)
 				 }) 
 			.def("__getitem__",
 			   [](intvectorn const&v, int i) -> int & {
-					while(i<0) i+=v.size();
+					if(i<0) i+=v.size();
 				   if (i >= v.size())
 					   throw index_error();
 					return v[i];
 				 })
 			.def("__call__", getValue1)
-			.def("range", static_cast<intvectornView (intvectorn::*)(int, int, int)>(&intvectorn::range), "start"_a, "end"_a,"step"_a=1)
-			.def("ref",  [](intvectorn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(intvectorn_::ref(v)); })
+			.def("range", static_cast<intvectornView (intvectorn::*)(int, int, int)>(&intvectorn::range), WRAP_PY::keep_alive<0,1>(), "start"_a, "end"_a,"step"_a=1)
+			.def_property_readonly("array", [](intvectorn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(intvectorn_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def("ref",  [](intvectorn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(intvectorn_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
 			.def("setAt", [](intvectorn &v, intvectorn const& columnIndex, intvectorn const& value){v.setAt(columnIndex, value);}) // 1445
 			.def("findIndex", [](intvectorn & v,intvectorn const& source, int value){ v.findIndex(source, value);})
 			.def("findIndex", [](intvectorn & v,boolN const& source, bool value){ v.findIndex(source, value);})
@@ -1448,6 +1736,11 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def(self+int())
 			.def(self-int())
 		;
+		class_<intvectornView, intvectorn >(mainlib, "intvectornView")
+			.def(init<const int*, int, int>())
+			.def(init<const intvectorn &>())
+			.def(init<const intvectornView &>())
+			;
 	}
 
 	// vectorn
@@ -1556,14 +1849,18 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		class_<vectorn>(mainlib, "vectorn")
 			.def(init<>())
 			.def(init<int>())
+			.def("reserve", &vectorn::reserve)
 			.def("to_se3",[](vectorn const&v)->Liegroup::se3{ Liegroup::se3 out; out.W()=v.toVector3(0); out.V()=v.toVector3(3); return out;})
 			.def("copy", [](vectorn const&v )->vectorn *{ return new vectorn(v);}, TAKE_OWNERSHIP )
 			.def("assign", &vectorn_::vectorn_assign)
 			.def("assign", assignv, RETURN_REFERENCE)
 			.def("assign", (vectorn& (vectorn::*)(const vectorn&))(&vectorn::assign), RETURN_REFERENCE)
 			.def("assign", assignq, RETURN_REFERENCE)
+			.def("assign",  [](vectorn & v, transf const& t){ v.setSize(7); v.setTransf(0, t);})
 			.def("zero",  [](vectorn & v){ v.setAllValue(0.0);})
-			.def("ref",  [](vectorn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(vectorn_::ref(v)); })
+			.def_property_readonly("array", [](vectorn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(vectorn_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def("ref",  [](vectorn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(vectorn_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
 			// concat
 			.def("__or__",[](const vectorn& self, const vectorn& b)->vectorn{
 					vectorn c(self.size()+b.size());
@@ -1620,14 +1917,15 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("setSize", &vectorn::setSize)
 			.def("resize", &vectorn::resize)
 			.def("set", (void (*)(vectorn & a, int i, m_real d))&__pybindgen___vectorn_wrapper::set)     // 1458
-			.def("range", static_cast<vectornView (vectorn::*)(int, int, int)>(&vectorn::range), "start"_a, "end"_a,"step"_a=1)
+			.def("range", static_cast<vectornView (vectorn::*)(int, int, int)>(&vectorn::range), WRAP_PY::keep_alive<0,1>(), "start"_a, "end"_a,"step"_a=1)
 			.def("slice", [](vectorn const& self, int scol, int ecol)->vectornView{
 					if (scol<0 )
 					scol=self.size()+scol;
 					if (ecol<=0 )
 					ecol=self.size()+ecol;
 					return self.range(scol, ecol);
-					})
+					}, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
 			.def("length", &vectorn::length)
 			.def("minimum", (m_real (vectorn::*)() const)&vectorn::minimum)     // 1445
 			.def("maximum", (m_real (vectorn::*)() const)&vectorn::maximum)     // 1446
@@ -1644,14 +1942,14 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			//.def("normalize", &vectorn::normalize, RETURN_REFERENCE)
 			.def("__setitem__",
 				[](vectorn &v, int i, double t) {
-					while(i<0) i+=v.size();
+					if(i<0) i+=v.size();
 					if (i >= v.size())
 						 throw index_error();
 					 v[i] = t;
 				 }) 
 			.def("__getitem__",
 			   [](vectorn const&v, int i) -> double & {
-					while(i<0) i+=v.size();
+					if(i<0) i+=v.size();
 				   if (i >= v.size())
 					   throw index_error();
 					return v[i];
@@ -1679,10 +1977,12 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("setAllValue", (void (*)(vectorn & a, m_real b))&__pybindgen___vectorn_wrapper::setAllValue) // 1458
 			.def("radd", (void (*)(vectorn & a, vectorn const& b))&__pybindgen___vectorn_wrapper::radd)  // 1458
 			.def("rsub", (void (*)(vectorn & a, vectorn const& b))&__pybindgen___vectorn_wrapper::rsub)  // 1458
-			.def("matView", (matrixnView (*)(vectorn const& a, int start, int end))&matView) // 1458
-			.def("matView", (matrixnView (*)(vectorn const& a, int col))&matView) // 1458
-			.def("vec3View", (vector3NView (*)(vectorn const&))&vec3View) // 1458
-			.def("quatView", (quaterNView (*)(vectorn const&))&quatView)  // 1458
+			.def("matView", (matrixnView (*)(vectorn const& a, int col))&matView, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+ // 1458
+			.def("vec3View", (vector3NView (*)(vectorn const&))&vec3View, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+ // 1458
+			.def("quatView", (quaterNView (*)(vectorn const&))&quatView, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+  // 1458
 			.def("smoothTransition", (void (*)(vectorn &c, m_real s, m_real e, int size))&__pybindgen___vectorn_wrapper::smoothTransition) // 1458
 			.def("sample", (m_real (*)(vectorn const& in, m_real criticalTime))&v::sample) // 1458
 			.def("interpolate", (void (*)(vectorn & out, m_real t, vectorn const& a, vectorn const& b))&v::interpolate) // 1458
@@ -1707,6 +2007,23 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			;
 	}
 
+	struct __pybindgen__math_KovarMetric_wrapper
+	{                                                             // 1382
+		static matrix4& _property_get_m_transfB(KovarMetric const& a) { return (matrix4 &) a.m_transfB; }
+		static void _property_set_m_transfB(KovarMetric & a, const matrix4 &m) { a.m_transfB=m; }
+		static matrixn& _property_get_m_transformedB(KovarMetric const& a) { return (matrixn &) a.m_transformedB; }
+		static void _property_set_m_transformedB(KovarMetric & a, const matrixn &m) { a.m_transformedB=m; }
+	};                                                            // 1384
+	class_<KovarMetric > (mainlib, "KovarMetric")             // 1389
+															  // : number denotes the line number of luna_gen.lua that generated the sentence // 1392
+		.def(init<>())                                                // 1426
+		.def(init<bool>())                                            // 1426
+		.def("calcDistance", &KovarMetric::CalcDistance)              // 1445
+		.def_property("m_transfB", (matrix4 & (*)(KovarMetric const& a))&__pybindgen__math_KovarMetric_wrapper::_property_get_m_transfB, 
+				&__pybindgen__math_KovarMetric_wrapper::_property_set_m_transfB)
+		.def_property("m_transformedB", (matrixn & (*)(KovarMetric const& a))&__pybindgen__math_KovarMetric_wrapper::_property_get_m_transformedB, 
+				&__pybindgen__math_KovarMetric_wrapper::_property_set_m_transformedB)
+		; // end of class impl___pybindgen__math_KovarMetric          // 1506
 	/////////////////////////////////////////////////////////////////
 	// Mainlib
 	/////////////////////////////////////////////////////////////////
@@ -1826,6 +2143,16 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			; // end of class impl_LunaTraits<Ogre ::SceneManager >       // 1562
 	}
 	{
+		class_<OBJloader ::Face > (mainlib, "Face")               // 1393
+																  // : number denotes the line number of luna_gen.lua that generated the sentence // 1397
+			.def("setIndex", [](OBJloader ::Face& self, int i, int j, int k){ self.setIndex(i,j,k);})                 // 1450
+			.def("vertexIndex", &OBJloader ::Face::vi)           // 1450
+			.def("normalIndex", [](OBJloader ::Face& self, int i)->int{ return self.normalIndex(i);})
+			.def("texCoordIndex", [](OBJloader ::Face& self, int i)->int{ return self.texCoordIndex(i);})       // 1450
+			.def("colorIndex", [](OBJloader ::Face& self, int i)->int{ return self.colorIndex(i);})       // 1450
+			; // end of class impl___pybindgen__OBJloader_Face            // 1511
+	}
+	{
 		class_<OBJloader::Mesh>(mainlib, "Mesh")
 			.def(init<>())
 			.def("copy", [](OBJloader::Mesh const&v )->OBJloader::Mesh *{ return new OBJloader::Mesh(v);}, TAKE_OWNERSHIP )
@@ -1883,12 +2210,19 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("pick", (vector3 (OBJloader ::Terrain::*)(Ray const& ray, vector3& normal))&OBJloader ::Terrain::pick) // 1443
 			.def("isInsideTerrain", (bool (OBJloader ::Terrain::*)(vector2 x))&OBJloader ::Terrain::isInsideTerrain) // 1443
 			;
+		class_<OBJloader ::Element > (mainlib, "Element")         // 1393
+																  // : number denotes the line number of luna_gen.lua that generated the sentence // 1397
+			.def_readwrite("elementType", &OBJloader::Element::elementType)
+			.def_readwrite("elementSize", &OBJloader::Element::elementSize)
+			.def_readwrite("tf", &OBJloader::Element::tf)
+			.def_readwrite("material", &OBJloader::Element::material)
+			; // end of class impl___pybindgen__OBJloader_Element         // 1511
 		class_<OBJloader::Geometry, OBJloader::Mesh>(mainlib, "Geometry")
 			.def(init<>())
 			.def("copy", [](OBJloader::Geometry const&v )->OBJloader::Geometry *{ return new OBJloader::Geometry(v);}, TAKE_OWNERSHIP )
 			.def_readwrite("faceGroups", &OBJloader::Mesh::faceGroups)
 			.def("numElements", (int (OBJloader ::Geometry::*)())&OBJloader ::Geometry::numElements) // 1443
-			.def("element", (OBJloader ::Element const & (OBJloader ::Geometry::*)(int i))&OBJloader ::Geometry::element) // 1443
+			.def("element", (OBJloader ::Element const & (OBJloader ::Geometry::*)(int i))&OBJloader ::Geometry::element, RETURN_REFERENCE) // 1443
 			.def("mergeAllElements", (void (OBJloader ::Geometry::*)())&OBJloader ::Geometry::mergeAllElements) // 1443
 			.def("scale", (void (OBJloader ::Geometry::*)(vector3 const& scalef))&OBJloader ::Geometry::scale) // 1443
 			.def("scale", (void (OBJloader ::Geometry::*)(vector3 const& scalef, int ifacegroup))&OBJloader ::Geometry::scale) // 1443
@@ -1977,6 +2311,29 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("playUntil",&FltkMotionWindow::playUntil)
 		.def("playFrom",&FltkMotionWindow::playFrom)
 	;
+    class_<FltkScrollPanel > (mainlib, "FltkScrollPanel")     // 1393
+		.def("addPanel", (void (FltkScrollPanel::*)(const char* filename))&FltkScrollPanel::addPanel) // 1451
+		.def("addPanel", (void (FltkScrollPanel::*)(CImage* pSource))&FltkScrollPanel::addPanel) // 1451
+		.def("createPanel", (CImage * (FltkScrollPanel::*)())&FltkScrollPanel::createPanel,return_value_policy::reference ) // 1456
+		.def("addPanel", (void (FltkScrollPanel::*)(const boolN& bits, CPixelRGB8 color))&FltkScrollPanel::addPanel) // 1451
+		.def("addPanel", (void (FltkScrollPanel::*)(const boolN& bits, CPixelRGB8 color, int startFrame))&FltkScrollPanel::addPanel) // 1451
+		.def("addPanel", [](FltkScrollPanel& self, const intvectorn& indexes){ self.addPanel(indexes);})
+		.def("addPanel", (void (FltkScrollPanel::*)(const vectorn& signal))&FltkScrollPanel::addPanel) // 1451
+		.def("addPanel", (void (FltkScrollPanel::*)(const vectorn& input, double fmin, double fmax))&FltkScrollPanel::addPanel) // 1451
+		.def("addPanel", (void (FltkScrollPanel::*)(const matrixn& signal))&FltkScrollPanel::addPanel) // 1451
+		.def("setLabel", (void (FltkScrollPanel::*)(const char* label))&FltkScrollPanel::setLabel) // 1451
+		.def("changeLabel", (void (FltkScrollPanel::*)(const char* prevLabel, const char* newLabel))&FltkScrollPanel::changeLabel) // 1451
+		.def("selectedPanel", [](FltkScrollPanel& self)->std::string{ return std::string(self.selectedPanel());})
+		.def("removeAllPanel", &FltkScrollPanel::removeAllPanel)      // 1450
+		.def("sortPanels", &FltkScrollPanel::sortPanels)              // 1450
+		.def("setLastPanelXOffset", &FltkScrollPanel::setLastPanelXOffset) // 1450
+		.def("removePanel", &FltkScrollPanel::removePanel)            // 1450
+		.def("changeXpos", &FltkScrollPanel::changeXpos)              // 1450
+		.def("setCutState", &FltkScrollPanel::setCutState)            // 1450
+		.def("cutState", (const boolN & (FltkScrollPanel::*)())&FltkScrollPanel::cutState,return_value_policy::reference ) // 1456
+		.def("redraw", [](FltkScrollPanel& self){ self.redraw();})                      // 1450
+		.def("currFrame", &FltkScrollPanel::currFrame)                // 1450
+		; // end of class impl___pybindgen___FltkScrollPanel          // 1511
 #endif
 
 	class_<MotionPanel >(mainlib, "MotionPanel")
@@ -1988,6 +2345,7 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("currPairMotion", &MotionPanel::currPairMotion, RETURN_REFERENCE)
 		.def("numMotion", &MotionPanel::numMotion)
 		.def("motion", &MotionPanel::motion, RETURN_REFERENCE)
+		.def ("scrollPanel", &MotionPanel::scrollPanel, RETURN_REFERENCE)
 #endif
 	;
 
@@ -2040,6 +2398,103 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		}
 		// 1383
 	};                                                            // 1384
+	struct __pybindgen___Ray_wrapper
+	{                                                             // 1382
+		inline static vectorn intersects_plane(Ray & r, const Plane& pl) 
+		{
+			vectorn v(2);
+			std::pair<bool,m_real> p=r.intersects(pl);
+			v(0)=(p.first)?1:0;
+			v(1)=p.second;
+			return v;
+		}
+		inline static vectorn intersects(Ray & r, const std::vector<Plane>& pl) 
+		{
+			vectorn v(2);
+			std::pair<bool,m_real> p=r.intersects(pl);
+			v(0)=(p.first)?1:0;
+			v(1)=p.second;
+			return v;
+		}
+		inline static vectorn intersects_sphere(Ray & r, const Sphere& pl) 
+		{
+			vectorn v(2);
+			std::pair<bool,m_real> p=r.intersects(pl);
+			v(0)=(p.first)?1:0;
+			v(1)=p.second;
+			return v;
+		}
+		// 1383
+	};                                                            // 1384
+	class_<Ray > (mainlib, "Ray")                             // 1393
+															  // : number denotes the line number of luna_gen.lua that generated the sentence // 1397
+		.def(init<>())                                                // 1431
+		.def(init<const vector3 &,const vector3 &>())                 // 1431
+		.def("origin", (vector3& (Ray::*)())&Ray::origin) // 1451
+		.def("direction", (vector3& (Ray::*)())&Ray::direction) // 1451
+		.def("getPoint", (vector3 (Ray::*)(m_real t))&Ray::getPoint) // 1451
+		.def("scale", (void (Ray::*)(double s))&Ray::scale) // 1451
+		.def("translate", (void (Ray::*)(vector3 const& t))&Ray::translate) // 1451
+		.def("pickBarycentric", (int (Ray::*)(const OBJloader::Mesh& mesh, vector3 & baryCoeffs, vector3 & pickPos))&Ray::pickBarycentric) // 1451
+		.def("pickBarycentric", (int (Ray::*)(const OBJloader::Mesh& mesh, const vector3N& vertexPositions, vector3 & baryCoeffs, vector3 & pickPos))&Ray::pickBarycentric) // 1451
+		.def("intersects", &__pybindgen___Ray_wrapper::intersects_plane)
+		.def("intersects", &__pybindgen___Ray_wrapper::intersects_sphere)
+		; // end of class impl___pybindgen___Ray                      // 1511
+	struct __pybindgen___Box2D_wrapper
+	{                                                             // 1382
+		inline static vector2& _property_get_min(Box2D const& a) { return (vector2 &) a.min; }
+		inline static vector2& _property_get_max(Box2D const& a) { return (vector2 &) a.max; }
+		// 1383
+	};                                                            // 1384
+	class_<intersectionTest::LineSegment>(mainlib, "LineSegment")
+		.def(init<>())
+		.def(init<const vector3& , const vector3& >())
+		.def("minDist", &intersectionTest::LineSegment::minDist)
+		.def("minDistTime", &intersectionTest::LineSegment::minDistTime)
+		.def("pos", &intersectionTest::LineSegment::pos)
+		;
+
+	class_<Box2D > (mainlib, "Box2D")                         // 1393
+															  // : number denotes the line number of luna_gen.lua that generated the sentence // 1397
+		.def(init<>())                                                // 1431
+		.def(init<vector2 const &,vector2 const &>())                 // 1431
+		.def("distance", &Box2D::distance)                            // 1450
+																	  //when necessary, check c++ header: .def("distance", (double (Box2D::*)(vector2 const& p))&Box2D::distance) // 1451
+		.def("contains", &Box2D::contains)                            // 1450
+																	  //when necessary, check c++ header: .def("contains", (bool (Box2D::*)(vector2 const& pt, double margin))&Box2D::contains) // 1451
+		//.def("_property_get_min", (vector2 & (*)(Box2D const& a))&_property_get_min, return_value_policy::reference) // 1469
+		//.def("_property_get_max", (vector2 & (*)(Box2D const& a))&_property_get_max, return_value_policy::reference) // 1469
+		; // end of class impl___pybindgen___Box2D                    // 1511
+	struct __pybindgen___Plane_wrapper
+	{                                                             // 1382
+		inline static vector3& _property_get_normal(Plane const& a) { return (vector3 &) a.normal; }
+		inline static double _property_get_d(Plane const& a) { return a.d; }inline static void _property_set_d(Plane & a, double b){ a.d=b;}
+		// 1383
+	};                                                            // 1384
+	class_<Plane > (mainlib, "Plane")                         // 1393
+															  // : number denotes the line number of luna_gen.lua that generated the sentence // 1397
+		.def(init<>())                                                // 1431
+		.def(init<const vector3 &,m_real>())                          // 1431
+		.def(init<const vector3 &,const vector3 &>())                 // 1431
+		.def(init<const vector3 &,const vector3 &,const vector3 &>()) // 1431
+		.def("distance", (m_real (Plane::*)(const vector3& point))&Plane::distance) // 1451
+		.def("setPlane", (void (Plane::*)(const vector3& vPoint0, const vector3& vPoint1, const vector3& vPoint2))&Plane::setPlane) // 1451
+		.def("setPlane", (void (Plane::*)(const vector3& vNormal, const vector3& vPoint))&Plane::setPlane) // 1451
+		.def_readwrite("normal", &Plane::normal)
+		.def_readwrite("d", &Plane::d)
+		; // end of class impl___pybindgen___Plane                    // 1511
+	struct __pybindgen___Sphere_wrapper
+	{                                                             // 1382
+		inline static vector3& _property_get_center(Sphere const& a) { return (vector3 &) a.center; }
+		inline static double _property_get_radius(Sphere const& a) { return a.radius; }inline static void _property_set_radius(Sphere & a, double b){ a.radius=b;}
+		// 1383
+	};                                                            // 1384
+	class_<Sphere > (mainlib, "Sphere")                       // 1393
+															  // : number denotes the line number of luna_gen.lua that generated the sentence // 1397
+		.def(init<vector3,m_real>())                                  // 1431
+		.def_readwrite("center", &Sphere::center)
+		.def_readwrite("radius", &Sphere::radius)
+		; // end of class impl___pybindgen___Sphere                   // 1511
 	class_<Motion>(mainlib, "Motion")
 		.def(init<>())                                                // 1426
 		.def(init<MotionLoader*>())
@@ -2053,6 +2508,7 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("changeLength", &Motion::changeLength)
 		.def("resize", &Motion::Resize)
 		.def("empty", &Motion::empty)
+		.def("assign", &Motion::assign)
 		.def("setPose", &Motion::setPose)
 		.def("setSkeleton", &Motion::setSkeleton) // mot.setSkeleton(12) mot.skeleton().
 		.def("numFrames", numFrames1)  
@@ -2062,7 +2518,7 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("numFrames", (int (Motion::*)() const)&Motion::numFrames)      // 1445
 		.def("size", (int (Motion::*)())&Motion::size)                // 1445
 		.def("changeCoord", (void (Motion::*)(int eCoord))&Motion::ChangeCoord) // 1445
-		.def("range", [] (Motion& m,int start, int end)->MotionView{ return m.range(start, end);})
+		.def("range", [] (Motion& m,int start, int end)->MotionView{ return m.range(start, end);}, WRAP_PY::keep_alive<0,1>())
 		.def("init", init1)
 		.def("init", (void (Motion::*)(MotionLoader* pSource))&Motion::Init) // 1445
 		.def("initEmpty", [](Motion&m , MotionLoader* pSource, int numFrames){ m.InitEmpty(pSource, numFrames);})
@@ -2071,6 +2527,8 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("initSkeleton", (void (Motion::*)(MotionLoader* pSource))&Motion::InitSkeleton) // 1445
 		.def("isConstraint", (bool (Motion::*)(int fr, int eConstraint) const)&Motion::isConstraint) // 1445
 		.def("setConstraint", (void (Motion::*)(int fr, int con, bool bSet))&Motion::setConstraint) // 1445
+		.def("getConstraint", (bitvectorn (Motion::*)(int econ) const)&Motion::getConstraint)
+		.def("setConstraint", (void (Motion::*)(int econ, bitvectorn const& bit) )&Motion::setConstraint)
 		.def_property("identifier", &Motion::GetIdentifier, &Motion::SetIdentifier)
 		.def("concat", &Motion::Concat, "pAdd"_a, "startFrame"_a=0, "endFrame"_a=INT_MAX, "bTypeCheck"_a=true)
 		.def("totalTime", &Motion::totalTime)
@@ -2078,6 +2536,8 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("setFrameTime", (void (Motion::*)(float ftime))&Motion::frameTime) // 1445
 		.def("isDiscontinuous", &Motion::isDiscontinuous)
 		.def("setDiscontinuity", setDiscontinuity1)
+		.def("getDiscontinuity", &Motion::getDiscontinuity)
+		.def("row", &Motion::row)
 		.def("setDiscontinuity", (void (Motion::*)(boolN const& bit))&Motion::setDiscontinuity) // 1445
 		.def("pose", &Motion::pose, RETURN_REFERENCE)
 		.def("calcInterFrameDifference",&Motion::CalcInterFrameDifference)
@@ -2097,7 +2557,7 @@ initSkeletonFromFile) // 1458
 		.def("transitionCost", (double (*)(const Motion& motion, int from, int to, int windowsize))&__pybindgen___Motion_wrapper::transitionCost) // 1458
 		.def("mirrorMotion", (void (*)(Motion& out, const Motion& in, intvectorn const& LrootIndices, intvectorn const& RrootIndices))&MotionUtil::mirrorMotion) // 1458
 		; // end of class impl___pybindgen___Motion                   // 1505
-	class_<MotionView > (mainlib, "MotionView")                     // 1389
+	class_<MotionView ,Motion> (mainlib, "MotionView")                     // 1389
 															  // : number denotes the line number of luna_gen.lua that generated the sentence // 1392
 		; // end of class impl___pybindgen___MotionView               // 1505
 
@@ -2148,11 +2608,20 @@ initSkeletonFromFile) // 1458
 		.def(init<const MotionDOFinfo &>())                           // 1425
 		.def(init<const MotionDOF &>())                               // 1425
 		.def(init<const MotionDOFinfo &,const Motion &>())            // 1425
+		.def("slice", [](MotionDOF const& self, int scol, int ecol)->MotionDOFview{
+				if (scol<0 )
+				scol=self.rows()+scol;
+				if (ecol<=0 )
+				ecol=self.rows()+ecol;
+				return self.range(scol, ecol);
+				}, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
 		.def("copy", [](MotionDOF const&v )->MotionDOF *{ return new MotionDOF(v);}, TAKE_OWNERSHIP )
 		.def("assign", (void (MotionDOF::*)(const MotionDOF& other))&MotionDOF::operator=) // 1447
 		.def("copyFrom", (void (MotionDOF::*)(const MotionDOF& other))&MotionDOF::operator=) // 1447
 		.def("assign", (void (MotionDOF::*)(const MotionDOF& other))&MotionDOF::operator=) // 1447
-		.def("matView", (matrixnView (MotionDOF::*)())&MotionDOF::_matView) // 1447
+		.def("matView", (matrixnView (MotionDOF::*)())&MotionDOF::_matView, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+ // 1447
 		.def("numFrames", (int (MotionDOF::*)())&MotionDOF::numFrames) // 1447
 		.def("numDOF", (int (MotionDOF::*)())&MotionDOF::numDOF)      // 1447
 		.def("resize", (void (MotionDOF::*)(int numFrames))&MotionDOF::resize) // 1447
@@ -2161,8 +2630,8 @@ initSkeletonFromFile) // 1458
 		.def("get", (void (MotionDOF::*)(Motion& tgtMotion))&MotionDOF::get) // 1447
 		.def("set", (void (MotionDOF::*)(const Motion& srcMotion))&MotionDOF::set) // 1447
 		.def("set", (void (MotionDOF::*)(const Motion& srcMotion, intvectorn const& shoulder_tree_indices, intvectorn const& elbow_tree_indices, intvectorn const& wrist_tree_indices))&MotionDOF::set) // 1447
-		.def("range", (MotionDOFview (MotionDOF::*)(int start, int end))&MotionDOF::range) // 1447
-		.def("range_c", (MotionDOFview (MotionDOF::*)(int first, int last))&MotionDOF::range_c) // 1447
+		.def("range", (MotionDOFview (MotionDOF::*)(int start, int end))&MotionDOF::range, WRAP_PY::keep_alive<0,1>()) // 1447
+		.def("range_c", (MotionDOFview (MotionDOF::*)(int first, int last))&MotionDOF::range_c, WRAP_PY::keep_alive<0,1>()) // 1447
 		.def("samplePose", (void (MotionDOF::*)(m_real criticalTime, vectorn& out))&MotionDOF::samplePose) // 1447
 		.def("stitch", (void (MotionDOF::*)(MotionDOF const& motA, MotionDOF const& motB))&MotionDOF::stitch) // 1447
 		.def("align", (void (MotionDOF::*)(MotionDOF const& motA, MotionDOF const& motB))&MotionDOF::align) // 1447
@@ -2215,6 +2684,8 @@ initSkeletonFromFile) // 1458
 			.def("setSphericalQ", (void (BoneForwardKinematics::*)(const vectorn& q))&BoneForwardKinematics::setSphericalQ) // 1445
 			.def("setChain", (void (BoneForwardKinematics::*)(const Posture& pose, const Bone& bone))&BoneForwardKinematics::setChain) // 1445
 			.def("setChain", (void (BoneForwardKinematics::*)(const Bone& bone))&BoneForwardKinematics::setChain) // 1445
+			.def("getPose", &BoneForwardKinematics::getPose) 
+			.def("getPoseDOF", &BoneForwardKinematics::getPoseDOF) 
 			.def("getPoseFromGlobal", (void (BoneForwardKinematics::*)(Posture& pose))&BoneForwardKinematics::getPoseFromGlobal) // 1445
 			.def("getPoseDOFfromGlobal", (void (BoneForwardKinematics::*)(vectorn& poseDOF))&BoneForwardKinematics::getPoseDOFfromGlobal) // 1445
 			.def("getPoseFromLocal", (void (BoneForwardKinematics::*)(Posture& pose))&BoneForwardKinematics::getPoseFromLocal) // 1445
@@ -2225,6 +2696,26 @@ initSkeletonFromFile) // 1458
 			.def("globalFrame", (transf & (*)(BoneForwardKinematics& fk, int i))&__pybindgen___BoneForwardKinematics_wrapper::globalFrame, return_value_policy::reference) // 1463
 			.def("globalFrame", (transf & (*)(BoneForwardKinematics& fk, Bone& bone))&__pybindgen___BoneForwardKinematics_wrapper::globalFrame, return_value_policy::reference) // 1463
 			; // end of class impl___pybindgen___BoneForwardKinematics    // 1505
+	}
+	{
+		class_<ScaledBoneKinematics > (mainlib, "ScaledBoneKinematics") // 1393
+																		// : number denotes the line number of luna_gen.lua that generated the sentence // 1397
+			.def(init<MotionLoader *>())                                  // 1431
+			.def("init", &ScaledBoneKinematics::init)                     // 1450
+			.def("numBone", &ScaledBoneKinematics::numBone)               // 1450
+			.def("localRot", (quater & (ScaledBoneKinematics::*)(int i))&ScaledBoneKinematics::localRot,return_value_policy::reference ) // 1456
+			.def("localScale", (const matrix4 & (ScaledBoneKinematics::*)(int i))&ScaledBoneKinematics::localScale,return_value_policy::reference ) // 1456
+			.def("globalRot", (quater & (ScaledBoneKinematics::*)(int i))&ScaledBoneKinematics::globalRot,return_value_policy::reference ) // 1456
+			.def("forwardKinematics", &ScaledBoneKinematics::forwardKinematics) // 1450
+			.def("updateBoneLength", &ScaledBoneKinematics::updateBoneLength) // 1450
+			.def("setScale", &ScaledBoneKinematics::setScale)             // 1450
+			.def("setLengthScale", &ScaledBoneKinematics::setLengthScale) // 1450
+			.def("setPose", &ScaledBoneKinematics::setPose)               // 1450
+			.def("setPoseDOF", &ScaledBoneKinematics::setPoseDOF)         // 1450
+			.def("setPoseDOFusingCompatibleDOFinfo", &ScaledBoneKinematics::setPoseDOFusingCompatibleDOFinfo) // 1450
+			.def("getSkeleton", (MotionLoader const & (ScaledBoneKinematics::*)())&ScaledBoneKinematics::getSkeleton,return_value_policy::reference ) // 1456
+			.def("getPose", [](ScaledBoneKinematics& self)->Posture { return self.getPose();}) 
+			; // end of class impl___pybindgen__util_ScaledBoneKinematics // 1511
 	}
     class_<MotionDOFcontainer > (mainlib, "MotionDOFcontainer")    // 1388
 		.def(init<MotionDOFinfo const &,const std::string&>())              // 1425
@@ -2521,6 +3012,7 @@ initSkeletonFromFile) // 1458
 		.def("globalFrame", (const transf & (IK_sdls ::LoaderToTree::*)(int ibone))&IK_sdls ::LoaderToTree::globalFrame,return_value_policy::reference ) // 1450
 		.def("setPoseDOF", (void (IK_sdls ::LoaderToTree::*)(MotionDOFinfo const& mDofInfo, vectorn const& pose))&IK_sdls ::LoaderToTree::setPoseDOF) // 1445
 		.def("getPoseDOF", (void (IK_sdls ::LoaderToTree::*)(MotionDOFinfo const& mDofInfo, vectorn& pose))&IK_sdls ::LoaderToTree::getPoseDOF) // 1445
+		.def("getPoseDOF", (vectorn (IK_sdls ::LoaderToTree::*)())&IK_sdls ::LoaderToTree::getPoseDOF) // 1445
 		.def("setVelocity", (void (IK_sdls ::LoaderToTree::*)(MotionDOFinfo const& mDofInfo, vectorn const& pose))&IK_sdls ::LoaderToTree::setVelocity) // 1445
 		.def("getVelocity", (void (IK_sdls ::LoaderToTree::*)(MotionDOFinfo const& mDofInfo, vectorn & pose))&IK_sdls ::LoaderToTree::getVelocity) // 1445
 		.def("getWorldVelocity", (vector3 (IK_sdls ::LoaderToTree::*)(int ibone))&IK_sdls ::LoaderToTree::getWorldVelocity) // 1445
@@ -2567,6 +3059,7 @@ initSkeletonFromFile) // 1458
 		.def("copy", [](Posture const&v )->Posture *{ return new Posture(v);}, TAKE_OWNERSHIP )
 		.def("init", &Posture::Init)
 		.def("identity", &Posture::identity)
+		.def("assign", (&Posture::operator=))
 		.def("numRotJoint", &Posture::numRotJoint)
 		.def("numTransJont",&Posture::numTransJoint)
 		.def("clone", &Posture::clone, RETURN_REFERENCE)
@@ -2584,6 +3077,116 @@ initSkeletonFromFile) // 1458
 		.def_readwrite("m_offset_q", &Posture::m_offset_q)
 		.def_readwrite("m_rotAxis_y", &Posture::m_rotAxis_y)
 	;
+	{
+		struct __pybindgen___TRect_wrapper
+		{                                                             // 1382
+			inline static int get_left(TRect const& a) { return a.left; }inline static void set_left(TRect & a, int b){ a.left=b;}
+			inline static int get_top(TRect const& a) { return a.top; }inline static void set_top(TRect & a, int b){ a.top=b;}
+			inline static int get_right(TRect const& a) { return a.right; }inline static void set_right(TRect & a, int b){ a.right=b;}
+			inline static int get_bottom(TRect const& a) { return a.bottom; }inline static void set_bottom(TRect & a, int b){ a.bottom=b;}
+			// 1383
+		};                                                            // 1384
+		class_<TRect > (mainlib, "TRect")                               // 1389
+																  // : number denotes the line number of luna_gen.lua that generated the sentence // 1392
+			.def(init<>())                                                // 1426
+			.def(init<int,int,int,int>())                                 // 1426
+			.def_property("left", &__pybindgen___TRect_wrapper::get_left, &__pybindgen___TRect_wrapper::set_left) 
+			.def_property("top", &__pybindgen___TRect_wrapper::get_top, &__pybindgen___TRect_wrapper::set_top) 
+			.def_property("right", &__pybindgen___TRect_wrapper::get_right, &__pybindgen___TRect_wrapper::set_right) 
+			.def_property("bottom", &__pybindgen___TRect_wrapper::get_bottom, &__pybindgen___TRect_wrapper::set_bottom) 
+			; // end of class impl___pybindgen___TRect                    // 1505
+		struct CImage_
+		{
+			// does not copy memory.
+			static PyObject* ref(CImage const& v)
+			{
+				npy_intp dims[3];
+				dims[0]=v.GetHeight();
+				dims[1]=v.GetWidth();
+				dims[2]=3; // RGB
+				npy_intp strides[3];
+				strides[0]=sizeof(uchar)*v._stride;
+				strides[1]=sizeof(uchar)*3;
+				strides[2]=sizeof(uchar);
+				uchar* vv=v._dataPtr;
+				PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_UINT8), 3, dims, strides, vv, 
+						//NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE
+						NPY_ARRAY_CARRAY | NPY_ARRAY_WRITEABLE
+						, NULL);
+				return o;
+			}
+		};
+		class_<CImage > (mainlib, "CImage")                       // 1393
+																  // : number denotes the line number of luna_gen.lua that generated the sentence // 1397
+			.def(init<>())                                                // 1431
+			.def_property_readonly("array", [](CImage const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(CImage_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def("ref",  [](CImage const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(CImage_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def("GetWidth", &CImage::GetWidth)                           // 1450
+																		  //when necessary, check c++ header: .def("GetWidth", (int (CImage::*)())&CImage::GetWidth) // 1451
+			.def("GetHeight", &CImage::GetHeight)                         // 1450
+																		  //when necessary, check c++ header: .def("GetHeight", (int (CImage::*)())&CImage::GetHeight) // 1451
+			.def("Load", &CImage::Load)                                   // 1450
+																		  //when necessary, check c++ header: .def("Load", (bool (CImage::*)(const char* filename))&CImage::Load) // 1451
+			.def("Save", &CImage::Save)                                   // 1450
+																		  //when necessary, check c++ header: .def("Save", (bool (CImage::*)(const char* filename))&CImage::Save) // 1451
+			.def("save", &CImage::save)                                   // 1450
+																		  //when necessary, check c++ header: .def("save", (bool (CImage::*)(const char* filename, int BPP))&CImage::save) // 1451
+			.def("create", &CImage::Create)                               // 1450
+																		  //when necessary, check c++ header: .def("create", (bool (CImage::*)(int width, int height))&CImage::Create) // 1451
+			.def("CopyFrom", &CImage::CopyFrom)                           // 1450
+																		  //when necessary, check c++ header: .def("CopyFrom", (void (CImage::*)(CImage const& other))&CImage::CopyFrom) // 1451
+			.def("GetPixel", (CPixelRGB8 * (CImage::*)(int i, int j))&CImage::GetPixel,return_value_policy::reference ) // 1456
+			.def("drawBox", (void (*)(CImage& inout, TRect const& t, int R, int G, int B))&Imp::drawBox) // 1464
+			.def("sharpen", (void (*)(CImage& inout, double factor, int iterations))&Imp::sharpen) // 1464
+			.def("contrast", (void (*)(CImage& inout, double factor))&Imp::contrast) // 1464
+			.def("gammaCorrect", (void (*)(CImage& inout, double factor))&Imp::gammaCorrect) // 1464
+			.def("dither", (void (*)(CImage& inout, int levels))&Imp::dither) // 1464
+			.def("resize", (void (*)(CImage& inout, int width, int height))&Imp::resize) // 1464
+			.def("blit", (void (*)(CImage& out, CImage const& in, TRect const& rect_in, int x, int y))&Imp::blit) // 1464
+			.def("concatVertical", (void (*)(CImage& out, CImage const& a, CImage const& b))&Imp::concatVertical) // 1464
+			.def("crop", (void (*)(CImage& out, CImage const& in, int left, int top, int right, int bottom))&Imp::crop) // 1464
+			.def("rotateRight", (void (*)(CImage& other))&Imp::rotateRight) // 1464
+			.def("rotateLeft", (void (*)(CImage& other))&Imp::rotateLeft) // 1464
+			.def("hsv2rgb", (vector3 (*)(vector3 const& in))&hsv2rgb)     // 1464
+			.def("rgb2hsv", (vector3 (*)(vector3 const& in))&rgb2hsv)     // 1464
+			; // end of class impl___pybindgen___CImage                   // 1511
+		class_<CImagePixel > (mainlib, "Pixels")                  // 1393
+																  // : number denotes the line number of luna_gen.lua that generated the sentence // 1397
+			.def(init<>())                                                // 1431
+			.def(init<CImage *>())                                        // 1431
+			.def("SetPixel", (void (CImagePixel::*)(int x, int y, CPixelRGB8 color))&CImagePixel::SetPixel) // 1451
+			.def("GetPixel", [](CImagePixel*p ,int x, int y)->CPixelRGB8&{ return p->GetPixel(x,y);},return_value_policy::reference ) // 1456
+			.def("Pixel", [](CImagePixel* p,int x, int y)->CPixelRGB8&{ return p->GetPixel(x,y);},return_value_policy::reference ) // 1456
+			.def("SetPixel", (void (CImagePixel::*)(float x, float y, CPixelRGB8 color))&CImagePixel::SetPixel) // 1451
+			.def("DrawHorizLine", &CImagePixel::DrawHorizLine)            // 1450
+																		  //when necessary, check c++ header: .def("DrawHorizLine", (void (CImagePixel::*)(int x, int y, int width, CPixelRGB8 color))&CImagePixel::DrawHorizLine) // 1451
+			.def("DrawVertLine", &CImagePixel::DrawVertLine)              // 1450
+																		  //when necessary, check c++ header: .def("DrawVertLine", (void (CImagePixel::*)(int x, int y, int height, CPixelRGB8 color))&CImagePixel::DrawVertLine) // 1451
+			.def("DrawVertLine", &CImagePixel::DrawVertLine)              // 1450
+																		  //when necessary, check c++ header: .def("DrawVertLine", (void (CImagePixel::*)(int x, int y, int height, CPixelRGB8 color,bool bDotted))&CImagePixel::DrawVertLine) // 1451
+			.def("DrawLine", &CImagePixel::DrawLine)                      // 1450
+																		  //when necessary, check c++ header: .def("DrawLine", (void (CImagePixel::*)(int x1, int y1, int x2, int y2, CPixelRGB8 color))&CImagePixel::DrawLine) // 1451
+			.def("DrawBox", &CImagePixel::DrawBox)                        // 1450
+																		  //when necessary, check c++ header: .def("DrawBox", (void (CImagePixel::*)(const TRect& rect, CPixelRGB8 color))&CImagePixel::DrawBox) // 1451
+			.def("DrawLineBox", &CImagePixel::DrawLineBox)                // 1450
+																		  //when necessary, check c++ header: .def("DrawLineBox", (void (CImagePixel::*)(const TRect& rect, CPixelRGB8 color))&CImagePixel::DrawLineBox) // 1451
+			.def("DrawPattern", [](CImagePixel* p,int x, int y, const CImagePixel& patternPixel){
+					p->DrawPattern(x,y, patternPixel);}) // 1451
+			.def("DrawPattern", [](CImagePixel*p,int x, int y, CImage* pPattern, bool bUseColorKey, CPixelRGB8 colorkey){
+					p->DrawPattern(x,y,pPattern, bUseColorKey, colorkey);}) // 1451
+			.def("DrawSubPattern", [](CImagePixel*p,int x, int y, const CImagePixel& patternPixel, const TRect& patternRect){
+					p->DrawSubPattern(x,y, patternPixel, patternRect);}) // 1451
+			.def("Clear", &CImagePixel::Clear)                            // 1450
+			.def("DrawText", [](CImagePixel*p,int x, int y, const char* str){
+					p->drawText(x,y,str);}) // 1451
+			.def("DrawText", &CImagePixel::drawText)                      // 1450
+			.def("Width", &CImagePixel::Width)                            // 1450
+			.def("Height", &CImagePixel::Height)                          // 1450
+			.def("GetPixel", [](CImagePixel& pixel, float x, float y)->CPixelRGB8{
+					int count;
+					return pixel.GetPixel(x,y, count);} ) // 1464
+			; // end of class impl___pybindgen__CImage_Pixels             // 1511
+	}
 	{
 		void (TStrings::*set)(int i, const char* v)=&TStrings::set;
 		void (TStrings::*pushback)(const char* v)=&TStrings::pushBack;
@@ -2709,6 +3312,12 @@ initSkeletonFromFile) // 1458
 
 		mainlib.attr("Voca") = WRAP_PY::module::import("enum").attr("IntEnum")
         ("Voca", WRAP_PY::dict(
+				"CONSTRAINT_LEFT_FOOT"_a= (int)CONSTRAINT_LEFT_FOOT,
+				"CONSTRAINT_RIGHT_FOOT"_a= (int)CONSTRAINT_RIGHT_FOOT,
+				"CONSTRAINT_LEFT_TOE"_a= (int)CONSTRAINT_LEFT_TOE,
+				"CONSTRAINT_RIGHT_TOE"_a= (int)CONSTRAINT_RIGHT_TOE,
+				"CONSTRAINT_LEFT_HEEL"_a= (int)CONSTRAINT_LEFT_HEEL,
+				"CONSTRAINT_RIGHT_HEEL"_a= (int)CONSTRAINT_RIGHT_HEEL,
 				"HIPS"_a= (int)MotionLoader::HIPS,
 				"LEFTHIP"_a=(int)MotionLoader::LEFTHIP,
 				"LEFTKNEE"_a= (int)MotionLoader::LEFTKNEE,
@@ -2944,6 +3553,7 @@ initSkeletonFromFile) // 1458
 			.def("__eq__", (bool (*)(Bone& bone1, Bone& bone2))&__pybindgen__Bone_wrapper::eq)         // 1460
 			.def("name", (std ::string (*)(Bone& bone))&__pybindgen__Bone_wrapper::name)             // 1460
 			.def("__repr__", (std ::string (*)(Bone& bone))&__pybindgen__Bone_wrapper::name)       // 1460
+			.def("getJointAxis", &Bone::getJointAxis)
 		;
 		class_<VRMLTransform ,Bone > (mainlib, "VRMLTransform")               // 1389
 																  // : number denotes the line number of luna_gen.lua that generated the sentence // 1392
@@ -3044,9 +3654,8 @@ initSkeletonFromFile) // 1458
 			.def("calcCurFrameFromInterpolator", (float (*)(PLDPrimSkin& s, int iframe))&impl_luna__interface_PLDPrimSkin::calcCurFrameFromInterpolator) // 1460
 			.def("numFrames", (int (*)(PLDPrimSkin& s))&impl_luna__interface_PLDPrimSkin::numFrames)        // 1460
 			.def("setFrameTime", (void (*)(PLDPrimSkin& s, float fFrameTime))&impl_luna__interface_PLDPrimSkin::setFrameTime) // 1460
-			.def("totalTime", (float (*)(PLDPrimSkin& s))&impl_luna__interface_PLDPrimSkin::totalTime)      // 1460
-			;
-
+			.def("totalTime", (float (*)(PLDPrimSkin& s))&impl_luna__interface_PLDPrimSkin::totalTime)      // 1460 ;
+		;
 		struct __pybind_gen_PLDPrimVRML_wrapper{
 		static void setPose(PLDPrimVRML& prim, OpenHRP::DynamicsSimulator& s, int ichara)
 		{
@@ -3058,7 +3667,7 @@ initSkeletonFromFile) // 1458
 			//            printf("y=%s \n", c->chain->global(5).translation.output().ptr());
 			prim.SetPose(pose, *c->skeleton);
 			*/
-			prim.setPose(s.getWorldState(ichara));
+			prim.setSamePose(s.getWorldState(ichara));
 		}
 		static void setPose2(PLDPrimVRML& prim, Posture const& pose)
 		{
@@ -3110,6 +3719,7 @@ initSkeletonFromFile) // 1458
 			.def("widget", &FlLayout::widgetRaw,RETURN_REFERENCE)
 			.def("widgetIndex", &FlLayout::widgetIndex)
 			.def("findWidget", &FlLayout::findWidget,RETURN_REFERENCE)	
+			.def("removeWidgets", &FlLayout::removeWidgets)
 		;
 		class_<Fl_Widget >(mainlib, "Fl_Widget") ;
 
@@ -3161,6 +3771,11 @@ initSkeletonFromFile) // 1458
 		;
 
 	}
+	enum_<NonuniformSpline::boundaryCondition::bcT>(mainlib, "boundaryCondition")
+		.value("ZERO_VEL",NonuniformSpline::boundaryCondition::ZERO_VEL)
+		.value("ZERO_ACC",NonuniformSpline::boundaryCondition::ZERO_ACC)
+		.value("VEL",NonuniformSpline::boundaryCondition::VEL)
+		;
 	class_<NonuniformSpline > (mainlib, "NonuniformSpline")         // 1389
 	.def(init<vectorn const &,const matrixn &>())                 // 1426
 .def(init<vectorn const &,const matrixn &,NonuniformSpline ::boundaryCondition ::bcT>()) // 1426
@@ -3551,6 +4166,44 @@ initSkeletonFromFile) // 1458
 			static void push_Tensor(PythonExtendWin& l,Tensor & w) { luna_push<Tensor>(l.L, &w); }
 			static void push_posture(PythonExtendWin& l,Posture & w) { luna_push<Posture>(l.L, &w); }
 		};
+#ifndef NO_GUI
+		class_<FltkRenderer > (mainlib, "_FltkRenderer")           // 1393
+			.def("screenToWorldXZPlane", (vector3 (FltkRenderer::*)(float x, float y, float height))&FltkRenderer::screenToWorldXZPlane,"x"_a, "y"_a,"height"_a=0.f) // 1451
+			//.def("worldToScreen", (vector2 (FltkRenderer::*)(vector3 const& w))&FltkRenderer::worldToScreen) // 1451
+			.def("screenToWorldRay", (void (FltkRenderer::*)(float x, float y, Ray& ray))&FltkRenderer::screenToWorldRay) // 1451
+			.def("volumeQuery", (void (FltkRenderer::*)(TStrings& nodeNames, float left, float top, float right, float bottom))&FltkRenderer::volumeQuery) // 1451
+			.def("rayQuery", (void (FltkRenderer::*)(TStrings& nodeNames, float x, float y))&FltkRenderer::rayQuery) // 1451
+			.def("saveView", (void (FltkRenderer::*)(int slot))&FltkRenderer::saveView) // 145j
+			;
+		class_<OgreRenderer > (mainlib, "OgreRenderer")           // 1393
+			.def("getConfig", &OgreRenderer::getConfig)
+			.def("getConfigFloat", &OgreRenderer::getConfigFloat)
+			.def("screenshot", &OgreRenderer::screenshot)                 // 1450
+			.def("setScreenshotMotionBlur", &OgreRenderer::setScreenshotMotionBlur) // 1450
+			.def("setScreenshotPrefix", &OgreRenderer::setScreenshotPrefix) // 1450
+			.def("fixedTimeStep", &OgreRenderer::fixedTimeStep)           // 1450
+			.def("setCaptureFPS", &OgreRenderer::setCaptureFPS)           // 1450
+			.def("addNewViewport", &OgreRenderer::addNewViewport)         // 1450
+			.def("numViewport", &OgreRenderer::numViewport)               // 1450
+			.def("viewport", (OgreRenderer ::Viewport & (OgreRenderer::*)())&OgreRenderer::viewport,return_value_policy::reference ) // 1456
+			.def("viewport", (OgreRenderer ::Viewport & (OgreRenderer::*)(int viewport))&OgreRenderer::viewport,return_value_policy::reference ) // 1456
+			.def("addFrameMoveObject", &OgreRenderer::addFrameMoveObject) // 1450
+			.def("removeFrameMoveObject", &OgreRenderer::removeFrameMoveObject) // 1450
+			.def("addAfterFrameMoveObject", &OgreRenderer::addAfterFrameMoveObject) // 1450
+			.def("removeAfterFrameMoveObject", &OgreRenderer::removeAfterFrameMoveObject) // 1450
+			.def("_getOgreTextureWidth", &OgreRenderer::_getOgreTextureWidth) // 1450
+			.def("_updateDynamicTexture", &OgreRenderer::_updateDynamicTexture) // 1450
+			.def("_linkMaterialAndTexture", &OgreRenderer::_linkMaterialAndTexture) // 1450
+			.def("createDynamicTexture", (void (OgreRenderer::*)(const char* name, CImage const& image))&OgreRenderer::createDynamicTexture) // 1451
+			.def("createDynamicTexture", (void (OgreRenderer::*)(const char* name, CImage const& image, vector3 const& diffuseColor, vector3 const& specular_color, double shininess))&OgreRenderer::createDynamicTexture) // 1451
+			.def("createMaterial", &OgreRenderer::createMaterial)         // 1450
+			.def("createRenderTexture", &OgreRenderer::createRenderTexture) // 1450
+			.def("updateRenderTexture", &OgreRenderer::updateRenderTexture) // 1450
+			.def("setMaterialParam", &OgreRenderer::setMaterialParam)     // 1450
+			.def("cloneMaterial", &OgreRenderer::cloneMaterial)           // 1450
+			; // end of class impl___pybindgen___OgreRenderer             // 1511
+#endif
+																						;
 		class_<PythonExtendWin, FlLayout >(mainlib, "PythonExtendWin")
 			.def( init<int, int, int, int, MotionPanel&, FltkRenderer&>())
 			.def("loadScript", &PythonExtendWin::__loadScript)
@@ -3591,6 +4244,11 @@ initSkeletonFromFile) // 1458
 			.def("push", [](PythonExtendWin& l,boolN & w) { luna_push<boolN>(l.L, &w); })
 			.def("push", [](PythonExtendWin& l,PoseTransfer & w) { luna_push<PoseTransfer>(l.L, &w); })
 			.def("push", [](PythonExtendWin& l,Viewpoint & w) { luna_push<Viewpoint>(l.L, &w); })
+			.def("push", [](PythonExtendWin& l,Ray & w) { luna_push<Ray>(l.L, &w); })
+			.def("push", [](PythonExtendWin& l,LuaScript & w) { luna_push<LuaScript>(l.L, &w); })
+			.def("push", [](PythonExtendWin& l,ThreadScriptPool & w) { luna_push<ThreadScriptPool>(l.L, &w); })
+			.def("push", [](PythonExtendWin& l,TStrings & w) { luna_push<TStrings>(l.L, &w); })
+			.def("push", [](PythonExtendWin& l,MotionDOFcontainer & w) { luna_push<MotionDOFcontainer>(l.L, &w); })
 			.def("pushnil", [](PythonExtendWin&l){lua_pushnil(l.L);})
 			.def("newtable", [](PythonExtendWin&l){lua_newtable(l.L);})
 			.def("settable", [](PythonExtendWin&l, int index){lua_settable(l.L, index);})
@@ -3678,6 +4336,11 @@ initSkeletonFromFile) // 1458
 					lua_pop(l.L,1);
 					return result;
 					},RETURN_REFERENCE)
+  			.def("popmatrix4", [](PythonExtendWin& l)->matrix4*{
+					matrix4* result= (matrix4*)Luna<typename LunaTraits<matrix4>::base_t>::check(l.L,-1);
+					lua_pop(l.L,1);
+					return result;
+					},RETURN_REFERENCE)
   			.def("popVector3N", [](PythonExtendWin& l)->vector3N*{
 					vector3N* result= (vector3N*)Luna<typename LunaTraits<vector3N>::base_t>::check(l.L,-1);
 					lua_pop(l.L,1);
@@ -3685,6 +4348,11 @@ initSkeletonFromFile) // 1458
 					},RETURN_REFERENCE)
   			.def("popQuaterN", [](PythonExtendWin& l)->quaterN*{
 					quaterN* result= (quaterN*)Luna<typename LunaTraits<quaterN>::base_t>::check(l.L,-1);
+					lua_pop(l.L,1);
+					return result;
+					},RETURN_REFERENCE)
+  			.def("popTStrings", [](PythonExtendWin& l)->TStrings*{
+					TStrings* result= (TStrings*)Luna<typename LunaTraits<TStrings>::base_t>::check(l.L,-1);
 					lua_pop(l.L,1);
 					return result;
 					},RETURN_REFERENCE)
@@ -3716,6 +4384,21 @@ initSkeletonFromFile) // 1458
   			.def("isnil", &PythonExtendWin_wrapper::isnil)
 			.def("gettop",&PythonExtendWin_wrapper::gettop)
 			.def("pop",&PythonExtendWin_wrapper::pop)
+  			.def("popIntIntervals", [](PythonExtendWin& l)->intIntervals*{
+					intIntervals* result= (intIntervals*)Luna<typename LunaTraits<intIntervals>::base_t>::check(l.L,-1);
+					lua_pop(l.L,1);
+					return result;
+					},RETURN_REFERENCE)
+  			.def("popScaledBoneKinematics", [](PythonExtendWin& l)->ScaledBoneKinematics*{
+					ScaledBoneKinematics* result= (ScaledBoneKinematics*)Luna<typename LunaTraits<ScaledBoneKinematics>::base_t>::check(l.L,-1);
+					lua_pop(l.L,1);
+					return result;
+					},RETURN_REFERENCE)
+  			.def("popBoneForwardKinematics", [](PythonExtendWin& l)->BoneForwardKinematics*{
+					BoneForwardKinematics* result= (BoneForwardKinematics*)Luna<typename LunaTraits<BoneForwardKinematics>::base_t>::check(l.L,-1);
+					lua_pop(l.L,1);
+					return result;
+					},RETURN_REFERENCE)
 		;
 	}
 

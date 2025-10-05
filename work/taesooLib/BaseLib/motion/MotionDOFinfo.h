@@ -62,7 +62,7 @@ class MotionDOFinfo
   int startDQ(int iBone) const; 
   int endDQ(int iBone) const;
   inline int DQtoBone(int DQindex) const { return _sharedinfo->DQtoBoneIndex[DQindex];}
-  inline int DOFtoBone(int DOFindex) const { return _sharedinfo->DQtoBoneIndex[DOFindex];}
+  inline int DOFtoBone(int DOFindex) const { return _sharedinfo->DOFtoBoneIndex[DOFindex];}
   inline int DOFtoDQ(int DOFindex) const { return _sharedinfo->DOFtoDQ[DOFindex];}
   inline int DQtoDOF(int DOFindex) const { return _sharedinfo->DQtoDOF[DOFindex];}
   // two-different types of joint velocity packing

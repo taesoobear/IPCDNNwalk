@@ -10,7 +10,7 @@ import pdb # use pdb.set_trace() for debugging
 sys.path.append(os.getcwd())
 sys.path.append('gym_cdm')
 
-import settings
+import work.settings as settings
 
 class EnvNormalize:
     """

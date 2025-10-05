@@ -249,6 +249,7 @@ namespace MiscUtils{
         "ESM"
     };
 
+extern ConfigTable config;
     ShadowMapFromCodeGameState::ShadowMapFromCodeGameState( const Ogre::String &helpDescription ) :
         mGraphicsSystem( 0 ),
         mHelpDescription( helpDescription ),
@@ -337,6 +338,12 @@ namespace MiscUtils{
 #endif
 
 #ifdef CREATE_DEFAULT_LIGHT
+		if (config.GetInt("shadowTechnique")==0)
+		{
+			createDebugTextOverlay();
+			return;
+		}
+
         Ogre::SceneNode *rootNode = sceneManager->getRootSceneNode();
 
         Ogre::Light *light = sceneManager->createLight();
@@ -408,6 +415,7 @@ namespace MiscUtils{
     }
     void ShadowMapFromCodeGameState::createDebugTextOverlay(void)
     {
+#ifndef _DISABLE_DEBUGTEXT
         Ogre::v1::OverlayManager &overlayManager = Ogre::v1::OverlayManager::getSingleton();
         Ogre::v1::Overlay *overlay = overlayManager.create( "DebugText" );
 
@@ -429,6 +437,7 @@ namespace MiscUtils{
         panel->addChild( mDebugText );
         overlay->add2D( panel );
         overlay->show();
+#endif
     }
     //-----------------------------------------------------------------------------------
     const char* ShadowMapFromCodeGameState::chooseEsmShadowNode(void)
@@ -504,8 +513,10 @@ namespace MiscUtils{
             //Show FPS
             Ogre::String finalText;
             generateDebugText( timeSinceLast, finalText );
+#ifndef _DISABLE_DEBUGTEXT
             mDebugText->setCaption( finalText );
             mDebugTextShadow->setCaption( finalText );
+#endif
         }
 
     }
@@ -564,8 +575,10 @@ namespace MiscUtils{
 			outText.swap( finalText );
 		}
 
+#ifndef _DISABLE_DEBUGTEXT
         mDebugText->setCaption( finalText );
         mDebugTextShadow->setCaption( finalText );
+#endif
     }
     //-----------------------------------------------------------------------------------
 	/*

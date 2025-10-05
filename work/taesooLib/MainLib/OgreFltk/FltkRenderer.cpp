@@ -33,7 +33,7 @@ namespace Msg
 		// inherit and implement followings
 		virtual void print(const char* msg)	{ printf("%s",msg);}
 		virtual void flush()				{ fflush(stdout);}
-		virtual void error(const char* msg) { fl_message("Error! %s",msg);ASSERT(0); throw(std::runtime_error(msg));}
+		virtual void error(const char* msg) { printf("%s\n",msg);ASSERT(0); throw(std::runtime_error(msg));}
 		virtual void msgBox(const char* msg){ fl_message("%s",msg);}
 		// not implemented yet.
 		virtual bool confirm(const char* msg) { return fl_ask("%s", msg);}
@@ -442,7 +442,7 @@ void FltkRenderer::firstInit(Fl_Window* topmostwin)
 	handle = (HWND)fl_xid(m_RenderView);
 
 	m_hWnd=(void*)handle;
-	mOgreRenderer->firstInit(handle, m_RenderView->w(), m_RenderView->h());
+	mOgreRenderer->initialize(handle, m_RenderView->w(), m_RenderView->h());
 /*#elif defined(__APPLE__)
 	make_current();
 	mOgreRenderer->firstInit((void*)(Fl_Window*)this, w(), h());
@@ -909,7 +909,7 @@ void FltkRenderer::onCallback(Fl_Widget * pWidget, int userData)
 	else if(userData==Hash("Toggle background"))
 	{
 		try{
-			Ogre::SceneNode* pBg=mOgreRenderer->viewport().mScene->getSceneNode((unsigned int)RE::BackgroundNode);
+			Ogre::SceneNode* pBg=RE::getSceneNode("BackgroundNode");
 			pBg->flipVisibility();
 		}
 		catch(Ogre::Exception& e ) {
@@ -1038,6 +1038,7 @@ void drawCursor(int x, int y)
 {
 	
 #ifndef NO_GUI
+	return;
 	Ogre::v1::Overlay* overlay=Ogre::v1::OverlayManager::getSingleton().getByName("CursorOverlay");
 
 	if(overlay)
@@ -1147,7 +1148,11 @@ int FltkRenderer::handle(int ev)
 				mOgreRenderer->viewport().m_pViewpoint->HandleMouseMessages2(  Viewpoint::LBUTTONUP, 10-Fl::event_dy()*30, 10);
 			}
 		}
+#ifdef __APPLE__
+		else if(Fl::event_alt())
+#else
 		else if(OIS_event_shift())
+#endif
 		{
 			mOgreRenderer->viewport().m_pViewpoint->HandleMouseMessages2(  Viewpoint::MBUTTONDOWN, 10, 10);
 			mOgreRenderer->viewport().m_pViewpoint->HandleMouseMessages2(  Viewpoint::MBUTTONUP, 10, 10-Fl::event_dy()*15);

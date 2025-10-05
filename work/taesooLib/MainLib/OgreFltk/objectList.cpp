@@ -24,7 +24,9 @@ static vector3 materialToColor(const char* materialName)
 	if(m.findStr(0, "RED")!=-1)
 		return vector3(1.0,0.0,0.0);
 	else if(m.findStr(0, "BLUE")!=-1)
-		return vector3(0.0,1.0,0.0);
+		return vector3(0.0,0.2,0.8);
+	else if(m.findStr(0, "GREEN")!=-1)
+		return vector3(0.1,0.9,0.1);
 	else if(m.findStr(0, "WHITE")!=-1)
 		return vector3(1.0,1.0,1.0);
 	else if(m.findStr(0, "GREY")!=-1)

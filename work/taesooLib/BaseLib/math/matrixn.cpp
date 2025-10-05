@@ -364,7 +364,7 @@ matrixn&  matrixn::identity(int n)
 TString matrixn::shortOutput() const
 {
 	TString out;
-	out.add("{");
+	out.add("{\n");
 	auto& a=*this;
 	if (a.rows()<10 )
 	{
@@ -379,7 +379,7 @@ TString matrixn::shortOutput() const
 		for (int i=a.rows()-5; i< a.rows(); i++)
 			out.add(" {[%d]=%s\n", i, a.row(i).shortOutput().ptr());
 	}
-	out.add("\n}\n");
+	out.add("}\n");
 
 	//printf("%s\n", out.ptr());
 	return out;
@@ -821,6 +821,22 @@ matrixn matrixn::derivative(double frame_rate) const
    
    // fill in empty rows
    dsrc.row(0).assign(dsrc.row(1));
+   dsrc.row(dsrc.rows()-1).assign(dsrc.row(dsrc.rows()-2));
+   return dsrc;
+}
+matrixn matrixn::derivative_forward(double frame_rate) const
+{
+   matrixn dsrc;
+   
+   dsrc.setSize(rows(), cols());
+   
+   for (int i=0; i< rows()-1; i++)
+   {
+	   dsrc.row(i).sub(row(i+1),row(i));
+	   dsrc.row(i)*=frame_rate;
+   }
+   
+   // fill in empty rows
    dsrc.row(dsrc.rows()-1).assign(dsrc.row(dsrc.rows()-2));
    return dsrc;
 }

@@ -245,6 +245,9 @@ class ROTConstraintInfo: public MotionUtil::RelativeConstraint::ConstraintInfo
 		ROTConstraintInfo(VRMLloader const& l, IK_sdls::LoaderToTree* s, Bone* b, quater const& q):loader(l),solver(s) {
 			q2=q;
 			bone1=b;
+
+			int ti1=bone1->treeIndex();
+			RANGE_ASSERT(ti1>=1);
 		}
 		virtual double calcObjectiveAndGradient(int N, double* g, const double *x, double w){
 			matrixn JT;
@@ -508,6 +511,8 @@ class EEConstraintInfo: public MotionUtil::RelativeConstraint::ConstraintInfo
 			_w.x=wx;
 			_w.y=wy;
 			_w.z=wz;
+			int ti1=bone1->treeIndex();
+			RANGE_ASSERT(ti1>=1);
 		}
 		inline double wdot(vector3 const& a, vector3 const& b)
 		{
@@ -543,6 +548,9 @@ class DistanceConstraintInfo: public MotionUtil::RelativeConstraint::ConstraintI
 			_lpos=lpos;
 			_gpos=gpos;
 			_targetDist=targetDist;
+
+			int ti1=bone1->treeIndex();
+			RANGE_ASSERT(ti1>=1);
 		}
 		virtual double calcObjectiveAndGradient(int N, double* g, const double *x, double w){
 			matrixn JT;
@@ -586,6 +594,10 @@ class RelativeConstraintInfo: public MotionUtil::RelativeConstraint::ConstraintI
 			_lpos1=lpos1;
 			bone2=b2;
 			_lpos2=lpos2;
+			int ti1=bone1->treeIndex();
+			int ti2=bone2->treeIndex();
+			RANGE_ASSERT(ti1>=1);
+			RANGE_ASSERT(ti2>=1);
 		}
 		RelativeConstraintInfo(VRMLloader const& l, IK_sdls::LoaderToTree* s, Bone* b, vector3 const& lpos1, 
 				Bone* b2, vector3 const& lpos2,vector3 const& delta) 
@@ -597,6 +609,10 @@ class RelativeConstraintInfo: public MotionUtil::RelativeConstraint::ConstraintI
 			_lpos1=lpos1;
 			bone2=b2;
 			_lpos2=lpos2;
+			int ti1=bone1->treeIndex();
+			int ti2=bone2->treeIndex();
+			RANGE_ASSERT(ti1>=1);
+			RANGE_ASSERT(ti2>=1);
 		}
 		virtual double calcObjectiveAndGradient(int N, double* g, const double *x, double w){
 			double fx=0.0;
@@ -638,6 +654,10 @@ Bone* b2, vector3 const& lpos2, double thr)
 			_lpos1=lpos1;
 			bone2=b2;
 			_lpos2=lpos2;
+			int ti1=bone1->treeIndex();
+			int ti2=bone2->treeIndex();
+			RANGE_ASSERT(ti1>=1);
+			RANGE_ASSERT(ti2>=1);
 		}
 		RelativeDistanceConstraintInfo(VRMLloader const& l, IK_sdls::LoaderToTree* s, Bone* b, vector3 const& lpos1, 
 Bone* b2, vector3 const& lpos2, vector3 const& delta, double thr) 
@@ -648,6 +668,10 @@ Bone* b2, vector3 const& lpos2, vector3 const& delta, double thr)
 			_lpos1=lpos1;
 			bone2=b2;
 			_lpos2=lpos2;
+			int ti1=bone1->treeIndex();
+			int ti2=bone2->treeIndex();
+			RANGE_ASSERT(ti1>=1);
+			RANGE_ASSERT(ti2>=1);
 		}
 		virtual double calcObjectiveAndGradient(int N, double* g, const double *x, double w){
 			double fx=0.0;
@@ -694,6 +718,10 @@ Bone* b2, vector3 const& lpos2, vector3 const& normal, double depth)
 			_lpos1=lpos1;
 			bone2=b2;
 			_lpos2=lpos2;
+			int ti1=bone1->treeIndex();
+			int ti2=bone2->treeIndex();
+			RANGE_ASSERT(ti1>=1);
+			RANGE_ASSERT(ti2>=1);
 		}
 		virtual double calcObjectiveAndGradient(int N, double* g, const double *x, double w);
 };
@@ -765,6 +793,26 @@ public:
 				int sj=getVarIndex(ti);
 				int ej=getVarEndIndex(ti);
 				mJacobianLock.range(sj,ej).setAllValue(true);
+			}
+		}
+	 	else if(TString("jacobian_lock_turn_off_by_varIndices")==type)
+		{
+			int ndof=nDOF();
+			for(int i=0; i<input.size(); i++)
+			{
+				int varIndex=(int)input[i];
+				RANGE_ASSERT(varIndex<ndof);
+				mJacobianLock.set(varIndex, false);
+			}
+		}
+	 	else if(TString("jacobian_lock_turn_on_by_varIndices")==type)
+		{
+			int ndof=nDOF();
+			for(int i=0; i<input.size(); i++)
+			{
+				int varIndex=(int)input[i];
+				RANGE_ASSERT(varIndex<ndof);
+				mJacobianLock.set(varIndex, true);
 			}
 		}
 		else
@@ -965,6 +1013,9 @@ public:
 		mConstraints[i].normal[1]=global_normal.y;
 		mConstraints[i].normal[2]=global_normal.z;
 		mConstraints[i].idepth=idepth;
+
+		int ti1=bone->treeIndex();
+		RANGE_ASSERT(ti1>=1);
 		return true;
 	}	   
 	virtual bool _setDistanceConstraint(int i, Bone* bone, vector3 const& lpos, vector3 const& gpos, float targetDist) {
@@ -985,6 +1036,8 @@ public:
 		mConstraints[i].normal[2]=global_normal.z;
 		mConstraints[i].idepth=idepth;
 		mConstraints[i].weight=1.0;
+		int ti1=bone->treeIndex();
+		RANGE_ASSERT(ti1>=1);
 		return true;
 	}	   
 	virtual bool _setCOMConstraint(int i, vector3 const& com) { 
@@ -1298,14 +1351,11 @@ public:
 			{
 				int sj=getVarIndex(ti);
 				int ej=getVarEndIndex(ti);
-				if(mJacobianLock(sj))
+				for(int i=sj; i<ej; i++)
 				{
-					for(int i=sj; i<ej; i++)
+					if(mJacobianLock(sj))
 						getNode(ti,i-sj)->Freeze();
-				}
-				else
-				{
-					for(int i=sj; i<ej; i++)
+					else
 						getNode(ti,i-sj)->UnFreeze();
 				}
 			}

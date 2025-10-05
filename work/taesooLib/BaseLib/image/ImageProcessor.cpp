@@ -438,9 +438,9 @@ void _private::DrawChart(CImage* pInput, int numFrame, double* aValue,float min,
 
 	char temp[100];
     sprintf(temp,"%.2f", min);
-	inputptr.DrawText(0+xoffset,yoffset, temp);
+	inputptr.drawText(0+xoffset,yoffset, temp);
 	sprintf(temp,"%.2f", max);
-	inputptr.DrawText(0+xoffset,pInput->GetHeight()-20+yoffset, temp);
+	inputptr.drawText(0+xoffset,pInput->GetHeight()-20+yoffset, temp);
 
 
 
@@ -818,7 +818,7 @@ CImage* DrawChartText(const ::intvectorn& ab, TStrings* translationTable)
 
 		TString& text=translationTable->data(ab[start]);
 		for(int i=0; i<text.length(); i++)
-            cip.DrawText(start,FONT_HEIGHT*i, text.subString(i,i+1));
+            cip.drawText(start,FONT_HEIGHT*i, text.subString(i,i+1));
 	}
 
 	return pImage;

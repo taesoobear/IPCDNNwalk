@@ -26,13 +26,6 @@ struct Region2D
 	bool isInside(vector2 pt)	const	{ if(pt.x()>=left && pt.y()>=top && pt.x()<right && pt.y()<bottom) return true; return false;}
 };
 
-class Raw2Bytes: public _tmat<unsigned short>
-{
-public:
-	Raw2Bytes():_tmat<unsigned short>(){}
-	template <class T>
-	Raw2Bytes(const T& other):_tmat<unsigned short>(other){}
-};
 namespace OBJloader
 {
 	class Terrain : public Mesh
@@ -41,11 +34,13 @@ namespace OBJloader
 		matrixn mMaxHeight;
 		vector3 mSize;
 		bool _tileAlongZ;
-		void _init(Raw2Bytes& image, int sizeX, int sizeY, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ);
+		void _init(Raw2Bytes& image, int sizeX, int sizeY, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ, bool normalize=false);
 	public :
+		Terrain(const Terrain& other): Mesh(other){ mHeight=other.mHeight; mMaxHeight=other.mMaxHeight; mSize=other.mSize; _tileAlongZ=other._tileAlongZ;}
 		Terrain(const std::string& filename, int imageSizeX, int imageSizeY, m_real sizeX, m_real sizeZ, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ=false);
 		Terrain(const char* filename, int imageSizeX, int imageSizeY, m_real sizeX, m_real sizeZ, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ=false);
 		Terrain(vectorn const& image1d, m_real sizeX, m_real sizeZ, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ=false);
+		Terrain(Raw2Bytes* image, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ, bool tileAlongZ, bool normalize=false);
 
 		~Terrain(){}
 

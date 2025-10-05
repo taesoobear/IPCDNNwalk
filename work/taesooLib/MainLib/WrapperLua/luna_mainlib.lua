@@ -695,6 +695,8 @@ bindTargetBaseLib={
 				int count(intvectorn & a, int b)	
 				intvectorn add(intvectorn const& a, int b) @ __add
 				intvectorn sub(intvectorn const& a, int b) @ __sub
+				intvectorn operator*( intvectorn const& a, int b );
+				intvectorn operator/( intvectorn const& a, int b );
 				]]
 			},
 			memberFunctions=
@@ -807,8 +809,8 @@ bindTargetBaseLib={
 			void DrawSubPattern(int x, int y, const CImagePixel& patternPixel, const TRect& patternRect, bool bUseColorKey, CPixelRGB8 colorkey);
 
 			void Clear(CPixelRGB8 color);
-			void DrawText(int x, int y, const char* str)
-			void DrawText(int x, int y, const char* str, bool bUserColorKey, CPixelRGB8 colorkey)
+			void drawText(int x, int y, const char* str) @ DrawText
+			void drawText(int x, int y, const char* str, bool bUserColorKey, CPixelRGB8 colorkey) @DrawText
 			int Width() const	
 			int Height() const	
 			]]},
@@ -865,6 +867,7 @@ bindTargetBaseLib={
 				int rows()
 				int cols()
 				intvectornView		row(int i)const	
+				intvectornView		row(int i)const	 @__call
 				intvectornView		column(int i)const
 				void pushBack(const intvectorn& v)
 
@@ -980,6 +983,7 @@ bindTargetBaseLib={
 					void _unpackTensor(Tensor& matnd);
 					void _unpackTensor(floatTensor& matnd);
 					int getFrameNum(int numOfData);
+					bool readable() 
 				]]},
 				enums={
 					{"TYPE_INT", "(int)BinaryFile::TYPE_INT"},
@@ -1075,7 +1079,6 @@ bindTargetBaseLib={
 		},
 		{
 			name='vector2N',
-			decl=[[#include "../../BaseLib/math/tvector.h"]],
 			ctors=
 			{
 				'()',
@@ -1376,7 +1379,6 @@ bindTargetBaseLib={
 				void setAllValue(vectorn & a, m_real b) ;
 				void radd(vectorn & a, vectorn const& b);
 				void rsub(vectorn & a, vectorn const& b);
-				matrixnView matView(vectorn const& a, int start, int end)
 				matrixnView matView(vectorn const& a, int col)
 				vector3NView vec3View(vectorn const&)
 				quaterNView quatView(vectorn const&)
@@ -1410,6 +1412,7 @@ bindTargetBaseLib={
 				void sub(vectorn const& a, vectorn const& b);
 				void add(vectorn const& a, vectorn const& b);
 				void extract(vectorn const& source, intvectorn const& index); @ _extract
+				vectorn extractNonZeroValues(intvectorn& index)
 				void assignSelective(intvectorn const& index, vectorn const& value);
 				void assign(const vector3& other);
 				void assign(const quater& other);
@@ -1427,6 +1430,8 @@ bindTargetBaseLib={
 				transf toTransf(int startIndex) const	
 				transf toTransf9() const	
 				transf toTransf9(int startIndex) const	
+				void  setAt( intvectorn const& columnIndex, vectorn& value);
+				void  setAt( intvectorn const& columnIndex, double value);
 				void setVec3( int start, const vector3& src)
 				void setQuater( int start, const quater& src)
 				void setTransf( int start, const transf& src)
@@ -1436,6 +1441,7 @@ bindTargetBaseLib={
 				int size()
 				void setSize(int)
 				void resize(int)
+				void reserve(int)
 				void setValue(int i, double d) @ set	
 				vectornView range(int start, int end, int step)
 				vectornView range(int start, int end)
@@ -1600,6 +1606,7 @@ bindTargetBaseLib={
 					void mult(matrix3 const& a, m_real b);
 					matrix3 operator-(matrix3 const& b)	const 
 					matrix3 operator+(matrix3 const& b)	const 
+					quater toQuater() const
 					]]
 			},
 		},
@@ -1698,6 +1705,10 @@ bindTargetBaseLib={
 						self(i,j)=lua_tonumber(L,c++);
 				return 0;
 			}
+			static int numFrames(matrixn const& m)
+			{
+				return m.rows();
+			}
 			static int values(lua_State* L)
 			{
 				matrixn& self=*luna_t::check(L,1);
@@ -1779,11 +1790,14 @@ bindTargetBaseLib={
 				void m::LUinvert(matrixn& out, const matrixn& in); @ inverse
 				void m::pseudoInverse(matrixn& out, const matrixn& in); @ pseudoInverse
 				void m::hermite(matrixn& out, const vectorn& a, const vectorn& b, int duration, const vectorn& c, const vectorn& d); @ hermite
+				static int numFrames(matrixn const& m)
 				]]
 			},
 			memberFunctions=
 			{
 				[[
+				double length() const;
+				double squareSum() const;
 						void sampleRow(m_real criticalTime, vectorn& out)
 						bool isnan() const
 						void extractRows(matrixn const& mat, intvectorn const& rows);
@@ -1796,6 +1810,7 @@ bindTargetBaseLib={
 						int rows()
 						int cols()
 						vectornView		row(int i)const	
+						vectornView		row(int i)const	@ __call
 						vectornView		column(int i)const
 						vectornView		diag() const		
 						void transpose(matrixn const& o)
@@ -1805,6 +1820,7 @@ bindTargetBaseLib={
 						TString output() @ __tostring
 						void setAllValue(double)
 						matrixnView range(int, int, int, int)
+						matrixnView range(int, int)
 						double minimum()
 						double maximum()
 						double sum()
@@ -1915,6 +1931,7 @@ bindTargetBaseLib={
 				void set(const intvectorn& indices, double f)
 				vectornView slice_1d(const intvectorn& indices) const
 				TensorView slice(const intvectorn& _indices) const
+				TensorView page(int index) const @ __call
 				void assign(floatTensor const& other)
 				void assign(Tensor const& other)
 				void assign(floatvec const& other)
@@ -1922,6 +1939,7 @@ bindTargetBaseLib={
 				void assign(matrixn const& other)
 				void assign(hypermatrixn const& other)
 				matrixn toMat() const
+				TString shortOutput() @ __tostring
 			]]
 		},
 		{
@@ -1933,6 +1951,28 @@ bindTargetBaseLib={
 			name='floatTensorView',
 			decl='class floatTensorView;',
 			inheritsFrom='floatTensor',
+		},
+		{
+			luaname='LDLT',
+			cppname='m::LDLT',
+			decl='namespace m { class LDLT;}',
+			ctors=[[
+			(matrixn const& A)
+			]],
+			memberFunctions=[[
+			vectorn solve(const vectorn& b);
+			]]
+		},
+		{
+			luaname='PartialPivLU',
+			cppname='m::PartialPivLU',
+			decl='namespace m { class PartialPivLU;}',
+			ctors=[[
+			(matrixn const& A)
+			]],
+			memberFunctions=[[
+			vectorn solve(const vectorn& b);
+			]]
 		},
 		{
 			decl='class vector2;',
@@ -2671,6 +2711,7 @@ bindTargetBaseLib={
 					const transf & globalFrame(int ibone) const
 					void setPoseDOF(MotionDOFinfo const& mDofInfo, vectorn const& pose)
 					void getPoseDOF(MotionDOFinfo const& mDofInfo, vectorn& pose);
+					vectorn getPoseDOF()
 					void setVelocity(MotionDOFinfo const& mDofInfo, vectorn const& pose);
 					void getVelocity(MotionDOFinfo const& mDofInfo, vectorn & pose);
 					vector3 getWorldVelocity(int ibone);
@@ -3397,6 +3438,8 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 				{"NUM_BUFFER", "(int)OBJloader::Buffer::NUM_BUFFER"},
 			},
 			memberFunctions={[[
+				bool simplify(OBJloader::Mesh& simplified, double reduceFraction, double agressiveness) const;
+				bool simplify(OBJloader::Mesh& simplified, matrixn const& additionalVertexProperties, matrixn & simpliedVertexProperties, double reduceFraction, double agressiveness) const;
 				void init(const vector3N& vertices, const intvectorn& triangles);
 				void init(const vector3N& vertices, const vector3N& normals, const intvectorn& triangles);
 				intvectorn _mergeDuplicateVertices(double distThr)
@@ -4162,11 +4205,13 @@ static void inputType(FlLayout::Widget& w, const char* str)
 			properties={
 			'int mNumVar @ numVar',
 			'int mNumCon @ numCon',
+			'vectorn _values',
 			},
 			memberFunctions={[[
 				void addSquared(intvectorn const& index, vectorn const& value);
 				void addCon(intvectorn const& index, vectorn const& value);
 				void buildSystem(matrixn & A, vectorn &b);
+				void updateSystem(const vectorn& con_values, vectorn &b);
 			]]},
 		},
 		{
@@ -4207,9 +4252,15 @@ name='Ogre.Light',
 
 			static void setDirection(Ogre::Light* light, m_real x, m_real y, m_real z)
 			{
+				#if OGRE_VERSION_MAJOR<13 && OGRE_VERSION_MAJOR>4
+				light->setDirection(Ogre::Vector3(x,y,z));
+				#endif
 			}
 			static void setPosition(Ogre::Light* light, m_real x, m_real y, m_real z)
 			{
+				#if OGRE_VERSION_MAJOR<13 && OGRE_VERSION_MAJOR>4
+				light->setPosition(x,y,z);
+				#endif
 			}
 			static void setDiffuseColour(Ogre::Light* light, m_real x, m_real y, m_real z)
 			{light->setDiffuseColour(Ogre::ColourValue(x,y,z));}
@@ -4938,6 +4989,8 @@ static void setPosition(Ogre::SceneNode* pNode, m_real x, m_real y, m_real z)
 			]]},
 			memberFunctions={[[
 			int numChildren()
+			vector3 getArbitraryAxis(int i) const;
+			vector3 getJointAxis(int i) const;
 			void SetNameId(const char*) @ setName
 			transf & _getOffsetTransform() ; @ getOffsetTransform
 			transf & _getFrame() const; @ getFrame
@@ -5011,10 +5064,15 @@ memberFunctions={[[
 				(const MotionDOFinfo&, const Motion&)
 				]],
 			properties={	"MotionDOFinfo mInfo @ dofInfo"},
+			wrapperCode=[[
+			inline static matrixnView _range_mat(const MotionDOF& mat, int a, int b, int c, int d){ 
+				return ((const matrixn&)mat).range(a,b,c,d);}
+			]],
 			staticMemberFunctions={
 				[[
 				static transf MotionDOF::rootTransformation(vectorn const& pose);
 				static void MotionDOF::setRootTransformation(vectorn & pose, transf const& t);	
+				matrixnView _range_mat(MotionDOF& , int, int, int, int) @ range
 				]]
 			},
 
@@ -5129,11 +5187,16 @@ inheritsFrom='MotionDOF'
 			MotionLoader const& getSkeleton() const		
 			]]}
 		},
-		{ 
-			name='FrameSensor'
-		},
 		{
 			name='FrameMoveObject'
+		},
+		{ 
+			name='FrameSensor',
+			inheritsFrom='FrameMoveObject',
+			memberFunctions=[[
+			int FrameMove(float fElapsedTime)
+			float curFrame() 
+			]]
 		},
 		{
 			name='AnimationObject',
@@ -5327,8 +5390,9 @@ inheritsFrom='MotionDOF'
 			memberFunctions={[[
 			void setPoseDOF(const vectorn& poseDOF);
 			void setSphericalQ(const vectorn& q);
-			void setPose(BoneForwardKinematics const& in) @ setSamePose
-			void setPose(IK_sdls::LoaderToTree const& in) @ setSamePose
+			void setSamePose(BoneForwardKinematics const& in) 
+			void setSamePose(IK_sdls::LoaderToTree const& in) 
+			void setSamePose(ScaledBoneKinematics const& in);
 			void setMaterial(int, const char*); @ setBoneMaterial
 			void getPose(Posture & posture); @ getPose
 			]]},
@@ -5360,6 +5424,7 @@ inheritsFrom='MotionDOF'
 				void identity();
 				int numRotJoint() const	
 				int numTransJoint() const	
+				bool getConstraint(int econ) 
 				Posture* clone() const; @ ;adopt=true;
 				void Clone(const Posture* pPosture) @ assign
 				void assignConstraintOnly(const Posture& other)
@@ -5502,6 +5567,7 @@ inheritsFrom='MotionDOF'
 			ctors={
 				'()',
 				'(MotionLoader*)',
+				'(MotionLoader*pSource, const matrixn& srcMotionDOF)',
 				'(const Motion&, int,int)',
 				'(const MotionDOF& srcMotion)',
 				'(const MotionDOF& srcMotion, int startFrame, int endFrame)',
@@ -5552,6 +5618,8 @@ inheritsFrom='MotionDOF'
 				{ "IS_DISCONTINUOUS","(int)IS_DISCONTINUOUS" },
 				{ "CONSTRAINT_LEFT_FOOT","(int)CONSTRAINT_LEFT_FOOT"},
 				{ "CONSTRAINT_RIGHT_FOOT","(int)CONSTRAINT_RIGHT_FOOT"},
+				{ "CONSTRAINT_LEFT_TOE","(int)CONSTRAINT_LEFT_TOE"},
+				{ "CONSTRAINT_RIGHT_TOE","(int)CONSTRAINT_RIGHT_TOE"},
 				{ "CONSTRAINT_LEFT_HAND","(int)CONSTRAINT_LEFT_HAND"},
 				{ "CONSTRAINT_RIGHT_HAND","(int)CONSTRAINT_RIGHT_HAND"},
 				{"LOCAL_COORD","(int)Motion::LOCAL_COORD"},
@@ -5561,6 +5629,10 @@ inheritsFrom='MotionDOF'
 				{"PELVIS_LOCAL_COORD","(int)Motion::PELVIS_LOCAL_COORD"},
 			},
 			memberFunctions={[[
+			boolN getConstraint(int eCon) const;
+			void setConstraint(int eCon, boolN const& bit) const;
+			void _unpack(BinaryFile& File, int nVersion);
+			void _pack(BinaryFile& File, int nVersion) const;
 			int length() const
 			void changeLength(int length)	
 			void Resize(int size) @ resize
@@ -5594,6 +5666,7 @@ inheritsFrom='MotionDOF'
 			void setDiscontinuity(boolN const& bit);
 			boolN getDiscontinuity();
 			Posture& pose(int iframe) const;
+			vectorn row(int iframe) const ;
 			void CalcInterFrameDifference(int startFrame ); @ calcInterFrameDifference
 			void ReconstructDataByDifference(int startFrame ); @ reconstructFromInterFrameDifference
 			void exportMOT(const char* filename) const; @ exportMot
@@ -5664,12 +5737,11 @@ memberFunctions={[[
 	int currFrame() const
 ]]}
 },
-{
-ifndef='NO_GUI',
-name='Loader',
-inheritsFrom='LUAwrapper::Worker',
-},
-       
+		{
+		ifndef='NO_GUI',
+		name='Loader',
+		inheritsFrom='LUAwrapper::Worker',
+		},
 		{ 
 			name='MotionPanel',
 			ifndef='NO_GUI',
@@ -5683,7 +5755,8 @@ inheritsFrom='LUAwrapper::Worker',
 			memberFunctions={[[
 				FltkMotionWindow* motionWin()	{ return m_motionWin;}
 				FltkScrollPanel* scrollPanel()	{ return m_scrollPanel;}
-				Loader* loader()				{ return m_loader;}
+				//Loader* loader()				{ return m_loader;}
+				void changeCurrMotion(Motion const& mot);
 				Motion& currMotion();
 				Motion& currPairMotion();
 				MotionDOF& currMotionDOF();
@@ -5844,7 +5917,9 @@ inheritsFrom='LUAwrapper::Worker',
 			name='OgreRenderer',
 			memberFunctions={
 		[[
+		int getConfig(const char* id)
 		void setupShadowNode(bool useESM) @ ;ifndef=NO_OGRE;
+		int getConfig(const char* id)
 	void screenshot(bool b);
 	void setScreenshotMotionBlur(int n);
 	void setScreenshotPrefix(const char* prefix);
@@ -6234,6 +6309,7 @@ memberFunctions={[[
 				void setJointRange(int i, double min_deg, double max_deg)
 				void setJointPosition(vector3 const& trans);
 				void setJointAxes(const char* axes)
+				void setJointAxis(vector3 const& axis);
 				void translateBone(vector3 const& trans);
 				void transformMesh(matrix4 const& m);
 				void transformMeshLocal(matrix4 const& m);
@@ -6253,7 +6329,9 @@ memberFunctions={[[
 				void setLocalCOM(vector3 const& com);
 				double mass();
 				vector3 inertia() const;
+				matrix3 const& momentsOfInertia() const; // full.
 				void setInertia(double ix, double iy, double iz);
+				void setInertia(matrix3 const& I);
 				void setMass(double m);
 				void jointToBody(vector3& lposInOut) const;
 				void bodyToJoint(vector3& lposInOut) const;
@@ -6302,6 +6380,7 @@ memberFunctions={[[
 									"(const char*)",
 									"(VRMLloader const&)",
 									"(MotionLoader const&,double)",
+									"(const char* terrain_filename, m_real sizeX, m_real sizeZ, m_real heightMax, int ntexSegX, int ntexSegZ)",
 									"(OBJloader::Geometry const&, bool useFixedRoot)",
 									"(OBJloader::Terrain* terrin)",
 									"(CTextFile& vrmlFile)",
@@ -6318,6 +6397,7 @@ memberFunctions={[[
 								]]},
 								memberFunctions={
 								[[
+								OBJloader::Terrain* _get_terrain() 
 								TString getURL() const 
 								void setURL(const char* u) 
 								void setPosition(const vector3& pos)
@@ -6526,7 +6606,7 @@ memberFunctions={[[
 				bool RE::motionPanelValid();
 				OgreRenderer& RE::renderer();
 				FltkRenderer& RE::FltkRenderer();
-				void RE_::renderOneFrame(bool check)
+				bool RE_::renderOneFrame(bool check)
 				PLDPrimVRML* RE::createVRMLskin(VRMLloader*pTgtSkel, bool bDrawSkeleton) @ ;adopt=true; 
 				int RE::getOgreVersionMinor() 
 				void RE::buildEdgeList(const char* meshName) 

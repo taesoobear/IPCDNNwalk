@@ -53,17 +53,20 @@ public:
 /**
 global variable이 access되는 것을 한곳에 localise함으로써 나중에 렌더러가 여러개 된다던지, 멀티 쓰레딩, DLL 사용시 문제요소를 최소화한다.
 */
+class AbstractTraceManager;
 namespace RE	
 {
 	struct Globals
 	{
-		Globals()	{ pRenderer=NULL; pFltkRenderer=NULL; pMotionPanel=NULL;}
+		Globals()	{ pRenderer=NULL; pFltkRenderer=NULL; pMotionPanel=NULL;g_bOutput=true;}
 		OgreRenderer* pRenderer;
 		FltkRenderer* pFltkRenderer;
 		MotionPanel* pMotionPanel;
 		std::vector<void*> defaultSkins;
 		int global_mouse_x, global_mouse_y;
 		std::unordered_map<std::string, Ogre::SceneNode*> mNamedSceneNodes;
+		bool g_bOutput;
+		std::vector<AbstractTraceManager*> g_traceManagers;
 	};
 	
 	enum 

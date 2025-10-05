@@ -27,6 +27,7 @@
 #include "pldprimskin_impl.h"
 #include "Panel.h"
 #include "VRMLloader.h"
+#include "../WrapperLua/luna.h"
 
 static int m_argMaxNumFrame=0;
 extern int mScaleFactor;
@@ -1301,7 +1302,7 @@ void FltkScrollPanel::draw()
 	col=fl_color();
 #define DRAW_YELLOW_SCROLLLINE
 #ifdef DRAW_YELLOW_SCROLLLINE
-	fl_color(255,255,0);
+	fl_color(155,155,0);
 	//fl_line_style(FL_DOT);
 	fl_yxline(axis+m_targetRect.left, m_targetRect.top, m_targetRect.bottom);
 #else
@@ -1566,13 +1567,17 @@ MotionPanel::MotionPanel(int x, int y, int w, int h)
 	bool layout1=true;
 	if(w>350)
 	{
-	m_loader=new Loader(w-180*mScaleFactor,0,180*mScaleFactor,40*mScaleFactor, this);
-	m_motionWin=new FltkMotionWindow_impl(0, 0, w-180*mScaleFactor);
+	//m_loader=new Loader(w-180*mScaleFactor,0,180*mScaleFactor,40*mScaleFactor, this);
+		printf("\r\rm1"); fflush(stdout);
+	m_motionWin=new FltkMotionWindow_impl(0, 0, w);
+		printf("\r\rm2"); fflush(stdout);
 	m_scrollPanel=new FltkScrollPanel(0, 40*mScaleFactor, w, h-40*mScaleFactor, m_motionWin);
+		printf("\r\rm3"); fflush(stdout);
 	m_traceManager=new TraceManager(0, 40*mScaleFactor, w, h-40*mScaleFactor);
+		printf("\r\rm4"); fflush(stdout);
 	}
 	else{
-	m_loader=new Loader(0,60*mScaleFactor,w,40*mScaleFactor, this);
+	//m_loader=new Loader(0,60*mScaleFactor,w,40*mScaleFactor, this);
 	m_motionWin=new FltkMotionWindow_impl(0, 0, w);
 	m_scrollPanel=new FltkScrollPanel(0, 80*mScaleFactor, w, h-40*mScaleFactor, m_motionWin);
 	m_traceManager=new TraceManager(0, 80*mScaleFactor, w, h-40*mScaleFactor);
@@ -1595,7 +1600,7 @@ MotionPanel::MotionPanel(int x, int y, int w, int h)
 	//crx+=100; //-> align to fltkToolkitRenderer
 	if(layout1)
 	{
-		crx=w-(180+200)*mScaleFactor; // -> align to loader
+		crx=w-(200)*mScaleFactor; // -> align to loader
 		crx+=100*mScaleFactor;
 	}
 	else
@@ -1608,48 +1613,48 @@ MotionPanel::MotionPanel(int x, int y, int w, int h)
 
 	if(layout1)
 		cry+=20*mScaleFactor;
-	m_menuMotion.initChoice(crx,cry, (100+80)*mScaleFactor, 20*mScaleFactor);
+	//m_menuMotion.initChoice(crx,cry, (100+80)*mScaleFactor, 20*mScaleFactor);
 
-	int nitem=71;
+	int nitem=71-15-21-3+2;
 	m_menuOp.size(nitem);
 
 	int item=0;
-	m_menuOp.beginSubMenu(item++, "Show motions");
-	m_menuOp.item(item++, "Show all motions",FL_CTRL+'M', Hash("Show all motions"));
-	m_menuOp.item(item++, "Show all motions (low poly)",0, Hash("Show motions (lowpoly)"));
-	m_menuOp.item(item++, "Show all motions (point)",0, Hash("Show motions (point)"));
-	m_menuOp.item(item++, "Show all motions (elipsoid)",0, Hash("Show motions (elipsoid)"));
-	m_menuOp.item(item++, "Show all motions (box)",0, Hash("Show motions (box)"));
-	m_menuOp.item(item++, "Scale skins",0, Hash("Scale skins"));
-	m_menuOp.item(item++, "Translate all skins",0, Hash("Translate skins"));
-	m_menuOp.item(item++, "Hide skins", 0, Hash("hide skins"));
-	m_menuOp.item(item++, "Release skins",0, Hash("Rlss"));
-	m_menuOp.item(item++, "Release motions",0, Hash("Release motions"), FL_MENU_DIVIDER);
-	m_menuOp.item(item++, "Show Bone",0, Hash("Bone"));
-	m_menuOp.item(item++, "Show motion",0, Hash("Show"));
-	m_menuOp.item(item++, "Change coordinate",0, Hash("Change coordinate"));
-	m_menuOp.endSubMenu(item++);
-	m_menuOp.beginSubMenu(item++, "Export");
-	m_menuOp.item(item++, "Export motion",0, Hash("ExMo"));
-	m_menuOp.item(item++, "Export BVH",0, Hash("Export BVH"));
-	m_menuOp.item(item++, "Export BVH (ZXY)",0, Hash("Export BVH (ZXY)"));
-	m_menuOp.item(item++, "Export all to BVH",0, Hash("Export all to BVH"));
-	m_menuOp.item(item++, "Export pose",0, Hash("Export pose"));
-	m_menuOp.item(item++, "Export constraints",0, Hash("Export constraints"));
-	m_menuOp.endSubMenu(item++);
-	m_menuOp.beginSubMenu(item++, "Constraints");
-	m_menuOp.item(item++, "Import constraints",0, Hash("Import constraints"));
-	m_menuOp.item(item++, "Calc constraint",0,Hash("Con"));
-	m_menuOp.item(item++, "Calc constraint pos", 0, Hash("Calc constraint pos"));
-	m_menuOp.item(item++, "Calc support foot",0,Hash("SprF"));
-	m_menuOp.item(item++, "Show left constraint signals",0,Hash("LCon"));
-	m_menuOp.item(item++, "Show right constraint signals",0,Hash("RCon"));
-	m_menuOp.item(item++, "Show constraints (signal)",0, Hash("constraints"));
-	m_menuOp.item(item++, "Save constraints (signal)",0, Hash("SaveConstraints"));
-	m_menuOp.item(item++, "Show constraints (screen)",0, Hash("constraintsSc"));
-	m_menuOp.item(item++, "Constraint retarget",0,Hash("Retarget"));
-	m_menuOp.item(item++, "Constraint retarget (approx)",0,Hash("RetargetApprox"));
-	m_menuOp.endSubMenu(item++);
+	//m_menuOp.beginSubMenu(item++, "Show motions");
+	//m_menuOp.item(item++, "Show all motions",FL_CTRL+'M', Hash("Show all motions"));
+	//m_menuOp.item(item++, "Show all motions (low poly)",0, Hash("Show motions (lowpoly)"));
+	//m_menuOp.item(item++, "Show all motions (point)",0, Hash("Show motions (point)"));
+	//m_menuOp.item(item++, "Show all motions (elipsoid)",0, Hash("Show motions (elipsoid)"));
+	//m_menuOp.item(item++, "Show all motions (box)",0, Hash("Show motions (box)"));
+	//m_menuOp.item(item++, "Scale skins",0, Hash("Scale skins"));
+	//m_menuOp.item(item++, "Translate all skins",0, Hash("Translate skins"));
+	//m_menuOp.item(item++, "Hide skins", 0, Hash("hide skins"));
+	//m_menuOp.item(item++, "Release skins",0, Hash("Rlss"));
+	//m_menuOp.item(item++, "Release motions",0, Hash("Release motions"), FL_MENU_DIVIDER);
+	//m_menuOp.item(item++, "Show Bone",0, Hash("Bone"));
+	//m_menuOp.item(item++, "Show motion",0, Hash("Show"));
+	//m_menuOp.item(item++, "Change coordinate",0, Hash("Change coordinate"));
+	//m_menuOp.endSubMenu(item++);
+	//m_menuOp.beginSubMenu(item++, "Export");
+	//m_menuOp.item(item++, "Export motion",0, Hash("ExMo"));
+	//m_menuOp.item(item++, "Export BVH",0, Hash("Export BVH"));
+	//m_menuOp.item(item++, "Export BVH (ZXY)",0, Hash("Export BVH (ZXY)"));
+	//m_menuOp.item(item++, "Export all to BVH",0, Hash("Export all to BVH"));
+	//m_menuOp.item(item++, "Export pose",0, Hash("Export pose"));
+	//m_menuOp.item(item++, "Export constraints",0, Hash("Export constraints"));
+	//m_menuOp.endSubMenu(item++);
+	//m_menuOp.beginSubMenu(item++, "Constraints");
+	//m_menuOp.item(item++, "Import constraints",0, Hash("Import constraints"));
+	//m_menuOp.item(item++, "Calc constraint",0,Hash("Con"));
+	//m_menuOp.item(item++, "Calc constraint pos", 0, Hash("Calc constraint pos"));
+	//m_menuOp.item(item++, "Calc support foot",0,Hash("SprF"));
+	//m_menuOp.item(item++, "Show left constraint signals",0,Hash("LCon"));
+	//m_menuOp.item(item++, "Show right constraint signals",0,Hash("RCon"));
+	//m_menuOp.item(item++, "Show constraints (signal)",0, Hash("constraints"));
+	//m_menuOp.item(item++, "Save constraints (signal)",0, Hash("SaveConstraints"));
+	//m_menuOp.item(item++, "Show constraints (screen)",0, Hash("constraintsSc"));
+	//m_menuOp.item(item++, "Constraint retarget",0,Hash("Retarget"));
+	//m_menuOp.item(item++, "Constraint retarget (approx)",0,Hash("RetargetApprox"));
+	//m_menuOp.endSubMenu(item++);
 	m_menuOp.beginSubMenu(item++, "Renderer");
 	m_menuOp.item(item++, "Set playback speed",0, Hash("Set speed"));
 	m_menuOp.item(item++, "Toggle background",0, Hash("Toggle background"));
@@ -1663,6 +1668,8 @@ MotionPanel::MotionPanel(int x, int y, int w, int h)
 	m_menuOp.item(item-1).clear();
 	m_menuOp.item(item++, "Capture (capture.jpg)", 0, Hash("Capt"));
 	m_menuOp.item(item++, "Capture (jpeg sequence)", FL_CTRL+'c', Hash("capture"));
+	m_menuOp.item(item++, "Proceed 1 frame", ']', Hash("fwd1"));
+	m_menuOp.item(item++, "Proceed -1 frame", '[', Hash("bwd1"));
 	m_menuOp.item(item++, "Convert captured data", 0, Hash("Convert captured data"));
 	m_menuOp.item(item++, "Save current viewpoint", 0, Hash("Save current viewpoint"));
 	m_menuOp.item(item++, "Print current viewpoint", 0, Hash("Print current viewpoint"));
@@ -1681,9 +1688,9 @@ MotionPanel::MotionPanel(int x, int y, int w, int h)
 	m_menuOp.item(item++, "Change view (slot 4)",FL_ALT+'4', Hash("Change view (slot 4)"));
 	m_menuOp.item(item++, "Change view (slot 5)",FL_ALT+'5', Hash("Change view (slot 5)"));
 	m_menuOp.endSubMenu(item++);
-	m_menuOp.item(item++, "Plot ignored frames",0,Hash("Ignr"));
-	m_menuOp.item(item++, "Add supersampled motion",0,Hash("Supr"));
-	m_menuOp.item(item++, "Translate motion",0,Hash("Trans"));
+	//m_menuOp.item(item++, "Plot ignored frames",0,Hash("Ignr"));
+	//m_menuOp.item(item++, "Add supersampled motion",0,Hash("Supr"));
+	//m_menuOp.item(item++, "Translate motion",0,Hash("Trans"));
 	m_menuOp.item(item++, "Run scripts",FL_CTRL+'R', Hash("Run scripts"));
 	m_menuOp.item(item++, "Show output", 0, Hash("Oupt"), FL_MENU_TOGGLE);
 	connect(m_menuOp);
@@ -1758,11 +1765,24 @@ void MotionPanel::onCallback(Fl_Widget* pWidget, int userdata)
 	else if(userdata==Hash("Print current viewpoint"))
 	{
 			saveViewpoint(stdout);
+
+			printf("\n simply change : to . for python\n");
 	}
 	else if(userdata==Hash("capture"))
 	{
 		RE::renderer().toggleScreenShotMode();
 	}
+#ifndef NO_GUI
+	else if(userdata==Hash("fwd1"))
+	{
+		motionWin()->changeCurrFrame(motionWin()->getCurrFrame()+1);
+
+	}
+	else if(userdata==Hash("bwd1"))
+	{
+		motionWin()->changeCurrFrame(motionWin()->getCurrFrame()-1);
+	}
+#endif
 #ifdef _MSC_VER
 	else if(userdata==Hash("Convert captured data"))
 	{
@@ -1787,7 +1807,7 @@ void MotionPanel::onCallback(Fl_Widget* pWidget, int userdata)
 	else if(userdata==Hash("Con"))
 	{
 		Imp::ChangeChartPrecision(50);
-		Loader::constraintAutomaticMarking(currMotion());
+		//Loader::constraintAutomaticMarking(currMotion());
 		Imp::DefaultPrecision();
 
 	}
@@ -1947,6 +1967,8 @@ void MotionPanel::onCallback(Fl_Widget* pWidget, int userdata)
 			Register_baselib(L.L);
 			Register_mainlib(L.L);
 
+			if(RE::taesooLibPath()!="../")
+				luaL_dofile(L.L, (RE::taesooLibPath()+"Resource/scripts/relative_mode/config.lua").c_str());
 			TString file=FlChooseFile("Open LUA file", "../Resource/scripts/ui/MotionPanel/", "*.lua", false);
 
 			if (file.length())
@@ -2416,24 +2438,24 @@ void MotionPanel::releaseMotions()
 	//m_motionWin->releaseAllSkin();
 	m_motions.resize(0);
 	mPairMotionIndex.resize(0);
-	m_menuMotion.size(1);
-	m_menuMotion.item(0,0);
-	m_menuMotion.value(0);
-	connect(m_menuMotion);
-	m_menuMotion.redraw();
+	//m_menuMotion.size(1);
+	//m_menuMotion.item(0,0);
+	//m_menuMotion.value(0);
+	//connect(m_menuMotion);
+	//m_menuMotion.redraw();
 }
 
 void MotionPanel::OnLoadEnd()
 {
-	m_menuMotion.size(m_motions.size());
-	for(int i=0; i<m_motions.size(); i++)
-	{
-        m_menuMotion.item(i, m_motions[i].getIdentifier());
-	}
+	//m_menuMotion.size(m_motions.size());
+	//for(int i=0; i<m_motions.size(); i++)
+	//{
+    //    m_menuMotion.item(i, m_motions[i].getIdentifier());
+	//}
 
-	m_menuMotion.value(0);
-    connect(m_menuMotion);
-	m_menuMotion.redraw();
+	//m_menuMotion.value(0);
+    //connect(m_menuMotion);
+	//m_menuMotion.redraw();
 }
 
 class MotionPanel_impl
@@ -2441,6 +2463,7 @@ class MotionPanel_impl
 	public:
 		static void checkMotionMenu(MotionPanel& self)
 		{
+			/*
 			if(self.m_menuMotion.value()>=self.m_motions.size())
 			{
 				Msg::print("Warning! Motion is not loaded\n");
@@ -2448,17 +2471,18 @@ class MotionPanel_impl
 
 				self.loader()->onCallback(NULL, Hash("LOAD"));
 			}
+			*/
 		}
 };
 Motion& MotionPanel::currMotion()
 {
 	MotionPanel_impl::checkMotionMenu(*this);
-	return m_motions[m_menuMotion.value()];
+	return m_motions[0];
 }
 MotionDOF& MotionPanel::currMotionDOF()
 {
 	MotionPanel_impl::checkMotionMenu(*this);
-	return m_motions[m_menuMotion.value()];
+	return m_motions[0];
 }
 void MotionPanel::changeCurrMotion(Motion const& mot)
 {
@@ -2473,43 +2497,48 @@ void MotionPanel::changeCurrMotion(Motion const& mot)
 	}
 	if(found!=-1)
 	{
-		m_menuMotion.value(found);
-		m_menuMotion.redraw();
+		//m_menuMotion.value(found);
+		//m_menuMotion.redraw();
 	}
 }
 MotionDOFcontainer& MotionPanel::currMotionDOFcontainer()
 {
 	MotionPanel_impl::checkMotionMenu(*this);
-	return m_motions[m_menuMotion.value()].motdofc();
+	return m_motions[0].motdofc();
 }
 MotionWrap& MotionPanel::currMotionWrap()
 {
 	MotionPanel_impl::checkMotionMenu(*this);
-	return m_motions[m_menuMotion.value()];
+	return m_motions[0];
 }
 bool MotionPanel::hasMotionDOF()
 {
 	MotionPanel_impl::checkMotionMenu(*this);
-	return m_motions[m_menuMotion.value()].hasMotionDOF();
+	return m_motions[0].hasMotionDOF();
 }
 
 bool MotionPanel::hasPairMotion()
 {
+	return false;
+	/*
 	if(m_menuMotion.value()>=m_motions.size())
 	{
 		throw(std::runtime_error("Motion is not loaded!"));
 	}
 	return mPairMotionIndex[m_menuMotion.value()]!=-1;
+	*/
 }
 
 Motion& MotionPanel::currPairMotion()
 {
+	/*
 	if(m_menuMotion.value()>=m_motions.size())
 	{
 		throw(std::runtime_error("Motion is not loaded!"));
 	}
+	*/
 
-	return m_motions[mPairMotionIndex[m_menuMotion.value()]];
+	return m_motions[mPairMotionIndex[0]];
 }
 
 
@@ -2536,7 +2565,7 @@ void Panel::drawSegmentText(int start, int end, int value, TString const & text)
 	}
 
 	for(int i=0; i<text.length(); i++)
-		cip.DrawText(start,20+FONT_HEIGHT*i, text.subString(i,i+1));
+		cip.drawText(start,20+FONT_HEIGHT*i, text.subString(i,i+1));
 }
 
 void Panel::drawBox(int start, int end, int colormapValue)
@@ -2549,7 +2578,7 @@ void Panel::drawTextBox(int start, int end, int colormapValue, const char* text)
 {
 	for(int i=start; i<end; i++)
 		cip.DrawVertLine(i, 0, cip.Height(), colormap.GetPixel(colormapIndex[colormapValue],0));
-	cip.DrawText(start, 0, text, true, CPixelRGB8 (255,255,255));
+	cip.drawText(start, 0, text, true, CPixelRGB8 (255,255,255));
 }
 
 void Panel::clear(int start, int end)
@@ -2635,7 +2664,7 @@ void FltkScrollSelectPanel_impl::drawTextBox(int start, int end, int colormapVal
 {
 	for(int i=start; i<end; i++)
 		cip.DrawVertLine(i, 0, cip.Height(), colormap.GetPixel(colormapIndex[colormapValue],0));
-	cip.DrawText(start, 0, text, true, CPixelRGB8 (255,255,255));
+	cip.drawText(start, 0, text, true, CPixelRGB8 (255,255,255));
 }
 
 void FltkScrollSelectPanel_impl::clear(int start, int end)

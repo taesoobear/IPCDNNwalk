@@ -215,7 +215,7 @@ void ScriptWin::luna_call(lunaStack& l,int numIn, int numOut)
 		if(errMsg=="error in error handling")
 		{
 			if (lastFunc!="dtor")
-				printf("%s==nil?\n", lastFunc.ptr());
+				printf("error!! %s==nil?\n", lastFunc.ptr());
 			else
 				printf(".\n");
 			return;
@@ -452,7 +452,7 @@ void ScriptWin::initLuaEnvironment()
 	if(RE::taesooLibPath()=="../")
 		::_loadScript(L, this, "config.lua");
 	else
-		::_loadScript(L, this, "work/taesooLib/Resource/scripts/relative_mode/config.lua");
+		::_loadScript(L, this, (RE::taesooLibPath()+"Resource/scripts/relative_mode/config.lua").c_str());
 	_checkErrorFunc();
 }
 void ScriptWin::_loadScript(const char* script, const char* scriptstring)

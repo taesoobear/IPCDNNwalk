@@ -1,0 +1,19 @@
+
+
+material Body_robot_low_BaseColor.tga
+{
+	technique
+	{
+		pass 
+		{
+			diffuse 0.8 0.8 0.8 1
+
+			texture_unit
+			{
+				texture Body_robot_low_BaseColor.png
+			}
+		}
+
+	}
+
+}

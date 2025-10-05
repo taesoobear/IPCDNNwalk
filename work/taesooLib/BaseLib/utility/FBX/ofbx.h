@@ -334,7 +334,8 @@ struct Mesh : Object
 
 	Mesh(const Scene& _scene, const IElement& _element);
 
-	virtual const Pose* getPose() const = 0;
+	virtual const Pose* getPose(int ipose) const = 0;
+	virtual int getPoseCount() const =0;
 	virtual const Geometry* getGeometry() const = 0;
 	virtual Matrix getGeometricMatrix() const = 0;
 	virtual const Material* getMaterial(int idx) const = 0;

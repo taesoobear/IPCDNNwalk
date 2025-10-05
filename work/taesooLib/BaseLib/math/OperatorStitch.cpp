@@ -530,11 +530,15 @@ void QuadraticFunctionHardCon ::Con::dfunc(vectorn const& x, vectorn& dx, int nu
 
 void QuadraticFunction::buildSystem(int dim, matrixn & H, vectorn &R)
 {
+	buildSystem_A(dim, H);
+	buildSystem_B(dim, R);
+}
+void QuadraticFunction::buildSystem_A(int dim, matrixn & H)
+{
 	H.setSize(dim, dim);
-	R.setSize(dim);
 	H.setAllValue(0);
-	R.setAllValue(0);
-
+	_values.setSize(mListSQTerms.size());
+	int c=0;
 	for(std::list<SquaredTerm*>::iterator i=mListSQTerms.begin(); i!=mListSQTerms.end(); ++i)
 	{
 		intvectorn& index=(*i)->index;
@@ -549,11 +553,24 @@ void QuadraticFunction::buildSystem(int dim, matrixn & H, vectorn &R)
 				m_real prev=H[index[j]][index[i]];
 				H[index[i]][index[j]]=H[index[j]][index[i]]=prev+2.0*value[i]*value[j];
 			}
+		_values[c++]=value[index.size()];
+	}
+}
 
+void QuadraticFunction::buildSystem_B(int dim, vectorn &R)
+{
+	R.setSize(dim);
+	R.setAllValue(0);
+	int c=0;
+	for(std::list<SquaredTerm*>::iterator i=mListSQTerms.begin(); i!=mListSQTerms.end(); ++i)
+	{
+		intvectorn& index=(*i)->index;
+		vectorn& value=(*i)->coef;
+		double v=_values[c++];
 		// update R
 		for(int i=0; i<index.size(); i++)
 		{
-			R[index[i]]-=2.0*value[index.size()]*value[i];
+			R[index[i]]-=2.0*v*value[i];
 		}
 	}
 }
@@ -599,6 +616,29 @@ void QuadraticFunctionHardCon ::buildSystem(matrixn & Augmented, vectorn &d)
 	At.transpose(A);
 
 	Augmented.range(nvar, nvar+numCon, nvar, nvar+numCon).setAllValue(0.0);
+}
+void QuadraticFunctionHardCon ::updateSystem(const vectorn& con_values, vectorn &d)
+{
+	int nvar=mNumVar;
+	int numCon=mNumCon;
+	d.setSize(nvar+numCon);
+	vectornView d0=d.range(0, nvar);
+	QuadraticFunction::buildSystem_B(nvar, d0);
+
+
+	int icon=0;
+	for(std::list<Con*>::iterator i=mListConTerms.begin(); i!=mListConTerms.end(); ++i)
+	{
+		Con* con=*i;
+
+		for(int i=0; i<con->index.size(); i++)
+		{
+			d[nvar+icon]=con_values[icon]*-1.0;
+		}		
+		icon++;
+	}
+	ASSERT(icon==mNumCon);
+
 }
 
 	m::c1stitchPreprocess::c1stitchPreprocess(int arow, int brow, m_real strength,bool bConMid)
@@ -2003,6 +2043,21 @@ void m::linstitchMulti::calc(matrixn& c, const matrixn& a, const matrixn& b) con
 #endif
 }
 
+void quater_linstitch(m::stitchOp const& op, quaterN& c, quaterN const& a, quaterN const& b)
+{
+	quaterN aa(a.size()), bb(b.size());
+	aa=a;
+	bb=b;
+	aa.align();
+	bb.row(0).align(aa.row(aa.rows()-1));
+	bb.align();
+	c.setSize(aa.rows()+bb.rows()-1);
+
+	op.calc(matView(c).lval(), matView(aa), matView(bb));
+
+	for(int i=0; i<c.rows(); i++)
+		c.row(i).normalize();	// renormalize
+}
 void quaterNN_linstitch(m::stitchOp const& op, matrixn& c, matrixn & a, matrixn & b)
 {
 	int njoint=a.cols()/4;

@@ -250,6 +250,12 @@ void boolN::_or(const boolN& a, const boolN& b)
 	for( int i=0; i<a.size(); i++ )
 		c.set(i, a[i] || b[i] );
 }
+void boolN::negate(const boolN& a)
+{
+	resize(a.size());
+	for( int i=0; i<a.size(); i++ )
+		set(i, !a[i]);
+}
 
 void boolN::_and(const boolN& a, const boolN& b)
 {

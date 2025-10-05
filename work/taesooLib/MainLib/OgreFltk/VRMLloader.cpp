@@ -71,8 +71,8 @@ void VRMLloader_updateMeshEntity(VRMLloader& l)
 	    delete ll->mShape->customShape;
 	  }
 	  OBJloader::MeshToEntity::Option o;
-	  o.useTexCoord=false;
-	  o.buildEdgeList=true;
+	  o.useTexCoord=true;
+	  o.buildEdgeList=false;
 	  o.useColor=false;
 	  //o.buildEdgeList=false;
 
@@ -150,7 +150,16 @@ void PLDPrimVRML::setSphericalQ(const vectorn & in)
 	mChain->setSphericalQ(in);
 	_updateEntities(*mChain);
 }
-void PLDPrimVRML::setPose(BoneForwardKinematics const& in)
+
+void PLDPrimVRML::setSamePose(ScaledBoneKinematics const& in)
+{
+	*mChain=in;
+	_updateEntities(*mChain);
+
+  if(mDrawSkel)
+	  mDrawSkel->setSamePose(*mChain);
+}
+void PLDPrimVRML::setSamePose(BoneForwardKinematics const& in)
 {
 	*mChain=in;
 	_updateEntities(*mChain);
@@ -162,7 +171,7 @@ void PLDPrimVRML::setPose(BoneForwardKinematics const& in)
 	in.getPoseFromLocal(pose);
 	SetPose(pose, *mVRMLL);*/
 }
-void PLDPrimVRML::setPose(IK_sdls::LoaderToTree const& in)
+void PLDPrimVRML::setSamePose(IK_sdls::LoaderToTree const& in)
 {
 	int nb=mChain->getSkeleton().numBone();
 	for(int i=1; i<nb; i++)

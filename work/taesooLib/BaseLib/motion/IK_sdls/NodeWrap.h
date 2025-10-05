@@ -148,6 +148,7 @@ class LoaderToTree
 {
 	bool USE_EULER_ROOT, USE_FIXED_ROOTPOS;
 	int _nDOF;
+	MotionLoader* _originalLoader;
 	protected:
 		void copyTree(Bone* bone, IK_sdls::Node* parent);
 		void compareTrees(vector3 trans);
@@ -194,6 +195,7 @@ class LoaderToTree
 		{
 			getPoseDOF(mDofInfo, pose, mNode);
 		}
+		inline vectorn getPoseDOF() { vectorn pose; getPoseDOF(_originalLoader->dofInfo, pose); return pose;}
 		void getPoseDOF(MotionDOFinfo const& mDofInfo, vectorn& pose, std::vector<IK_sdls::NodeWrap>const& mNode);
 		void getVelocity(MotionDOFinfo const& mDofInfo, vectorn & dtheta);
 
@@ -279,7 +281,7 @@ class LoaderToTree
 		inline NodeWrap& getNode(int treeIndex) { return mNode[mBoneToNode[treeIndex]]; }
 		inline const NodeWrap& getNode(int treeIndex) const { return mNode[mBoneToNode[treeIndex]]; }
 		// get the last node node that usually contains a collision geometry.
-		IK_sdls::Node* getLastNode(int treeIndex) { return getNode(treeIndex).back();}
+		IK_sdls::Node* getLastNode(int treeIndex) {RANGE_ASSERT(treeIndex>=1); return getNode(treeIndex).back();}
 		const IK_sdls::Node* getLastNode(int treeIndex) const { return getNode(treeIndex).back();}
 		IK_sdls::Node* getNode(int treeIndex, int dofIndex) { return mNode[mBoneToNode[treeIndex]].node[dofIndex]; }
 		const IK_sdls::Node* getNode(int treeIndex, int dofIndex) const { return mNode[mBoneToNode[treeIndex]].node[dofIndex]; }

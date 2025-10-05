@@ -20,7 +20,15 @@ if(WIN32)
 		add_definitions(-DNO_FREEIMAGE)
 		set(IMAGE_LIBS )
 	else()
-		set (IMAGE_LIBS "${ROOT_DIR}/windows_dependencies/FreeImage/Dist/x64/FreeImage.lib")
+		if(CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64")
+			set (IMAGE_LIBS 
+				"${ROOT_DIR}/windows_dependencies/FreeImage/Dist/arm64/FreeImage.lib"
+			)
+		else()
+			set (IMAGE_LIBS 
+				"${ROOT_DIR}/windows_dependencies/FreeImage/Dist/x64/FreeImage.lib"
+			)
+		endif()
 	endif()
 	include_directories (
 		${ROOT_DIR}/windows_dependencies/eigen-3.4.0/
@@ -68,6 +76,8 @@ set(utility
 "./utility/Graph.cpp"
 "./utility/Chat.cpp"
 "./utility/Chat.h"
+"./utility/VoxelGraph.h"
+"./utility/VoxelGraph.cpp"
 "./utility/TOnlineArray.cpp"
 "./utility/TOnlineArray.h"
 "./utility/TUGL.cpp"
@@ -345,6 +355,7 @@ add_library(BaseLib
 )
 
 target_link_libraries(BaseLib
+	PRIVATE
 	${IMAGE_LIBS}
 )
 else()

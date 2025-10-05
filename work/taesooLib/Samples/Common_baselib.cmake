@@ -21,6 +21,7 @@ else()
 	set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_DEBUG")
 	set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_DEBUG -frounding-math -std=c++11")
 endif()
+set(LUA_INCLUDE "${TAESOOLIB_DIR}/dependencies/lua-5.1.5/src")
 if(UNIX)
 
 	#collide with libsml
@@ -31,16 +32,13 @@ if(UNIX)
 	set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -ftemplate-depth-100 -Wno-deprecated -std=c++11")
 	find_package(PkgConfig REQUIRED)
 	pkg_check_modules(EIGEN eigen3 REQUIRED)
-	pkg_check_modules(LUA lua5.1 REQUIRED)
+	#pkg_check_modules(LUA lua5.1 REQUIRED) # now in the project
 	include_directories(${EIGEN_INCLUDE_DIRS})
-	set(LUA_INCLUDE ${LUA_INCLUDE_DIRS})
+	set(LUA_LIB )
 	if (APPLE)
-		set(LUA_LIB ${LUA_LIBRARIES}) # this is a static library
 		set(HOMEBREW_DIR /opt/homebrew)
-
 		set(DEFAULT_INCLUDE 
 			${HOMEBREW_DIR}/include
-			#"/usr/local/include/" # moved to Common_mainlib.cmake
 		)
 		link_directories(
 			${HOMEBREW_DIR}/lib
@@ -48,15 +46,12 @@ if(UNIX)
 			/opt/homebrew/lib
 			)
 
-	else()
-		set(LUA_LIB lua51) # this is a shared library
 	endif()
 else()
 	message("Windows OS")
 	add_definitions(-D_SCL_SECURE_NO_DEPRECATE)
 	# unused settings
 	set(DEFAULT_INCLUDE )
-	set(LUA_INCLUDE )
 	set(LUA_LIB )
 	set(EIGEN3_INCLUDE_DIR "${TAESOOLIB_DIR}/../windows_dependencies/eigen-3.4.0")
 	include_directories (${EIGEN3_INCLUDE_DIR}	)

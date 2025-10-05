@@ -229,21 +229,21 @@ void Filter::medianFilter(int kernelSize, matrixn& inout)
 void Filter::medianFilter(int kernelSize, vectorn& inout)
 {
 	int hkernelSize=kernelSize/2;
-	vectorn sample(hkernelSize*2);
+	vectorn sample(hkernelSize*2+1);
 	intvectorn sortedOrder;
 	vectorn out(inout.size());
 	for(int i=0; i<inout.size(); i++)
 	{
 		int s=i-hkernelSize;
-		int e=i+hkernelSize;
+		int e=i+hkernelSize+1;
 
 		if(s<0)
 		{
-			sample=inout.range(0, hkernelSize*2);
+			sample=inout.range(0, hkernelSize*2+1);
 		}
 		else if(e>inout.size())
 		{
-			sample=inout.range(inout.size()-hkernelSize*2, inout.size());
+			sample=inout.range(inout.size()-(hkernelSize*2+1), inout.size());
 		}
 		else
 		{

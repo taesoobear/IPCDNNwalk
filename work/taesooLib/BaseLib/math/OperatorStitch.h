@@ -45,6 +45,8 @@ public:
 	void dfunc(vectorn const& x, vectorn& dx);
 	void dfunc(vectorn const& x, vectorn& dx, m_real scale);
 	void buildSystem(int nvar, matrixn & A, vectorn &b);
+	void buildSystem_A(int nvar, matrixn & A);
+	void buildSystem_B(int nvar, vectorn & B);
 
 	struct SquaredTerm
 	{
@@ -57,6 +59,7 @@ public:
 	};
 
 	std::list<SquaredTerm*> mListSQTerms;
+	vectorn _values; // updated when buildSystem_A is called
 };
 
 class QuadraticFunctionSoftCon : public QuadraticFunction
@@ -102,6 +105,7 @@ public:
 	m_real func(vectorn const& x);
 	void dfunc(vectorn const& x, vectorn& dx);
 	void buildSystem(matrixn & A, vectorn &b);
+	void updateSystem(const vectorn& con_values, vectorn &b);
 };
 
 class AnalyticGradient

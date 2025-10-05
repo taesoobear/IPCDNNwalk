@@ -1,6 +1,7 @@
-#ifndef NO_GUI
 #ifndef _LOADER_H_
 #define _LOADER_H_
+#ifdef INCLUDE_LOADER
+#ifndef NO_GUI
 
 #if _MSC_VER>1000
 #pragma once
@@ -48,13 +49,22 @@ public:
 	static void constraintAutomaticMarking(Motion& mot);
 	void onCallback(Fl_Widget* pWidget, int userData);
 	Fl_Group* mGroup;
+	void calcInterCon();
+	void calcInterCon(Motion* m);
 private:
 	EventReceiver* m_pEventReceiver;
-	void calcInterCon();
 	Motion* mTargetMotion;
 	Motion* mTargetMotion2;
 	friend class MotionPanel;
 };
 #endif
 
+#else //!defined( INCLUDE_LOADER)
+
+#include "../WrapperLua/LUAwrapper.h"
+class Loader : public LUAwrapper::Worker
+{
+
+};
 #endif
+#endif // _LOADER>h

@@ -784,6 +784,8 @@ void vectorn::aggregateEachRow(CAggregate::aggregateOP eOP, matrixn const& mat)
 
 intvectorn operator+( intvectorn const& a, int b)			{ intvectorn c; c.add(a,b); return c;};
 intvectorn operator-( intvectorn const& a, int b)			{ intvectorn c; c.add(a,-b); return c;};
+intvectorn operator*( intvectorn const& a, int b )	{ intvectorn c; c.mult(a,b); return c;}
+intvectorn operator/( intvectorn const& a, int b )	{ intvectorn c; c.div(a,b); return c;}
 
 vectorn operator+( vectorn const& a, vectorn const& b)	{ vectorn c; c.add(a,b); return c;}
 vectorn operator-( vectorn const& a, vectorn const& b)	{ vectorn c; c.sub(a,b); return c;}
@@ -1206,4 +1208,35 @@ void intvectorn::parseString(int n_reserve, const std::string &source)
 	std::string t;
 	while ( ss >> t) 
 		pushBack(std::stof(t));
+}
+
+vectorn vectorn::extractNonZeroValues(intvectorn& index, double thr)
+{
+	vectorn out;
+	index.setSize(0);
+	index.reserve(size());
+	for (int i=0; i<size(); i++)
+	{
+		if (std::abs(value(i))>thr)
+			index.pushBack(i);
+	}
+	out.extract(*this, index);
+	return out;
+}
+
+void  vectorn::setAt(intvectorn const& columnIndex, vectorn const& value)
+{
+	ASSERT(value.size()==columnIndex.size());
+	for(int i=0; i<columnIndex.size(); i++)
+	{
+		(*this)[columnIndex[i]]=value[i];
+	}
+}
+
+void  vectorn::setAt( intvectorn const& columnIndex, double value)
+{
+	for(int i=0; i<columnIndex.size(); i++)
+	{
+		(*this)[columnIndex[i]]=value;
+	}
 }

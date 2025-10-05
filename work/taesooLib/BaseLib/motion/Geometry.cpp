@@ -91,6 +91,16 @@ bool Geometry::saveObj(const char* filename, bool vn, bool vt)
 }
 bool Geometry::loadObj(const char* filename)
 {
+	if(TString(filename).right(3).toUpper()=="STL")
+	{
+		if (loadSTL(filename))
+		{
+			initFaceGroups(*this);
+			return true;
+		}
+		else return false;
+	}
+				
 	CTextFile file;
 	if(!file.OpenReadFile(filename))
 	{

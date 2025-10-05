@@ -1050,7 +1050,7 @@ void RE::motion::loadAnimation(MotionLoader& skel, Motion& mot, const char* fn)
 }
 int RE::numOutputManager()
 {
-	return g_traceManagers.size();
+	return RE::g_pGlobals->g_traceManagers.size();
 }
 #ifndef NO_OGRE
 #include "TraceManager.h"

@@ -114,6 +114,7 @@ public:
 	matrixn():_tmat<m_real>(){}
 	matrixn ( int x, int y);
 
+	int numFrames() const { return rows();}
 	// copy constructors : copy values.
 	matrixn (const _tmat<m_real>& other):_tmat<m_real>()	{ _tmat<m_real>::assign(other);	}
 	matrixn (const matrixn& other):_tmat<m_real>()		{ assign(other);	}
@@ -196,6 +197,7 @@ public:
 	matrixn& fromHyperMat(const hypermatrixn& mat);	//!< columnwise concat all pages of mat into one large matrix
 	matrixn&  resample(matrixn const& mat, int numSample);
 	matrixn derivative(double frame_rate) const;
+	matrixn derivative_forward(double frame_rate) const;
 
 	void sampleRow( m_real criticalTime, vectorn& out) const;
 	friend std::ostream& operator<< ( std::ostream& os, const matrixn& u );

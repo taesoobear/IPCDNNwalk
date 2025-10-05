@@ -61,47 +61,6 @@ using namespace Ogre;
 
 #include "OgreAxisAlignedBox.h"
 
-namespace OBJloader
-{
-	class MeshToEntity_DATA
-	{
-	public:
-		unsigned char *mVertexBuffer ;
-		std::vector<_tvector<int,Buffer::NUM_BUFFER> > ogreVertices;
-		std::vector<_tvector<int,3> > ogreIndexes;
-		std::vector<std::vector<int> > ogreVertexHash;
-		MeshToEntity_DATA(int numVertex, int numFace)
-		{
-			ogreVertexHash.resize(numVertex);
-			ogreIndexes.resize(numFace);
-			mVertexBuffer=NULL; // managed by Ogre so do not free or delete.
-		}
-
-		~MeshToEntity_DATA()
-		{
-		}
-		int find(_tvector<int, Buffer::NUM_BUFFER> const& i)
-		{
-			std::vector<int>& hash=ogreVertexHash[i(0)];
-			for(int ii=0; ii<hash.size(); ii++)
-			{
-				if(ogreVertices[hash[ii]]==i)
-					return hash[ii];
-			}
-			return -1;
-		}
-
-		int insert(_tvector<int, Buffer::NUM_BUFFER> const& i)
-		{
-			ASSERT(find(i)==-1);
-			ogreVertexHash[i(0)].push_back(ogreVertices.size());
-			ogreVertices.push_back(i);
-			return ogreVertices.size()-1;
-		}
-
-		int numOgreVertex()	{return ogreVertices.size();}
-	};
-}
 
 #endif
 

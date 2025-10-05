@@ -133,7 +133,10 @@ transf transf::toLocal(transf const& global) const
 quater transf::toLocalRot(quater const& global) const
 {
 	quater local;
+
+	// self.orientation()*local =global , thus
 	local.mult(orientation().inverse(), global);
+	local.normalize();
 	return local;
 }
 

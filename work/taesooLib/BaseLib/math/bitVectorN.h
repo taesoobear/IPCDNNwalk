@@ -132,6 +132,10 @@ public:
 	// binary OP
 	void _or(const boolN& a, const boolN& b);
 	void _and(const boolN& a, const boolN& b);
+	void negate(const boolN& a);
+
+	boolN operator-() const { boolN out; out.negate(*this); return out;}
+
 	boolN operator|(boolN const& b) const;
 	boolN operator&(boolN const& b) const;
 

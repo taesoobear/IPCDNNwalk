@@ -13,7 +13,7 @@ DEF SampleRobot Humanoid {
         centerOfMass 0.000000 0.050000 0.000000
         mass 5.832450
         momentsOfInertia [0.019150 0.000000 0.000000 0.000000 0.054679 0.000000 0.000000 0.000000 0.051957]
-        material "lightgrey"
+        material "shiny"
         children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 0.050000 0.000000  children Shape {geometry Box { size 0.300000 0.130000 0.150000 }}}
       
       
@@ -29,7 +29,7 @@ DEF SampleRobot Humanoid {
             centerOfMass 0.000000 -0.220000 0.000000
             mass 9.870300
             momentsOfInertia [0.177748 0.000000 0.000000 0.000000 0.037014 0.000000 0.000000 0.000000 0.177748]
-            material "lightgrey"
+            material "shiny"
             children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 -0.220000 0.000000  children Shape {geometry Box { size 0.150000 0.440000 0.150000 }}}
           
           
@@ -45,7 +45,7 @@ DEF SampleRobot Humanoid {
                 centerOfMass 0.000000 -0.220000 0.000000
                 mass 5.742720
                 momentsOfInertia [0.083461 0.000000 0.000000 0.000000 0.013783 0.000000 0.000000 0.000000 0.083461]
-                material "lightgrey"
+                material "shiny"
                 children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 -0.220000 0.000000  children Shape {geometry Box { size 0.120000 0.400000 0.120000 }}}
               
               
@@ -61,7 +61,7 @@ DEF SampleRobot Humanoid {
                     centerOfMass 0.010000 -0.090000 0.040000
                     mass 1.319031
                     momentsOfInertia [0.005386 0.000000 0.000000 0.000000 0.005738 0.000000 0.000000 0.000000 0.001429]
-                    material "lightgrey"
+                    material "shiny"
                     children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.010000 -0.090000 0.040000  children Shape {geometry Box { size 0.090000 0.070000 0.210000 }}}
                   
                   
@@ -86,7 +86,7 @@ DEF SampleRobot Humanoid {
             centerOfMass 0.000000 -0.220000 0.000000
             mass 9.870300
             momentsOfInertia [0.177748 0.000000 0.000000 0.000000 0.037014 0.000000 0.000000 0.000000 0.177748]
-            material "lightgrey"
+            material "shiny"
             children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 -0.220000 0.000000  children Shape {geometry Box { size 0.150000 0.440000 0.150000 }}}
           
           
@@ -102,7 +102,7 @@ DEF SampleRobot Humanoid {
                 centerOfMass 0.000000 -0.220000 0.000000
                 mass 5.742720
                 momentsOfInertia [0.083461 0.000000 0.000000 0.000000 0.013783 0.000000 0.000000 0.000000 0.083461]
-                material "lightgrey"
+                material "shiny"
                 children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 -0.220000 0.000000  children Shape {geometry Box { size 0.120000 0.400000 0.120000 }}}
               
               
@@ -118,7 +118,7 @@ DEF SampleRobot Humanoid {
                     centerOfMass -0.010000 -0.090000 0.040000
                     mass 1.319031
                     momentsOfInertia [0.005386 0.000000 0.000000 0.000000 0.005738 0.000000 0.000000 0.000000 0.001429]
-                    material "lightgrey"
+                    material "shiny"
                     children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation -0.010000 -0.090000 0.040000  children Shape {geometry Box { size 0.090000 0.070000 0.210000 }}}
                   
                   
@@ -143,7 +143,7 @@ DEF SampleRobot Humanoid {
             centerOfMass 0.000000 0.090000 0.000000
             mass 5.383800
             momentsOfInertia [0.019023 0.000000 0.000000 0.000000 0.044865 0.000000 0.000000 0.000000 0.054915]
-            material "lightgrey"
+            material "shiny"
             children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 0.090000 0.000000  children Shape {geometry Box { size 0.300000 0.180000 0.100000 }}}
           
           
@@ -159,7 +159,7 @@ DEF SampleRobot Humanoid {
                 centerOfMass 0.000000 0.065000 0.000000
                 mass 3.888300
                 momentsOfInertia [0.008716 0.000000 0.000000 0.000000 0.032403 0.000000 0.000000 0.000000 0.034638]
-                material "lightgrey"
+                material "shiny"
                 children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 0.065000 0.000000  children Shape {geometry Box { size 0.300000 0.130000 0.100000 }}}
               
               
@@ -175,7 +175,7 @@ DEF SampleRobot Humanoid {
                     centerOfMass 0.000000 0.065237 0.000000
                     mass 4.486500
                     momentsOfInertia [0.012151 0.000000 0.000000 0.000000 0.037387 0.000000 0.000000 0.000000 0.042061]
-                    material "lightgrey"
+                    material "shiny"
                     children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 0.065237 0.000000  children Shape {geometry Box { size 0.300000 0.150000 0.100000 }}}
                   
                   
@@ -191,7 +191,7 @@ DEF SampleRobot Humanoid {
                         centerOfMass 0.100000 -0.030000 -0.030000
                         mass 0.997000
                         momentsOfInertia [0.001662 0.000000 0.000000 0.000000 0.001662 0.000000 0.000000 0.000000 0.001662]
-                        material "lightgrey"
+                        material "shiny"
                         children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.100000 -0.030000 -0.030000  children Shape {geometry Box { size 0.100000 0.100000 0.100000 }}}
                       
                       
@@ -207,7 +207,7 @@ DEF SampleRobot Humanoid {
                             centerOfMass 0.150000 0.000000 0.000000
                             mass 2.991000
                             momentsOfInertia [0.004985 0.000000 0.000000 0.000000 0.024925 0.000000 0.000000 0.000000 0.024925]
-                            material "lightgrey"
+                            material "shiny"
                             children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.150000 0.000000 0.000000  children Shape {geometry Box { size 0.300000 0.100000 0.100000 }}}
                           
                           
@@ -223,7 +223,7 @@ DEF SampleRobot Humanoid {
                                 centerOfMass 0.140000 0.000000 0.000000
                                 mass 2.691900
                                 momentsOfInertia [0.004487 0.000000 0.000000 0.000000 0.018597 0.000000 0.000000 0.000000 0.018597]
-                                material "lightgrey"
+                                material "shiny"
                                 children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.140000 0.000000 0.000000  children Shape {geometry Box { size 0.270000 0.100000 0.100000 }}}
                               
                               
@@ -239,8 +239,8 @@ DEF SampleRobot Humanoid {
                                     centerOfMass 0.050000 0.000000 0.000000
                                     mass 0.997000
                                     momentsOfInertia [0.001662 0.000000 0.000000 0.000000 0.001662 0.000000 0.000000 0.000000 0.001662]
-                                    material "lightgrey"
-                                    children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.050000 0.000000 0.000000  children Shape {geometry Box { size 0.100000 0.100000 0.100000 }}}
+                                    material "shiny"
+                                    children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.050000 0.000000 0.000000  children Shape {geometry Box { size 0.13000 0.05000 0.10000 }}}
                                   
                                   
                                   }
@@ -267,7 +267,7 @@ DEF SampleRobot Humanoid {
                         centerOfMass -0.100000 -0.030000 -0.030000
                         mass 0.997000
                         momentsOfInertia [0.001662 0.000000 0.000000 0.000000 0.001662 0.000000 0.000000 0.000000 0.001662]
-                        material "lightgrey"
+                        material "shiny"
                         children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation -0.100000 -0.030000 -0.030000  children Shape {geometry Box { size 0.100000 0.100000 0.100000 }}}
                       
                       
@@ -283,7 +283,7 @@ DEF SampleRobot Humanoid {
                             centerOfMass -0.150000 0.000000 0.000000
                             mass 2.991000
                             momentsOfInertia [0.004985 0.000000 0.000000 0.000000 0.024925 0.000000 0.000000 0.000000 0.024925]
-                            material "lightgrey"
+                            material "shiny"
                             children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation -0.150000 0.000000 0.000000  children Shape {geometry Box { size 0.300000 0.100000 0.100000 }}}
                           
                           
@@ -299,7 +299,7 @@ DEF SampleRobot Humanoid {
                                 centerOfMass -0.140000 0.000000 0.000000
                                 mass 2.691900
                                 momentsOfInertia [0.004487 0.000000 0.000000 0.000000 0.018597 0.000000 0.000000 0.000000 0.018597]
-                                material "lightgrey"
+                                material "shiny"
                                 children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation -0.140000 0.000000 0.000000  children Shape {geometry Box { size 0.270000 0.100000 0.100000 }}}
                               
                               
@@ -315,8 +315,8 @@ DEF SampleRobot Humanoid {
                                     centerOfMass -0.050000 0.000000 0.000000
                                     mass 0.997000
                                     momentsOfInertia [0.001662 0.000000 0.000000 0.000000 0.001662 0.000000 0.000000 0.000000 0.001662]
-                                    material "lightgrey"
-                                    children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation -0.050000 0.000000 0.000000  children Shape {geometry Box { size 0.100000 0.100000 0.100000 }}}
+                                    material "shiny"
+                                    children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation -0.050000 0.000000 0.000000  children Shape {geometry Box { size 0.130000 0.05000 0.100000 }}}
                                   
                                   
                                   }
@@ -343,7 +343,7 @@ DEF SampleRobot Humanoid {
                         centerOfMass 0.000000 0.100000 0.000000
                         mass 0.997000
                         momentsOfInertia [0.001662 0.000000 0.000000 0.000000 0.001662 0.000000 0.000000 0.000000 0.001662]
-                        material "lightgrey"
+                        material "shiny"
                         children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 0.100000 0.000000  children Shape {geometry Box { size 0.100000 0.100000 0.100000 }}}
                       
                       
@@ -359,7 +359,7 @@ DEF SampleRobot Humanoid {
                             centerOfMass 0.000000 0.100000 0.000000
                             mass 2.864381
                             momentsOfInertia [0.010932 0.000000 0.000000 0.000000 0.008068 0.000000 0.000000 0.000000 0.010932]
-                            material "lightgrey"
+                            material "shiny"
                             children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 0.100000 0.000000  children Shape {geometry Box { size 0.130000 0.170000 0.130000 }}}
                           
                           

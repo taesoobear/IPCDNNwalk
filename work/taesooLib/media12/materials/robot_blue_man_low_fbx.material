@@ -1,0 +1,20 @@
+
+
+material robot_blue_man_low_Blue_Robot_man_BaseColor.png
+{
+	technique
+	{
+		pass 
+		{
+			diffuse 0.8 0.8 0.8 1
+			specular 0.2 0.2 0.2 1 25
+
+			texture_unit
+			{
+				texture "man_BaseColor.png"
+			}
+		}
+
+	}
+
+}

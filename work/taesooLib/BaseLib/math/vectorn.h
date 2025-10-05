@@ -94,6 +94,8 @@ public:
 	void runLengthDecode(boolN& out, int size);
 	void runLengthEncodeCut(const boolN& cutState, int start=0, int end=INT_MAX);
 
+	friend intvectorn operator*( intvectorn const& a, int b);
+	friend intvectorn operator/( intvectorn const& a, int b);
 	friend intvectorn operator+( intvectorn const& a, int b);
 	friend intvectorn operator-( intvectorn const& a, int b);
 	friend std::ostream& operator<< ( std::ostream& os, const intvectorn& u );
@@ -271,6 +273,7 @@ public:
 	vectorn Extract(const intvectorn& columns)	const { vectorn c; c.extract(*this, columns); return c;}
 	vectorn& sort(vectorn const& source, intvectorn& sortedIndex);
 
+	vectorn extractNonZeroValues(intvectorn& index, double thr=1e-9);
 	// slow unary operations (negation)
 	friend vectorn operator-( vectorn const& a);
 
@@ -347,6 +350,8 @@ public:
 	int getSize() const	{ return size();}
 
 
+	void  setAt( intvectorn const& columnIndex, vectorn const& value);
+	void  setAt( intvectorn const& columnIndex, double value);
 	// deprecated - v::for_each, v::for_each1, v::for_each2 로 바꾸는 중.(operatorTemplate.hpp)
 
 	// vector의 각 value들에 scalar binary를 적용한다.

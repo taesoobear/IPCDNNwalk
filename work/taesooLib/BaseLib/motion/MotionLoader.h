@@ -61,7 +61,8 @@ public:
 	TString const& getRotationalChannels() const;
 	TString const& getTranslationalChannels() const;
 
-	vector3 getArbitraryAxis(int i) const;
+	vector3 getJointAxis(int i) const;
+	vector3 getArbitraryAxis(int i) const; // works only for "A" type joint.
 	int numChannels() const;
 
 	m_real length() const;

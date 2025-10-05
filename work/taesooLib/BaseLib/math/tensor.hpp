@@ -391,9 +391,9 @@ class _tensor
 
 		uint32_t shape(int dim) const { return dims[dim];}
 		intvectornView shape() const { return intvectornView((const int*)dims, ndims);} 
-		unsigned int pages()  { RANGE_ASSERT(ndims>=3); return dims[ndims-3];}
-		unsigned int rows()  { RANGE_ASSERT(ndims>=2); return dims[ndims-2];}
-		unsigned int cols()  { RANGE_ASSERT(ndims>=1); return dims[ndims-1];}
+		unsigned int pages()  const { RANGE_ASSERT(ndims>=1); return dims[0];}
+		unsigned int rows() const   { RANGE_ASSERT(ndims>=2); return dims[ndims-2];}
+		unsigned int cols() const  { RANGE_ASSERT(ndims>=1); return dims[ndims-1];}
 
 		T get(int i, int j, int k)
 		{
@@ -537,6 +537,7 @@ class Tensor: public _tensor<double>
 			return vectornView(&get_ref(ii), dims[idim], stride[idim]);
 		}
 
+		TensorView page(int i) const;
 		TensorView slice(const intvectorn& _indices) const;
 		void assign(Tensor const& other)
 		{
@@ -569,6 +570,7 @@ class Tensor: public _tensor<double>
 			_setMat(temp);
 			return temp;
 		}
+		TString shortOutput() const;
 };
 
 class floatTensorView: public floatTensor
@@ -610,6 +612,33 @@ class TensorView: public Tensor
 		_assignRef(other);
 	}
 };
+inline TensorView Tensor::page(int index) const
+{
+	int indices[TENSOR_MAX_DIMS ];
+	int newdims[TENSOR_MAX_DIMS ];
+	int newstride[TENSOR_MAX_DIMS ];
+	indices[0]=index;
+	for(int i=1; i<ndims; i++)
+	{
+		indices[i]=0;
+		newdims[i-1]=dims[i];
+		newstride[i-1]=stride[i];
+	}
+
+	intvectornView ii(indices, ndims); 
+	intvectornView _newdims(newdims,ndims-1);
+	intvectornView _newstride(newstride,ndims-1);
+	return TensorView(&get_ref(ii), _newstride,_newdims);
+}
+inline TString Tensor::shortOutput() const
+{
+	if(ndims==2)
+		return "Tensor (shape="+shape().output()+") :\n"+toMat().shortOutput();
+	else if(ndims==1)
+		return "Tensor (shape=("+TString("", dims[0])+")) :\n"+slice_1d(intvectorn(1, -1)).shortOutput();
+	else
+		return "Tensor (shape="+shape().output()+") :\n [0]="+page(0).shortOutput()+TString("...\n [",pages()-1)+TString("]=")+page(pages()-1).shortOutput();
+}
 inline TensorView Tensor::slice(const intvectorn& _indices) const
 {
 	intvectorn newstride;

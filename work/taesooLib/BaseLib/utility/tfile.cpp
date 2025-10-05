@@ -26,8 +26,11 @@ BinaryFile::BinaryFile(bool bWrite, const char* filename)
 	m_pFile=NULL;
 	m_pBuffer=NULL;
 	m_bReadToMemory=false;
-	if(bWrite) openWrite(filename);
-	else openRead(filename);
+	bool res;
+	if(bWrite) res=openWrite(filename);
+	else res=openRead(filename);
+	if (!res)
+		printf("Failed to open %s\n", filename);
 }
 BinaryFile::BinaryFile(bool bWrite, const std::string & filename)
 {
@@ -827,7 +830,8 @@ void BinaryFile::unpack(quaterN& vec)
 
 void BinaryFile::unpack(intmatrixn& mat)
 {
-	Msg::verify(_unpackInt()==TYPE_INTMN,"unpackIntmatrixn failed");
+	int tc=_unpackInt();
+	Msg::verify(tc==TYPE_INTMN,"unpackIntmatrixn failed");
 
 	int row=_unpackInt();
 	int col=_unpackInt();

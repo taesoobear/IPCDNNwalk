@@ -16,17 +16,19 @@ class TStrings;
 #include "Loader.h"
 #include "../../BaseLib/motion/MotionWrap.h"
 #include <Fl/Fl_Double_Window.H>
+#include "FltkAddon.h"
 // Loader, MotionWindow, Scrollpanel, Tracemanager을 세트로 갖고 있다. 아주 유용.
 class MotionPanel :
-	public Fl_Double_Window, public FlCallee, public Loader::EventReceiver
+	//public Fl_Double_Window, public FlCallee, public Loader::EventReceiver
+	public Fl_Double_Window, public FlCallee 
 {
 private:
 	friend class MotionPanel_impl;
 
-	FlMenu m_menuMotion;
+	//FlMenu m_menuMotion;
 	TArray<MotionWrap> m_motions;
 	intvectorn mPairMotionIndex;
-	Loader* m_loader;
+	//Loader* m_loader;
 	FltkMotionWindow* m_motionWin;
 	FltkScrollPanel* m_scrollPanel;
 	TraceManager* m_traceManager;
@@ -37,7 +39,7 @@ public:
 
 	FltkMotionWindow* motionWin()	{ return m_motionWin;}
 	FltkScrollPanel* scrollPanel()	{ return m_scrollPanel;}
-	Loader* loader()				{ return m_loader;}
+	//Loader* loader()				{ return m_loader;}
 
 	virtual void OnLoadStart(int numCharacter, std::vector<Motion*>& targetMotions);
 	virtual void OnLoadStart(int numCharacter, std::vector<MotionDOFinfo const*>&aInfo, std::vector<MotionDOFcontainer*>& targetMotions);

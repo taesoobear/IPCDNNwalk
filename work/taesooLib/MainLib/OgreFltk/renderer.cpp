@@ -142,7 +142,8 @@ bool useSeperateOgreWindow()
 	if(!_useSeperateOgreWindowCached)
 	{
 		const char* str=config.Find("useSeperateOgreWindow");
-		printf("test:%s\n", str);
+		printf("sep%s ", str);
+		fflush(stdout);
 		_useSeperateOgreWindow=(str && atoi(str)==1);
 		_useSeperateOgreWindowCached=true;
 	}
@@ -204,11 +205,22 @@ static bool mbUseRTTcapture=false;
 static bool mbUseOGREcapture=false;
 #endif
 
+int OgreRenderer::getConfig(const char* id)
+{
+	return config.GetInt(id);
+}
+double OgreRenderer::getConfigFloat(const char* id)
+{
+	return config.GetFloat(id);
+}
 void OgreRenderer::setBackgroundColour(float r, float g, float b)
 {
 #ifndef NO_OGRE
-	printf("setBackgroundColour currently not working!!!\n Adjust the 1st line of OgreRenderer::_construct(...) in renderer.cpp directly!!!\n");
+	printf("OgreRenderer::setBackgroundColour currently doesn't work.\n If necessary, adjust the 1st line of OgreRenderer::_construct(...) in renderer.cpp directly!!!\n");
+	mBackgroundColour=Ogre::ColourValue(r,g,b,1.f);
+	restartCompositor();
 	/* todo2
+	 
 	viewport().mView->setBackgroundColour(Ogre::ColourValue(r,g,b,1.f));
 	if(mbUseRTTcapture){
 		renderTexture->getViewport(0)->setBackgroundColour(Ogre::ColourValue(r,g, b, 1.f));
@@ -507,16 +519,18 @@ void OgreRenderer::_locateTaesooLib()
 		mPluginPath="work/";
 	}
 }
-void OgreRenderer::_constructor(const char* fallback_configFileName, const char* configFileName, const char* plugins_file, const char* ogre_config)
+void OgreRenderer::_constructor(const char* fallback_configFileName, const char* configFileName, const char* _plugins_file, const char* ogre_config)
 {
 #ifndef NO_OGRE
 	mBackgroundColour=Ogre::ColourValue( 0.2f, 0.4f, 0.6f );
+	//mBackgroundColour=Ogre::ColourValue( 1.0f, 1.0f, 1.0f ); // for figures.
 #endif
 	printf("loading %s\n", configFileName);
 #if !defined(NO_GUI)
 	config.load(fallback_configFileName, configFileName);
 #endif
 	ASSERT(RE::g_pGlobals==NULL);
+	std::string plugins_file=_plugins_file;
 	RE::g_pGlobals=new RE::Globals();
 	RE::g_pGlobals->pRenderer = this;    
 	m_pMotionManager=new MotionManager((RE::taesooLibPath()+"Resource/motion.lua").c_str());
@@ -532,6 +546,13 @@ void OgreRenderer::_constructor(const char* fallback_configFileName, const char*
 	else
 	{
 		mResourceFile=(mTaesooLib_path+"Resource/resources3_relative.cfg").c_str();
+#ifdef _MSC_VER // WINDOWS
+#if defined(_DEBUG)
+		plugins_file=mPluginPath+"plugins3_d_relative.cfg";
+#else
+		plugins_file=mPluginPath+"plugins3_relative.cfg";
+#endif
+#endif
 	}
 	mWriteAccessFolder=mTaesooLib_path+"Resource/";
 
@@ -550,14 +571,37 @@ void OgreRenderer::_constructor(const char* fallback_configFileName, const char*
 
 
 	const Ogre::AbiCookie abiCookie = Ogre::generateAbiCookie();
-	mRoot = new Ogre::Root(&abiCookie, plugins_file, ogre_config, (log)?"":"Ogre.log");
+	mRoot = new Ogre::Root(&abiCookie, plugins_file.c_str(), ogre_config, (log)?"":"Ogre.log");
 	printf("."); fflush(stdout);
 
+	bool loadStatic=true;
+	if( mRoot->getAvailableRenderers().size()==0)
+	{
+#ifdef _MSC_VER
+		printf("loading plugins in %s\n",RE::taesooLibPath().c_str());
+		mRoot->loadPlugin(std::string(RE::taesooLibPath()+"RenderSystem_Direct3D11.dll"), false, NULL);
+		mRoot->loadPlugin(std::string(RE::taesooLibPath()+"Plugin_ParticleFX.dll"), false, NULL);
+		printf("loading plugins finished %d\n", mRoot->getAvailableRenderers().size());
+#elif defined(__APPLE__)
+		printf("loading plugins in %s\n",RE::taesooLibPath().c_str());
+		mRoot->loadPlugin(std::string(RE::taesooLibPath()+"RenderSystem_Metal.4.0.dylib"), false, NULL);
+		mRoot->loadPlugin(std::string(RE::taesooLibPath()+"Plugin_ParticleFX.4.0.dylib"), false, NULL);
+		printf("loading plugins finished %d\n", mRoot->getAvailableRenderers().size());
+#else
+		printf("loading plugins in %s\n",RE::taesooLibPath().c_str());
+		mRoot->loadPlugin(std::string(RE::taesooLibPath()+"RenderSystem_GL3Plus.so"), false, NULL);
+		mRoot->loadPlugin(std::string(RE::taesooLibPath()+"Plugin_ParticleFX.so"), false, NULL);
+		printf("loading plugins finished %d\n", mRoot->getAvailableRenderers().size());
+
+#endif
+		loadStatic=false;
+	}
 	static Ogre::MovableTextFactory _mMovableTextFactory;
 	mMovableTextFactory=&_mMovableTextFactory;
 	mRoot->addMovableObjectFactory(mMovableTextFactory);
 		
-	mStaticPluginLoader.install( mRoot );
+	if(loadStatic)
+		mStaticPluginLoader.install( mRoot );
 	Ogre::RenderSystemList::const_iterator itor = mRoot->getAvailableRenderers().begin();
 	Ogre::RenderSystemList::const_iterator endt = mRoot->getAvailableRenderers().end();
 
@@ -811,11 +855,11 @@ void OgreRenderer::initialize(void* handle, int width, int height)
 		// Here we choose to let the system create a default rendering window by passing 'true'
 		try
 		{
+			if(config.Find("useOGREcapture")) mbUseOGREcapture=config.GetInt("useOGREcapture");
 			// Root and Scene.
 			if(useSeperateOgreWindow())
 			{
 #ifdef SEP_USE_SDL2
-				if(config.Find("useOGREcapture")) mbUseOGREcapture=config.GetInt("useOGREcapture");
 				mWnd = mRoot->initialise(false);
 
 				Ogre::ConfigOptionMap& cfgOpts = mRoot->getRenderSystem()->getConfigOptions();
@@ -956,16 +1000,21 @@ void OgreRenderer::initialize(void* handle, int width, int height)
 				params.insert( std::make_pair("vsync", cfgOpts["VSync"].currentValue) );
 				params.insert( std::make_pair("reverse_depth", "Yes" ) );
 
+				printf("-"); fflush(stdout);
 				initMiscParamsListener( params );
-
+				printf("-"); fflush(stdout);
 				mWnd = mRoot->createRenderWindow("My sub render window", width, height, false, &params); 
+				printf("."); fflush(stdout);
+
 
 				size_t hWnd = 0;
 				//mWnd->getCustomAttribute("WINDOW", &hWnd);
 				_hWnd=handle;
 				hWnd=(size_t)_hWnd;
 
+				printf("."); fflush(stdout);
 				createInputSystems(hWnd);
+				printf("-"); fflush(stdout);
 #else // ifndef SEP_USE_SDL2
 				mWnd = mRoot->initialise(true); // create renderwindow
 				size_t hWnd = 0;
@@ -973,11 +1022,17 @@ void OgreRenderer::initialize(void* handle, int width, int height)
 				//mWnd->getCustomAttribute("WINDOW", &hWnd);
 				hWnd=(size_t)_hWnd;
 
+				printf("-"); fflush(stdout);
 				createInputSystems(hWnd);
+				printf("-"); fflush(stdout);
 #endif
 			}
 			else
+			{
+				printf("r1");fflush(stdout);
 				mWnd = mRoot->initialise(false);
+				printf("\b\br2");fflush(stdout);
+			}
 		}
 		catch(Ogre::Exception &e)
 		{
@@ -993,6 +1048,7 @@ void OgreRenderer::initialize(void* handle, int width, int height)
 				mWnd = mRoot->initialise(false);
 		}
 		
+		printf(":"); fflush(stdout);
 		// Render system.
 		mRSys = mRoot->getRenderSystem();
 
@@ -1002,6 +1058,7 @@ void OgreRenderer::initialize(void* handle, int width, int height)
 		}
 
 		setupResources();
+		printf("\b7"); fflush(stdout);
 		vectorn param(2);
 		param(0)=width;
 		param(1)=height;
@@ -1009,6 +1066,7 @@ void OgreRenderer::initialize(void* handle, int width, int height)
 		mViewports.resize(mViewports.size()+1);
 		mViewports.back()=new Viewport();
 		mCurrViewports=mViewports.size()-1;
+		printf("\b8"); fflush(stdout);
 #else // #ifndef NO_OGRE
 		vectorn param(2);
 		param(0)=10;
@@ -1263,7 +1321,10 @@ void OgreRenderer::pause(bool b)
 void OgreRenderer::toggleScreenShotMode()
 {
 	if(mbScreenshot)
+	{
+		cout << "Screen capture finished" << endl;
 		screenshot(false);
+	}
 	else
 	{
 		cout << "Screen capture started" << endl;
@@ -1396,6 +1457,7 @@ void OgreRenderer::setupResources(void)
 	Ogre::ConfigFile::SectionIterator seci = cf.getSectionIterator();
 
 	Ogre::String secName, typeName, archName;
+	printf("0"); fflush(stdout);
 	while( seci.hasMoreElements() )
 	{
 		secName = seci.peekNextKey();
@@ -1412,14 +1474,19 @@ void OgreRenderer::setupResources(void)
 			}
 		}
 	}
+	printf("\b1"); fflush(stdout);
 	// loadResources
 	registerHlms();
+	printf("\b2"); fflush(stdout);
 
 	loadTextureCache();
+	printf("\b3"); fflush(stdout);
 	loadHlmsDiskCache();
+	printf("\b4"); fflush(stdout);
 
 	// Initialise, parse scripts etc
 	Ogre::ResourceGroupManager::getSingleton().initialiseAllResourceGroups( true );
+	printf("\b5"); fflush(stdout);
 
 	try
 	{
@@ -1448,6 +1515,7 @@ void OgreRenderer::setupResources(void)
 				"and LTC area lights won't be available or may not function properly!",
 				Ogre::LML_CRITICAL );
 	}
+	printf("\b6"); fflush(stdout);
 
 }
 #endif
@@ -1562,35 +1630,32 @@ void OgreRenderer::renderOneFrame()
 			TString fn;
 			static int _c=0;
 			fn.format("%s/%05d.jpg", mScreenshotPrefix.ptr(), _c++);
-			printf("%d\n", mWnd->getTexture()->getNumMipmaps());
+			printf("\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r%s", fn.ptr());
+			fflush(stdout);
+			//printf("%d\n", mWnd->getTexture()->getNumMipmaps());
 			//
 			//
 #ifdef __APPLE__
 #ifdef __MAC_15_0
+
 			/*
-			 * everything doesn't work.  
-			CGImageRef screenShot = takeScreenShot(_hWnd);
-			
-			
+			static bool bFirst=true;
+			if(bFirst)
+			{
+				Msg::msgBox("To capture a screenshot on MacOS v15, use the ogre-next3 branch of taesooLib-next.git and ogre-next3.git" );
+				bFirst=false;
+			}
 
-			CFStringRef file ;
-			file = CFStringCreateWithCString(kCFAllocatorDefault, fn.ptr(), kCFStringEncodingMacRoman);
-			CFStringRef type = CFSTR("public.jpeg");
-			CFURLRef urlRef = CFURLCreateWithFileSystemPath( kCFAllocatorDefault, file, kCFURLPOSIXPathStyle, false );
-			CGImageDestinationRef image_destination = CGImageDestinationCreateWithURL( urlRef, type, 1, NULL );
-			CGImageDestinationAddImage( image_destination, screenShot, NULL );
-			CGImageDestinationFinalize( image_destination );
-			CFRelease(file);
 			*/
-			// Call only once.
 
-			//mWorkspace ->_update();
 
 			if( mWnd->canDownloadData() )
 			{
 				Ogre::Image2 img;
 				Ogre::TextureGpu *texture = mWnd->getTexture();
 				img.convertFromTexture( texture, 0u, texture->getNumMipmaps() - 1u );
+				if(_c%30==1)
+					printf("\n", fn.ptr());
 				img.save( fn.ptr(), 0, img.getNumMipmaps() );
 			}
 
@@ -1615,7 +1680,8 @@ void OgreRenderer::renderOneFrame()
 #else
 			if(mbUseOGREcapture){
 				fn.format("%s/%05d.png", mScreenshotPrefix.ptr(), _c-1);
-				printf("%s\n", fn.ptr());
+				printf("\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r\r%s", fn.ptr());
+				fflush(stdout);
 				mWnd->getTexture()->writeContentsToFile(fn.ptr(),0,0);
 			}
 #endif
@@ -1715,12 +1781,11 @@ void OgreRenderer::_updateDynamicTexture(const char* texturename, CImage const& 
 	if (hasTexture && !reuse)
 		Msg::error("I dont' know how to remove texture:%s", texturename);
 	Ogre::TextureGpu* texture=NULL;
-
-	if(!reuse || !hasTexture)
+	Ogre::Image2 origImage;
 	{
+		// create Ogre::Image2 from CImage
 		//printf("creating %s\n", texturename);
 
-        Ogre::Image2 origImage;
         //Load floor diffuse
         //origImage.load( "BlueCircle.png", Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME ); width2=origImage.getWidth();
         origImage.createEmptyImage( width2, width2, 1, Ogre::TextureTypes::Type2D, Ogre:: PFG_RGBA8_UNORM);
@@ -1781,6 +1846,10 @@ void OgreRenderer::_updateDynamicTexture(const char* texturename, CImage const& 
 			}
 		}
         origImage.generateMipmaps( true );
+	}
+
+	if(!reuse || !hasTexture)
+	{
 		texture = textureManager->createTexture(
 				Ogre::String(texturename),
 				Ogre::GpuPageOutStrategy::SaveToSystemRam,
@@ -1801,7 +1870,11 @@ void OgreRenderer::_updateDynamicTexture(const char* texturename, CImage const& 
 	}
 	else
 	{
-		printf("warning! not updating texture %s\n", texturename);
+		texture=textureManager->findTextureNoThrow(Ogre::String(texturename));
+		Msg::verify(texture->getWidth()==width2, "width doesn't match");
+		Msg::verify(texture->getHeight()==width2, "height doesn't match");
+        origImage.uploadTo( texture, 0, origImage.getNumMipmaps() - 1u, 0u );
+
 		//texture=textureMgr->
 		//width2=texture->getWidth();
 		return;
@@ -1819,24 +1892,51 @@ void OgreRenderer::createDynamicTexture(const char* name, CImage const& image)
 	 
 	_updateDynamicTexture( texturename,  image)	;
 
-	/*
 	// Create a material using the texture
-	// change bygth
-	//	const char materialName[]=		"DynamicTextureMaterial"; // name
-	const char* materialName=name; // name
-	Ogre::MaterialPtr material = Ogre::MaterialManager::getSingleton().getByName(materialName);
-	
-	if(material.isNull())
+	Ogre::HlmsManager *hlmsManager = getRoot()->getHlmsManager();
+
+
+	auto* datablock0=hlmsManager->getDatablockNoDefault(name);
+	if(datablock0)
 	{
-		// I hardcoded material "DynamicTextureMaterial" in the CheckBoard.material so the below code won't execute unless you delete the material.
-		// change bygth
-		material=Ogre::MaterialManager::getSingleton().create(
-				materialName,
-		Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
-		material->getTechnique(0)->getPass(0)->createTextureUnitState(texturename);
-		// todo2 material->getTechnique(0)->getPass(0)->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
+		//printf("hihi %s\n", name);
+		return;
 	}
-	*/
+	else
+	{
+		//printf("creating %s\n", name);
+	}
+
+	assert( dynamic_cast<Ogre::HlmsPbs*>( hlmsManager->getHlms( Ogre::HLMS_PBS ) ) );
+	Ogre::HlmsPbs *hlmsPbs = static_cast<Ogre::HlmsPbs*>( hlmsManager->getHlms(Ogre::HLMS_PBS) );
+
+	auto macroblock=Ogre::HlmsMacroblock();
+
+	if (image.getOpacityMap())
+		macroblock.mDepthWrite=false;
+
+
+	Ogre::HlmsPbsDatablock *datablock = static_cast<Ogre::HlmsPbsDatablock*>(
+			hlmsPbs->createDatablock( name,
+				name,
+				macroblock,
+				Ogre::HlmsBlendblock(),
+				Ogre::HlmsParamVec() ) );
+
+
+        
+	//datablock->setTexture( Ogre::PBSM_DIFFUSE, "BlueCircle.png" );
+	datablock->setTexture( Ogre::PBSM_DIFFUSE, texturename );
+	datablock->setTexture( Ogre::PBSM_SPECULAR, texturename );
+	if (image.getOpacityMap())
+		datablock->setTransparency(1);
+	datablock->setDiffuse( ToOgre(vector3(1,1,1)));
+	datablock->setSpecular( ToOgre(vector3(0,0,0)));
+	double shininess=10;
+	//shiness= 100/(100 * roughness + 0.01)
+	double roughness=(100.0/shininess-0.01)/20;
+	
+	datablock->setRoughness( roughness);
 
 
 #endif
@@ -2163,10 +2263,8 @@ void OgreRenderer::createRenderWindow(void* handle, int width, int height)
 	Ogre::NameValuePairList params;
 	Ogre::String winHandle;
 #ifdef _MSC_VER
-	params["externalWindowHandle"] = Ogre::StringConverter::toString((size_t)handle); 
-	mWnd = mRoot->createRenderWindow("My sub render window", width, height, false, &misc); 
-#else
-#if defined(__APPLE__)
+	winHandle = Ogre::StringConverter::toString((size_t)handle); 
+#elif defined(__APPLE__)
 	//misc["currentGLContext"]=Ogre::String("True");  
 		winHandle  = Ogre::StringConverter::toString(WindowContentViewHandleFltk(handle));
 	
@@ -2208,7 +2306,6 @@ void OgreRenderer::createRenderWindow(void* handle, int width, int height)
 	initMiscParamsListener( params );
 
 	mWnd = mRoot->createRenderWindow("My sub render window", width, height, false, &params); 
-#endif // not _MSC_VER
 #endif
 }
 void OgreRenderer::ChageTextureImage(const char* name, const char* textureName)
@@ -2582,6 +2679,7 @@ void OgreRenderer::restartCompositor(void)
 }
 void OgreRenderer::registerHlms(void)
 {
+	printf("\b\b\b1-0");fflush(stdout);
 	Ogre::ConfigFile cf;
 	cf.load(  mResourceFile.ptr() ) ;
 
@@ -2590,11 +2688,13 @@ void OgreRenderer::registerHlms(void)
 	Ogre::String rootHlmsFolder = Ogre::macBundlePath() + '/' +
 		cf.getSetting( "DoNotUseAsResource", "Hlms", "" );
 #else
+	printf("\b\b\b1-1");fflush(stdout);
 	std::string mTaesooLib_path=RE::taesooLibPath();
 	std::string mResourcePath=mTaesooLib_path+"Resource/";
 	Ogre::String rootHlmsFolder = mResourcePath + cf.getSetting( "DoNotUseAsResource", "Hlms", "" );
 #endif
 
+	printf("\b\b\b1-2");fflush(stdout);
 	if( rootHlmsFolder.empty() )
 		rootHlmsFolder =  "./";
 	else if( *(rootHlmsFolder.end() - 1) != '/' )
@@ -2616,10 +2716,13 @@ void OgreRenderer::registerHlms(void)
 	//const Ogre::String &archiveType = getMediaReadArchiveType();
 	const Ogre::String archiveType = "FileSystem";
 
+	printf("\b\b\b1-3");fflush(stdout);
+	if (true)
 	{
 		//Create & Register HlmsUnlit
 		//Get the path to all the subdirectories used by HlmsUnlit
 		Ogre::HlmsUnlit::getDefaultPaths( mainFolderPath, libraryFoldersPaths );
+		printf("%s\n", (rootHlmsFolder + mainFolderPath).c_str());fflush(stdout);
 		Ogre::Archive *archiveUnlit = archiveManager.load( rootHlmsFolder + mainFolderPath,
 				archiveType, true );
 		Ogre::ArchiveVec archiveUnlitLibraryFolders;
@@ -2633,11 +2736,13 @@ void OgreRenderer::registerHlms(void)
 			++libraryFolderPathIt;
 		}
 
+		printf("\b\b\b131");fflush(stdout);
 		//Create and register the unlit Hlms
 		hlmsUnlit = OGRE_NEW Ogre::HlmsUnlit( archiveUnlit, &archiveUnlitLibraryFolders );
 		Ogre::Root::getSingleton().getHlmsManager()->registerHlms( hlmsUnlit );
 	}
 
+	printf("\b\b\b132");fflush(stdout);
 	{
 		//Create & Register HlmsPbs
 		//Do the same for HlmsPbs:
@@ -2657,12 +2762,14 @@ void OgreRenderer::registerHlms(void)
 			++libraryFolderPathIt;
 		}
 
+		printf("\b\b\b133");fflush(stdout);
 		//Create and register
 		hlmsPbs = OGRE_NEW Ogre::HlmsPbs( archivePbs, &archivePbsLibraryFolders );
 		Ogre::Root::getSingleton().getHlmsManager()->registerHlms( hlmsPbs );
 	}
 
 
+	printf("\b\b\b1-4");fflush(stdout);
 	Ogre::RenderSystem *renderSystem = mRoot->getRenderSystem();
 	if( renderSystem->getName() == "Direct3D11 Rendering Subsystem" )
 	{

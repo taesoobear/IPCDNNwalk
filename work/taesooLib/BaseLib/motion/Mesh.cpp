@@ -394,8 +394,42 @@ void OBJloader::Mesh::_unpackMeshVersion(int version, BinaryFile& bf)
 	else
 		Msg::error("unknown Mesh file format");
 }
+#include "stl_reader.h"
+bool OBJloader::Mesh::loadSTL(const char* filename)
+{
+	try {
+		stl_reader::StlMesh <float, unsigned int> mesh (filename);
+
+		resize(mesh.num_vrts(), mesh.num_tris(), 0,0,mesh.num_tris());
+		for(size_t ivtx = 0; ivtx < mesh.num_vrts(); ++ivtx) {
+			const float* c = mesh.vrt_coords (ivtx);
+			getVertex(ivtx)=vector3(c[0], c[1], c[2]);
+		}
+
+
+		for(size_t itri = 0; itri < mesh.num_tris(); ++itri) {
+			getFace(itri).setIndex( mesh.tri_corner_ind (itri, 0),
+				mesh.tri_corner_ind (itri, 1),
+				mesh.tri_corner_ind (itri, 2));
+
+			getFace(itri).setIndex( itri, itri, itri, Buffer::NORMAL);
+			
+
+			const float* n = mesh.tri_normal (itri);
+			getNormal(itri)=vector3(n[0], n[1], n[2]);
+		}
+		initFaceGroups(*this);
+		return true;
+	}
+	catch (std::exception& e) {
+		std::cout << e.what() << std::endl;
+		return false;
+	}
+}
 bool OBJloader::Mesh::loadObj(const char* filename)
 {
+	if(TString(filename).right(3).toUpper()=="STL")
+		return loadSTL(filename);
 	CTextFile file;
 	if(!file.OpenReadFile(filename))
 	{
@@ -664,13 +698,16 @@ void OBJloader::Mesh::transform(matrix4 const& b)
 
 bool OBJloader::Mesh::loadMesh(const char* file_name_, bool bInit)
 {
+	TString fn(file_name_);
+	if (fn.right(4).toUpper()==".OBJ")
+		return loadObj(file_name_);
+	else if (fn.right(4).toUpper()==".STL")
+		return loadSTL(file_name_);
+		
 	int i, n, m;
 	vector3 x_tmp;
 	std::ifstream fin;
 
-	TString fn(file_name_);
-	if (fn.right(4).toUpper()==".OBJ")
-		Msg::error("use loadOBJ instead!!!");
 
 	fin.open(file_name_);
 
@@ -683,6 +720,7 @@ bool OBJloader::Mesh::loadMesh(const char* file_name_, bool bInit)
 		resize(n,m);
 	else
 	{
+		// keep other buffers if any.
 		resizeBuffer(Buffer::VERTEX, n);
 		resizeIndexBuffer(m);
 	}
@@ -815,6 +853,18 @@ void OBJloader::Mesh::_saveObj(std::ofstream & fout, bool vn, bool vt)
 
 bool OBJloader::Mesh::saveMesh(const char *file_name_)
 {
+	TString fn(file_name_);
+	if (fn.right(4).toUpper()==".OBJ")
+	{
+		bool vn=numNormal()>0;
+		bool vt=numTexCoord()>0;
+		return saveObj(file_name_, vn, vt);
+	}
+	else if (fn.right(4).toUpper()==".STL")
+	{
+		return saveSTL(file_name_);
+	}
+	// save .tri
 	int n, m;
 	vector3 x_tmp;
 	std::ofstream fout;
@@ -1184,14 +1234,19 @@ void OBJloader::convertTerrainToBMP(const char* filename, int sizeX,int sizeY, c
 }
 void OBJloader::convertTerrainFromBMP(const char* filename, const char* outfile)
 {
+	int sizeX, sizeZ;
+	convertTerrainFromBMP(filename, outfile, sizeX, sizeZ);
+}
+void OBJloader::convertTerrainFromBMP(const char* filename, const char* outfile, int& sizeX, int& sizeY)
+{
 	CImage temp;
 	int sx=1;
 	int sy=1;
 
 	temp.Load(filename);
 
-	int sizeY=temp.GetHeight();
-	int sizeX=temp.GetWidth();
+	sizeY=temp.GetHeight();
+	sizeX=temp.GetWidth();
 
 	Raw2Bytes image;
 	image.setSize(sizeY, sizeX);
@@ -1223,7 +1278,7 @@ void OBJloader::createTerrain(Mesh& mesh, const char* filename, int sizeX, int s
 	OBJloader::_createTerrain(mesh, image, sizeX, sizeY, width, height, heightMax, ntexSegX, ntexSegZ);
 }
 
-void OBJloader::_createTerrain(Mesh& mesh, Raw2Bytes& image, int _sizeX, int _sizeY, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ)
+void OBJloader::_createTerrain(Mesh& mesh, Raw2Bytes& image, int _sizeX, int _sizeY, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ, bool normalize)
 {
 	int sizeX=_sizeX;
 	int sizeY=_sizeY;
@@ -1231,7 +1286,7 @@ void OBJloader::_createTerrain(Mesh& mesh, Raw2Bytes& image, int _sizeX, int _si
 	int sy=1;
 
 
-#define BAD_NOTEBOOK
+//#define BAD_NOTEBOOK
 #ifdef BAD_NOTEBOOK
 	// for my notebook, where 512 by 512 mesh doesn't load.
 	sizeX=MIN(64, _sizeX);
@@ -1254,6 +1309,25 @@ void OBJloader::_createTerrain(Mesh& mesh, Raw2Bytes& image, int _sizeX, int _si
 	int numFace=(numSegX*numSegZ*2);
 
 	mesh.resize(numVertex, numVertex, numVertex, 0, numFace);
+
+	double min_double=0.0;
+	double scale_double=1.0/65536.0;
+	if(normalize)
+	{
+		unsigned short minv=65535;
+		unsigned short maxv=0;
+		for(int y=0; y<sizeY; y++)
+		{
+			for(int x=0; x<sizeX; x++)
+			{
+				unsigned short v=image(y*sy,x*sx);
+				minv=MIN(minv, v);
+				maxv=MAX(maxv, v);
+			}
+		}
+		min_double=((double)minv);
+		scale_double=1.0/(((double)maxv)-min_double);
+	}
 	for(int y=0; y<sizeY; y++)
 	{
 		for(int x=0; x<sizeX; x++)
@@ -1269,7 +1343,7 @@ void OBJloader::_createTerrain(Mesh& mesh, Raw2Bytes& image, int _sizeX, int _si
 			vector3& pos=mesh.getVertex(index);
 			pos.x=m_real(x)*width/m_real(sizeX-1);
 			pos.z=m_real(y)*height/m_real(sizeY-1);
-			pos.y=heightMax*m_real(image(y*sy,x*sx))/65536.0;
+			pos.y=heightMax*(m_real(image(y*sy,x*sx))-min_double)*scale_double;
 
 #ifdef SAVE_BMP
 			int color=m_real(image(y*sy,x*sx))/65536.0*255;
@@ -1656,7 +1730,6 @@ OBJloader::Mesh::MergeInfo* OBJloader::Mesh::mergeVertices(std::vector<std::pair
 	*(uifo->backupMesh)=mesh;
 
 	intvectorn vertexMerge;
-	uifo->newVertexIndex;
 	size_t vertex_count=uifo->backupMesh->numVertex();
 
 	vertexMerge.colon(0, vertex_count);
@@ -2263,4 +2336,268 @@ void SkinnedMeshFromVertexInfo::calcLocalVertexPositions(MotionLoader const& loa
 			localpos(j)=loader.bone(indices(j)).getFrame().toLocalPos(mesh.getVertex(i));
 		}
 	}
+}
+
+
+#include "Simplify.h"
+bool OBJloader::Mesh::simplify(Mesh& simplified, double reduceFraction, double agressiveness) const
+{
+	matrixn additionalVertexProperties, simpliedVertexProperties;
+	return simplify(simplified, additionalVertexProperties, simpliedVertexProperties,reduceFraction, agressiveness);
+}
+
+// additionalVertexProperties: numRows==this->numVertex()
+// simpliedVertexProperties: numRows==simplified.numVertex()
+bool OBJloader::Mesh::simplify(Mesh& simplified, matrixn const& additionalVertexProperties, matrixn & simplifiedVertexProperties, double reduceFraction, double agressiveness) const
+{
+	bool has_uv=numTexCoord()>0;
+	bool has_normal=numNormal()>0;
+	bool has_vertexProperties=additionalVertexProperties.cols()>0;
+	{
+		// load OBJloader::Mesh into Simplify
+		Simplify::vertices.clear();
+		Simplify::triangles.clear();
+		Simplify::vertices.resize(numVertex());
+		for (int i = 0; i < numVertex(); i++) {
+			const auto& v=getVertex(i);
+			Simplify::vertices[i].p.x = v.x;
+			Simplify::vertices[i].p.y = v.y;
+			Simplify::vertices[i].p.z = v.z;
+		}
+
+		Simplify::triangles.resize(numFace());
+		int attr=0;
+		if (has_uv)
+			attr|= Simplify::TEXCOORD;
+
+		for (int i = 0; i < numFace(); i++) {
+			const auto& f=getFace(i);
+			Simplify::triangles[i].v[0] = f.vi(0);
+			Simplify::triangles[i].v[1] = f.vi(1);
+			Simplify::triangles[i].v[2] = f.vi(2);
+			Simplify::triangles[i].attr = attr;
+
+			//triangles[i].material = material;
+			
+			auto& t=Simplify::triangles[i];
+			for(int j=0; j<3; j++)
+			{
+				ASSERT(t.uvs[j].size()==0);
+				auto& lattr=t.uvs[j];
+				if(has_uv)
+				{
+					auto& uv=getTexCoord(f.texCoordIndex(j));
+					lattr.concaten(vectorn(2,uv(0), uv(1) ));	
+				}
+				if(has_vertexProperties)
+				{
+					lattr.concaten(additionalVertexProperties.row(f.vi(j)));
+				}
+			}
+		}
+	}
+
+	if ((Simplify::triangles.size() < 3) || (Simplify::vertices.size() < 3)) {
+		printf("triangles size or vertices size less than 3\n");
+		return false;
+
+	}
+
+	int target_count =  Simplify::triangles.size() >> 1;
+
+	if (reduceFraction > 1.0) reduceFraction = 1.0; //lossless only
+	if (reduceFraction <= 0.0) {
+		printf("Ratio must be BETWEEN zero and one.\n");
+		return false;
+	}
+	target_count = round((float)Simplify::triangles.size() * reduceFraction);
+
+	if (target_count < 4) {
+		printf("Object will not survive such extreme decimation\n");
+		return false;
+	}
+	clock_t start = clock();
+	printf("Input: %zu vertices, %zu triangles (target %d)\n", Simplify::vertices.size(), Simplify::triangles.size(), target_count);
+	int startSize = Simplify::triangles.size();
+
+	Simplify::simplify_mesh(target_count, agressiveness, true);
+
+
+	//Simplify::write_obj(export_path);
+	{
+		bool has_uv = (Simplify::triangles.size() && (Simplify::triangles[0].attr & Simplify::TEXCOORD) == Simplify::TEXCOORD);
+		int NFACE=0;
+		for (int i = 0; i < Simplify::triangles.size(); i++) {
+			if(!Simplify::triangles[i].deleted)
+				NFACE++;
+		}
+		int nVERT=Simplify::vertices.size();
+		boolN vertUsed(nVERT);
+		intvectorn vertMap(nVERT);
+		vertMap.setAllValue(-1);
+		for (int i = 0; i < Simplify::triangles.size(); i++) {
+			auto& t=Simplify::triangles[i];
+			if(!t.deleted)
+			{
+				vertUsed.set( t.v[0], true);
+				vertUsed.set( t.v[1], true);
+				vertUsed.set( t.v[2], true);
+			}
+		}
+		int nNewVert=0;
+		for(int i=0; i<vertUsed.size(); i++)
+			if (vertUsed(i))
+			{
+				vertMap.set(i, nNewVert);
+				nNewVert++;
+			}
+
+		matrixn uv_buffer;
+		matrixn uv_index;
+		if(has_uv)
+		{
+			//simplified.resize(numVertex(), 0, NFACE*3, 0, NFACE);
+			// share vertex index
+			uv_buffer.setSize(nNewVert, 2);
+			uv_index.setSize(NFACE,3);
+			boolN uv_buffer_set(nNewVert);
+			NFACE=0;
+			for (int i = 0; i < Simplify::triangles.size(); i++) {
+				auto& t=Simplify::triangles[i];
+				if(!t.deleted)
+				{
+					for(int j=0; j<3; j++)
+					{
+						if(uv_buffer_set(vertMap[t.v[j]]))
+						{
+							if(uv_buffer.row(vertMap[t.v[j]]).isSimilar(t.uvs[j].range(0,2)))
+								uv_index.set(NFACE, j, vertMap[t.v[j]]);
+							else
+							{
+								uv_buffer.pushBack(t.uvs[j].range(0,2));
+								uv_index.set(NFACE, j, uv_buffer.rows()-1);
+							}
+						}
+						else
+						{
+							uv_buffer_set.set(vertMap[t.v[j]], true);
+							uv_buffer.row(vertMap[t.v[j]]).assign(t.uvs[j].range(0,2));
+							uv_index.set(NFACE, j, vertMap[t.v[j]]);
+						}
+					}
+					NFACE++;
+				}
+			}
+			ASSERT(NFACE==uv_index.rows());
+
+			simplified.resize(nNewVert, 0, uv_buffer.rows(), 0, NFACE);
+			for(int i=0; i<uv_buffer.rows(); i++)
+				simplified.getTexCoord(i).setValues(uv_buffer.row(i));
+		}
+		else
+			simplified.resize(nNewVert, NFACE);
+		int j = 0;
+		for (int i = 0; i < Simplify::triangles.size(); i++) {
+			if(Simplify::triangles[i].deleted)
+				continue;
+			Face& f=simplified.getFace(j++);
+			auto& t=Simplify::triangles[i];
+			f.setIndex( vertMap[t.v[0]], vertMap[t.v[1]], vertMap[t.v[2]]);
+
+			if(has_uv)
+			{
+				//f.setIndex(i*3, i*3+1, i*3+2, Buffer::TEXCOORD);
+				//simplified.getTexCoord(i*3).setValues(t.uvs[0]);
+				//simplified.getTexCoord(i*3+1).setValues(t.uvs[1]);
+				//simplified.getTexCoord(i*3+2).setValues(t.uvs[2]);
+				f.setIndex(uv_index(j-1,0), uv_index(j-1,1), uv_index(j-1,2), Buffer::TEXCOORD);
+			}
+		}
+		for (int i = 0; i < nVERT; i++) {
+			if(vertUsed[i]){
+				vector3& v=simplified.getVertex(vertMap[i]);
+				v.x = Simplify::vertices[i].p.x;
+				v.y = Simplify::vertices[i].p.y;
+				v.z = Simplify::vertices[i].p.z;
+			}
+		}
+		if(has_vertexProperties)
+		{
+			simplifiedVertexProperties.setSize(simplified.numVertex(), additionalVertexProperties.cols());
+			simplifiedVertexProperties.setAllValue(-1.0);
+			for (int i = 0; i < Simplify::triangles.size(); i++) {
+				if(Simplify::triangles[i].deleted)
+					continue;
+				auto& t=Simplify::triangles[i];
+				int start=t.uvs[0].size()-additionalVertexProperties.cols();
+				simplifiedVertexProperties.row(vertMap[t.v[0]]).assign(t.uvs[0].range(start,t.uvs[0].size())) ;
+				simplifiedVertexProperties.row(vertMap[t.v[1]]).assign(t.uvs[1].range(start,t.uvs[1].size())) ;
+				simplifiedVertexProperties.row(vertMap[t.v[2]]).assign(t.uvs[2].range(start,t.uvs[2].size())) ;
+			}
+		}
+		if(has_normal)
+			simplified.calculateVertexNormal();
+		printf("Output: %d vertices, %d triangles, %d texcoords, %d normals\n", simplified.numVertex(), simplified.numFace(), simplified.numTexCoord(), simplified.numNormal());
+	}
+
+	return true;
+}
+
+using namespace std;
+bool OBJloader::Mesh::saveSTL(const char* filename) const
+{
+	unsigned char header[]={69, 120, 112, 111, 114, 116, 101, 100, 32, 102, 114, 111, 109, 32, 66, 108, 101, 110, 100, 101, 114, 45, 50, 46, 55, 57, 32, 40, 115, 117, 98, 32, 48, 41};
+	ofstream out(filename, ios::binary);
+	if(!out)
+	{
+		std::cout<< "Couldnt open file " << filename<<std::endl;
+		return false;
+	}
+
+	unsigned char stl_header[80];
+	for (int i=0; i<80; i++)
+		stl_header[i]=0;
+	for (int i=0; i<sizeof(header)/sizeof (char); i++)
+		stl_header[i]=header[i];
+
+	out.write((const char*)stl_header, 80);
+	if(!out)
+	{
+		std::cout<< "Couldnt write header" << filename<<std::endl;
+		return false;
+	}
+
+	unsigned int numTris = numFace();
+	out.write((char*)&numTris, 4);
+
+	bool hasNormal=numNormal()>0;
+
+	for(unsigned int tri = 0; tri < numTris; ++tri){
+		float d[12];
+		STL_READER_COND_THROW(!out, "Error while parsing trianlge in binary stl file " << filename);
+
+		auto & f=getFace(tri);
+		vector3 normal(0.0); // face normal
+		if(hasNormal)
+		{
+			for (int j=0; j<3; j++)
+				normal+=getNormal(f.normalIndex(j));
+			normal.normalize();
+		}
+		else
+			normal=calcFaceNormal(tri);
+
+		d[0]=normal.x;
+		d[1]=normal.y;
+		d[2]=normal.z;
+		for(size_t ivert=1; ivert<=3; ivert++){
+			auto& v=getVertex(f.vi(ivert-1));
+			for(size_t i = 0; i < 3; ++i)
+				d[ivert * 3 + i]=v[i];
+		}
+		out.write((char*)d, 12 * 4);
+		char addData[2]={0,0};
+		out.write(addData, 2);
+	}
+	return true;
 }

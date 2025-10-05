@@ -35,8 +35,8 @@ public:
 	virtual void setPoseDOFignoringTranslationalJoints(const vectorn& poseDOF){}
 
 	virtual void updateBoneLength(MotionLoader const& loader){}
-	void setSamePose(BoneForwardKinematics  const& in);
-	void setSamePose(ScaledBoneKinematics const& in);
+	virtual void setSamePose(BoneForwardKinematics  const& in);
+	virtual void setSamePose(ScaledBoneKinematics const& in);
 	virtual void setPose(int iframe);
 	virtual void setPose(const Motion& mot, int iframe);
 	virtual void ApplyAnim(const Motion& mot);

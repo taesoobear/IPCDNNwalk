@@ -32,8 +32,9 @@ public:
 	void _updateEntities(BoneForwardKinematics&fk);
 	void setPoseDOF(const vectorn& poseDOF);
 	void setSphericalQ(const vectorn& q);
-	void setPose(BoneForwardKinematics const& in);
-	void setPose(IK_sdls::LoaderToTree const& in);
+	virtual void setSamePose(BoneForwardKinematics const& in);
+	virtual void setSamePose(ScaledBoneKinematics const& in);
+	void setSamePose(IK_sdls::LoaderToTree const& in);
 	virtual void setPose(const Posture & posture);
 	void applyAnim(const MotionDOF& motion);
 	virtual void SetPose(const Posture & posture, const MotionLoader& skeleton);

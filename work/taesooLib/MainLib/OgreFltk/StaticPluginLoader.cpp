@@ -26,6 +26,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -----------------------------------------------------------------------------
 */
+#ifndef NO_OGRE
 
 #include "StaticPluginLoader.h"
 
@@ -131,3 +132,4 @@ THE SOFTWARE.
 #endif
     }
 
+#endif

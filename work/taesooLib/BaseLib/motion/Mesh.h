@@ -80,6 +80,11 @@ namespace OBJloader
 		inline void resizeNormalBuffer(int n) { resizeBuffer(Buffer::NORMAL, n);}
 		inline void resizeUVbuffer(int n) { resizeBuffer(Buffer::TEXCOORD, n);}
 
+
+		/// Ratio: (default = 0.5) for example 0.2 will decimate 80%% of triangles.
+		/// Agressiveness: (default = 7.0) faster or better decimation
+		bool simplify(Mesh& simplified, double reduceFraction=0.5, double agressiveness=7.0) const;
+		bool simplify(Mesh& simplified, matrixn const& additionalVertexProperties, matrixn & simpliedVertexProperties, double reduceFraction=0.5, double agressiveness=7.0) const;
 		void copyIndex(Buffer::Type from, Buffer::Type to);
 
 		mutable boolN isBoundaryVertex;	// become valid after MeshConnectivity object is created.
@@ -161,13 +166,16 @@ namespace OBJloader
 		void copyFrom(Mesh const& otherMesh);
 		void operator=(Mesh const& otherMesh) { copyFrom(otherMesh);}
 
-		// export to a text file (.tri) - make all indexes identical.
+		// export to obj, stl, or a text file (.tri) - make all indexes identical.
 		bool saveMesh(const char* filename_);
+		// load obj, stl, or a text file (.tri)
 		bool loadMesh(const char* filename_, bool bInit=true);
 
 		// export to a widely used file format (.obj)
 		virtual bool saveObj(const char* filename, bool vn, bool vt);
 		virtual bool loadObj(const char* filename);
+		virtual bool loadSTL(const char* filename);
+		virtual bool saveSTL(const char* filename) const;
 
 		virtual void pack(BinaryFile& bf) const;
 		virtual void unpack(BinaryFile& bf);
@@ -301,7 +309,8 @@ namespace OBJloader
 	// file: 16bit per pixel raw file.
 	void createTerrain(Mesh& mesh, const char* filename, int imageSizeX, int imageSizeY, m_real sizeX, m_real sizeZ, m_real heightMax, int ntexSegX, int ntexSegZ);
 	void convertTerrainToBMP(const char* filename, int sizeX,int sizeY, const char* outBMPfile);
-	void convertTerrainFromBMP(const char* BMPfilename, const char* outfile);
+	void convertTerrainFromBMP(const char* filename, const char* outfile, int& sizeX, int& sizeY);
+	void convertTerrainFromBMP(const char* filename, const char* outfile);
 
 	void createPlane(Mesh& mesh, int numSegX, int numSegZ, m_real sizeX, m_real sizeZ);
 	void createPlane(Mesh& mesh, const char* imageFile, int numSeg, m_real size);
@@ -319,7 +328,7 @@ namespace OBJloader
 				Raw2Bytes(const T& other):_tmat<unsigned short>(other){}
 			virtual ~Raw2Bytes(){}
 	};
-	void _createTerrain(Mesh& mesh, Raw2Bytes& image, int sizeX, int sizeY, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ);
+	void _createTerrain(Mesh& mesh, Raw2Bytes& image, int sizeX, int sizeY, m_real width, m_real height, m_real heightMax, int ntexSegX, int ntexSegZ, bool normalize=false);
 }
 
 class MotionLoader;
@@ -364,4 +373,48 @@ class SkinnedMeshFromVertexInfo
 		inline vectorn& weights(int vertexIndex){ return vertices[vertexIndex].weights;}
 		void getVertexInfo(int v1, int v2, int v3, vector3 const& baryCoeffs, intvectorn& treeIndices, vector3N& localpos, vectorn &weights);
 };
+namespace OBJloader
+{
+	// for data transfer between Ogre::Mesh and OBJloader::Mesh
+	// also useful for mesh simplification and processing.
+	class MeshToEntity_DATA
+	{
+	public:
+		unsigned char *mVertexBuffer ;
+		std::vector<_tvector<int,Buffer::NUM_BUFFER> > ogreVertices;
+		std::vector<_tvector<int,3> > ogreIndexes;
+		std::vector<std::vector<int> > ogreVertexHash;
+		MeshToEntity_DATA(int numVertex, int numFace)
+		{
+			ogreVertexHash.resize(numVertex);
+			ogreIndexes.resize(numFace);
+			mVertexBuffer=NULL; // managed by Ogre so do not free or delete.
+		}
+
+		~MeshToEntity_DATA()
+		{
+		}
+		int find(_tvector<int, Buffer::NUM_BUFFER> const& i)
+		{
+			std::vector<int>& hash=ogreVertexHash[i(0)];
+			for(int ii=0; ii<hash.size(); ii++)
+			{
+				if(ogreVertices[hash[ii]]==i)
+					return hash[ii];
+			}
+			return -1;
+		}
+
+		int insert(_tvector<int, Buffer::NUM_BUFFER> const& i)
+		{
+			ASSERT(find(i)==-1);
+			ogreVertexHash[i(0)].push_back(ogreVertices.size());
+			ogreVertices.push_back(i);
+			return ogreVertices.size()-1;
+		}
+
+		// Unlike OBJloader::Mesh, a single vertex contains normals, texcoords, and other informmation too.
+		int numOgreVertex()	{return ogreVertices.size();}
+	};
+}
 #endif

@@ -62,7 +62,7 @@ MovableText::MovableText( IdType id, ObjectMemoryManager *objectMemoryManager, S
         if (ni != params->end())
         {
             mCaption = ni->second;
-			std::cout << "caption"<<mCaption<<std::endl;
+			//std::cout << "caption"<<mCaption<<std::endl;
         }
 
         ni = params->find("fontName");

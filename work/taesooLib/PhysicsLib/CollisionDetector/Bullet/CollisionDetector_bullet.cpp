@@ -351,6 +351,8 @@ double CollisionDetector_bullet:: testSphereIntersection(int iloader, int ibody,
 bool CollisionDetector_bullet:: getLocalBoundingBoxSize(int charIndex, int ibone, vector3& localSize)
 {
 	std::vector<ColObject*>& _object=m_col_objects[charIndex];
+	RANGE_ASSERT(ibone<_object.size());
+	if(!_object[ibone]) return false;
 	auto& lb=_object[ibone]->lb;
 
 	localSize=	lb.getMaximum()-lb.getMinimum();
@@ -361,6 +363,7 @@ double CollisionDetector_bullet:: calculateSignedDistance(int iloader, int ibody
 	ColObject* colobject=m_col_objects[iloader][ibody];
 	double minDist=1e10;
 	btGjkEpaSolver2::sResults	res;
+	if(colobject)
 	for(int subMesh=0; subMesh<colobject->co.size(); subMesh++)
 	{
 		auto * shape2=(btConvexHullShape*)(colobject->co[subMesh]->getCollisionShape());

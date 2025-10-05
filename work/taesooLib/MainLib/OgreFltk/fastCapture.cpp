@@ -76,6 +76,7 @@ bool FastCaptureDirect::Screenshot(Fl_Window* win, int Width, int Height)
 
 
 
+#ifdef DRAW_CURSOR
 
 	CImage temp;
 	CImagePixel cursor;
@@ -85,6 +86,7 @@ bool FastCaptureDirect::Screenshot(Fl_Window* win, int Width, int Height)
 		temp.Load("../Resource/default/cursor2.bmp");
 		cursor.Init(&temp);
 	}
+#endif
 
 	try
 	{
@@ -224,7 +226,8 @@ bool FastCaptureDirect::Screenshot(Fl_Window* win, int Width, int Height)
 				// 32bit mode
 				for(int i=0; i<mHeight; i++)
 				{
-					CPixelRGB8* yy=tempPixel[mHeight-i-1];
+					//CPixelRGB8* yy=tempPixel[mHeight-i-1];
+					CPixelRGB8* yy=tempPixel[i];
 					XRGB* pp=((XRGB*)lpvBits)+i*mWidth;
 					for(int j=0; j<mWidth; j++)
 					{
@@ -239,7 +242,8 @@ bool FastCaptureDirect::Screenshot(Fl_Window* win, int Width, int Height)
 				// 32bit mode
 				for(int i=0; i<mHeight; i++)
 				{
-					CPixelRGB8* yy=tempPixel[mHeight-i-1];
+					//CPixelRGB8* yy=tempPixel[mHeight-i-1];
+					CPixelRGB8* yy=tempPixel[i];
 					RGB565* pp=((RGB565*)lpvBits)+i*mWidth;
 					for(int j=0; j<mWidth; j++)
 					{
@@ -255,7 +259,9 @@ bool FastCaptureDirect::Screenshot(Fl_Window* win, int Width, int Height)
 		m_nCurrAccumulation++;
 		if (m_nCurrAccumulation==m_nTotalAccumulation)
 		{
+#ifdef DRAW_CURSOR
 			tempPixel.DrawPattern(cursorPos[ii*2], mHeight-1-cursorPos[ii*2+1], cursor, true, CPixelRGB8 (255,0,255));
+#endif
 			image.Save(filename);
 			m_nCurrAccumulation=0;
 			m_nCount++;

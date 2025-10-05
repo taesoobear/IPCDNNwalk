@@ -55,6 +55,7 @@ public:
 	explicit Motion(MotionLoader* pSource);
 	Motion(const Motion& srcMotion, int startFrame, int endFrame=INT_MAX);
 	Motion(const MotionDOF& srcMotion, int startFrame=0, int endFrame=INT_MAX);
+	Motion(MotionLoader*pSource, const matrixn& srcMotionDOF);
 	Motion(const MotionDOFcontainer& srcMotion, int startFrame=0, int endFrame=INT_MAX);
 
 	// DEFAULT COPY CONSTRUCTOR.
@@ -71,6 +72,8 @@ public:
 	void operator=(const VecType& other)	{ Init(other); mInfo=other.mInfo;}
 	// templated assignment operator does not automatically define the default assignment operator.
 	void operator=(const Motion& other)		{ Init(other); mInfo=other.mInfo;}
+	void assign(const Motion& other) 		{ Init(other); mInfo=other.mInfo;}
+
 
 	inline MotionLoader& skeleton() const	{ return *mInfo.m_pSkeleton;};
 
@@ -102,6 +105,9 @@ public:
 	Posture& pose(int iframe) const;
 	inline Posture& operator[](int iframe) const	{return pose(iframe);}
 	void setPose(int iframe, const Posture& pose);
+
+	/// convert to posedof
+	vectorn row(int iframe) const;
 
 	// 0 <= criticalTime <= numFrames()-1
 	// 즉, 0일때 pose(0)이, numFrames()-1일때 pose(numFrames()-1)이 return된다.
@@ -140,6 +146,10 @@ public:
 	bool isDiscontinuous(int fr) const;//			{ return m_aDiscontinuity[fr%m_maxCapacity];}
 	bitvectorn getDiscontinuity() const;
 
+	bitvectorn getConstraint(int eCon) const;
+	void setConstraint(int eCon, bitvectorn const& bit);
+
+
 	void setDiscontinuity(int fr, bool value);//	{ m_aDiscontinuity.setValue(fr%m_maxCapacity, value);}
 	void setDiscontinuity(bitvectorn const& bit);
 
@@ -166,6 +176,7 @@ public:
 	// skeleton을 초기화한 후, skeleton이 동작데이타(m_cPostureIP)를 가지고 있는경우 동작도 초기화.
 	void Init(MotionLoader* pSource);
 	void __initFromMotionDOF(const MotionDOF& srcMotion, int startFrame=0, int endFrame=INT_MAX);
+	void __init(float fFrameTime, MotionLoader* skel, const matrixn& srcMotion, int startFrame=0, int endFrame=INT_MAX);
 
 	//! 똑같은 모션을 만든다.(일부분을 따와서 만들 수도 있다.)
 	Motion* Clone(int startFrame=0, int endFrame=INT_MAX) const { return new Motion(*this, startFrame, endFrame);}

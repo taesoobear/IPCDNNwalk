@@ -815,14 +815,17 @@ PLDPrimThickLine::PLDPrimThickLine(MotionLoader* pBVHL, const OgreRenderer& rend
 	//_materialName="solidblue";
 	_materialName="solidwhite";
 	_lines=new ColorBillboardLineList (RE::generateUniqueID(), mSkel->numBone()-2, _thickness);
+	int nline=0;
 	for (int i=2; i<mSkel->numBone() ; i++)
 	{
 		vector3 start=mSkel->bone(i).getFrame().translation;
 		vector3 end=mSkel->bone(i).parent()->getFrame().translation;
 		_lines->line(i-2, start, end, greyblue );  // grey blue
+		nline++;
 	}
 
 //	_lines->setDatablockOrMaterialName(_materialName, Ogre::ResourceGroupManager::AUTODETECT_RESOURCE_GROUP_NAME);
+	if (nline>0)
 	m_pSceneNode->attachObject(_lines);
 #endif
 	UpdateBone();

@@ -80,6 +80,8 @@ public:
 	OgreRenderer(const char* fallback_configFileName, const char* configFileName, const char* plugins_file, const char* ogre_config);
 	OgreRenderer();
 	virtual ~OgreRenderer();
+	int getConfig(const char* id);
+	double getConfigFloat(const char* id);
 	void createInputSystems(size_t hWnd);
 	virtual void initialize(void* handle, int width, int height);
 	void deinitialize(void);

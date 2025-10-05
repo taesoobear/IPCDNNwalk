@@ -431,6 +431,8 @@ void DynamicsSimulator_TRL_LCP::registerCollisionCheckPair
 		BodyPtr body1 = world.body(bodyIndex1);
 		BodyPtr body2 = world.body(bodyIndex2);
 
+		Msg::verify(body1!=NULL, "TRL_LCP::registerCollisionCheckPair error3");
+		Msg::verify(body2!=NULL, "TRL_LCP::registerCollisionCheckPair error4");
 		std::string emptyString = "";
 		vector<Link*> links1;
 		vector<std::string> linksName1;

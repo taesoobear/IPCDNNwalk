@@ -75,6 +75,7 @@ void Posture::Init(int numRotJoint, int numTransJoint)
 {
 	m_aRotations.setSize(numRotJoint);
 	m_aTranslations.setSize(numTransJoint);
+	identity();
 }
 
 void Posture::identity()

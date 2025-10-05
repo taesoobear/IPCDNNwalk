@@ -584,17 +584,23 @@ TString RE::generateUniqueName()
 
 	return name;
 }
+static int g_located=0;
+static std::string g_taesooLibPath("work/taesooLib/");
+void RE::setTaesooLibPath(const char* path)
+{
+	g_taesooLibPath=path;
+	g_located=1;
+}
 std::string RE::taesooLibPath()
 {
-	static int located=0;
-	if (!located)
+	if (!g_located)
 	{
 		if( !IsFileExist("plugins.cfg"))
-			located=1;
+			g_located=1;
 		else
-			located=2;
+			g_located=2;
 	}
-	if(located==1)
-		return std::string("work/taesooLib/");
+	if(g_located==1)
+		return g_taesooLibPath;
 	return std::string("../");
 }

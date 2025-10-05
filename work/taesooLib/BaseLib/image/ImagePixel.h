@@ -44,7 +44,7 @@ public:
 	void DrawSubPattern(int x, int y, const CImagePixel& patternPixel, const TRect& patternRect, bool bUseColorKey=false, CPixelRGB8 colorkey=CPixelRGB8 (0,0,0));
 
 	void Clear(CPixelRGB8 color);
-	void DrawText(int x, int y, const char* str, bool bUserColorKey=false, CPixelRGB8 colorkey=CPixelRGB8 (0,0,0));
+	void drawText(int x, int y, const char* str, bool bUserColorKey=false, CPixelRGB8 colorkey=CPixelRGB8 (0,0,0));
 
 	inline int Width() const	{ return m_pInput->GetWidth();}
 	inline int Height() const	{ return m_pInput->GetHeight();}

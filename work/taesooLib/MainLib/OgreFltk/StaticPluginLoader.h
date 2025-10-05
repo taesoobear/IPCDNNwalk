@@ -27,6 +27,8 @@ THE SOFTWARE.
 -----------------------------------------------------------------------------
 */
 
+#ifndef NO_OGRE
+
 #ifndef _StaticPluginLoader_H_
 #define _StaticPluginLoader_H_
 
@@ -85,3 +87,4 @@ namespace Ogre
 
 #endif
 
+#endif

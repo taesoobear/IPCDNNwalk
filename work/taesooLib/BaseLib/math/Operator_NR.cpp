@@ -21,9 +21,49 @@ namespace m
 		x=b;
 		NR::lubksb(LU,indx,x);
 #else
-		Msg::error("not implemented yet!");
+		x.setSize(b.size());
+		eigenTView(x)=eigenView(A).partialPivLu().solve(eigenView(b));
 #endif
 	}
+	typedef Eigen::LDLT<RMatrixXd,Eigen::UpLoType::Lower> CLDLT;
+	LDLT::LDLT(matrixn const& A)
+	{
+		CLDLT *ldlt=new CLDLT() ;
+		ldlt->compute(eigenView(A));
+		_data=(void*)ldlt;
+	}
+	LDLT::~LDLT()
+	{
+		delete ((CLDLT *)_data);
+	}
+	vectorn LDLT::solve(vectorn const& b)
+	{
+		vectorn x;
+		x.setSize(b.size());
+		eigenTView(x)=((CLDLT*)_data)->solve(eigenView(b));
+		return x;
+	}
+	typedef Eigen::PartialPivLU<RMatrixXd> CPPivLu;
+	PartialPivLU::PartialPivLU(matrixn const& A)
+{
+		CPPivLu* cppivlu=new CPPivLu() ;
+		 cppivlu->compute(eigenView(A));
+		_data=(void*) cppivlu;
+	}
+	PartialPivLU::~PartialPivLU()
+	{
+		delete ((CPPivLu*)_data);
+	}
+	vectorn PartialPivLU::solve(vectorn const& b)
+	{
+		vectorn x;
+		x.setSize(b.size());
+		eigenTView(x)=((CPPivLu*)_data)->solve(eigenView(b));
+		return x;
+	}
+
+
+
 
 	void Diaginvert(vectorn& out, const vectorn& in, m_real& log_det)
 	{

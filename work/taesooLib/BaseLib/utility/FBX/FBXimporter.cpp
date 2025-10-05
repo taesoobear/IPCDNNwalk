@@ -1474,10 +1474,21 @@ int FBXimporter::countBindPoses(int imesh)
 	_FBXimport& fbx_info=*((_FBXimport*)_data);
 	auto* scene=fbx_info.scene;
 	const ofbx::Mesh *mesh = scene->getMesh(imesh);
-	ofbx::Pose*  pose=(ofbx::Pose*)mesh->getPose();
-	if (!pose)
+	if (mesh->getPoseCount()==0)
 		return 0;
-
+		
+	int argmax=0;
+	int maxCount=0;
+	for(int ipose=0; ipose<mesh->getPoseCount(); ipose++)
+	{
+		ofbx::Pose*  pose=(ofbx::Pose*)mesh->getPose(ipose);
+		if (pose->bonePoses.size()>maxCount)
+		{
+			argmax=ipose;
+			maxCount=pose->bonePoses.size();
+		}
+	}
+	ofbx::Pose*  pose=(ofbx::Pose*)mesh->getPose(argmax);
 	return pose->updateLimbBindPoses();
 }
 bool FBXimporter::hasBindPose(int ilimb)

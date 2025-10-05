@@ -438,7 +438,8 @@ void MotionDOF::set(const Motion& srcMotion)
 	for(int i=0; i<srcMotion.numFrames(); i++)
 		mInfo.getDOF(srcMotion.pose(i), row(i).lval());
 
-	for(int i=0; i<mInfo.numBone() ;i++)
+	//for(int i=0; i<mInfo.numBone() ;i++)
+	for(int i=1; i<1 ;i++) // only root orientation requires alignment.
 	{
 		Bone& bone=srcMotion.skeleton().bone(i);
 
@@ -454,8 +455,9 @@ void MotionDOF::set(const Motion& srcMotion)
 		}
 		else if(endR>startR)
 		{
-			for(int j=startR; j<endR; j++)
-				alignAngles(column(j));
+			//for(int j=startR; j<endR; j++)
+			//	alignAngles(column(j));
+			alignAngles(column(startR));// only the first euler angle is global.
 		}
 	}
 }
@@ -555,7 +557,7 @@ void MotionDOF::set(const Motion& srcMotion, intvectorn const& treeIndicesShould
 	}
 
 
-	for(int i=0; i<mInfo.numBone() ;i++)
+	for(int i=1; i<1 ;i++) // only root orientation requires alignment.
 	{
 		Bone& bone=srcMotion.skeleton().bone(i);
 
@@ -571,8 +573,9 @@ void MotionDOF::set(const Motion& srcMotion, intvectorn const& treeIndicesShould
 		}
 		else if(endR>startR)
 		{
-			for(int j=startR; j<endR; j++)
-				alignAngles(column(j));
+			//for(int j=startR; j<endR; j++)
+			// alignAngles(column(j));
+			alignAngles(column(startR));// only the first euler angle is global.
 		}
 	}
 }

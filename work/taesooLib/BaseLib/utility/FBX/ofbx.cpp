@@ -1023,13 +1023,14 @@ struct MeshImpl : Mesh
 	Type getType() const override { return Type::MESH; }
 
 
-	const Pose* getPose() const override { return pose; }
+	const Pose* getPose(int ipose) const override { return poses[ipose]; }
+	int getPoseCount() const override { return (int)poses.size();}
 	const Geometry* getGeometry() const override { return geometry; }
 	const Material* getMaterial(int index) const override { return materials[index]; }
 	int getMaterialCount() const override { return (int)materials.size(); }
 
 
-	const Pose* pose = nullptr;
+	std::vector<const Pose*> poses ;
 	const Geometry* geometry = nullptr;
 	const Scene& scene;
 	std::vector<const Material*> materials;
@@ -1472,11 +1473,13 @@ struct Scene : IScene
 bool PoseImpl::postprocess(Scene* scene)
 {
 	for(int i=0; i<data.size(); i++){
+		//std::cout<<i<<std::endl;
 
 		auto& d=data[i];
 		d.node = scene->m_object_map[d.node_id.toU64()].object;
 		if (d.node && d.node->getType() == Object::Type::MESH) {
-			static_cast<MeshImpl*>(d.node)->pose = this;
+			static_cast<MeshImpl*>(d.node)->poses.push_back( this);
+			//std::cout<<i<<"pose"<<std::endl;
 		}
 		else if(d.node && d.node->getType()==Object::Type::LIMB_NODE)
 		{
@@ -1484,6 +1487,7 @@ bool PoseImpl::postprocess(Scene* scene)
 			bonePoses.resize(bonePoses.size()+1);
 			bonePoses.back().matrix=getMatrix(i);
 			bonePoses.back().limb=limb;
+			//std::cout<<"limb"<<bonePoses.size()<<bonePoses.back().matrix.m[0]<<std::endl;
 
 		}
 	}
@@ -1492,6 +1496,7 @@ bool PoseImpl::postprocess(Scene* scene)
 
 int PoseImpl::updateLimbBindPoses()
 {
+	//std::cout<<"update limbposes"<<(void*)this<<bonePoses.size()<<std::endl;
 	int c=0;
 	for(int i=0; i<bonePoses.size(); i++){
 		auto& bp=bonePoses[i];
@@ -1641,6 +1646,7 @@ struct OptionalError<Object*> parsePose(const Scene& scene, const Element& eleme
 {
 	// todo: find children
 	PoseImpl* pose = new PoseImpl(scene, element);
+	//std::cout<<"pose new"<<(void*)pose<<std::endl;
 	std::vector<const Element*> pose_nodes = findChildren(element, "PoseNode");
 	if (pose_nodes.size()>0) {
 		pose->data.resize(pose_nodes.size());

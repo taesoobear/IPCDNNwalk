@@ -38,7 +38,7 @@ protected:
 	m_real thickness;
 public:
 	BillboardLineList(Ogre::IdType id, int size, m_real thick=7.0): Ogre::v1::BillboardChain(id, RE::_objectMemoryManager(), RE::ogreSceneManager(), 2, size), thickness(thick){}
-	~BillboardLineList (){}
+	virtual ~BillboardLineList (){}
 
 	void line(int i, vector3 const& start, vector3 const & end, m_real tu1=0.0, m_real tu2=1.0);
 };
@@ -47,7 +47,7 @@ class ColorBillboardLineList : public BillboardLineList
 {	
 public:
 	ColorBillboardLineList(Ogre::IdType id, int size, m_real thick=7.0): BillboardLineList(id, size, thick) {}
-	~ColorBillboardLineList (){}
+	virtual ~ColorBillboardLineList (){}
 
 	void line(int i, vector3 const& start, vector3 const & end, vector3 const & rgbcolor, m_real tu1=0.0, m_real tu2=1.0);
 };
@@ -56,7 +56,7 @@ class ColorWidthBillboardLineList : public BillboardLineList
 {	
 public:
 	ColorWidthBillboardLineList(Ogre::IdType id, int size, m_real thick=7.0): BillboardLineList(id, size, thick) {}
-	~ColorWidthBillboardLineList (){}
+	virtual ~ColorWidthBillboardLineList (){}
 
 	void line(int i, vector3 const& start, vector3 const & end, vector3 const & rgbcolor, m_real width, m_real width2, m_real tu1=0.0, m_real tu2=1.0);
 };
@@ -66,7 +66,7 @@ class QuadList: public DynamicRenderable
 	enum { POS_TEX_BINDING=0 };
 public:
 	QuadList(vector3 const& normal, m_real width); 
-	~QuadList(void); 
+	virtual ~QuadList(void); 
 
 	void begin(int n);
 	void quad(int i, vector3 const& pos);
@@ -87,7 +87,7 @@ class ColorPointList: public DynamicRenderable
 	enum { POS_COLOUR_BINDING=0 };
 public:
 	ColorPointList(); 
-	~ColorPointList(void); 
+	virtual ~ColorPointList(void); 
 
 	void begin(int n);
 	void point(int i, vector3 const& color, vector3 const& pos);

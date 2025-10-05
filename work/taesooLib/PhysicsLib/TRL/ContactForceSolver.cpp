@@ -197,6 +197,7 @@ void ContactForceSolver::initialize(void)
 			BodyData& bodyData = bodiesData[linkPair.bodyIndex[j]];
 			linkPair.bodyData[j] = &bodyData;
 			linkPair.linkData[j] = &(bodyData.linksData[linkPair.link[j]->index]);
+			ASSERT(linkPair.bodyData[j]);
 		}
 	}
 
@@ -340,6 +341,7 @@ void ContactForceSolver::setConstraintPoints(CollisionSequence& collisions)
 		if(points.size() > 0){
 			constrainedLinkPairs.push_back(&linkPair);
 			setContactConstraintPoints(linkPair, points);
+			Msg::verify(linkPair.bodyData[0] && linkPair.bodyData[1], "Error! you need to call init after registerCollisionPairs");
 			linkPair.bodyData[0]->hasConstrainedLinks = true;
 			linkPair.bodyData[1]->hasConstrainedLinks = true;
 		}
