@@ -15,9 +15,9 @@ function ctor()
 	this:updateLayout()
 
 	mLoader=MainLib.VRMLloader (
-	"../Resource/motion/locomotion_hyunwoo/hyunwoo_lowdof_T_boxfoot.wrl") 
+	"work/taesooLib/Resource/motion/locomotion_hyunwoo/hyunwoo_lowdof_T_boxfoot.wrl") 
 
-	mMotionDOFcontainer=MotionDOFcontainer(mLoader.dofInfo, "../Resource/motion/locomotion_hyunwoo/hyunwoo_lowdof_T_locomotion_hl.dof")
+	mMotionDOFcontainer=MotionDOFcontainer(mLoader.dofInfo, "work/taesooLib/Resource/motion/locomotion_hyunwoo/hyunwoo_lowdof_T_locomotion_hl.dof")
 	mMotionDOF=mMotionDOFcontainer.mot
 
 	-- translate the motion 7cm up

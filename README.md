@@ -1,13 +1,35 @@
-# Fast and Flexible Multilegged Locomotion Using Learned Centroidal Dynamics, in proc. ACM SIGGRAPH 2020
-# Adaptive Tracking of a Single-Rigid-Body Character in Various Environments, In proc. ACM SIGGRAPH ASIA 2023 
+# Target platforms
+Windows, MacOS, and ubuntu24.04 using specific python versions (see https://pypi.org/project/libcalab-ogre3d/ on PyPI)
+(Otherwise, you will need to build the dependencies manually.)
 
-Target platform
+
+# AdaptiveSRB: Adaptive Tracking of a Single-Rigid-Body Character in Various Environments, In proc. ACM SIGGRAPH ASIA 2023 
+How to run AdaptiveSRB 2023
 =
-Linux and MacOS.
+```
+  pip3 install torch python3-tk gymnasium libcalab_ogre3d
+  python3 walk_SRB2023.py
+```
+Choose the D3D (windows), openGL (ubuntu), or metal renderer (mac) if asked to choose one.
+Also, on Linux, choose 1920x1080 resolution. 
+If you already chose a different resolution, re-try after deleting ogre2_linux.cf2_linux.cfg
+gym_cdm2 contains the source codes of "Adaptive Tracking of a Single-Rigid-Body Character in Various Environments".
 
-How to build (Linux)
+
+# FlexLoco: Fast and Flexible Multilegged Locomotion Using Learned Centroidal Dynamics, in proc. ACM SIGGRAPH 2020
+How to run FlexLoco 2020
+= 
+```
+  pip3 install torch python3-tk gymnasium libcalab_ogre3d
+  python3 walk_FlexLoco2020.py 
+```
+Now, click the play button, and adjust the slider bars for speed/orientation. Also, you can change the motion type by clicking the button.
+work/gym_walkCDM contains the source codes of "Fast and Flexible Multilegged Locomotion Using Learned Centroidal Dynamics".
+
+# (Optional) How to build (Linux)
 =
 
+todo: this part needs to be updated.
   1. First, install necessary dependencies. This probably installs more than actually necessary:
 ```
 	sudo apt install libfltk1.3-dev libreadline-dev  wxpython-tools
@@ -57,35 +79,10 @@ make macbuild
 3.   Also install python3 and pip3 (versions do not matter.)
 
   4. Now, build this project.
-```
-  cd src; make 
+``` cd src; make 
 ```
   FYI, most linker and compiler settings are in src/taesoolib/Samples/Common_baselib.cmake and Common_mainlib.cmake files.
 
-How to run FlexLoco 2020
-= 
-```
-  pip3 install torch python3-tk gymnasium
-  cd work; python3 test_walk2.py gym_walkCDM/testWalkV2_FA.lua
-```
-   Choose the opengl or metal renderer if asked to choose one.
-  Also, on Linux, choose 1920x1080 resolution. If you already chose a different resolution, re-try after deleting ogre2_linux.cf2_linux.cfg
-   Now, click the play button, and adjust the slider bars for speed/orientation. Also, you can change the motion type by clicking the button.
-
-How to run AdaptiveSRB 2023
-=
-```
-  cd work; make walk 
-```
-
-
-The folder structure
-= 
-I will explain the folder structure of this project.
-
-work/gym_cdm2 contains the source codes of "Adaptive Tracking of a Single-Rigid-Body Character in Various Environments".
-
-work/gym_walkCDM contains the source codes of "Fast and Flexible Multilegged Locomotion Using Learned Centroidal Dynamics".
 
 src/taesooLib contains the taesooLib. All of my research projects rely on this library, which contains C++ code related to motion loading, inverse kinematics (IK), rendering, and more.
 
