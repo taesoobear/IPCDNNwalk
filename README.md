@@ -1,9 +1,15 @@
 # Target platforms
-Windows, MacOS, and ubuntu24.04 using specific python versions (see https://pypi.org/project/libcalab-ogre3d/ on PyPI)
+Windows, MacOS, and ubuntu24.04 with python 3.12 only (see https://pypi.org/project/libcalab-ogre3d/ on PyPI)
 (Otherwise, you will need to build the dependencies manually.)
 
-
 # AdaptiveSRB: Adaptive Tracking of a Single-Rigid-Body Character in Various Environments, In proc. ACM SIGGRAPH ASIA 2023 
+How to run TrackSRB 2025
+=
+```
+  pip3 install torch python3-tk gymnasium libcalab_ogre3d
+  python3 walk_trackSRB2025.py
+```
+
 How to run AdaptiveSRB 2023
 =
 ```
