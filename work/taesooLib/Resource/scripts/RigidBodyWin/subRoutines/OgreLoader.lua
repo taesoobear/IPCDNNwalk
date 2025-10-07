@@ -129,6 +129,14 @@ OgreLoader.AdjustableSkin=LUAclass()
 function RE.createOgreSkin(ogreloader, options)
 	return OgreLoader.AdjustableSkin(ogreloader, options)
 end
+function OgreLoader.AdjustableSkin:setTranslation(x,y,z)
+	self.trans.x=x
+	self.trans.y=y
+	self.trans.z=z
+end
+function OgreLoader.AdjustableSkin:setMaterial(name)
+	self.ogreEntity:setMaterialName(name)
+end
 function OgreLoader.AdjustableSkin:__init(ogreloader, option)
 	if not option then option={} end
 	if type(option)=='boolean' then

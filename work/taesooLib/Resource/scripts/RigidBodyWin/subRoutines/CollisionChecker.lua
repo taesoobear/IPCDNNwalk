@@ -42,6 +42,54 @@ function CollisionChecker:__init(...)
 		self:addObject(v)
 	end
 end
+
+function CollisionChecker._buildObstacleMeshes(obstacles, meshScale)
+	local mObstacles={}
+	for i=1,#obstacles.obstaclePos do
+		mObstacles[i]=Geometry()
+
+		do 
+			local mesh=mObstacles[i]
+			if obstacles.obstacleType[i]=="BOX" then
+				mesh:initBox(obstacles.obstacleSize[i])
+			elseif obstacles.obstacleType[i]=="SPHERE" then
+				mesh:initEllipsoid(obstacles.obstacleSize[i])
+			elseif obstacles.obstacleType[i]=="CAPSULE" then
+				mesh:initCapsule(obstacles.obstacleSize[i].x, obstacles.obstacleSize[i].z)
+			elseif obstacles.obstacleType[i]=="CHAR" then
+				mObstacles[i]='CHAR'
+			else
+				mesh:initPlane(obstacles.obstacleSize[i].x, obstacles.obstacleSize[i].z)
+			end
+
+			if obstacles.obstacleType[i]~="CHAR" then
+				local mat=matrix4()
+				mat:identity()
+				mat:leftMultScale(meshScale)
+				mesh:transform(mat)
+			end
+		end
+	end
+	return mObstacles
+end
+function CollisionChecker:addObstacles(obstacles, meshScale)
+	self.obstacles=obstacles
+	self.obstacleMeshes=self._buildObstacleMeshes(obstacles, meshScale)
+	local coldet=self.collisionDetector
+	assert(coldet:numModels()==1)
+	for i,v in ipairs(self.obstacleMeshes) do
+		local ltype=getmetatable(v).luna_class
+		if ltype=='MainLib.VRMLloader' then
+			coldet:addModel(v)
+		else
+			coldet:addObstacle(v)
+		end
+		if obstacles.obstacleName then
+			coldet:getModel(coldet:numModels()-1):setName(obstacles.obstacleName[i])
+		end
+	end
+	assert(coldet:numModels()==1+#self.obstacleMeshes)
+end
 function CollisionChecker:detectCollisionFrames(motdof, float_options, thr)
 	thr=thr or 0
 	local mChecker=self
@@ -50,6 +98,27 @@ function CollisionChecker:detectCollisionFrames(motdof, float_options, thr)
 	for i=0, motdof:rows()-1 do
 		mChecker:setPoseDOF(0,motdof:row(i))
 		local bases, maxDepth=mChecker:checkCollision(float_options)
+		if float_options.countSelfCollisionOnly then
+			local newmaxDepth=0
+			local collisionLinkPairs=bases:getCollisionLinkPairs()
+			if collisionLinkPairs:size()>=1 then
+				for i=0, collisionLinkPairs:size()-1 do
+					local ilinkpair=collisionLinkPairs(i)
+					local iloader1=bases:getCharacterIndex1(ilinkpair)
+					local iloader2=bases:getCharacterIndex2(ilinkpair)
+					if iloader1==0 and iloader2==0 then
+						local collisionPoints=bases:getCollisionPoints(ilinkpair)
+						if collisionPoints:size()>0 then
+							for icp=0, collisionPoints:size()-1 do
+								local cp=collisionPoints(icp)
+								newmaxDepth=math.max(cp.idepth, newmaxDepth)
+							end
+						end
+					end
+				end
+			end
+			maxDepth=newmaxDepth
+		end
 		if maxDepth>thr then
 			col:set(i, true)
 		end

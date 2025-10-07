@@ -258,7 +258,7 @@ function M.getTraj_constantForwardAcc(startPos, forwardDir, v0, v1, w, T, numSam
 	return goal, d0
 end
 
-function M.getTraj_direction(pendRotY, startPos, initialVel, desiredVel, w0,  T, numSamples, k_p)
+function M.getTraj_direction(pendRotY, startPos, initialVel, desiredVel, w0,  T, numSamples, k_p, _maxT)
 	local dt=T/numSamples
 	local c=numSamples
 	local goal=matrixn(c, 7)
@@ -273,8 +273,9 @@ function M.getTraj_direction(pendRotY, startPos, initialVel, desiredVel, w0,  T,
 	local rr=vectorn()
 	local finalAngle=delta:rotationAngleAboutAxis(vector3(0,1,0))
 
-	if T>1.5 then
-		local cc=math.floor(1.5/dt)
+	_maxT=_maxT or 1.5
+	if T>_maxT then
+		local cc=math.floor(_maxT/dt)
 		rr:setSize(c)
 		rr:range(0,cc):hermite(0, 0+w0*dt, cc, finalAngle, finalAngle)
 		rr:range(cc, c):setAllValue(rr(cc-1))

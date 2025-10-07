@@ -50,6 +50,20 @@ function PoseMaintainer:init(skel, simulator, k_p, k_d, k_p_slide, k_d_slide)
 			end
 		end
 	end
+	local kp=PDservo.poseToQ(self, self.kp)
+	local kd=PDservo.dposeToDQ(self, self.kd)
+	simulator:setStablePDparam(self.skeletonIndex, kp, kd)
+end
+
+function PoseMaintainer:applyPDtorque(sim, theta_d, dtheta_d)
+	self.theta_d:assign(theta_d)
+	if dtheta_d then
+		self.dtheta_d:assign(dtheta_d)
+	else
+		self.dtheta_d:zero()
+	end
+	self:generateTorque(sim)
+	sim:setLinkData(self.skeletonIndex, Physics.DynamicsSimulator.JOINT_TORQUE, self.controlforce)
 end
 
 function PoseMaintainer:generateTorque(simulator)
@@ -58,7 +72,7 @@ function PoseMaintainer:generateTorque(simulator)
 	simulator:getLinkData(si, Physics.DynamicsSimulator.JOINT_VELOCITY, self.dtheta)
 
 	local tau=vectorn()
-	simulator:calculateStablePDForces(self.skeletonIndex, self:poseToQ(self.theta_d),tau)
+	simulator:calculateStablePDForces(self.skeletonIndex, self:poseToQ(self.theta_d), self:dposeToDQ(self.dtheta_d), tau)
 
 	self.controlforce=self:DQtoDpose(tau)
 end
@@ -249,6 +263,7 @@ function PDservo:poseToQ(pose)
 end
 
 PoseMaintainer.poseToQ=PDservo.poseToQ
+PoseMaintainer.dposeToDQ=PDservo.dposeToDQ
 PoseMaintainer.DQtoDpose=PDservo.DQtoDpose
 function PDservo:initPDservo(startf, endf,motionDOF, dmotionDOF, simulator)
 	self.startFrame=startf
@@ -267,8 +282,8 @@ function PDservo:initPDservo(startf, endf,motionDOF, dmotionDOF, simulator)
 	self.skeletonIndex=0
 
 
-	local kp=self:poseToQ(self.kp)
-	local kd=self:dposeToDQ(self.kd)
+	local kp=PDservo.poseToQ(self, self.kp)
+	local kd=PDservo.dposeToDQ(self, self.kd)
 	simulator:setStablePDparam(self.skeletonIndex, kp, kd)
 end
 

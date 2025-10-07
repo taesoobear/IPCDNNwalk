@@ -146,7 +146,9 @@ local function  packShapeRobot(bone,file, level, pLoader)
 				ori=quater(1,0,0,0)
 			end
 			if not smass then
-				assert(bone.mass)
+				if not bone.mass then
+					bone.mass=1e9
+				end
 				smass=bone.mass/#bone.shapes
 			end
 			if smass==0 then
@@ -474,6 +476,35 @@ function VRMLexporter.generateWRLstring(bones, robotname, url)
 	end
 	return table.concat(file,'\n'), (scaleFactor or 1), offset
 end
+
+function VRMLexporter.generateWRLstring_osim(bones, robotname, url)
+	for i=2,#bones do -- bone 1 is the root.
+		local bone=bones[i]
+		local pid=bone.pid
+		if not bones[pid].children then
+			bones[pid].children={}
+		end
+		table.insert(bones[pid].children, bone)
+	end
+
+	local file={}
+	function file:write(str)
+		table.insert(self, str)
+	end
+	local scaleFactor, offset
+	do
+		file:write(string.format( "DEF SampleRobot Humanoid { name \"%s\" ", robotname));
+		if url then
+			file:write(string.format( " url \"%s\" ", url));
+		end
+		file:write( "humanoidBody [\n");
+		local root=bones[1]
+		scaleFactor,offset=packTransformRobot(root, file,0);
+		file:write( "] } # Humanoid\n");
+	end
+	return table.concat(file,'\n'), (scaleFactor or 1), offset
+end
+
 function VRMLexporter.createVRMLloader(bones, robotname, printDebugInfo)
 	local str=VRMLexporter.generateWRLstring(bones, robotname)
 	if printDebugInfo then

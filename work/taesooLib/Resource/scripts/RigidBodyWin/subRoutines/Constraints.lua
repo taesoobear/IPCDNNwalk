@@ -309,3 +309,7 @@ function Constraints:updateSelectedVertex(ray)
 	end
 	return false
 end
+function Constraints:dtor()
+	dbg.erase('Billboard', self.prefix..'_conblue')
+	self.objectList:clear()
+end

@@ -149,6 +149,10 @@ function PoseTransferT:__init(loaderA, loaderB, convInfoA, convInfoB, posScaleFa
 	self.rootAtoB=Aroot:inverse()*self.loaderB:bone(1):getFrame()
 end
 
+function PoseTransferT:convertPose(poseA)
+	self:setTargetSkeleton(poseA)
+	return self.loaderB:pose()
+end
 function PoseTransferT:setTargetSkeleton(poseA)
 	if dbg.lunaType(poseA)=='Pose' then
 		self.loaderA:setPose(poseA)

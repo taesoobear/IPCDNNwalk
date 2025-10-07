@@ -10,9 +10,9 @@
 --
 -- an example is in testScrollPanel.lua
 Timeline=LUAclass(LuaAnimationObject)
-function Timeline:__init(label, totalTime, frametime)
-	self.totalTime=totalTime
-	self:attachTimer(frametime or 1/60, totalTime)		
+function Timeline:__init(label, numframes, frametime)
+	self.totalTime=numframes
+	self:attachTimer(frametime or 1/60, numframes)		
 	RE.renderer():addFrameMoveObject(self)
 	RE.motionPanel():motionWin():addSkin(self)
 end
@@ -22,6 +22,19 @@ function Timeline:dtor()
 	RE.motionPanel():motionWin():changeCurrFrame(0)
 	RE.renderer():removeFrameMoveObject(self)
 	RE.motionPanel():motionWin():detachSkin(self)
+end
+function Timeline:numFrames()
+	return self.totalTime
+end
+
+function Timeline:reset(numframes, frameTime)
+	RE.motionPanel():motionWin():changeCurrFrame(0)
+	RE.renderer():removeFrameMoveObject(self)
+	RE.motionPanel():motionWin():detachSkin(self)
+	self.totalTime=numframes
+	self:attachTimer(frameTime or 1/60, numframes)		
+	RE.renderer():addFrameMoveObject(self)
+	RE.motionPanel():motionWin():addSkin(self)
 end
 
 if EventReceiver then
