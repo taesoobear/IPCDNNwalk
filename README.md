@@ -1,5 +1,5 @@
 # Target platforms
-Windows, MacOS, and ubuntu24.04 with python 3.12 only.
+Windows (AMD64, ARM64), MacOS, and ubuntu24.04 with python 3.12 only.
 Otherwise, you will need to build the dependencies manually.
 (see https://pypi.org/project/libcalab-ogre3d/ for the list of prebuilt binaries available on PyPI)
 
@@ -7,7 +7,7 @@ Otherwise, you will need to build the dependencies manually.
 How to run SRBTrack 2025
 =
 ```
-  pip3 install torch python3-tk gymnasium libcalab_ogre3d
+  pip3 install torch python3-tk gymnasium libcalab_ogre3d opt_einsum easydict mujoco clarabel scipy transformations
   python3 walk_SRBTrack2025.py
 ```
 Choose the D3D (windows), openGL (ubuntu), or metal renderer (mac) if asked to choose one. Also, on Linux, choose 1920x1080 resolution. 
@@ -20,6 +20,7 @@ How to run AdaptiveSRB 2023
 =
 ```
   pip3 install torch python3-tk gymnasium libcalab_ogre3d
+  pip3 install -r requirements<TAB>.txt
   python3 walk_SRB2023.py
 ```
 Choose the D3D (windows), openGL (ubuntu), or metal renderer (mac) if asked to choose one.
