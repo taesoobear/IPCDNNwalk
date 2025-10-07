@@ -56,28 +56,9 @@ def _start():
 
     simLoaders.append(floorLoader)  # character numBoxes
 
-    sim=m.DynamicsSimulator_Trbdl_impulse("gjk") 
-    sim.setParam_restitution_MA(0,0.001)
+    sim=control.MujocoSim(simLoaders,'temp_scene.xml', timestep)
     sim.setGVector(m.vector3(0,9.8,0))
 
-    for i in range(len(simLoaders)):
-        sim.registerCharacter(simLoaders[i])
-
-    def registerPair(iloader1, iloader2):
-        param=lua.vec([0.5,0.5, 10000,1000]) # unused
-        loader1=sim.skeleton(iloader1)
-        loader2=sim.skeleton(iloader2)
-        bone_i=loader1.VRMLbone(1)
-        bone_j=loader2.VRMLbone(1)
-        sim.registerCollisionCheckPair(iloader1,bone_i.name(), iloader2, bone_j.name(), param)
-
-
-    for i in range(0, numBoxes +1) :
-        for j in range(i+1, numBoxes +1) :
-            registerPair(i,j)
-
-    # call init after all collisionCheckPairs are registered
-    sim.init(timestep)
 
     zero=lua.zeros(7) # position(3), orientation(4)
     if zero.size()>0 :
@@ -94,11 +75,9 @@ def _start():
         q.z=random.uniform(0,1)*0.0
         q.normalize()
         zero.setQuater(3,q)
-        sim.setLinkData(i-1, m.Physics.JOINT_VALUE, zero)
-        sim.setLinkData(i-1, m.Physics.JOINT_VELOCITY, zero)
+        sim.setLinkPos(i-1,zero)
+        sim.setLinkVel(i-1,zero)
 
-
-    sim.initSimulation()
 
     skins=RE.createSkin(simLoaders)
     skins.setScale(100)
@@ -118,6 +97,7 @@ def onCallback(w, userData):
 
 def onFrameChanged(iframe):
     global smallBoxMesh, floorBox, sim, skins
+    numSkins=numBoxes+1
     niter=int(rendering_step/timestep)
     for i in range(1, niter +1) :
         sim.stepSimulation()
@@ -125,8 +105,7 @@ def onFrameChanged(iframe):
         if DEBUG_DRAW :
             sim.drawDebugInformation()
 
-    for i, skin in enumerate(skins):
-        skin.setPoseDOF(sim.getLastSimulatedPose(i))
+    skins.setSamePose(sim) # similar to viewer.sync()
 
 
 
