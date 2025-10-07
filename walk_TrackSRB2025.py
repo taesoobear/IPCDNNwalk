@@ -32,7 +32,6 @@ mocap_path = "motiondata_mujoco_refined/"+mocap_filename+".txt"
 mocap_path2='lafan1/'+mocap_filename+'.bvh'
 mocap_frame_rate=30
 
-mocap_path_t = "ref_contact/mvae.motion.npz"
 mocap_path_0 = "motiondata_mujoco_refined/walk1_subject5.txt"
 mocap_path_1 = "motiondata_mujoco_refined/run1_subject5.txt"
 mocap_path_2 = "motiondata_mujoco_refined/jumps1_subject1.txt"
@@ -44,8 +43,8 @@ mocap_path_7 = "motiondata_mujoco_refined_mirrored/jumps1_subject1_mirrored.txt"
 mocap_path_8 = "motiondata_mujoco_refined_mirrored/jumps1_subject5_mirrored.txt"
 mocap_path_9 = "motiondata_mujoco_refined_mirrored/sprint1_subject2_mirrored.txt"
 mocap_path_10 = "motiondata_mujoco_refined/stand1.txt"
-mocap_path_list = [mocap_path_t, mocap_path_0, mocap_path_1, mocap_path_2, mocap_path_3, mocap_path_4, mocap_path_10]
-mocap_id_to_show = 2  # the id in mocap list, decide which motion to show
+mocap_path_list = [ mocap_path_0, mocap_path_1, mocap_path_2, mocap_path_3, mocap_path_4, mocap_path_10]
+mocap_id_to_show = 1  # the id in mocap list, decide which motion to show
 
 debugMode=False
 
@@ -325,7 +324,7 @@ if True:
                     }
                 end
                 function solveEE_part1(buffer,gpos_target, hsVelConInfo)
-                    g_args={buffer:copy(), gpos_target:copy(), hsVelConInfo}
+                    g_args={buffer:copy(), gpos_target:copy(), deepCopyTable(hsVelConInfo)}
                 end
                 function solveEE_part2()
                     return trajOpt:solveEndEffectors(g_args[1], markers,g_args[2], nil, nil, g_args[3])
