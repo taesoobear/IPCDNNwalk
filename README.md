@@ -1,6 +1,7 @@
 # Target platforms
-Windows, MacOS, and ubuntu24.04 with python 3.12 only (see https://pypi.org/project/libcalab-ogre3d/ on PyPI)
-(Otherwise, you will need to build the dependencies manually.)
+Windows, MacOS, and ubuntu24.04 with python 3.12 only.
+Otherwise, you will need to build the dependencies manually.
+(see https://pypi.org/project/libcalab-ogre3d/ for the list of prebuilt binaries available on PyPI)
 
 # SRBTrack: Terrain-Adaptive Tracking of a Single-Rigid-Body Character Using Momentum-Mapped Space-Time Optimization, In proc. SIGGRAPH Asia 2025
 How to run SRBTrack 2025
@@ -11,6 +12,7 @@ How to run SRBTrack 2025
 ```
 Choose the D3D (windows), openGL (ubuntu), or metal renderer (mac) if asked to choose one. Also, on Linux, choose 1920x1080 resolution. 
 If you already chose a different resolution, re-try after deleting ogre2_linux.cfg 
+
 gym_trackSRB contains the source codes of "SRBTrack: Terrain-Adaptive Tracking of a Single-Rigid-Body Character Using Momentum-Mapped Space-Time Optimization"
 
 # AdaptiveSRB: Adaptive Tracking of a Single-Rigid-Body Character in Various Environments, In proc. ACM SIGGRAPH ASIA 2023 
@@ -22,7 +24,8 @@ How to run AdaptiveSRB 2023
 ```
 Choose the D3D (windows), openGL (ubuntu), or metal renderer (mac) if asked to choose one.
 Also, on Linux, choose 1920x1080 resolution. 
-If you already chose a different resolution, re-try after deleting ogre2_linux.cf2_linux.cfg
+If you already chose a different resolution, re-try after deleting ogre2_linux.cfg
+
 gym_cdm2 contains the source codes of "Adaptive Tracking of a Single-Rigid-Body Character in Various Environments".
 
 
@@ -34,6 +37,7 @@ How to run FlexLoco 2020
   python3 walk_FlexLoco2020.py 
 ```
 Now, click the play button, and adjust the slider bars for speed/orientation. Also, you can change the motion type by clicking the button.
+
 work/gym_walkCDM contains the source codes of "Fast and Flexible Multilegged Locomotion Using Learned Centroidal Dynamics".
 
 # (Optional) How to build (Linux)
