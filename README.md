@@ -13,7 +13,7 @@ How to run SRBTrack 2025
 Choose the D3D (windows), openGL (ubuntu), or metal renderer (mac) if asked to choose one. Also, on Linux, choose 1920x1080 resolution. 
 If you already chose a different resolution, re-try after deleting ogre2_linux.cfg 
 
-gym_trackSRB contains the source codes of "SRBTrack: Terrain-Adaptive Tracking of a Single-Rigid-Body Character Using Momentum-Mapped Space-Time Optimization"
+env, gym_trackSRB folders contain the source codes of "SRBTrack: Terrain-Adaptive Tracking of a Single-Rigid-Body Character Using Momentum-Mapped Space-Time Optimization"
 
 # AdaptiveSRB: Adaptive Tracking of a Single-Rigid-Body Character in Various Environments, In proc. ACM SIGGRAPH ASIA 2023 
 How to run AdaptiveSRB 2023
