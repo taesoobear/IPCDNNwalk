@@ -1,5 +1,5 @@
 # Target platforms
-Windows (AMD64, ARM64), MacOS, and ubuntu24.04 with python 3.12 only.
+Windows (AMD64, ARM64), MacOS (ARM), and ubuntu24.04 (AMD64) with python 3.12 only.
 Otherwise, you will need to build the dependencies manually.
 (see https://pypi.org/project/libcalab-ogre3d/ for the list of prebuilt binaries available on PyPI)
 
@@ -25,7 +25,8 @@ How to run AdaptiveSRB 2023
 ```
 Choose the D3D (windows), openGL (ubuntu), or metal renderer (mac) if asked to choose one.
 Also, on Linux, choose 1920x1080 resolution. 
-If you already chose a different resolution, re-try after deleting ogre2_linux.cfg
+If you already chose a different resolution, re-try after deleting ogre3_linux.cfg
+(On linux, the resolution specified in ogre3_linux.cfg should match the one in site-packages/libcalab_ogre3d/Resource/ogreconfig_linux12.txt)
 
 gym_cdm2 contains the source codes of "Adaptive Tracking of a Single-Rigid-Body Character in Various Environments".
 
