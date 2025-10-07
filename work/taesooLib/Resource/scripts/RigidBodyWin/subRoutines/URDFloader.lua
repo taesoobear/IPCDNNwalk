@@ -38,7 +38,8 @@ function parseRPY(t)
 	-- roll pitch yaw
 	local v=parseV3(t)
 	local q=quater()
-	q:setRotation("XYZ", v)
+	--q:setRotation("XYZ", v)
+	q:setRotation("ZYX", vector3(v.z, v.y, v.x))  -- RZ*RY*RX
 	return q
 end
 function parseV3(t)
@@ -216,6 +217,21 @@ function getR(x,y)
 	q:setRotation(m)
 	return q
 end
+function URDFparser.parseOrigin(tgeom)
+	local pos, ori
+	if tgeom.origin then
+		pos=parseV3(tgeom.origin._attr.xyz)
+		if tgeom.origin._attr.quat then
+			dbg.console()
+		else
+			ori=parseRPY(tgeom.origin._attr.rpy)
+		end
+	else
+		pos=vector3(0,0,0)
+		ori=quater(1,0,0,0)
+	end
+	return pos, ori
+end
 function URDFparser:parseLink(q_parent, pid, p, level, options)
 	--if level>2 then return end
 	local bones=self.bones
@@ -229,8 +245,9 @@ function URDFparser:parseLink(q_parent, pid, p, level, options)
 	else
 		assert(#p.joints==1)
 		local j=p.joints[1]
-		offset=parseV3(j.origin._attr.xyz)
-		q_l=parseRPY(j.origin._attr.rpy)
+		local origin_pos, origin_ori=URDFparser.parseOrigin(j)
+		offset=origin_pos
+		q_l=origin_ori
 	end
 
 	local q=q_parent:copy()
@@ -243,6 +260,7 @@ function URDFparser:parseLink(q_parent, pid, p, level, options)
 			bone.pid=pid
 		end
 		table.insert(bones, bone)
+		-- todo: rotate inertia too.
 		table.insert(self.boneInfo, 
 		{
 			q_parent=q_parent:copy(),
@@ -280,31 +298,21 @@ function URDFparser:parseLink(q_parent, pid, p, level, options)
 
 		bone.shapes={}
 		bone.classes={}
-		function parseOrigin(tgeom)
-			local pos, ori
-			if tgeom.origin then
-				pos=parseV3(tgeom.origin._attr.xyz)
-				ori=parseRPY(tgeom.origin._attr.rpy)
-			else
-				pos=vector3(0,0,0)
-				ori=quater(1,0,0,0)
-			end
-			return pos, ori
-		end
+		local parseOrigin=URDFparser.parseOrigin
 		for igeom, tgeom in ipairs(geoms) do
 			if tgeom.geometry.sphere then
 				local geom=tgeom.geometry.sphere
 				local s=tonumber(geom._attr.radius)
 				local pos, ori=parseOrigin(tgeom)
-				table.insert(bone.shapes,{'Sphere', translation=pos, rotation=ori, size=vector3(s,s,s), mass=mass })
+				table.insert(bone.shapes,{'Sphere', translation=pos, rotation=q*ori, size=vector3(s,s,s), mass=mass })
 			elseif tgeom.geometry.capsule then
 				local a,b=parseV6(geom.fromto)
 				local pos=a*0.5+b*0.5
 				local s=tonumber(geom.size)
 				local mass=tonumber(geom.mass)
-				local q=quater()
-				q:axisToAxis(vector3(0,1,0), b-a)
-				table.insert(bone.shapes,{'Capsule', translation=pos, rotation=q, height=a:distance(b), radius=s, mass=mass })
+				local qq=quater()
+				qq:axisToAxis(vector3(0,1,0), b-a)
+				table.insert(bone.shapes,{'Capsule', translation=pos, rotation=q*qq, height=a:distance(b), radius=s, mass=mass })
 			elseif tgeom.geometry.cylinder then
 				local geom=tgeom.geometry.cylinder
 				local radius=geom._attr.radius
@@ -313,12 +321,12 @@ function URDFparser:parseLink(q_parent, pid, p, level, options)
 				
 				ori:rightMult(quater(math.rad(90), vector3(1,0,0)))
 
-				table.insert(bone.shapes,{'Cylinder', translation=pos, rotation=q_l*ori, height=height, radius=radius, mass=mass })
+				table.insert(bone.shapes,{'Cylinder', translation=pos, rotation=q*ori, height=height, radius=radius, mass=mass })
 			elseif tgeom.geometry.box then
 				local geom=tgeom.geometry.box
 				local s=parseV3(geom._attr.size)
 				local pos, ori=parseOrigin(tgeom)
-				table.insert(bone.shapes,{'Box', translation=pos, rotation=ori, size=s, mass=mass })
+				table.insert(bone.shapes,{'Box', translation=pos, rotation=q*ori, size=s, mass=mass })
 			elseif tgeom.geometry.mesh then
 				local geom=tgeom.geometry.mesh
 				local pos, ori=parseOrigin(tgeom)
@@ -334,6 +342,7 @@ function URDFparser:parseLink(q_parent, pid, p, level, options)
 				local path=Path(urdf_path):join(fn).string -- dae_path
 
 				if fn:sub(-4):lower()=='.dae' and not os.isFileExist(path..'.cache') then
+				--if fn:sub(-4):lower()=='.dae' then -- to always reload DAE
 					require('DAEloader')
 					local cachefile=path..'.cache'
 					print('generating '..cachefile)
@@ -352,7 +361,7 @@ function URDFparser:parseLink(q_parent, pid, p, level, options)
 					end
 					file:close()
 				elseif false and fn:sub(-4):lower()=='.dae' then
-					-- test loading
+					-- load cached geometry (much faster)
 					local file=util.BinaryFile()
 					file:openRead(path..'.cache')
 					local version= file:unpackInt()
@@ -361,7 +370,7 @@ function URDFparser:parseLink(q_parent, pid, p, level, options)
 					file:close()
 				end
 
-				table.insert(bone.shapes,{'OBJ_no_classify_tri', fn, rotation=ori, color=mat, translation=pos})
+				table.insert(bone.shapes,{'OBJ_no_classify_tri', fn, rotation=q*ori, color=mat, translation=q*pos})
 			elseif geom.class then
 				-- unused yet.
 				table.insert(bone.classes, geom)
@@ -372,14 +381,19 @@ function URDFparser:parseLink(q_parent, pid, p, level, options)
 	end
 
 	if #p.joints==0 then
-		bone.jointType='free'
+		bone.jointType=options.rootJointType or 'free'
 	elseif #p.joints==1 and p.joints[1]._attr.type=='fixed' then
 		bone.jointType='fixed'
 	else
 		local jointAxis=''
-		for i=1, #p.joints do
-			jointAxis=self:getJointAxisString(jointAxis, p.joints[i])
-			if not jointAxis then break end
+		if math.abs(q.w-1)<1e-4 then
+			-- case: identity q 
+			for i=1, #p.joints do
+				jointAxis=self:getJointAxisString(jointAxis, p.joints[i])
+				if not jointAxis then break end
+			end
+		else
+			jointAxis=nil
 		end
 		if p.joints[1]._attr.type=='revolute' then
 			bone.jointType='rotate'
@@ -390,8 +404,8 @@ function URDFparser:parseLink(q_parent, pid, p, level, options)
 			bone.jointAxis=jointAxis
 		else
 			bone.jointAxis={}
-			for i=1, #p.joint do
-				bone.jointAxis[i]=q*parseV3(self:getJointAxis(p.joint[i]))
+			for i=1, #p.joints do
+				bone.jointAxis[i]=q*parseV3(self:getJointAxis(p.joints[i]))
 			end
 		end
 	end

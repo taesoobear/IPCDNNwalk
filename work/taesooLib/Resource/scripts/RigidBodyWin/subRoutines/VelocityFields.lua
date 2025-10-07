@@ -453,19 +453,62 @@ end
 function OnlineFilter:setCurrPose(pose)
 	self.queue:pushBack(pose:copy())
 end
+-- center: unfiltered frame, temporally corresponding to the filtered frame
+function OnlineFilter:getCenterAndFiltered()
+	if #self.queue.data==self.queue.n then
+		local centerFrame=math.floor(self.queue.n/2)
+		local center=self.queue:getElt(centerFrame):copy()
+		local filtered=self:getFiltered()
+		return center, filtered
+	else
+		local center=self:getFiltered()
+		return center, center:copy()
+	end
+end
+
 
 function OnlineFilter:getFiltered()
 	if #self.queue.data==self.queue.n then
+		function filterSingle(v, n, useMitchellFilter)
+			if n==2 then
+				return v:row(0)*0.5+v:row(1)*0.5
+			else
+				return math.filterSingle(v, n, useMitchellFilter)
+			end
+		end
+		if not self.loader then
+			local sum=vectorn(self.queue:back():size())
+			-- use gaussian filter for all DOFs
+			local arrayV=matrixn(self.queue.n, self.queue:back():size())
+			for i=0, arrayV:size()-1 do
+				arrayV:row(i):assign(self.queue:getElt(i))
+			end
+			local sum=filterSingle(arrayV, self.queue.n, self.useMitchellFilter)
+			return sum
+		end
 
 		local sum=vectorn(self.queue:back():size())
 		sum:setAllValue(0)
+
+		function filterQuatSingle(v, n, useMitchellFilter)
+			if n==2 then
+				assert(v:cols()==4)
+				local out=vectorn(4)
+				local q=quater()
+				q:safeSlerp(v:row(0):toQuater(0), v:row(1):toQuater(0), 0.5)
+				out:setQuater(0, q)
+				return out
+			else
+				return math.filterSingle(v, n, useMitchellFilter)
+			end
+		end
 		if true then
 			-- use gaussian filter for joint angles
 			local arrayV=matrixn(self.queue.n, self.queue:back():size()-7)
 			for i=0, arrayV:size()-1 do
 				arrayV:row(i):assign(self.queue:getElt(i):slice(7,0))
 			end
-			local v=math.filterSingle(arrayV, self.queue.n, self.useMitchellFilter)
+			local v=filterSingle(arrayV, self.queue.n, self.useMitchellFilter)
 			sum:slice(7,0):assign(v)
 		else
 
@@ -485,10 +528,12 @@ function OnlineFilter:getFiltered()
 				arrayQ(i):assign(self.queue:getElt(i):toQuater(3))
 				arrayV(i):assign(self.queue:getElt(i):toVector3(0))
 			end
+
+			arrayQ:align()
 			--math.filterQuat(arrayQ:matView(), self.queue.n)
 			--sum:setQuater(3, arrayQ(math.floor(self.queue.n/2)))
-			local q=math.filterQuatSingle(arrayQ:matView(), self.queue.n, self.useMitchellFilter)
-			local v=math.filterSingle(arrayV:matView(), self.queue.n, self.useMitchellFilter)
+			local q=filterQuatSingle(arrayQ:matView(), self.queue.n, self.useMitchellFilter)
+			local v=filterSingle(arrayV:matView(), self.queue.n, self.useMitchellFilter)
 			sum:setVec3(0, v:toVector3())
 			sum:setQuater(3, q:toQuater())
 		end

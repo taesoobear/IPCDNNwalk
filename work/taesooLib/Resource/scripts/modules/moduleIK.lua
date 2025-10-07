@@ -70,6 +70,10 @@ end
 ]]--
 solvers={ LimbIKsolver=1, LimbIKsolver2=2, MultiTarget=3 , MultiTarget_lbfgs=4, MultiTarget_selected=5, MultiTarget_selected2=6, COM_IK=7, JT=8, LUA=9 , UTPoser=9, LimbIKsolverHybrid=10, MultiTarget_relative=11, MultiTarget_relative_lbfgs=12, LimbIKsolverT=13}
 function createIKsolver(solverType, loader, config)
+	if loader.loader then
+		-- fbxloader
+		loader=loader.loader
+	end
 	local out={}
 	local mEffectors=MotionUtil.Effectors()
 	local numCon=#config
@@ -94,9 +98,14 @@ function createIKsolver(solverType, loader, config)
 		elseif #conInfo==2 then
 			kneeInfo=0
 		end
-		mEffectors(i):init(loader:getBoneByName(conInfo[kneeInfo+1]), conInfo[kneeInfo+2])
+		if dbg.lunaType(conInfo[kneeInfo+1])=='Bone' then
+			mEffectors(i):init(conInfo[kneeInfo+1], conInfo[kneeInfo+2])
+			conInfo[kneeInfo+1]=conInfo[kneeInfo+1]:name()
+		else
+			mEffectors(i):init(loader:getBoneByName(conInfo[kneeInfo+1]), conInfo[kneeInfo+2])
+		end
 		if kneeInfo==0 then
-			kneeIndex:set(i, -1)
+			kneeIndex:set(i, mEffectors(i).bone:parent():treeIndex())
 		else
 			local lknee=loader:getBoneByName(conInfo[kneeInfo])
 			kneeIndex:set(i, lknee:treeIndex())
@@ -109,6 +118,61 @@ function createIKsolver(solverType, loader, config)
 	end
 	out.solver=_createIKsolver(solverType,loader,mEffectors, kneeIndex, axis, _hipIndex, config)
 	return out
+end
+
+-- simplified_config for both python and lua
+function createLimbIksolverToeAndHeel(loader, simplified_config)
+	local config={}
+	for i, eff in ipairs(simplified_config) do
+		local new_eff={ 
+			eff.bone, eff.lpos, reversed=eff.reversed
+		}
+		table.insert(config, new_eff)
+		if math.fmod(i-1,2)==0 then
+			new_eff.childCon=i+1
+		end
+	end
+	local out=createIKsolver(solvers.LimbIKsolverT, loader, config)
+	out.solver:setOption('lengthAdjust', true)
+	MotionUtil.setMaxLengthAdjustmentRatio(0.1)
+	out.IKsolve=function (self, pose, conPos, _importance)
+		return self.solver:IKsolve(pose, conPos, _importance)
+	end
+	return out
+end
+--simplified_config={
+--	{ bone=mLoader.loader:getBoneByVoca(MotionLoader.LEFTANKLE), lpos=vector3(0,-3,17), reversed=false, }
+--	{ bone=mLoader.loader:getBoneByVoca(MotionLoader.RIGHTANKLE), lpos=vector3(0,-3,17), reversed=false, }
+--}
+function createLimbIksolverToeOnly(loader, simplified_config)
+	local config={}
+	for i, eff in ipairs(simplified_config) do
+		local new_eff={ 
+			eff.bone, eff.lpos, reversed=eff.reversed
+		}
+		table.insert(config, new_eff)
+	end
+	local out=createIKsolver(solvers.LimbIKsolverT, loader, config)
+	out.solver:setOption('lengthAdjust', true)
+	MotionUtil.setMaxLengthAdjustmentRatio(0.1)
+	out.IKsolve=function (self, pose, conPos, _importance)
+		return self.solver:IKsolve(pose, conPos, _importance)
+	end
+	return out
+end
+
+function MotionUtil.Effectors:getCurrentPosition(i)
+	if not i then
+		local out=vector3N(self:size())
+		for i=0, self:size()-1 do
+			local eff=self(i)
+			out(i):assign(eff.bone:getFrame()*eff.localpos)
+		end
+		return out
+	else
+		local eff=self(i)
+		return eff.bone:getFrame()*eff.localpos
+	end
 end
 
 function createIKsolver_sub(solverType, loader, config)
@@ -201,7 +265,7 @@ end
 function LimbIKsolverT:setOption(type, value)
 	self.options[type]=value
 end
-function LimbIKsolverT:IKsolve(pose, conPos)
+function LimbIKsolverT:IKsolve(pose, conPos, _importance)
 
 	local origRootTF=pose:toTransf(0)
 
@@ -244,23 +308,61 @@ function LimbIKsolverT:IKsolve(pose, conPos)
 			v2=q2:inverse()*(wrist-elb)
 
 			local ccon=limbconfig.childCon 
+			local importance=1
+			if _importance then
+				importance=_importance(c)
+			end
 			if ccon then
+				local cimportance=1
+				local pimportance=importance
 				local lpos= self.config[ccon].localpos
-				local gpos=ankleBone:getFrame()*lpos
+				if _importance then
+					cimportance=_importance(ccon-1)
+					importance=math.max(cimportance, importance)
+				end
+				do
+					local i0=cimportance /(cimportance+pimportance+1e-3)
+					local i1=pimportance/(cimportance+pimportance+1e-3)
+					local weight=0.5*(i0-i1)+0.5
+					if true then
+						-- adjust global ankle orientation part1.
+						local chand=ankleBone:getFrame()*lpos;
+						local cgoal=conPos(ccon-1)-chand+wrist;
 
-				local curr_dir=gpos-ankleBone:getFrame()*self.effectors(c).localpos;
-				local desired_dir=conPos(ccon-1)-conPos(c)
-				local delta=quater()
-				delta:axisToAxis(curr_dir, desired_dir)
-				
-				-- adjust  global ankle orientation.
-				ankleGlobal:leftMult(delta)
-				ankleBone:getFrame().rotation:assign(ankleGlobal)
-				--local hand=ankleBone:getFrame()*self.effectors(ccon-1).localpos;
-				--goal=conPos(ccon-1)-hand+wrist;
-				local hand=ankleBone:getFrame()*self.effectors(c).localpos;
-				goal=conPos(c)-hand+wrist;
-			else
+						local hand=ankleBone:getFrame()*self.effectors(c).localpos;
+						local pgoal=conPos(c)-hand+wrist;
+
+						local gpos=vector3()
+						gpos:interpolate(weight,  pgoal, cgoal)
+						local curr_dir=ankleBone:getFrame().translation - hipBone:getFrame().translation
+						local desired_dir=gpos-hipBone:getFrame().translation
+						local delta=quater()
+						delta:axisToAxis(curr_dir, desired_dir)
+						delta:scale(importance)
+						ankleGlobal:leftMult(delta)
+						ankleBone:getFrame().rotation:assign(ankleGlobal)
+					end
+
+					local gpos=ankleBone:getFrame()*lpos
+					local curr_dir=gpos-ankleBone:getFrame()*self.effectors(c).localpos;
+					local desired_dir=conPos(ccon-1)-conPos(c)
+					local delta=quater()
+					delta:axisToAxis(curr_dir, desired_dir)
+					-- adjust  global ankle orientation.
+					delta:scale(math.min(pimportance, cimportance))
+					ankleGlobal:leftMult(delta)
+					ankleBone:getFrame().rotation:assign(ankleGlobal)
+					local chand=ankleBone:getFrame()*lpos;
+					local cgoal=conPos(ccon-1)-chand+wrist;
+
+					local hand=ankleBone:getFrame()*self.effectors(c).localpos;
+					local pgoal=conPos(c)-hand+wrist;
+
+					goal:interpolate(weight,  pgoal, cgoal)
+					--goal:interpolate(0,  pgoal, cgoal)
+				end
+			end
+			if not ccon then
 				-- preserve original global ankle orientation.
 				ankleBone:getFrame().rotation:assign(ankleGlobal)
 				assert(self.effectors(c).bone==ankleBone)
@@ -273,8 +375,8 @@ function LimbIKsolverT:IKsolve(pose, conPos)
 
 			local useKneeDamping=true
 
-			qo1=q1;
-			qo2=q2;
+			qo1:assign(q1);
+			qo2:assign(q2);
 
 			local r=0
 			if self.options.lengthAdjust then
@@ -282,9 +384,27 @@ function LimbIKsolverT:IKsolve(pose, conPos)
 
 				local d1=v3:length()
 				local d2=v4:length()
-				len[c+1]={hipBone:treeIndex(), (d1+r)/d1, kneeBone:treeIndex(), (d2+r)/d2}
+
+				local s1=(d1+r)/d1
+				local s2=(d2+r)/d2
+
+				if importance~=1.0 then
+					s1=sop.map(importance, 0, 1, 1, s1)
+					s2=sop.map(importance, 0, 1, 1, s2)
+				end
+				table.insert(len,{hipBone:treeIndex(), s1, kneeBone:treeIndex(), s2})
 			else
 				MotionUtil.limbIK_1DOFknee(goal, sh, v1, v2, v3, v4, q1, q2, kneeBone:getAxis(-1)*self.axis(c), useKneeDamping);
+			end
+
+			if importance ~=1.0 then
+				qt:difference(qo1, q1);
+				qt:scale(importance);
+				q1=qt*qo1;
+
+				qt:difference(qo2, q2);
+				qt:scale(importance);
+				q2=qt*qo2;
 			end
 
 			hipBone:getLocalFrame().rotation:assign(q0:inverse()*q1);

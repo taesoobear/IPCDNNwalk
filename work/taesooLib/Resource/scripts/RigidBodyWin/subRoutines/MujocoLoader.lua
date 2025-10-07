@@ -21,15 +21,14 @@ function MujocoLoader(fn, options)
 	elseif fn:sub(-4)=='.xml' then
 		local wrlfile=fn..'.wrl'
 		---- set exportToMemory to false to actually write to the wrl file.
+		if options then
+			if options.useVisualMesh==nil then
+				options.useVisualMesh=true
+			end
+			options.exportToMemory=true
+		end
 		local parser=MujocoParser(fn, wrlfile, options or {convertToYUP=false, useVisualMesh=true, exportToMemory=true} )
-
-		local out=VRMLexporter.generateWRLstring(parser.bones, parser.name or 'robot', wrlfile)
-		local file=CTextFile()
-		file:OpenMemory(out)
-		local loader=MainLib.VRMLloader(file)
-		--local loader=MainLib.VRMLloader(wrlfile)
-		
-		return loader
+		return parser.loaders or parser.loader
 	else
 		assert(false)
 	end
@@ -51,6 +50,15 @@ function parseV3(t)
 	t=string.tokenize(t,'%s+')
 	assert(#t==3)
 	return vector3(tonumber(t[1]), tonumber(t[2]), tonumber(t[3]))
+end
+function parseV4(t)
+	if t==nil then
+		return vector3(0,0,0)
+	end
+	t=string.trimSpaces(t)
+	t=string.tokenize(t,'%s+')
+	assert(#t==4)
+	return vector3(tonumber(t[1]), tonumber(t[2]), tonumber(t[3])), tonumber(t4)
 end
 function parseColor(t)
 	if t==nil then
@@ -78,17 +86,13 @@ function parseV6(t)
 end
 
 MujocoParser=LUAclass()
-function MujocoParser:convertQuatAxes(q)
-	local v=vector3(q.x, q.y, q.z)
-	v=self.convertAxes(v)
-	q:setValue(q.w, v.x, v.y, v.z)
-end
 function MujocoParser:__init(filename, wrlfn, options)
 	if options==nil then 
 		options={}
 	elseif type(options)=='boolean' then
 		options={convertToYUP=options}
 	end
+	self.options=options
 	assert(type(options)=='table')
 	local xml2lua = require("xml2lua/xml2lua")
 	--Uses a handler that converts the XML to a Lua table
@@ -100,23 +104,8 @@ function MujocoParser:__init(filename, wrlfn, options)
 	--Instantiates the XML parser
 	local parser = xml2lua.parser(handler)
 	parser:parse(xml)
-	local convertToYUP=options.convertToYUP
-	if convertToYUP then
-		self.convertToYUP=true
-		self.convertAxes= function (v)
-			return vector3(v.y, v.z, v.x)
-			--return vector3(v.z, v.x, v.y)
-			--return vector3(v.x, v.y, v.z)
-		end
-	else
-		self.convertAxes= function (v)
-			return v
-		end
-	end
 
-	self.bones={}
-	self.boneNameToIdx={}
-	self.boneInfo={}
+	self.convertToYUP=options.convertToYUP
 	self.root=handler.root.mujoco
 	self.default=self.root.default
 	if self.default then
@@ -136,7 +125,9 @@ function MujocoParser:__init(filename, wrlfn, options)
 						if not self.default[c] then
 							self.default[c]={}
 						end
-						table.insert(self.default[c], v2)
+						if self.default[c][1] ~= v2 then 
+							table.insert(self.default[c], v2)
+						end
 					end
 				end
 			end
@@ -158,7 +149,50 @@ function MujocoParser:__init(filename, wrlfn, options)
 		end
 	end
 
-	self:parseBody(quater(1,0,0,0), 0, handler.root.mujoco.worldbody.body, 1, options)
+	if (handler.root.mujoco.worldbody.body._attr) then
+		self.bones={}
+		self.boneNameToIdx={}
+		self.boneInfo={}
+		self:parseBody(quater(1,0,0,0), 0, handler.root.mujoco.worldbody.body, 1, options)
+	else
+
+		self.bodies={}
+		for ibody, body in ipairs(handler.root.mujoco.worldbody.body) do
+			local currBody={}
+			currBody.bones={}
+			currBody.boneNameToIdx={}
+			currBody.boneInfo={}
+
+			setmetatable(currBody, getmetatable(self))
+			currBody:parseBody(quater(1,0,0,0), 0, body, 1, options)
+			table.insert(self.bodies, currBody)
+		end
+
+		
+	end
+	if self.bodies or options.parseGeom then
+		if not self.bodies then
+			self.bodies={self}
+		end
+		for igeom, geom in ipairs(handler.root.mujoco.worldbody.geom) do
+
+			local attr=geom._attr
+			if attr.hfield then
+				local meshes=self.root.asset.hfield
+				local found=nil
+				for i, mesh in ipairs(meshes) do
+					if mesh._attr.name==attr.hfield then
+						found=mesh
+						break
+					end
+				end
+				if found then
+					attr.hfield=found._attr
+				end
+			end
+			table.insert(self.bodies, geom._attr)
+		end
+	end
 	self.name=handler.root.mujoco._attr.model
 
 	local mesh
@@ -166,125 +200,112 @@ function MujocoParser:__init(filename, wrlfn, options)
 		mesh=handler.root.mujoco.asset.mesh
 	end
 
-	if mesh then
-		local fn,folder=os.processFileName(wrlfn)
-		for i,v in ipairs(mesh) do
-			local id=self.boneNameToIdx[v._attr.name]
-			if id then
-				local bi=self.boneInfo[id]
-				local file=v._attr.file
-				local objfile=folder..'/'..file:sub(1,-4)..'obj'
-				if os.isFileExist(objfile) then
-					local mesh=Mesh()
-					mesh:loadOBJ(objfile)
+	if self.convertToYUP then
+		self.convertAxes= function (v)
+			return vector3(v.y, v.z, v.x)
+			--return vector3(v.z, v.x, v.y)
+			--return vector3(v.x, v.y, v.z)
+		end
 
-					local newname='_rotated.obj'
-					local function mapMesh(mesh, fcn)
-						for i=0, mesh:numVertex()-1 do 
-							mesh:getVertex(i):assign(fcn(mesh:getVertex(i)))
+		self.convertQuatAxes= function (self, q)
+			local v=vector3(q.x, q.y, q.z)
+			v=self.convertAxes(v)
+			q:setValue(q.w, v.x, v.y, v.z)
+		end
+	end
+	if self.bodies then
+
+		self.loaders={}
+		for ibody, body in ipairs(self.bodies) do
+			if body.type=='plane' or body.type=='hfield' then
+				if body.type=='hfield' then
+					local pos= self.convertAxes(parseV3(body.pos))
+					local size, min_thickness=parseV4(body.hfield.size)
+					size= self.convertAxes(size)
+					local quat= self.convertAxes(parseQuat(body.quat))
+					local color= parseColor(body.quat)
+					local _, parentPath=os.processFileName(filename)
+					local l=MainLib.VRMLloader(os.joinPath(parentPath, body.hfield.file), size.x, size.z, size.y, 1, 1) 
+					local newpos=pos-vector3(size.x, 0, size.z)
+
+					if false then -- set true only in taesooLib legacy where lower resolution is enforced.
+						-- heuristic correction.  
+						local res=512  -- todo. use image resolution
+						print (pos)
+						if pos.x>0 then
+							newpos:radd(vector3(-size.x*3/res, 0,0))
+						else
+							newpos:radd(vector3(-size.x*12/res, 0,0))
 						end
-						for i=0, mesh:numNormal()-1 do 
-							mesh:getNormal(i):assign(fcn(mesh:getNormal(i)))
+						if pos.z<0 then
+							newpos:radd(vector3(0, 0,-size.z*10/res))
+						else
+							newpos:radd(vector3(0, 0,size.z*-3/res))
 						end
 					end
-					if true then
-						-- obj files are rotated in blender so that -Z forward, Y up
-						local M=quater(math.rad(180), vector3(1,0,0))
-						--local M=quater(math.rad(90), vector3(0,1,0))* quater(math.rad(90), vector3(1,0,0))* quater(math.rad(180), vector3(0,1,0))
-						--local M=quater(math.rad(90), vector3(0,1,0))* quater(math.rad(90), vector3(1,0,0))* quater(math.rad(180), vector3(0,1,0))
-						--local M=quater(math.rad(90), vector3(1,0,0))* quater(math.rad(180), vector3(0,1,0))
-						local function invRot(v)
-							--return M*vector3(v.x, v.y, v.z)
-							return M*vector3(v.x, v.z, -v.y)
-						end
-						mapMesh(mesh, invRot)
-					end
-					if v._attr.scale then
-						local m=matrix4()
-						m:identity()
-						local s=parseV3(v._attr.scale)
-						m:leftMultScaling(s.x, s.y, s.z)
-						mesh:transform(m)
-
-						if m:determinant()<0 then
-							for i=0, mesh:numFace()-1 do
-								local f=mesh:getFace(i)
-								local n0=f:normalIndex(0)
-								local n1=f:normalIndex(1)
-								local n2=f:normalIndex(2)
-								local v0=f:vertexIndex(0)
-								local v1=f:vertexIndex(1)
-								local v2=f:vertexIndex(2)
-								f:setIndex(n0, n2, n1, Mesh.NORMAL)
-								f:setIndex(v0, v2, v1, Mesh.VERTEX)
-							end
-							for i=0, mesh:numNormal()-1 do
-								mesh:getNormal(i):assign(mesh:getNormal(i)*-1)
-							end
-
-						end
-						newname='_scaled.obj'
-					end
-					do 
-						local m=matrix4()
-						m:identity()
-						m:setRotation(bi.q)
-						mesh:transform(m)
-					end
-					local axeC=self.convertAxes
-					mapMesh(mesh, axeC)
-
-					mesh:saveOBJ(objfile..newname, true, false)
-
-					self.bones[id].shape={"OBJ_no_classify_tri",file:sub(1,-4)..'obj'..newname, translation=vector3(0,0,0)}
+					l:setPosition(newpos)
+					self.loaders[ibody]=l
+				else
+					local pos= self.convertAxes(parseV3(body.pos))
+					local ori= parseQuat(body.quat)
+					self:convertQuatAxes(ori)
+					local size=parseV3(body.size)
+					local geom=Geometry()
+					geom:initPlane(size.x, size.z)
+					local loader=MainLib.VRMLloader(geom, true)
+					local root=loader:VRMLbone(1)
+					root:setJointPosition(pos)
+					root:getLocalFrame().translation:assign(pos);
+					root:getLocalFrame().rotation:assign(ori);
+					loader:fkSolver():forwardKinematics()
+					loader:setURL(table.tostring2({pos,ori}))
+					self.loaders[ibody]=loader
 				end
-			end
-		end
-	end
-
-	local axeC=self.convertAxes
-	for i,v in ipairs(self.bones) do
-		local bi=self.boneInfo[i]
-
-		if bi.fullinertia or bi.diaginertia then
-			v.mass=bi.mass
-			
-			local I=matrix3()
-			if bi.fullinertia then
-				local ixx, ixy=parseV6(bi.fullinertia)
-				I:setValue(ixx.x, ixy.x, ixy.y,
-				ixy.x, ixx.y, ixy.z,
-				ixy.y, ixy.z, ixx.z)
 			else
-				local ixx=parseV3(bi.diaginertia)
-				I:setValue(ixx.x, 0, 0,
-				0, ixx.y, 0,
-				0, 0, ixx.z)
+				local file=CTextFile()
+
+				local name=body.name or ((self.name or 'robot')..ibody)
+				if not body.name and body.bones and body.bones[1] and body.bones[1].name then
+					name=body.bones[1].name
+				end
+
+				local out=VRMLexporter.generateWRLstring(body.bones,name , wrlfn..ibody)
+				file:OpenMemory(out)
+				local loader=MainLib.VRMLloader(file)
+				if self.convertToYUP then
+					loader=loader:ZtoY()
+				end
+				if loader.dofInfo:numDOF()==0 then
+					loader:setPosition(self.convertAxes(body.bones[1].offset))
+				end
+				self.loaders[ibody]=loader
 			end
-			local R=matrix3()
-			R:setFromQuaternion(bi.q)
-			local Ig=R*I*R:T()
-
-			local diag=axeC(vector3(Ig._11, Ig._22, Ig._33))
-			local offdiag=axeC(vector3(Ig._23, Ig._13, Ig._12))
-			Ig._11=diag.x Ig._22=diag.y Ig._33=diag.z
-			Ig._23=offdiag.x Ig._13=offdiag.y Ig._12=offdiag.z
-			Ig._32=offdiag.x Ig._31=offdiag.y Ig._21=offdiag.z
-			v.inertia=I
 		end
-		if v.localCOM then
-			v.localCOM:assign(axeC(v.localCOM))
-		end
-		v.offset:assign(axeC(v.offset))
-	end
+	else
+		if options.exportToMemory then
+			local out=VRMLexporter.generateWRLstring(self.bones, self.name or 'robot', wrlfn)
+			local file=CTextFile()
+			file:OpenMemory(out)
+			local loader=MainLib.VRMLloader(file)
+			if self.convertToYUP then
+				loader=loader:ZtoY()
 
-	self.bones[1].info={
-		assetFolder='assets',
-	}
-	if not options.exportToMemory then
-		VRMLexporter.exportWRL(self.bones, wrlfn, self.name)
+				--g_loader=loader
+				--g_skin=RE.createSkin(loader)
+				--g_skin:setScale(100)
+			end
+			self.loader=loader
+		else
+			if self.convertToYUP then
+				-- todo: load, ZtoY , then  export
+				assert(false)
+			else
+				VRMLexporter.exportWRL(self.bones, wrlfn, self.name)
+			end
+		end
 	end
 end
+
 function MujocoParser:getJointAxis(p)
 	if p._attr.axis then
 		return p._attr.axis
@@ -303,30 +324,20 @@ function MujocoParser:getJointType(p)
 		local classInfo=self.default[p._attr.class]
 		assert(#classInfo==1)
 		return classInfo[1].joint._attr.type
+	elseif p._attr.axis then
+		return 'hinge'
 	else
-		return self.default.joint._attr.type
+		return self.default.joint._attr.type 
 	end
 end
 function MujocoParser:getJointAxisString(jointAxis, p)
 	local axis=self:getJointAxis(p)
 	if axis=='1 0 0' then
-		if self.convertToYUP then
-			jointAxis=jointAxis..'Z'
-		else
-			jointAxis=jointAxis..'X'
-		end
+		jointAxis=jointAxis..'X'
 	elseif axis=='0 1 0' then
-		if self.convertToYUP then
-			jointAxis=jointAxis..'X'
-		else
-			jointAxis=jointAxis..'Y'
-		end
+		jointAxis=jointAxis..'Y'
 	elseif axis=='0 0 1' then
-		if self.convertToYUP then
-			jointAxis=jointAxis..'Y'
-		else
-			jointAxis=jointAxis..'Z'
-		end
+		jointAxis=jointAxis..'Z'
 	else
 		return nil
 	end
@@ -402,51 +413,50 @@ function MujocoParser:parseBody(q_parent, pid, p, level, options)
 
 		bone.shapes={}
 		bone.classes={}
+		if p._attr.childclass then 
+			self.childClass = p._attr.childclass
+		end
 		for igeom, tgeom in ipairs(geoms) do
 			local geom=tgeom._attr
-			if geom.class==nil and geom.type==nil then
+			if geom.class==nil and geom.type==nil and self.childClass and self.default._attr.class == self.childClass then 
+				geom.type=self.default.geom._attr.type
+			elseif geom.class==nil and geom.type==nil then
 				geom.type='sphere'
 			end
 			if geom.type=='sphere' then
 				local s=tonumber(geom.size)
 				local mass=tonumber(geom.mass)
-				local pos=self.convertAxes(parseV3(geom.pos))
+				local pos=parseV3(geom.pos)
 				table.insert(bone.shapes,{'Sphere', translation=pos, size=vector3(s,s,s), mass=mass })
 			elseif geom.type=='capsule' then
 				local a,b=parseV6(geom.fromto)
-				local pos=self.convertAxes(a*0.5+b*0.5)
+				local pos=a*0.5+b*0.5
 				local s=tonumber(geom.size)
 				local mass=tonumber(geom.mass)
 				local q=quater()
-				if self.convertToYUP then
-					q:axisToAxis(vector3(0,0,1), b-a)
-				else
-					q:axisToAxis(vector3(0,1,0), b-a)
-				end
-				self:convertQuatAxes(q)
+				q:axisToAxis(vector3(0,1,0), b-a)
 				table.insert(bone.shapes,{'Capsule', translation=pos, rotation=q, height=a:distance(b), radius=s, mass=mass })
 			elseif geom.type=='cylinder' then
-				local pos=self.convertAxes(parseV3(geom.pos))
+				local pos=parseV3(geom.pos)
 				local radius, height=parseV2(geom.size)
 				height=height*2
 				local mass=tonumber(geom.mass)
 				local q=parseQuat(geom.quat)
-				self:convertQuatAxes(q)
-				if self.convertToYUP then
-					q:rightMult(quater(math.rad(90), vector3(0,1,0)))
-				else
-					q:rightMult(quater(math.rad(90), vector3(1,0,0)))
-				end
+				q:rightMult(quater(math.rad(90), vector3(1,0,0)))
 				table.insert(bone.shapes,{'Cylinder', translation=pos, rotation=q, height=height, radius=radius, mass=mass })
+			elseif geom.type=='hfield' then
+				dbg.console()
+
 			elseif geom.type=='box' then
-				local s=self.convertAxes(parseV3(geom.size))*2
+				local s=parseV3(geom.size)*2
 				local mass=tonumber(geom.mass)
-				local pos=self.convertAxes(parseV3(geom.pos))
+				local pos=parseV3(geom.pos)
 				local ori=parseQuat(geom.quat)
-				self:convertQuatAxes(ori)
 				table.insert(bone.shapes,{'Box', translation=pos, rotation=ori, size=s, mass=mass })
-			elseif geom.class=='visual' and options.useVisualMesh then
+			elseif (geom.mesh and not geom.class)or (geom.class=='visual' and options.useVisualMesh) then
 				local meshes=self.root.asset.mesh
+				local pos=parseV3(geom.pos)
+				local ori=parseQuat(geom.quat)
 				local found=nil
 				for i, mesh in ipairs(meshes) do
 					if mesh._attr.name==geom.mesh then
@@ -456,14 +466,18 @@ function MujocoParser:parseBody(q_parent, pid, p, level, options)
 				end
 				if found then
 					-- not implemented yet
-					assert(false)
+					local mat
+					if self.material then
+						mat=self.material[geom.material]
+					end
+					table.insert(bone.shapes,{'OBJ_no_classify_tri', found._attr.file, rotation=q*ori, color=mat, translation=q*pos})
 				else
 
 					local mat
 					if self.material then
 						mat=self.material[geom.material]
 					end
-					table.insert(bone.shapes,{'OBJ_no_classify_tri', geom.mesh..'.obj', rotation=q, color=mat, translation=vector3(0,0,0)})
+					table.insert(bone.shapes,{'OBJ_no_classify_tri', geom.mesh..'.obj', rotation=q*ori, color=mat, translation=q*pos})
 				end
 			elseif geom.class then
 				-- unused yet.
@@ -483,7 +497,7 @@ function MujocoParser:parseBody(q_parent, pid, p, level, options)
 			if jtype=='free' then
 			else
 				bone.jointType=jtype
-				bone.jointAxis=q*self.convertAxes(parseV3(self:getJointAxis(p.joint)))
+				bone.jointAxis=q*parseV3(self:getJointAxis(p.joint))
 			end
 		else
 			local jointAxis=''
@@ -497,10 +511,11 @@ function MujocoParser:parseBody(q_parent, pid, p, level, options)
 			else
 				bone.jointAxis={}
 				for i=1, #p.joint do
-					bone.jointAxis[i]=q*self.convertAxes(parseV3(self:getJointAxis(p.joint[i])))
+					bone.jointAxis[i]=q*parseV3(self:getJointAxis(p.joint[i]))
 				end
 			end
 		end
+	elseif p.freejoint then
 	else
 		bone.jointType='fixed'
 	end
@@ -516,4 +531,8 @@ function MujocoParser:parseBody(q_parent, pid, p, level, options)
 			end
 		end
 	end
+	self.bones[1].info={
+		assetFolder='assets',
+	}
 end
+

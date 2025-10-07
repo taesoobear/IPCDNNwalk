@@ -86,9 +86,8 @@ function Mesh:createTextureBuffer()
 	end
 end
 
--- returns meshToEntity,node
-function Mesh:drawMesh(_optionalMaterialName, _optionalNodeName, _optionalDoNotUseNormal)
-	materialName=_optionalMaterialName or 'lightgrey_transparent'
+-- returns meshToEntity,entity
+function Mesh:createEntity(_optionalNodeName, _optionalDoNotUseNormal)
 	_optionalNodeName=_optionalNodeName or 'node_name'
 	local mesh=self
 
@@ -108,7 +107,15 @@ function Mesh:drawMesh(_optionalMaterialName, _optionalNodeName, _optionalDoNotU
 	local meshToEntity=MeshToEntity(mesh, 'meshName'.._optionalNodeName, false, true, not _optionalDoNotUseNormal, useTexCoord, useColor)
 	--meshToEntity:updatePositionsAndNormals()
 	local entity=meshToEntity:createEntity('entityName'.._optionalNodeName )
+	return meshToEntity, entity
+end
+-- returns meshToEntity,node
+function Mesh:drawMesh(_optionalMaterialName, _optionalNodeName, _optionalDoNotUseNormal)
+	_optionalNodeName=_optionalNodeName or 'node_name'
+	local meshToEntity, entity=self:createEntity( _optionalNodeName, _optionalDoNotUseNormal)
+
 	if entity then
+		materialName=_optionalMaterialName or 'lightgrey_transparent'
 		if materialName then
 			entity:setMaterialName(materialName)
 		else
@@ -706,6 +713,7 @@ defineDerived(Mesh,
 }, 
 {
 	"drawMesh", 
+	"createEntity",
 	"verticallyExtrudeBoundaryEdges",
 	"_splitFacesOverlappingPlanes",
 	"selectVerticesIn",
@@ -806,7 +814,7 @@ function SDFcollider:testIntersectionsForDefinedPairs(bases, float_options)
 						local cp=collisionPoints(argMax)
 
 						collisionPoints(0).normal:assign(cp.normal)
-						if model2.isFBX and model1.isFBX then
+						if model2.isFBX and model1.isFBX and voxelI then
 							local maxPenPoint=cp.position+cp.normal*cp.idepth -- on model2
 							local new_normal=self:_calcNormalTowardOutside(model2, voxelI, localnormal)
 							--dbg.draw("Line2", maxPenPoint*100, (maxPenPoint+new_normal*100)*100, tostring(iloader)..'_'..tostring(ibody))
@@ -912,11 +920,16 @@ function SDFcollider:unpack(binaryFile, model)
 				model.collisionLoader=nil
 				error('incompatible1')
 			end
+			local updated=false
 			for i=1, loader:numBone()-1 do
 				if ( loader:bone(i):getRotationalChannels()~=origL:bone(i):getRotationalChannels()) then
-					model.collisionLoader=nil
-					error('incompatible2')
+					local bb=MainLib.VRMLloader.upcast(loader:bone(i))
+					bb:setJointAxes(origL:bone(i):getRotationalChannels())
+					updated=true
 				end
+			end
+			if updated then
+				loader:_initDOFinfo()
 			end
 			if false then
 				-- no problem.
@@ -1051,18 +1064,24 @@ function SDFcollider:addModel(fbxloader, _optionalWRLloader)
 					self.wcache=util.BinaryFile()
 				end
 
-				local n=tonumber(_optionalWRLloader.cacheCollisionMesh :sub(-1))
+				local n=tonumber(_optionalWRLloader.cacheCollisionMesh :sub(-2))
+				if not n then
+					n=tonumber(_optionalWRLloader.cacheCollisionMesh :sub(-1))
+				end
 				if not model.collisionLoader then
 					local temp=SkinToWRL(model.fbx_info, { maxConvex= n or 1})
 					model.collisionLoader=temp.skel
+					assert(temp.skel:numBone()==fbxloader.loader:numBone())
 				end
 			end
 		else
 			model.collisionLoader=_optionalWRLloader
+			assert(model.collisionLoader:numBone()==fbxloader.loader:numBone())
 		end
 	else 
 		local temp=SkinToWRL(model.fbx_info, { maxConvex=1})
 		model.collisionLoader=temp.skel
+		assert(temp.skel:numBone()==fbxloader.loader:numBone())
 	end
 	self.detector:addModel(model.collisionLoader)
 	self:_calculateBBOX(model, model.collisionLoader)
@@ -1561,32 +1580,35 @@ function SDFcollider:_calcNormalTowardOutside(model, voxelIndexI, new_normal_in_
 end
 -- returns signed_distance and the nearest surface point to in_global_pos
 function SDFcollider:calculateNearestSurfacePoint(iloader, ibody, in_global_pos)
+	assert(ibody>0)
 	local lowresDetector=self.detector
 	local out_normal=vector3()
 	local dist=lowresDetector:calculateSignedDistance(iloader, ibody, in_global_pos, out_normal)
 	local model=self.models[iloader+1]
-	local radius=model.bboxMin(ibody)*0.5 -- 마진을 준이유는 lowresDetector는 body part boundary로부터의 거리를 측정하기 때문.
 
 	--dbg.erase("Line2", tostring(iloader)..'_'..tostring(ibody))
-	if dist<radius and model.isFBX then
-		local newdist, new_normal_in_B, voxelIndexI=self:_sampleSDF(model, ibody, in_global_pos)
+	if model.isFBX then
+		local radius=model.bboxMin(ibody)*0.5 -- 마진을 준이유는 lowresDetector는 body part boundary로부터의 거리를 측정하기 때문.
+		if dist<radius then
+			local newdist, new_normal_in_B, voxelIndexI=self:_sampleSDF(model, ibody, in_global_pos)
 
-		if self.options.debugDraw then
-			dbg.namedDraw('Sphere', bpose_pos*100+vector3(100,0,0), string.format("%d%s", iloader,model.fbx_info.loader:bone(ibody):name()),'red_transparent',1)
-			dbg.draw("Line2", bpose_pos*100+vector3(100,0,0), (bpose_pos-new_normal_in_B*newdist)*100+vector3(100,0,0), tostring(iloader)..'__'..tostring(ibody))
-		end
+			if self.options.debugDraw then
+				dbg.namedDraw('Sphere', bpose_pos*100+vector3(100,0,0), string.format("%d%s", iloader,model.fbx_info.loader:bone(ibody):name()),'red_transparent',1)
+				dbg.draw("Line2", bpose_pos*100+vector3(100,0,0), (bpose_pos-new_normal_in_B*newdist)*100+vector3(100,0,0), tostring(iloader)..'__'..tostring(ibody))
+			end
 
-		--if voxelIndexI and (newdist<0 or dist<0.05) then
-		if voxelIndexI and newdist<0 then
-			dist=newdist
+			--if voxelIndexI and (newdist<0 or dist<0.05) then
+			if voxelIndexI and newdist<0 then
+				dist=newdist
 
 
-			local new_normal=self:_calcNormalTowardOutside(model, voxelIndexI, new_normal_in_B)
-			local new_surfacepoint=in_global_pos-new_normal*newdist
-			return dist, new_surfacepoint
+				local new_normal=self:_calcNormalTowardOutside(model, voxelIndexI, new_normal_in_B)
+				local new_surfacepoint=in_global_pos-new_normal*newdist
+				return dist, new_surfacepoint, new_normal
+			end
 		end
 	end
-	return dist, in_global_pos-out_normal*dist
+	return dist, in_global_pos-out_normal*dist, out_normal
 end
 function SDFcollider:isSignedDistanceSupported() 
 	return true

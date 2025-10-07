@@ -47,6 +47,9 @@ function MainLib.WRLloader(input)
 			local loader=MainLib.VRMLloader()
 			local file=util.BinaryFile()
 			file:openRead(filename)
+			if not file:readable() then
+				error('failed to open' ..filename)
+			end
 			file:_unpackVRMLloader(loader)
 			local pose=vectorn()
 			file:unpack(pose)
@@ -370,3 +373,7 @@ end
 function MainLib.VRMLloader:exportLUA(filename)
 	util.writeFile(filename, 'return '..table.toHumanReadableString(self:toTable()[3]))
 end
+function MainLib.VRMLloader:printLUA()
+	print('return '..table.toHumanReadableString(self:toTable()[3]))
+end
+

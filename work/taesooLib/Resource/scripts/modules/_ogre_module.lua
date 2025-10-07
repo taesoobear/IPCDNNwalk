@@ -8,12 +8,12 @@ function RE.createLight(ambient, light1D, light1S, lightFD, lightFS, sc, _option
 	if not lightFD then lightFD=0.3 end
 	if not lightFS then lightFS=0.3 end
 	if not sc then sc=0.95 end
-	local f=io.open('../Resource/scripts/ogreConfig_personal.lua','r')
+	local f=io.open(RE.taesooLibPath()..'Resource/scripts/ogreConfig_personal.lua','r')
 	if f then
 		f:close()
-		dofile('../Resource/scripts/ogreConfig_personal.lua')
+		dofile(RE.taesooLibPath()..'Resource/scripts/ogreConfig_personal.lua')
 	else
-		dofile('../Resource/scripts/ogreConfig.lua')
+		dofile(RE.taesooLibPath()..'Resource/scripts/ogreConfig.lua')
 	end
 	if not _optionalNumMainLights then _optionalNumMainLights =numMainLights end
 	if not _optionalLightVariance then _optionalLightVariance=0.02 end
