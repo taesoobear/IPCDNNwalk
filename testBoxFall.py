@@ -1,4 +1,3 @@
-# this file contains a line-by-line python port of testDebugDraw.lua (taesooLib/Samples/classification/lua/)
 import os
 import sys
 import pdb # use pdb.set_trace() for debugging
@@ -36,54 +35,49 @@ def dtor_sub():
 
 
 def _start():
-    global smallBoxMesh, floorBox, sim, mBoxSkins
+    global smallBoxMesh, floorBox, sim, skins, simLoaders
     dtor_sub()
     print("start")
     smallBoxMesh=m.Geometry()
     smallBoxMesh.initBox(m.vector3(0.2,0.1, 0.2)) # works well.
     #smallBoxMesh.initEllipsoid(m.vector3(0.05,0.05, 0.05)) # balls works well too.
-    #smallBoxMesh.initCylinder(0.1,0.1, 20) # does not work with libccd. strange... 
+    smallBoxLoader=m.VRMLloader(smallBoxMesh, False) # free root
 
     floorBox=m.Geometry()
     floorBox.initBox(m.vector3(20, 0.2, 40))
+    floorLoader=m.VRMLloader(floorBox, True) # fixed root
     #floorBox.initPlane(20, 40) floorBox.rigidTransform(transf(m.quater(1,0,0,0),m.vector3(0,0,0)))
     #floorBox.initBox(m.vector3(0.2, 0.2, 0.2)) # libccd works only for small boxes or plane. do not use large boxes when using libccd.
+
+    simLoaders=[]
+
+    for i in range(numBoxes ) :
+        simLoaders.append(smallBoxLoader)  # character 0 ~ numBoxes-1
+
+    simLoaders.append(floorLoader)  # character numBoxes
 
     sim=m.DynamicsSimulator_Trbdl_impulse("gjk") 
     sim.setParam_restitution_MA(0,0.001)
     sim.setGVector(m.vector3(0,9.8,0))
 
-    for i in range(1,numBoxes +1) :
-        sim.createFreeBody(smallBoxMesh)
-
-    sim.createObstacle(floorBox)
+    for i in range(len(simLoaders)):
+        sim.registerCharacter(simLoaders[i])
 
     def registerPair(iloader1, iloader2):
-        param=m.vectorn()
-        param.assign([0.5,0.5, 10000,1000])
+        param=lua.vec([0.5,0.5, 10000,1000]) # unused
         loader1=sim.skeleton(iloader1)
         loader2=sim.skeleton(iloader2)
         bone_i=loader1.VRMLbone(1)
         bone_j=loader2.VRMLbone(1)
-        sim.registerCollisionCheckPair(loader1.name(),bone_i.name(), loader2.name(), bone_j.name(), param)
+        sim.registerCollisionCheckPair(iloader1,bone_i.name(), iloader2, bone_j.name(), param)
 
 
-    if True :
-        for i in range(0, numBoxes +1) :
-            for j in range(i+1, numBoxes +1) :
-                registerPair(i,j)
-
-
-    else:
-        for i in range(0, numBoxes +1) :
-            for j in range(0, numBoxes +1) :
-                registerPair(i,j)
-
-
+    for i in range(0, numBoxes +1) :
+        for j in range(i+1, numBoxes +1) :
+            registerPair(i,j)
 
     # call init after all collisionCheckPairs are registered
     sim.init(timestep)
-
 
     zero=lua.zeros(7) # position(3), orientation(4)
     if zero.size()>0 :
@@ -106,18 +100,11 @@ def _start():
 
     sim.initSimulation()
 
-    numSkins=numBoxes+1
-    mBoxSkins=lua.dynamic_list() # use lua.dynamic_list() instead for 0-indexed array.
-    for i in range(0, numSkins ) :
-        loader=sim.skeleton(i)
-        mBoxSkins[i]=RE.createVRMLskin(loader, False)
-        s=skinScale
-        mBoxSkins[i].scale(s,s,s)
-        mBoxSkins[i].setPose(sim,i)
-        if DEBUG_DRAW :
-            mBoxSkins[i].setMaterial('lightgrey_transparent')
-
-
+    skins=RE.createSkin(simLoaders)
+    skins.setScale(100)
+    if DEBUG_DRAW:
+        for i in range(len(skins) ) :
+            skins[i].setMaterial('lightgrey_transparent')
 
 
 
@@ -130,8 +117,7 @@ def onCallback(w, userData):
 
 
 def onFrameChanged(iframe):
-    global smallBoxMesh, floorBox, sim, mBoxSkins
-    numSkins=numBoxes+1
+    global smallBoxMesh, floorBox, sim, skins
     niter=int(rendering_step/timestep)
     for i in range(1, niter +1) :
         sim.stepSimulation()
@@ -139,12 +125,9 @@ def onFrameChanged(iframe):
         if DEBUG_DRAW :
             sim.drawDebugInformation()
 
-        for j in range(0,numSkins ) :
-            mBoxSkins[j].setPose(sim,j)
+    for i, skin in enumerate(skins):
+        skin.setPoseDOF(sim.getLastSimulatedPose(i))
 
-
-    #sim.drawDebugInformation()
-#main
 
 
 RE.createMainWin(sys.argv)
