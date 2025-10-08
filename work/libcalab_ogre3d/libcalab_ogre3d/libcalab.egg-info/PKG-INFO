@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: libcalab
+Version: 0.0.1
+Summary: Library for character animation
+Author-email: Taesoo <taesoobear@gmail.com>
+License: MIT
+Requires-Python: >=3.7
+Description-Content-Type: text/markdown
+Dynamic: requires-python
+
+todo.

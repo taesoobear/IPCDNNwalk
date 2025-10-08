@@ -1,0 +1,24 @@
+[project]
+name = "libcalab_ogre3d"                # PyPI 패키지명 (중복 불가!)
+version = "0.0.7"
+description = "Library for character animation and rendering based on ogre3d"
+authors = [
+  { name = "Taesoo", email = "taesoobear@gmail.com" }
+]
+readme = "README.md"
+license = { text = "MIT" } 
+dynamic=["requires-python"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["libcalab_ogre3d"]
+
+[tool.setuptools.package-data]
+mypackage = ["resources/*"]
+
+[tool.setuptools]
+include-package-data = true
