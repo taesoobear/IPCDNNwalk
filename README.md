@@ -7,7 +7,7 @@ Otherwise, you will need to build the dependencies manually.
 How to run SRBTrack 2025
 =
 ```
-  pip3 install numpy torch python3-tk gymnasium libcalab_ogre3d opt_einsum easydict mujoco clarabel scipy transformations
+  pip3 install numpy torch python3-tk gymnasium libcalab_ogre3d stable-baselines3 opt_einsum easydict mujoco clarabel scipy transformations
   python3 walk_SRBTrack2025.py
 ```
 Choose the D3D (windows), openGL (ubuntu), or metal renderer (mac) if asked to choose one. Also, on Linux, choose 1920x1080 resolution. 
