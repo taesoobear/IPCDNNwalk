@@ -1,5 +1,5 @@
 
-require("Timeline")
+require("subRoutines/Timeline")
 require("gym_walk/footCoord")
 
 if useMonopod then
