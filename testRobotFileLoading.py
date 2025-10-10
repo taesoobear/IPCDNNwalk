@@ -13,6 +13,7 @@ robot_files=[
     # all these files can be converted to mujoco xml.
     edict( title='pi2_urdf', file='work/robots/pi2_robot/pi_12dof_release_v1.urdf' ),
     edict( title='pi2_urdf_collision', file=['work/robots/pi2_robot/pi_12dof_release_v1.urdf',{'useVisualMesh':False}] ),
+    #edict( title='pi2_urdf_dae ', file='work/robots/pi2_robot/pi_12dof_release_v1_rl_dae.urdf' ),
     edict( title='swing', file="work/taesooLib/Resource/mesh/swing.wrl.lua" ), # wrl.lua format is convenient because robots can be generated procedurally
     edict( title='humanoid', file='gym_trackSRB/Characters/humanoid_deepmimic_withpalm_Tpose.xml'),
     edict( title='humanoid_YUP', file=['gym_trackSRB/Characters/humanoid_deepmimic_withpalm_Tpose.xml' ,{'convertToYUP':True}]),
