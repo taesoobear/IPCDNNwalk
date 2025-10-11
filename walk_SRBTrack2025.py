@@ -740,4 +740,7 @@ if True:
             #time.sleep(1.0/mocap_frame_rate) # unnecessary. already too slow.
         RE.delayedDrawTick()
         if not RE.renderOneFrame(True): break
+
+for i in range(2):
+    threads[i].stop()
 env.close()  # 关闭环境
