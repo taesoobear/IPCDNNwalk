@@ -43,6 +43,7 @@ def _start():
     floorBox=m.Geometry()
     floorBox.initBox(m.vector3(20, 0.2, 40))
     floorLoader=m.VRMLloader(floorBox, True) # fixed root
+    floorLoader.setName('world') # optional
     #floorBox.initPlane(20, 40) floorBox.rigidTransform(transf(m.quater(1,0,0,0),m.vector3(0,0,0)))
     #floorBox.initBox(m.vector3(0.2, 0.2, 0.2)) # libccd works only for small boxes or plane. do not use large boxes when using libccd.
     # genesis sim requires at least one robot in the scene
