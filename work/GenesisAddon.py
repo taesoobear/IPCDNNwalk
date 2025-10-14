@@ -1,14 +1,27 @@
 libcalab=None
 import genesis as gs
 import numpy as np
-import time
+import time,pdb
 # a simple taesooLib style wrapper. assumes Euler joints (except for the free root joint)
 # this class will be moved to controlmodule.py later
+# all funtions runs on cpu so this class should not be used for training purposes.
 class GenesisSim:
     def __init__(self, simLoaders, scene_file, timestep, g, _libcalab):
+        """ input: 1. simLoaders (a list of loaders or an mjcf xml file name)
+                   2. timestep
+            output: scene_file (can be None)
+        """ 
+
         global libcalab
         libcalab=_libcalab
-        libcalab.RE.writeMujocoXML(simLoaders, scene_file, {'groundPlane':False})
+        if isinstance(simLoaders, list):
+            libcalab.RE.writeMujocoXML(simLoaders, scene_file, {'groundPlane':False})
+        else:
+            assert(scene_file==None)
+            scene_file=simLoaders
+            simLoaders=libcalab.RE.MujocoLoader(scene_file)
+            if isinstance(simLoaders, libcalab.m.VRMLloader):
+                simLoaders=[simLoaders]
         #if torch.cuda.is_available() or platform.system()=='Darwin':
         #    gs.init(backend=gs.gpu)
         #else:
@@ -27,6 +40,7 @@ class GenesisSim:
         self.fkSolvers=[] # only for visualization
         self.startq=[]
         self.startv=[]
+        self.indexMap=[]
         self.timestep=timestep
         startq=0
         startv=0
@@ -34,17 +48,25 @@ class GenesisSim:
             self.fkSolvers.append(libcalab.m.BoneForwardKinematics(loader))
             self.startq.append(startq)
             self.startv.append(startv)
+            self.indexMap.append(self.getIndexMap(self.entityAll, loader))
             startq+=loader.dofInfo.numDOF()
             startv+=loader.dofInfo.numActualDOF()
         self.qpos=libcalab.lua.vec(self.entityAll.get_qpos())
         self.qvel=libcalab.lua.vec(self.entityAll.get_dofs_velocity())
+        self.ctrl=libcalab.lua.zeros(self.qvel.size())
         self.qposDirty=False
         self.qvelUpToDate=True
         self.qvelModified=False
         assert(startq==self.qpos.size())
         assert(startv==self.qvel.size())
+    def setCtrl(self, iloader, torque):
+        loader=self.loaders[iloader]
+        if loader.VRMLbone(1).HRPjointType(0)==0 :
+            self.ctrl.ref()[self.indexMap[iloader][1][6:]]=torque.array
+        else:
+            self.ctrl.ref()[self.indexMap[iloader][1]]=torque.array
 
-    def stepSimulation(self, rendering_step):
+    def stepSimulation(self, rendering_step=None):
 
         if self.qposDirty:
             self.entityAll.set_qpos(self.qpos.ref())
@@ -53,10 +75,15 @@ class GenesisSim:
             self.entityAll.set_dofs_velocity(self.qvel.ref())
             self.qvelModified=False
 
-        niter=int(rendering_step/self.timestep)
+        if rendering_step is None:
+            niter=1
+        else:
+            niter=int(rendering_step/self.timestep)
 
         timer=libcalab.m.Timer()
         timer.start()
+        self.entityAll.control_dofs_force(self.ctrl.ref())
+        self.ctrl.zero()
         for i in range(0, niter ) :
             self.scene.step()
 
@@ -73,21 +100,45 @@ class GenesisSim:
         self.qvelUpToDate=False
 
         for iloader in range(0, len(self.loaders)):
-            posedof=self.getLinkPos(iloader)
+            posedof=self.getPoseDOF(iloader)
             self.fkSolvers[iloader].setPoseDOF(posedof)
+
 
     def pose(self, iloader):
         return self.fkSolvers[iloader]
-    def setLinkPos(self, iloader, posedof):
+    def setLinkPos(self, iloader, linkpos):
         startq=self.startq[iloader]
         ndof=self.loaders[iloader].dofInfo.numDOF()
-        self.qpos.ref()[startq:startq+ndof]=posedof.ref()
-        self.fkSolvers[iloader].setPoseDOF(posedof)
+        self.qpos.ref()[startq:startq+ndof]=linkpos.ref()
+        self.fkSolvers[iloader].setPoseDOF(self.getPoseDOF(iloader))
         self.qposDirty=True
     def getLinkPos(self, iloader):
         startq=self.startq[iloader]
         ndof=self.loaders[iloader].dofInfo.numDOF()
         return self.qpos.range(startq,startq+ndof)
+
+    def setPoseDOF(self, iloader, TLpose): # setTLpose(robot, taesooLibPose.ref()) 여기서 .ref()는 taesooLibPose의 타입이 vectorn인 경우 필요. 
+        self.qpos.ref()[self.indexMap[iloader][0]]=TLpose.ref()
+        self.fkSolvers[iloader].setPoseDOF(TLpose)
+        self.qposDirty=True
+    def getPoseDOF(self, iloader):
+        return libcalab.lua.vec(self.qpos.ref()[self.indexMap[iloader][0]])
+
+    def getLinkVel(self, iloader):
+        startv=self.startv[iloader]
+        loader=self.loaders[iloader]
+        ndof=loader.dofInfo.numActualDOF()
+
+        qvel=self.qvel.ref()[startv:startv+ndof]
+        dposedof=libcalab.m.vectorn(ndof+1)
+        if loader.VRMLbone(1).HRPjointType(0)==0 :
+            # free joint 
+            dposedof.ref()[1:]=qvel[self.indexMap[iloader][1]]
+            dposedof.ref()[0:3]=qvel[0:3]
+            dposedof.ref()[4:7]=qvel[3:6]
+        else:
+            dposedof.array[:]=qvel[self.indexMap[iloader][1]]
+        return dposedof
 
     def setLinkVel(self, iloader, dposedof):
         startv=self.startv[iloader]
@@ -97,11 +148,13 @@ class GenesisSim:
         qvel=None
         if loader.VRMLbone(1).HRPjointType(0)==0 :
             # free joint 
-            qvel=np.array(dposedof.ref()[1:])
+            qvel=np.zeros(dposedof.size()-1)
+            qvel[self.indexMap[iloader][1]]=dposedof.ref()[1:]
             qvel[0:3]=dposedof.ref()[0:3]
             qvel[3:6]=dposedof.ref()[4:7]
         else:
-            qvel=np.array(dposedof.ref())
+            qvel=np.zeros(dposedof.size())
+            qvel[self.indexMap[iloader][1]]=dposedof.ref()
 
         self.qvel.ref()[startv:startv+ndof]=qvel
         self.qvelModified=True
@@ -110,3 +163,29 @@ class GenesisSim:
     def sync(self, skins):
         for i in range(0, self.numSkeleton()):
             skins[i].setSamePose(self.pose(i))
+
+    def flatten(self, dofs_idx2d):
+        out=[]
+        for e in dofs_idx2d:
+            if isinstance(e, int):
+                out+=[e]
+            else:
+                out+=e
+        return out
+    def getIndexMap(self,robot, mLoader):
+        # 가끔 genesis가 xml에 적혀있는 본의 순서를 무시하고 로딩하는 경우가 있어서 아래와 같은 index매핑 필요.
+        dofs_TL_qidx2d=[]
+        dpose_dofs_TL_qidx2d=[]
+        for i in range(1, mLoader.numBone()):
+            if mLoader.dofInfo.numDOF(i)>0:
+                joints=robot.get_link(mLoader.bone(i).name()).joints
+                for j in joints:
+                    dofs_TL_qidx2d.append(j.qs_idx_local)
+                    dpose_dofs_TL_qidx2d.append(j.dofs_idx_local)
+
+        #print(dofs_TL_qidx2d)
+        #print(dpose_dofs_TL_qidx2d)
+        #pdb.set_trace()
+        # quaternion dofs (qpos) ordered according to taesooLib convention 
+        return self.flatten(dofs_TL_qidx2d), self.flatten(dpose_dofs_TL_qidx2d)
+
