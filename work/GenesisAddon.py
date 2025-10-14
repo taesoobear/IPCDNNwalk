@@ -191,7 +191,7 @@ class GenesisSim:
         dpose_dofs_TL_qidx2d=[]
         for i in range(1, mLoader.numBone()):
             if mLoader.dofInfo.numDOF(i)>0:
-                if mLoader.numBone()>1:
+                if mLoader.numBone()>2:
                     link=robot.get_link(mLoader.bone(i).name())
                 else:
                     link=robot.links[self.startLinkIndex[iloader]]
