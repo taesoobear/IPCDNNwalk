@@ -6,6 +6,7 @@ control=None
 RE=None
 relativeMode=False
 useConsole=False
+script_version=2 # this script now has a higher priority to libcalab-provided ones
 
 def _loadMlib():
     global mlib, useConsole

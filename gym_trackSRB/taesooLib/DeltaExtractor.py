@@ -445,21 +445,21 @@ def removeCOMsliding_online(mLoader_full, _com_srb, _desired_com, output, fix_y_
         h=lua.new('QuadraticFunctionHardCon',nvar, numCon);
         #for v in range(1, nvar):
         #  minimize velocity
-        #    h('add', 1, v, -1, v-1,  -desiredVel(v-1, imarker*3+ dim)/30.0)
+        #    h.add( 1, v, -1, v-1,  -desiredVel(v-1, imarker*3+ dim)/30.0)
         for v in range(1, nvar-1):
             # minimize accelerations : ( -1, 2, -1 ) kernel
             # (-1* y_{i-1} + 2* y_i - 1*y_{i+1})^2
-            h('addWeighted',1.5, -1, v-1, 2, v, -1, v+1, -1*(-1*com_srb[v-1][dim]+2*com_srb[v][dim]-com_srb[v+1][dim]))
+            h.addWeighted(1.5, -1, v-1, 2, v, -1, v+1, -1*(-1*com_srb[v-1][dim]+2*com_srb[v][dim]-com_srb[v+1][dim]))
 
-        h('con', 1, 0, -initialPos(dim))
-        h('con', 1, 1, -initialPos2(dim))
+        h.con( 1, 0, -initialPos(dim))
+        h.con( 1, 1, -initialPos2(dim))
 
         # hard constraints
         coef.setAllValue(1.0)
         coef[-1]= -1*desired_com.column(dim).slice(startPosCon-1, nvar-1).sum()
-        h('addCon', index, coef)
+        h.addCon( index, coef)
 
-        x=h('solve')
+        x=h.solve()
         for f in range(x.size()):
             optCOM.row(f).set(dim,x[f])
 
@@ -716,11 +716,11 @@ def removeFootSliding_online(footLen, conAll, initialFeet, markerTraj, marker, d
             for dim in range(3):
                 h=lua.new('QuadraticFunctionHardCon',nvar, numCon);
                 for v in range(1, nvar):
-                    h('add', 1, v, -1, v-1,  -desiredVel(v-1, imarker*3+ dim)/30.0)
+                    h.add( 1, v, -1, v-1,  -desiredVel(v-1, imarker*3+ dim)/30.0)
                 for v in range(1, nvar-1):
                     # minimize accelerations : ( -1, 2, -1 ) kernel
                     # (-1* y_{i-1} + 2* y_i - 1*y_{i+1})^2
-                    h('addWeighted',1.5, -1, v-1, 2, v, -1, v+1, 0)
+                    h.addWeighted(1.5, -1, v-1, 2, v, -1, v+1, 0)
 
 
                 coef.setAllValue(1.0)
@@ -728,9 +728,9 @@ def removeFootSliding_online(footLen, conAll, initialFeet, markerTraj, marker, d
                 if dim!=1:
                     coef.rmult(0.1) # y is more important
 
-                h('addSquared', index, coef)
+                h.addSquared( index, coef)
 
-                h('con', 1, 0, -initialPos(dim))
+                h.con( 1, 0, -initialPos(dim))
 
                 # hard constraints
                 for icon in range(ii.size()):
@@ -743,11 +743,11 @@ def removeFootSliding_online(footLen, conAll, initialFeet, markerTraj, marker, d
                     
                     for f in range(s,e):
                         if con(f):
-                                h('con', 1, f, -cpos(dim))
+                                h.con( 1, f, -cpos(dim))
                         else:
-                            h('con', 1, f, -(otherConPos(icon)(dim)+footLen*markerDir(f, dim)))
+                            h.con( 1, f, -(otherConPos(icon)(dim)+footLen*markerDir(f, dim)))
 
-                x=h('solve')
+                x=h.solve()
                 for f in range(x.size()):
                     optMarkerTraj.row(f).set((ifoot*2+i)*3+dim,x[f])
 
@@ -831,11 +831,11 @@ def removeFootSliding_online_stair(footLen, conAll, initialFeet, markerTraj, mar
             for dim in range(3):
                 h=lua.new('QuadraticFunctionHardCon',nvar, numCon);
                 for v in range(1, nvar):
-                    h('add', 1, v, -1, v-1,  -desiredVel(v-1, imarker*3+ dim)/30.0)
+                    h.add( 1, v, -1, v-1,  -desiredVel(v-1, imarker*3+ dim)/30.0)
                 for v in range(1, nvar-1):
                     # minimize accelerations : ( -1, 2, -1 ) kernel
                     # (-1* y_{i-1} + 2* y_i - 1*y_{i+1})^2
-                    h('addWeighted',1.5, -1, v-1, 2, v, -1, v+1, 0)
+                    h.addWeighted(1.5, -1, v-1, 2, v, -1, v+1, 0)
 
 
                 coef.setAllValue(1.0)
@@ -843,9 +843,9 @@ def removeFootSliding_online_stair(footLen, conAll, initialFeet, markerTraj, mar
                 if dim!=1:
                     coef.rmult(0.1) # y is more important
 
-                h('addSquared', index, coef)
+                h.addSquared( index, coef)
 
-                h('con', 1, 0, -initialPos(dim))
+                h.con( 1, 0, -initialPos(dim))
 
                 # hard constraints
                 for icon in range(ii.size()):
@@ -858,11 +858,11 @@ def removeFootSliding_online_stair(footLen, conAll, initialFeet, markerTraj, mar
                     
                     for f in range(s,e):
                         if con(f):
-                                h('con', 1, f, -cpos(dim))
+                                h.con( 1, f, -cpos(dim))
                         else:
-                            h('con', 1, f, -(otherConPos(icon)(dim)+footLen*markerDir(f, dim)))
+                            h.con( 1, f, -(otherConPos(icon)(dim)+footLen*markerDir(f, dim)))
 
-                x=h('solve')
+                x=h.solve()
                 for f in range(x.size()):
                     optMarkerTraj.row(f).set((ifoot*2+i)*3+dim,x[f])
 

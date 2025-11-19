@@ -508,7 +508,7 @@ if True:
 
 
                     # now ready to perform MMSTO (this euler conversion can be done incrementally per-frame but for simplicity)
-                    desired_euler_motion=trajOpt('calculateOriginalEulerPoses', desired_fullbody_pose_buffer, {'poseOnly':True})
+                    desired_euler_motion=lua.M(trajOpt,'calculateOriginalEulerPoses', desired_fullbody_pose_buffer, {'poseOnly':True})
 
                     nDOF=int(desired_euler_dx_ddx.cols()/2)
                     desired_dx=desired_euler_dx_ddx.sub(-(planningHorizon-1),0,0, nDOF).copy()
@@ -652,7 +652,7 @@ if True:
                             renderPose=outputMotionBuffer[-(planningHorizon-1)].copy()
                             marker_pos=feet_traj[-(planningHorizon-1)].vec3View()
                         importance=lua.ones(4)
-                        leglen=limbIKsolver('IKsolve', renderPose, marker_pos, importance)
+                        leglen=limbIKsolver.IKsolve( renderPose, marker_pos, importance)
                         mRobotSkin.setLengthAndPoseDOF(leglen, renderPose) 
                         onlineFilterPose.setCurrPose(renderPose)
                         onlineFilterLen.setCurrPose(leglen)

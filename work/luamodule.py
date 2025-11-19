@@ -11,6 +11,7 @@ import pdb, re # use pdb.set_trace() for debugging
 #import code # or use code.interact(local=dict(globals(), **locals())) for debugging. see below.
 import numpy as np
 import platform, os
+import pdb
 hasTorch=True
 try:
     import torch
@@ -66,7 +67,7 @@ def require_as(filename, var_name):
 def module(filename):
     var_name= mlib.generateUniqueName()
     dostring(var_name+'=require("'+filename+'")')
-    return instance(var_name)
+    return instance_of_module(var_name)
 
 def collectgarbage(obj=None):
     if not obj:
@@ -133,7 +134,8 @@ def pycallFromLua(a):
             print(a)
             pdb.set_trace()
     except Exception as e:
-        print(e)
+        print('Error occurred when calling a Python function from Lua:', a[1:])
+        print('python error: ', e)
         pdb.set_trace()
 
 
@@ -571,10 +573,14 @@ def _F(numout, *args):
     _getGlobal(funcname)
     l=mlib.getPythonWin()
 
+    ctop=l.gettop()-1
     tempvar=[]
     for i in range(1,len(args)):
         _push(l, args[i], tempvar)
     l.call(len(args)-1,numout)
+    numOut=l.gettop()-ctop
+    assert(numOut==numout)
+
 
 # assumes all the arguments are read-writable (reference).
 # e.g. 
@@ -635,23 +641,7 @@ def onCallback(mid, userdata):
     l.call(2,0)
 
 def handleRendererEvent(ev, button, x, y):
-    #print( ev, button, x, y)
-    l=mlib.getPythonWin()
-
-
-    #l.printStack()
-    if not l.isLuaReady() : return 0
-    l.getglobalNoCheck("handleRendererEvent")
-    if not l.isnil(l.gettop()):
-        l.push(ev)
-        l.push(button)
-        l.push(x)
-        l.push(y)
-        l.call(4,1)
-        return l.popnumber()
-    else:
-        l.pop()
-    return 0
+    return F('handleRendererEvent', ev, button, x,y)
 
 
 def onFrameChanged(currFrame):
@@ -1254,7 +1244,7 @@ class instance(ArgumentProcessor):
     def len(self):
         return F('table.getn', self)
     def __getattr__(self, name):
-        return instance(self._addToVarName(name))
+        return instance_or_memberFunc(self._addToVarName(name), self)
     def __getitem__(self, index):
         return instance(self._addToVarName(index))
 
@@ -1269,7 +1259,16 @@ class instance(ArgumentProcessor):
         return F('python.hasKey', self, key)
     # function calls
     # e.g. variable('functionName', arg1, ...)
-    def __call__(self, funcname, *args):   
+    def __call__(self, funcname, *args):   # use call_copy instead.
+        print("Error! variable(funcname, *args) is deprecated!")
+        print("You can simply use variable.functionName(*args)")
+        print("Or, you can use variable.call_copy(funcname,*args) too.")
+        print("The above invocation methods copy the return values. If you want to receive them by reference instead, use variable.call(funcname, *args). In this case, be sure that the original memory is not freed on the Lua side.")
+        print('')
+        print('In pdb, use "up" to move up the call stack and identify which code needs to be updated.')
+        pdb.set_trace()
+
+    def call_copy(self, funcname, *args):
         # copies user data
         return M(self, funcname, *args)
     def call_nocopy(self, *args):
@@ -1285,11 +1284,31 @@ class instance(ArgumentProcessor):
         return instance(var_name)
 
     def __repr__(self):
-        return 'lua instance :\n'+F('dbg.tostring', self)
+        return 'lua instance ('+str(self.var_name)+'):\n'+F('dbg.tostring', self)
     def collect(self): # manual collection. (automatic collection is possible, but often is dangerous, so I didn't implement it.)
         dostring(self.var_name+'=nil')
         for i in self.dependent:
             dostring(d+'=nil')
+
+class instance_or_memberFunc(instance):
+    def __init__(self, python_var, parent):
+        super().__init__(python_var) 
+        self.parent=parent
+    def __call__(self, *args):   
+        # copies user data
+        return M(self.parent, self.var_name[-1], *args)
+
+# module doesn't have self unlike class instances.
+class instance_of_module(instance):
+    def __init__(self, python_var):
+        super().__init__(python_var) 
+    def __getattr__(self, name):
+        return instance_of_module(self._addToVarName(name))
+    def __call__(self, *args):   
+        # copies user data
+        return M(self.var_name, *args)
+
+
 def toDict(python_str):
     if isinstance(python_str , str):
         return F('python.identityFunction', toTable('return '+python_str))
@@ -1397,6 +1416,7 @@ def tempFunc(self, fcn, *args):
     return M(self, fcn, *args)
 
 mlib.LuaScript.__call__=tempFunc
+mlib.ThreadedScript.__call__=tempFunc
 mlib.ThreadScriptPool.__call__=tempFunc
 
 del tempFunc

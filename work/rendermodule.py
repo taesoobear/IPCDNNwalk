@@ -13,12 +13,17 @@ except:
 settings._loadDefault()
 m=settings.mlib
 lua=settings.lua
+assert(m is not None)
+assert(lua is not None)
 doNotGarbageCollect=[] # list of instances which should not be garbage collected. (e.g. loaders)
 
 # import all three in a line.
 # m,lua,control=RE.defaultModules()
 def defaultModules():
     return settings.mlib, settings.lua, settings.control
+def libcalab():
+    import sys
+    return edict(m=settings.mlib, RE=sys.modules[__name__], lua=settings.lua, control=settings.control)
 
 def addPanel(signal):
     if isinstance(signal, m.boolN):
@@ -29,8 +34,7 @@ def lookAt(pose, options=None, **kwargs):
     else:
         lua.M(m.viewpoint(), 'lookAt', pose, kwargs)
 
-def filename(full_path):
-    return lua.F('os.filename', full_path)
+def filename(full_path): return lua.F('os.filename', full_path)
 def createLoader(filename ,_options=None):
     if filename[-3:]=='wrl' :
         return edict({ 'loader':m.VRMLloader(filename)})
@@ -331,16 +335,6 @@ class CollisionDetector(lua.instance):
     def __init__(self, **kwargs):
         if 'var_name' in kwargs:
             self.var_name=kwargs['var_name']
-    def addModel(self, model):
-        self('addModel', model)
-    def isSignedDistanceSupported(self):
-        return self('isSignedDistanceSupported')
-    def calculateNearestSurfacePoint(self, icharacter, ibone, position):
-        return self('calculateNearestSurfacePoint', icharacter, ibone, position)
-    def addModel(self,v):
-        self('addModel', v)
-    def addObstacle(self,v):
-        self('addObstacle', v)
     def getModel(self, i):
         return self.call_nocopy('getModel', i)
 
@@ -379,10 +373,15 @@ class OnlineFilter(lua.instance):
         if lua:
             lua.M(self.var_name,'dtor')
             lua.dostring(self.var_name+'=nil')
-    def setCurrPose(self, posedof):
-        self('setCurrPose', posedof)
-    def getFiltered(self):
-        return self('getFiltered')
+class OnlineFilter6D(lua.instance):
+    def __init__(self, filterSize, loader=None):
+        lua.require('subRoutines/VelocityFields')
+        self.var_name='mFilter'+m.generateUniqueName()
+        lua.F_lua(self.var_name,'OnlineFilter6D',loader,None,filterSize)
+    def __del__(self):# this is called when garbage collected
+        if lua:
+            lua.M(self.var_name,'dtor')
+            lua.dostring(self.var_name+'=nil')
 class MaskedOnlineFilter:
     def __init__(self, filterSize, mask_for_filtered, loader=None):
         self.mask=mask_for_filtered
@@ -390,7 +389,7 @@ class MaskedOnlineFilter:
     def setCurrPose(self, posedof):
         self.filter.setCurrPose(posedof)
     def getFiltered(self):
-        unfiltered, filtered=self.filter('getCenterAndFiltered')
+        unfiltered, filtered=self.filter.getCenterAndFiltered()
         return filtered*self.mask - unfiltered*(self.mask-1.0)
 
 
@@ -518,17 +517,10 @@ class FBXloader(lua.instance):
     def loadSMPLmotion(self, mocap_framerate, trans, poses,_convertYUP=False):
         return lua.F('SMPL.loadMotion', lua.instance((self.var_name,'dd')), lua.instance((self.var_name,'loader')), mocap_framerate, trans, poses, _convertYUP).copy()
     loader=property( fget=_get_loader,)
-    def createSkinningInfo(self):
-        return self('createSkinningInfo')
-    def getPoseDOF(self):
-        return self('getPoseDOF')
-
     def _get_bindpose(self):
         return lua.G(self.var_name,'bindpose')
     def _get_currentPose(self):
         return lua.G(self.var_name,'currentPose')
-    def toVRMLloader(self,*args):
-        return lua.M(self,'toVRMLloader', *args)
     def _set_cacheCollisionMesh(self,mat):
         self.set('cacheCollisionMesh', mat)
 
@@ -578,6 +570,11 @@ def writeMujocoXML(self, xmlfile, options=None,**kwargs):
     else:
         lua.F('writeMujocoXML', self, xmlfile, kwargs)
 m.VRMLloader.exportXML=writeMujocoXML
+def createMujocoXMLstring(self, **kwargs):
+    if kwargs is None:
+        kwargs={'groundPlane':False}
+    lua.dostring('if not MujocoLoader then require("RigidBodyWin/subRoutines/MujocoLoader") end')
+    return lua.F('createMujocoXMLstring', self, kwargs)
 
 def MujocoLoader(filename, options=None):
     if filename[-4:]=='.wrl' :
@@ -638,7 +635,8 @@ def genesisIndexMap(robot, mLoader):
         if mLoader.dofInfo.numDOF(i)>0:
             actuated_bones.append(i)
 
-    dofs_TL_qidx2d= [robot.get_link(mLoader.bone(i).name()).joint.q_idx_local for i in actuated_bones] 
+    # from genesis 0.3, link.joint became link.joints
+    dofs_TL_qidx2d= [robot.get_link(mLoader.bone(i).name()).joints[0].q_idx_local for i in actuated_bones] 
     # quaternion dofs (qpos) ordered according to taesooLib convention 
     return flatten(dofs_TL_qidx2d)
 def getTLpose(robot, dofs_TL_qidx, irow=None):
@@ -693,10 +691,8 @@ class Constraints(lua.instance):
         eventFunction_"""+self.var_name+"""=function(ev, i)
             python.F('"""+moduleName+"','"+eventFunctionName+"""', ev, i)
         end
-        """+self.var_name+""":connect(eventFunction_"""+self.var_name+""")
         """)
-    def handleRendererEvent(self, ev, button, x, y):
-        return int(lua.M1_dbl(self.var_name, 'handleRendererEvent', ev, button, x, y))
+        lua.M(self,'connect',  lua.instance('eventFunction_'+self.var_name))
 
 def WRLloader(filename, *kwargs):
     if filename[-4:]=='.wrl':
