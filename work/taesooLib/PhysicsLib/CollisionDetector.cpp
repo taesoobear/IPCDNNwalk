@@ -15,14 +15,11 @@ void OpenHRP::CollisionDetector::addModel(const char* charName, CharacterInfo co
 int OpenHRP::CollisionDetector::addObstacle(OBJloader::Geometry const& mesh)
 {
 	OpenHRP::CharacterInfo cinfo;
-	VRMLloader* l=new VRMLloader("../Resource/mesh/floor_y.wrl");
+	VRMLloader* l=new VRMLloader(mesh, false);
 	TString name=RE::generateUniqueName();
 	l->name=name;
 	l->url=name+".wrl";
 	RE::motionManager().createMotionLoaderExt(name, (MotionLoader*)l);
-	l->VRMLbone(1).mShape->mesh=mesh;
-	l->VRMLbone(1).mJoint->jointType=HRP_JOINT::FREE;
-	l->_initDOFinfo();
 	VRMLloader_updateMeshEntity(*l);
 	addModel(l);
 	return mTrees.size()-1;

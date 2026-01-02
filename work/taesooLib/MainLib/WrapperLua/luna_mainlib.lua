@@ -129,7 +129,6 @@ bindTargetBaseLib={
 		{
 			luaname='Physics.ContactInfo2D',
 			cppname='ContactInfo',
-			ifdef='USE_GJKEPA2D',
 			decl=[[#include "../../BaseLib/math/GJK_EPA_2D/ConvexShape.h"]],
 			properties=[[
 			vector2 posA
@@ -141,7 +140,6 @@ bindTargetBaseLib={
 		{
 			luaname='Physics.ConvexShape2D',
 			cppname='ConvexShape',
-			ifdef='USE_GJKEPA2D',
 			ctors=[[
 			(const vector2N& local_vertices)
 			]],
@@ -206,7 +204,6 @@ bindTargetBaseLib={
 		{
 			luaname='util.C3Dfile',
 			cppname='ezc3d::c3d',
-			ifdef="USE_EZC3D",
 			decl=[[#include "../../dependencies/ezc3d/include/ezc3d/ezc3d.h"]],
 			ctors=[[(const char*)]],
 			memberFunctions={[[
@@ -217,7 +214,6 @@ bindTargetBaseLib={
 		{
 			luaname='util.C3dParameters',
 			cppname='ezc3d::ParametersNS::Parameters',
-			ifdef="USE_EZC3D",
 			decl=[[#include "../../dependencies/ezc3d/include/ezc3d/Parameters.h"]],
 			memberFunctions={[[
 			void print() const;
@@ -232,7 +228,6 @@ bindTargetBaseLib={
 		{
 			luaname='util.C3dData',
 			cppname='ezc3d::DataNS::Data',
-			ifdef="USE_EZC3D",
 			decl=[[#include "../../dependencies/ezc3d/include/ezc3d/Data.h"]],
 			memberFunctions={[[
 			void print() const;
@@ -243,7 +238,6 @@ bindTargetBaseLib={
 		{
 			luaname='util.C3dFrame',
 			cppname='ezc3d::DataNS::Frame',
-			ifdef="USE_EZC3D",
 			decl=[[
 			#include "../../dependencies/ezc3d/include/ezc3d/Frame.h"
 			]],
@@ -269,7 +263,6 @@ bindTargetBaseLib={
 		{
 			luaname='util.C3dGroup',
 			cppname='ezc3d::ParametersNS::GroupNS::Group',
-			ifdef="USE_EZC3D",
 			decl=[[#include "../../dependencies/ezc3d/include/ezc3d/Group.h"]],
 			memberFunctions=[[
 			bool isEmpty() const;
@@ -285,7 +278,6 @@ bindTargetBaseLib={
 		{
 			luaname='util.C3dParameter',
 			cppname='ezc3d::ParametersNS::GroupNS::Parameter',
-			ifdef="USE_EZC3D",
 			wrapperCode=[[
 			inline static TStrings valuesAsString(ezc3d::ParametersNS::GroupNS::Parameter const &p)
 			{
@@ -2304,7 +2296,6 @@ bindTargetBaseLib={
 				},
 		{
 			decl='#include "../../BaseLib/utility/VoxelGraph.h"',
-			ifdef='USE_VOXELGRAPH',
 			luaname='shortvector3', --necessary
 			cppname='VoxelGraph::shortvector3',
 			ctors=  -- constructors 
@@ -2346,7 +2337,6 @@ bindTargetBaseLib={
 		},
 		{
 			decl='class Image3D;',
-			ifdef='USE_VOXELGRAPH',
 			luaname='Image3D', --necessary
 			cppname='VoxelGraph::Image3D',
 			ctors=  -- constructors 
@@ -2361,7 +2351,6 @@ bindTargetBaseLib={
 		},
 		{
 			luaname='Int3D',
-			ifdef='USE_VOXELGRAPH',
 			cppname='VoxelGraph::CoordinateToNodeIndex',
 			ctors=  -- constructors 
 			{
@@ -2395,7 +2384,6 @@ bindTargetBaseLib={
 		},
 		{
 			luaname='vec_shortvector3',
-			ifdef='USE_VOXELGRAPH',
 			className='std::vector<VoxelGraph::shortvector3>',
 			ctors={'()'},
 			memberFunctions=[[
@@ -2406,7 +2394,6 @@ bindTargetBaseLib={
 		},
 		{
 			decl='class VoxelGraph;',
-			ifdef='USE_VOXELGRAPH',
 			name='VoxelGraph',
 			ctors={'(int ndim_x, int ndim_y, int ndim_z, VoxelGraph::Image3D* filter)'},
 			properties={
@@ -3712,7 +3699,6 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 		{
 			decl='class LuaScript;',
 			name='LuaScript',
-			ifdef='USE_THREADEDSCRIPT',
 			ctors={'()', },
 			memberFunctions=[[
 			int luaType(int i)  
@@ -3791,19 +3777,18 @@ struct EventReceiver_lunawrapper: FltkMotionWindow ::EventReceiver, FrameMoveObj
 		},
 		{
 			decl='class ThreadedScript;',
-			ifdef='USE_THREADEDSCRIPT',
 			name='ThreadedScript',
 			inheritsFrom='LuaScript',
 			ctors={'()', },
 			memberFunctions=[[
 			void threadedCall(int numIn) 
 			void waitUntilFinished()
+			void stop()
 			]]
 		},
 		{
 			decl='class ThreadScriptPool;',
 			name='ThreadScriptPool',
-			ifdef='USE_THREADEDSCRIPT',
 			ctors={'()', '(int)'},
 			memberFunctions=[[
 			void queueJob(const char* job);
@@ -4095,8 +4080,23 @@ static void inputType(FlLayout::Widget& w, const char* str)
 				}
 #endif
 			}
+			static FlLayout* parent(FlLayout::Widget& w)
+			{
+				return w._parent;
+			}
+			static TString widgetType(FlLayout::Widget& w)
+			{
+				return w.mType;
+			}
+			static TString widgetId(FlLayout::Widget& w)
+			{
+				return w.mId;
+			}
 			]],
 			staticMemberFunctions={[[
+			static FlLayout* parent(FlLayout::Widget& w)
+			static TString widgetType(FlLayout::Widget& w)
+			static TString widgetId(FlLayout::Widget& w)
 			static void checkButtonValue(FlLayout::Widget& w, int value)
 			static bool checkButtonValue2(FlLayout::Widget& w) @ checkButtonValue
 			static void checkButtonValue3(FlLayout::Widget& w, bool value) @ checkButtonValue
@@ -5201,7 +5201,11 @@ inheritsFrom='MotionDOF'
 		{
 			name='AnimationObject',
 			inheritsFrom='FrameMoveObject',
+			ctors={'()'},
 			properties={'vector3 m_vTrans',},
+			memberFunctions=[[
+				void attachTimer(float frameTime, int numFrames)
+			]]
 		},
 		{
 			name='LuaAnimationObject',
@@ -5226,20 +5230,9 @@ inheritsFrom='MotionDOF'
 					} 
 					return AnimationObject::FrameMove(fElapsedTime);
 				}
-				void attachTimer(float frameTime, int numFrames)
-				{
-					if (m_pTimer) delete m_pTimer;
-					InterpolatorLinear * pInterpolator=new InterpolatorLinear();
-					pInterpolator->init(frameTime, numFrames);
-					m_pTimer=new TimeSensor();
-					m_pTimer->AttachInterpolator(pInterpolator);
-				}
 			};
 			]],
 			ctors={'()'},
-			memberFunctions=[[
-				void attachTimer(float frameTime, int numFrames)
-			]]
 		},
 		{
 			name='Ogre.ObjectList',
@@ -6585,6 +6578,7 @@ memberFunctions={[[
 				Ogre::SceneNode* RE::createChildSceneNode(Ogre::SceneNode* parent, const char* child_name);
 				OgreTraceManager* RE::createTraceManager();@;ifndef=NO_GUI;
 
+				AnimationObject* RE::createEmptyAnimationObject(int numFrames, float frameTime );
 				FrameSensor* RE::createFrameSensor();
 				TString RE::generateUniqueName(); 
 				static void RE_::remove(PLDPrimSkin* p)
@@ -6609,6 +6603,7 @@ memberFunctions={[[
 				bool RE_::renderOneFrame(bool check)
 				PLDPrimVRML* RE::createVRMLskin(VRMLloader*pTgtSkel, bool bDrawSkeleton) @ ;adopt=true; 
 				int RE::getOgreVersionMinor() 
+				int RE::taesooLibVersion() 
 				void RE::buildEdgeList(const char* meshName) 
 				void ::loadPose(Posture& pose, const char* fn) 
 				void ::savePose(Posture& pose, const char* fn)
@@ -6950,7 +6945,7 @@ typedef unsigned short ushort;
 		write('#include "../BaseLib/motion/ASFLoader.h"')
 		write('#include "../BaseLib/motion/BVHLoader.h"')
 		write('#include "../MainLib/OgreFltk/VRMLloader.h"')
-		--write('#include "../MainLib/WrapperLua/ThreadedScript.h"')
+		write('#include "../MainLib/WrapperLua/ThreadedScript.h"')
 		writeDefinitions(bindTargetMainLib, 'Register_mainlib') -- input bindTarget can be non-overlapping subset of entire bindTarget 
 		flushWritten(source_path..'/luna_mainlib.cpp') -- write to cpp file only when there exist modifications -> no-recompile.
 	end

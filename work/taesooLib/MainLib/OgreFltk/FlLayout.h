@@ -116,6 +116,7 @@ public:
 		Widget();
 		TString mId;
 		TString mType;
+		FlLayout* _parent;
 
 		float progressValue() const;
 		void progressValue(float v) ;

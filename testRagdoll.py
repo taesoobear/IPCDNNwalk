@@ -7,7 +7,7 @@ import math
 import random
 import copy
 
-from libcalab_ogre3d import *
+from libcalab_ogre3d import RE,m,lua,control
 import numpy as np
 from easydict import EasyDict as edict # pip3 install easydict
 

@@ -147,7 +147,8 @@ bool useSeperateOgreWindow()
 		_useSeperateOgreWindow=(str && atoi(str)==1);
 		_useSeperateOgreWindowCached=true;
 	}
-	return _useSeperateOgreWindow;
+	//return _useSeperateOgreWindow;
+	return false;
 #endif
 }
 
@@ -518,6 +519,9 @@ void OgreRenderer::_locateTaesooLib()
 		mScreenshotPrefix="work/taesooLib/dump/dump";
 		mPluginPath="work/";
 	}
+	else if(RE::taesooLibPath()!="../")
+		mScreenshotPrefix="work/taesooLib/dump/dump";
+
 }
 void OgreRenderer::_constructor(const char* fallback_configFileName, const char* configFileName, const char* _plugins_file, const char* ogre_config)
 {
@@ -574,6 +578,12 @@ void OgreRenderer::_constructor(const char* fallback_configFileName, const char*
 	mRoot = new Ogre::Root(&abiCookie, plugins_file.c_str(), ogre_config, (log)?"":"Ogre.log");
 	printf("."); fflush(stdout);
 
+	printf("-"); fflush(stdout);
+	mMovableTextFactory=new Ogre::MovableTextFactory();
+	mRoot->addMovableObjectFactory(mMovableTextFactory);
+		
+	printf("\b*"); fflush(stdout);
+
 	bool loadStatic=true;
 	if( mRoot->getAvailableRenderers().size()==0)
 	{
@@ -596,10 +606,7 @@ void OgreRenderer::_constructor(const char* fallback_configFileName, const char*
 #endif
 		loadStatic=false;
 	}
-	static Ogre::MovableTextFactory _mMovableTextFactory;
-	mMovableTextFactory=&_mMovableTextFactory;
-	mRoot->addMovableObjectFactory(mMovableTextFactory);
-		
+
 	if(loadStatic)
 		mStaticPluginLoader.install( mRoot );
 	Ogre::RenderSystemList::const_iterator itor = mRoot->getAvailableRenderers().begin();
@@ -614,7 +621,7 @@ void OgreRenderer::_constructor(const char* fallback_configFileName, const char*
 		++itor;
 	}
 
-	printf("."); fflush(stdout);
+	printf("\b."); fflush(stdout);
 
 
 #endif	
@@ -1060,8 +1067,15 @@ void OgreRenderer::initialize(void* handle, int width, int height)
 		setupResources();
 		printf("\b7"); fflush(stdout);
 		vectorn param(2);
+#if !defined(_MSC_VER)&& !defined(__APPLE__)&& !defined(NO_OGRE)
+		// on linux , w may be different from width when incorrectly configured.
+		param(0)=(double)mWnd->getWidth();
+		param(1)=(double)mWnd->getHeight();
+		//printf("%f %f %d %d\n", param(0), param(1), width, height);
+#else
 		param(0)=width;
 		param(1)=height;
+#endif
 
 		mViewports.resize(mViewports.size()+1);
 		mViewports.back()=new Viewport();
@@ -1745,7 +1759,7 @@ void OgreRenderer::addNewViewport()
 
 
 }
-#define TEXTURE_MAX_RESOLUTION 2048
+#define TEXTURE_MAX_RESOLUTION 1024
 int OgreRenderer::_getOgreTextureWidth(const char* texturename)
 {
 	

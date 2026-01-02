@@ -42,6 +42,7 @@ end
 ]]--
 
 
+-- only for C++ types
 function dbg.lunaType(c)
 	if type(c)~='userdata' then
 		return type(c)

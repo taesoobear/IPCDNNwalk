@@ -1,12 +1,7 @@
-import os
-import sys
-import pdb # use pdb.set_trace() for debugging
-#import code # or use code.interact(local=dict(globals(), **locals())) for debugging. see below.
-import math
-import random
+import os, sys, pdb, math, random
 
 
-from libcalab_ogre3d import *
+from libcalab_ogre3d import RE,m,lua,control
 import numpy as np
 from easydict import EasyDict as edict # pip3 install easydict
 

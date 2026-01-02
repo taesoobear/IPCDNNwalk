@@ -10,6 +10,7 @@
 #include <OgreSceneManager.h>
 #include <OgreEntity.h>
 #include "renderer.h"
+#include "../BaseLib/motion/viewpoint.h"
 
 
 #include <OgreMaterialManager.h>
@@ -97,10 +98,10 @@ void QuadList::fillHardwareBuffers()
    vector3 pos[4], texCoord[4] ;      
 
    vector3 axis1, axis2;
-
-	axis1.cross(mNormal, vector3(0,0,1));
+	quater qy(RE::renderer().viewport().m_pViewpoint->m_fHAngle, vector3(0,1,0));
+	axis1.cross(mNormal, qy*vector3(0,0,1));
 	if(axis1.length()<0.01)
-		axis1.cross(mNormal, vector3(1,0,0));
+		axis1.cross(mNormal, qy*vector3(1,0,0));
 
 	axis1.normalize();
 	axis2.cross(axis1, mNormal);
@@ -203,7 +204,8 @@ void ColorWidthBillboardLineList::line(int i, vector3 const& start, vector3 cons
 }
 ColorPointList::ColorPointList()
 {
-	initialize(Ogre::OT_POINT_LIST, false);
+//	initialize(Ogre::OT_POINT_LIST, false); // doesn't work
+	initialize(Ogre::OT_TRIANGLE_LIST, false);
 
 }
 
@@ -231,7 +233,8 @@ void ColorPointList::createVertexDeclaration()
 	vertexElements.push_back( Ogre::VertexElement2( Ogre::VET_FLOAT3, Ogre::VES_POSITION ) );
 	// vertex color doesn't work without pbs modification.
 	//vertexElements.push_back( Ogre::VertexElement2( Ogre::VET_FLOAT3, Ogre::VES_DIFFUSE ) );
-	offset+=sizeof(float)*3;
+	vertexElements.push_back( Ogre::VertexElement2( Ogre::VET_FLOAT2, Ogre::VES_TEXTURE_COORDINATES ) );
+	offset+=sizeof(float)*5;
 	mRenderOp.offset=offset;
 }
 
@@ -247,6 +250,7 @@ void ColorPointList::fillHardwareBuffers()
 		return; 
 	}
 
+#if 0
    // Initialization stuff 
 	prepareHardwareBuffers(mPoints.size(), 0);
 
@@ -264,10 +268,80 @@ void ColorPointList::fillHardwareBuffers()
 	   *prPos++ = pp.x; 
 	   *prPos++ = pp.y; 
 	   *prPos++ = pp.z; 
-	   //*prPos++ = mColors[i].x;
-	   //*prPos++ = mColors[i].y;
+	   *prPos++ = mColors[i].x;
+	   *prPos++ = mColors[i].y;
 	   //*prPos++ = mColors[i].z;
    }
+#else
+	prepareHardwareBuffers(mPoints.size()*6, 0);
+
+
+   // Drawing stuff 
+   int size = mPoints.size(); 
+
+   vector3 mNormal;
+   RE::renderer().viewport().m_pViewpoint->GetViewDir(mNormal);
+   mNormal.normalize();
+   mNormal*=-1;
+
+   m_real halfWidth=0.5;
+   vector3 pos[4], texCoord[4] ;      
+
+   vector3 axis1, axis2;
+
+	axis1.cross(mNormal, vector3(0,1,0));
+	if(axis1.length()<0.01)
+		axis1.cross(mNormal, vector3(1,0,0));
+
+	axis1.normalize();
+	axis2.cross(axis1, mNormal);
+
+   pos[0]=axis1*halfWidth+axis2*halfWidth;
+   pos[1]=axis1*halfWidth+axis2*-halfWidth;
+   pos[2]=axis1*-halfWidth+axis2*-halfWidth;
+   pos[3]=axis1*-halfWidth+axis2*halfWidth;
+
+   texCoord[0]=vector3(1, 0, 1);
+   texCoord[1]=vector3(1, 0, 0);
+   texCoord[2]=vector3(0, 0, 0);
+   texCoord[3]=vector3(0, 0, 1);
+
+   for(int i=0; i<4; i++)
+	   texCoord[i]*=0.01; // near-constant tex coord is fine.
+
+   vector3 pp;
+
+   float* prPos=(float*) vertices;
+   for(int i = 0; i < size; i++) 
+   {   
+	   double width=mColors[i].z;
+	   for(int j=0; j<3; j++)
+	   {
+		   pp=pos[j]*width+mPoints[i];
+			// lower triangle
+			*prPos++ = (float)pp.x; 
+			*prPos++ = (float)pp.y; 
+			*prPos++ = (float)pp.z; 
+			*prPos++ = (float)mColors[i].x+texCoord[j].x;
+			*prPos++ = (float)1.0-mColors[i].y+texCoord[j].z;
+	   }
+
+	   for(int index=0; index<3; index++)
+	   {
+		   // upper triangle
+		   int j=(index+2)%4; // 2 3 0
+		   pp=pos[j]*width+mPoints[i];
+			// upper triangle
+			*prPos++ = (float)pp.x; 
+			*prPos++ = (float)pp.y; 
+			*prPos++ = (float)pp.z; 
+			*prPos++ = (float)mColors[i].x+texCoord[j].x;
+			*prPos++ = (float)1.0-mColors[i].y+texCoord[j].z;
+	   }
+   }
+   assert(((unsigned char*)prPos)==vertices+(mRenderOp.offset*size*6));
+
+#endif
 
    	finalizeHardwareBuffers();
 }

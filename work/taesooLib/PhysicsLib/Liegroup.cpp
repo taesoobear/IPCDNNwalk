@@ -1,5 +1,5 @@
 #include "physicsLib.h"
-#include "../BaseLib/motion/Liegroup.h"
+#include "../../BaseLib/motion/Liegroup.h"
 #include "Liegroup.h"
 
 #include "GMBS_implementation/gbody_rigid.h"

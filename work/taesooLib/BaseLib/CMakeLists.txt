@@ -313,7 +313,7 @@ ${math}
 ${image} 
 ${motion}
 ${utility}
-#${GJK_EPA_2d}
+${GJK_EPA_2d}
 )
 
 include_directories (${TAESOOLIB_DIR}/dependencies/ezc3d/include)
@@ -351,7 +351,7 @@ set(src_ezc3d
 if (WIN32)
 add_library(BaseLib 
 	${src_baselib}
-	#	${src_ezc3d}
+	${src_ezc3d}
 )
 
 target_link_libraries(BaseLib
@@ -362,12 +362,12 @@ else()
 	if(useShared)
 		add_library(BaseLib SHARED
 			${src_baselib}
-			#${src_ezc3d}
+			${src_ezc3d}
 			)
 	else()
 		add_library(BaseLib
 			${src_baselib}
-			#${src_ezc3d}
+			${src_ezc3d}
 			)
 	endif()
 	target_link_libraries(BaseLib ${IMAGE_LIBS})

@@ -12,7 +12,9 @@
 AnimationObject::AnimationObject()
 {
 	m_pTimer=NULL;
+#ifndef NO_OGRE
 	m_pSceneNode=NULL;
+#endif
 	mbVisible=true;
 
 	mType="AnimationObject";
@@ -31,12 +33,14 @@ AnimationObject::~AnimationObject()
 
 		delete m_pTimer;
 	}
+#ifndef NO_OGRE
 	if(m_pSceneNode)
 	{
 		RE::removeEntity(m_pSceneNode);
 		//((Ogre::SceneNode*)m_pSceneNode->getParent())->removeAndDestroyChild(m_pSceneNode->getName());
 		m_pSceneNode=NULL;
 	}
+#endif
 }
 
 void AnimationObject::setTranslation(float x, float y, float z)
@@ -59,6 +63,15 @@ int AnimationObject::FrameMove(float fElapsedTime)
 	return ret;
 }
 
+void AnimationObject::attachTimer(float frameTime, int numFrames)
+{
+
+	if (m_pTimer) delete m_pTimer;
+	InterpolatorLinear * pInterpolator=new InterpolatorLinear();
+	pInterpolator->init(frameTime, numFrames);
+	m_pTimer=new TimeSensor();
+	m_pTimer->AttachInterpolator(pInterpolator);
+}
 void AnimationObject::SetVisible(bool bVisible)
 {
 #ifndef NO_OGRE

@@ -377,3 +377,76 @@ function MainLib.VRMLloader:printLUA()
 	print('return '..table.toHumanReadableString(self:toTable()[3]))
 end
 
+function MainLib.VRMLloader:toCollisionLoader(totalMass, nConvex)
+	require("Kinematics/meshTools")
+	nConvex = nConvex or 6
+
+	local fbx_info={}
+	do 
+		-- create fbxinfo by merging submeshes into one
+		local tot_mesh=0
+		local meshes={}
+		for i=1, self:numBone()-1 do
+			if self:VRMLbone(i):hasShape() then
+				tot_mesh=tot_mesh+1
+			end
+		end
+		
+		local mm=util.MeshMerger(tot_mesh)
+		tot_mesh=0
+		local imesh_to_ibone={}
+
+		self:updateInitialBone()
+		for i=1, self:numBone()-1 do
+			if self:VRMLbone(i):hasShape() then
+				meshes[i]=self:VRMLbone(i):getMesh():copy()
+				meshes[i]:transform(matrix4(self:VRMLbone(i):getFrame()))
+				mm:setInputMesh(tot_mesh, meshes[i])
+				imesh_to_ibone[tot_mesh]=i
+				tot_mesh=tot_mesh+1
+			end
+		end
+		local mesh=Mesh()
+		local skin=SkinnedMeshFromVertexInfo()
+		if tot_mesh==1 and self:VRMLbone(1):hasShape() then
+			mesh=meshes[1]
+			skin:resize(mesh:numVertex())
+			for i=0, mesh:numVertex()-1 do
+				skin:treeIndices(i):assign(CT.ivec(1))
+				skin:weights(i):assign(CT.vec(1.0))
+			end
+		else
+			mm:mergeMeshes(mesh)
+			skin:resize(mesh:numVertex())
+			for i=0, mesh:numVertex()-1 do
+				local imesh=mm:get_imesh(i)
+				local ivert=mm:get_ivert(i)
+				local ibone=imesh_to_ibone[imesh]
+				skin:treeIndices(i):assign(CT.ivec(ibone))
+				skin:weights(i):assign(CT.vec(1.0))
+				--skin:localPos(i):setSize(1)
+				--skin:localPos(i)(0):assign(mesh:getVertex(i))
+			end
+		end
+		--skin:calcVertexPositions(self, mesh) 
+		skin:calcLocalVertexPositions(self, mesh)
+
+		local skinScale=100
+		fbx_info.loader=self
+		fbx_info.mesh=mesh
+		fbx_info.skinningInfo=skin -- share
+		fbx_info.bindPose=Pose()
+		self:getPose(fbx_info.bindPose)
+		local bindposes={}
+		--assert(self.loader:numBone()==fbx_info.loader:numBone()) -- can be different
+		local loader=fbx_info.loader
+		for i=1, loader:numBone()-1 do
+			bindposes[i]= matrix4(loader:bone(i):getFrame():inverse())
+		end
+		fbx_info.bindposes=bindposes
+	end
+
+	local temp=SkinToWRL(fbx_info, { maxConvex= nConvex })
+	temp.skel:setTotalMass(totalMass)
+	return temp.skel
+end

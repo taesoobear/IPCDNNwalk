@@ -432,7 +432,6 @@ set(LUNA_GEN ${PhysicsLib_SOURCE_DIR}/../MainLib/WrapperLua/luna_gen.lua)
 add_custom_command(
 	OUTPUT "${luna_script}/luna_physics.cpp"
 	DEPENDS "${luna_script}/luna_physics.lua" "${LUNA_GEN}" 
-	PRE_BUILD
 	COMMAND lua "${LUNA_GEN}" "${luna_script}/luna_physics.lua"
 )
 list(APPEND src "${luna_script}/luna_physics.cpp")
@@ -500,9 +499,13 @@ BaseLib
 MainLib
 ${LUA_LIB}
 #${OGRE_LIBS}
-${lapack_LIBS}
 fcl
 )
+if(NOT NoLapack)
+	target_link_libraries(PhysicsLib
+		${lapack_LIBS}
+	)
+endif()
 if(MSVC)
 target_compile_options(PhysicsLib PRIVATE $<$<CONFIG:DEBUG>:/bigobj>)
 endif()

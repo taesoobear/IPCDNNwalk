@@ -230,7 +230,12 @@ Ogre::MovableObject	* createObject(const char* _node_name, const char* typeName,
 			quads->end();
 		}
 		if(materialName&& strlen(materialName)>0)
-			_setMaterial(quads, materialName);
+			if(TString(materialName).left(5)=="Point") // materials for ogre 1.0
+				_setMaterial(quads, "colormap"); // resort to the default material
+			else
+				_setMaterial(quads, materialName);
+		else
+			_setMaterial(quads, "colormap");
 		return quads;
 	}
 	else 

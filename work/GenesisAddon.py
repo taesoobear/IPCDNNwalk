@@ -1,5 +1,6 @@
 libcalab=None
 import genesis as gs
+from . import genesis_mod
 import numpy as np
 import time,pdb
 # a simple taesooLib style wrapper. assumes Euler joints (except for the free root joint)
@@ -27,7 +28,8 @@ class GenesisSim:
         #else:
         gs.init(backend=gs.cpu)  # cpu runs much faster when a render-window exists.
 
-        self.scene=gs.Scene(
+        #self.scene=gs.Scene(
+        self.scene=genesis_mod.Scene(
             sim_options=gs.options.SimOptions( 
                 dt=timestep,
                 gravity=(-g.x, -g.y,-g.z),

@@ -86,6 +86,7 @@ namespace RE
 	MotionLoader* motionLoader(const char* name);
 	MotionLoader* createMotionLoader(const char* filename, const char * key);
 	
+	int taesooLibVersion();
 	Ogre::SceneManager* ogreSceneManager();
 	Ogre::SceneNode* ogreRootSceneNode();
 	Ogre::ObjectMemoryManager* _objectMemoryManager();

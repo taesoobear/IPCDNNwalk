@@ -128,6 +128,26 @@ if RE.getOgreVersionMinor()>=12 then
 	light:setCastShadows(false)
 	lightnode:attachObject(light)
 elseif RE.getOgreVersionMinor()<=3 then
+
+	if RE.renderer().getConfig then
+		local st=RE.renderer():getConfig('shadowTechnique')
+		if st==0 then
+			-- no shadow
+			RE.ogreSceneManager():setAmbientLight(0.4, 0.4, 0.4)
+			light=RE.ogreSceneManager():createLight("Mainlight")
+			light:setType("LT_DIRECTIONAL")
+			light:setDiffuseColour(2.6,2.6,2.6)
+			light:setSpecularColour(0.2,0.2,0.2)
+
+			local node=lightnode:createChildSceneNode("mainlightnode")
+			local dir=vector3(-0.5,-0.7,0.5)
+			dir:normalize()
+			node:setDirection(dir)
+			node:attachObject(light)
+			return
+		end
+	end
+
 	local function randomNormal()
 		return (math.random()-0.5)*2
 	end
@@ -136,11 +156,11 @@ elseif RE.getOgreVersionMinor()<=3 then
 	local lightVar=0.02
 
 	local light1D=1.4
-	local light1S=0.6
+	local light1S=0
 	local lightOD=0.0
 	local lightOS=0.0
 	local lightFD=0.3
-	local lightFS=0.3
+	local lightFS=0
 
 	RE.ogreSceneManager():setAmbientLight(0.4, 0.4, 0.4)
 	for i=1,numMainLights do

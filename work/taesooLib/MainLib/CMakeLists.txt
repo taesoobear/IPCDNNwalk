@@ -13,8 +13,8 @@ endif()
 
 set(NoGSL TRUE)
 
+add_subdirectory(${TAESOOLIB_DIR}/dependencies/lua-5.1.5/src ./build_${CMAKE_BUILD_TYPE} )
 if(WIN32)
-	add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../windows_dependencies/lua-5.1.5/src ./build_lua)
 else()
 	if (BUILD_CONSOLE )
 	else()
@@ -115,7 +115,6 @@ function (add_luna_baselib x)
 add_custom_command(
 	OUTPUT "${luna_script}/${x}"
 	DEPENDS "${luna_script}/luna_baselib.lua" "${luna_script}/luna_mainlib.lua" "${LUNA_GEN}" 
-	PRE_BUILD
 	COMMAND lua "${LUNA_GEN}" "${luna_script}/luna_baselib.lua"
 	)
 endfunction()
@@ -141,14 +140,14 @@ LIST(APPEND src
 	"./WrapperLua/FlLayoutLua.h"
   "./WrapperLua/ScriptWin.cpp"
   "./WrapperLua/ScriptWin.h"
-  #  "./WrapperLua/ThreadedScript.cpp"
-  #"./WrapperLua/ThreadedScript.h"
+  "./WrapperLua/ThreadedScript.cpp"
+  "./WrapperLua/ThreadedScript.h"
 	)
 
 if(WIN32)
 LIST(APPEND src 
 	"./OgreFltk/Fl_Native_File_Chooser-0.84/Fl_Native_File_Chooser.cxx"
-	"./OgreFltk/Fl_Native_File_Chooser-0.84/Fl_Native_File_Chooser_WIN32.cxx"
+	#"./OgreFltk/Fl_Native_File_Chooser-0.84/Fl_Native_File_Chooser_WIN32.cxx"
 	)
 elseif(APPLE)
 	if (BUILD_CONSOLE )
@@ -177,10 +176,10 @@ endif()
 
 
 IF(UNIX)
-  target_link_libraries(MainLib
+	target_link_libraries(MainLib
     BaseLib
+	lua51
 	#${Luabind_LIB}
-	${LUA_LIB}
     )
 	IF(NOT NoGSL)
 		target_link_libraries(MainLib

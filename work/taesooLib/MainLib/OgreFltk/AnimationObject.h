@@ -17,7 +17,9 @@ public:
 	bool GetVisible() const { return mbVisible;}
 	virtual int FrameMove(float fElapsedTime);
 
+#ifndef NO_OGRE
 	Ogre::SceneNode* m_pSceneNode;
+#endif
 	TimeSensor* m_pTimer;
 	vector3 m_vTrans;
 
@@ -27,6 +29,7 @@ public:
 
 	const TString& getType() const	{return mType;}
 
+	void attachTimer(float frameTime, int numFrames);
 protected:
 
 	TString mType;

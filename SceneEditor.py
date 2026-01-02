@@ -1,4 +1,3 @@
-# this file contains a line-by-line python port of /Users/taesookwon/d/taesooLib/Resource/scripts/RigidBodyWin/GUI_tools/SceneEditor.lua
 import os,sys, pdb, math, random, copy 
 from libcalab_ogre3d import RE, m, lua, control # see rendermodule.py
 import numpy as np
@@ -54,7 +53,8 @@ this.widget(0).menuValue(0)
 sceneGraph=RE.SceneGraph()
 sceneGraph.createUI(this)
 
-sceneGraph.addEntity('penguin.mesh')
+item=sceneGraph.addEntity('penguin.mesh', localScale=m.vector3(2))
+item.material='shiny'
 
 this.updateLayout()
 print('ctor finished')

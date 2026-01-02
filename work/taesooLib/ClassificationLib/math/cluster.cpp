@@ -556,11 +556,26 @@ void KMeanCluster::cluster(const TArray<vectorn>& aInputVec)
 
 	Cluster c;
 	matrixn input_centers;
-	matrixn centers;
 	m_aGroupIndex.setSize(aInputs.rows());
 	c.KMeanCluster(aInputs, m_nNumGroup, m_aGroupIndex, centers, input_centers);
 }
 
+intvectorn KMeanCluster::findGroupIndex(matrixn const& inputvectors, matrixn const& centers)
+{
+	int num_input=inputvectors.rows();
+	intvectorn group_index(num_input);
+	matrixn distMat;
+	double mindist;
+	m::distanceMat(distMat, inputvectors, centers);
+	for(int j=0;j<num_input;j++)
+	{
+		// for each data point, 가장 가까운 cluster로 지정
+		int l;
+		distMat.row(j).findMin(mindist, l);
+		group_index[j]=l;
+	}
+	return group_index;
+}
 void FuzzyCluster::cluster(const TArray<vectorn>& aInputVec)
 {
 	int column=aInputVec[0].size();

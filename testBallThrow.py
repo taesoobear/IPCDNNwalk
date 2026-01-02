@@ -1,7 +1,7 @@
 import os, sys, pdb, math, random
 
 
-from libcalab_ogre3d import *
+from libcalab_ogre3d import m, RE, lua, control
 
 import numpy as np
 from easydict import EasyDict as edict # pip3 install easydict

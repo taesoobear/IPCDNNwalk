@@ -99,6 +99,16 @@ bindTargetClassification={
 				self.cluster(inputvec);
 				return 0;
 			}
+			static void cluster2(Clustering& self, const matrixn& features)
+			{
+				TArray<vectorn> inputvec;
+
+				int n=features.rows();
+				inputvec.resize(n);
+				for (int i=0;i<n; i++)
+					inputvec[i]=features.row(i);
+				self.cluster(inputvec);
+			}
 			]],
 			customFunctionsToRegister ={'cluster'},
 			memberFunctions=[[
@@ -107,12 +117,21 @@ bindTargetClassification={
 				intvectorn& groupIndex()
 				void plot(matrixn const& samples,const char* fn);
 			]],
+			staticMemberFunctions=[[
+			void cluster2(Clustering& self, const matrixn& features) @ __call
+			]],
 		},
 		{
 			name='MotionClustering.KMeanCluster',
 			cppname='KMeanCluster',
 			ctor='(int numCluster)',
 			inheritsFrom='Clustering',
+			memberFunctions=[[
+			const matrixn& getCenters();
+			]],
+			staticMemberFunctions=[[
+			intvectorn KMeanCluster::findGroupIndex(matrixn const& inputvectors, matrixn const& centers)
+			]]
 		},
 		{
 			name='MotionClustering.GMMCluster',
@@ -271,7 +290,8 @@ bindTargetClassification={
 	modules={
 		{
 			namespace='EXT',
-			ifndef='NO_GUI',
+			--ifndef='NO_GUI',
+			if_='!defined(NO_GUI) && defined(INCLUDE_LOADER)',
 			wrapperCode=[[
 			static void register_classificationLib(Loader* Lll)
 			{

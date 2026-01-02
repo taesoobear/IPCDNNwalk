@@ -734,6 +734,102 @@ defineDerived(Mesh,
 	"drawFaceEdges",
 }
 )
+if VoxelGraphTools then
+	VoxelGraphTools.getWorldPosition=function (self, index)
+		local dim=self:getDimensions()
+		dim.y=0.0;
+		return index*0.02+vector3(0.01, 0.0, 0.01)-dim*0.01;
+	end
+	--  역함수.
+	VoxelGraphTools.getVoxelIndexContinuous = function(self, global_position) 
+		local dim=self:getDimensions()
+		dim.y=0.0
+		--global_position= index*0.02+vector3(0.01, 0.0, 0.01)-dim*0.01;
+		index= (global_position-(vector3(0.01, 0.0, 0.01)-dim*0.01))*50;
+		return index
+	end
+	VoxelGraphTools.getVoxelIndexClamped=function(self, global_position)
+		local index=self:getVoxelIndexContinuous(global_position)
+		local dim=self:getDimensions()
+		index.x=math.clamp(index.x, 0, dim.x-1)
+		index.y=math.clamp(index.y, 0, dim.y-1)
+		index.z=math.clamp(index.z, 0, dim.z-1)
+		return index
+	end
+	VoxelGraphTools.getDistScale=function(self)
+		return 0.02 --voxel 한칸의 world 길이
+	end
+	VoxelGraphTools.getBoundsMin=function(self)
+		return self:getWorldPosition(vector3(0,0,0))
+	end
+	VoxelGraphTools.getBoundsMax=function(self)
+		return self:getWorldPosition(self:getDimensions()-vector3(1,1,1))
+	end
+end
+
+Voxels=LUAclass() -- isFBX=true in SDFcollider so that SDF works.
+
+-- { bits= boolN(nx*ny*nz), shape= {nx, ny,nz} }
+function Voxels:__init(named_params)
+	if type(named_params)=='string' then
+		named_params={ filename=named_params}
+	end
+	if named_params.filename then
+		local tbl=util.loadTable(named_params.filename)
+		if not VoxelGraphTools then
+			error("You are using an outdated libcalab-ogre3d binary. Please update it.")
+		end
+		self.decomp=VoxelGraphTools(tbl.bits, unpack(tbl.shape))
+		self.filename=named_params.filename
+	elseif named_params.size then
+		local tbl=named_params
+		self.decomp=VoxelGraphTools(tbl.bits, unpack(tbl.shape))
+	end
+	self.dim=self.decomp:getDimensions()
+	self.dim_max=self.dim:maximum()
+	local decomp=self.decomp
+	self.bmin=decomp:getBoundsMin()
+	self.bmax=decomp:getBoundsMax()
+
+	local g=Geometry()
+	local boxSize=self.bmax-self.bmin
+	g:initBox(boxSize)
+	--g:rigidTransform(transf(self.bmax*0.5+self.bmin*0.5))
+
+	local loader=MainLib.VRMLloader(g, false)
+
+	local pose=loader:pose()
+	pose.translations(0):assign(self.bmax*0.5+self.bmin*0.5)
+	loader:setPose(pose)
+
+	self.loader=loader
+
+	--g_skin=RE.createSkin(loader)
+	--g_skin:setMaterial('lightgrey_verytransparent')
+	--g_skin:setScale(100)
+end
+
+function Voxels:getWorldPosition(index)
+	return self.decomp:getWorldPosition(index)
+end
+function Voxels:draw(node_name, skin_scale)
+	if not skin_scale then skin_scale=100 end
+	local OUTER_VOXEL=2
+	local INTERIOR_VOXEL=3
+	local SURFACE_VOXEL=4
+	local thickness=10 
+	local pos=vector3N()
+	for i =0, self.dim.x-1 do
+		for j =0, self.dim.y-1 do
+			for k =0, self.dim.z-1 do
+				if self.decomp:getVoxel(i,j,k)==SURFACE_VOXEL then
+					pos:pushBack(self:getWorldPosition(vector3(i,j,k)))
+				end
+			end
+		end
+	end
+	dbg.drawBillboard( pos:matView()*skin_scale, 'line3', 'redCircle', thickness, 'QuadListV') --- QuadListV is view-dependent -> use drawBillboard
+end
 
 SDFcollider=LUAclass()
 -- options ={ debugDraw=false, }
@@ -972,6 +1068,7 @@ function SDFcollider:unpack(binaryFile, model)
 				local out=voxelIndex*self.mVoxelScale+self.bmin_local
 				return out*self.mScale+self.mCenter
 			end
+			model.decomp.getDistScale=ConvexDecomp.getDistScale
 			return true
 		end
 		local pcall_ok, msg= pcall(unpackColInfo, model)
@@ -1003,7 +1100,10 @@ function SDFcollider:_calculateBBOX(model, loader)
 	end
 end
 function SDFcollider:addModel(fbxloader, _optionalWRLloader)
-	if not fbxloader.fbxInfo then
+	if isinstance(fbxloader, Voxels) then
+		self:addVoxels(fbxloader)
+		return
+	elseif not fbxloader.fbxInfo then
 		-- fbx아니고 일반 모델(VRMLloader)인경우 
 
 		local model={}
@@ -1020,9 +1120,6 @@ function SDFcollider:addModel(fbxloader, _optionalWRLloader)
 	end
 	--local _,n=fbxloader.fbxInfo[3][1]:drawMesh('red_transparent', 'node2')
 	--n:scale(100,100,100)
-	local OUTER_VOXEL=2
-	local INTERIOR_VOXEL=3
-	local SURFACE_VOXEL=4
 	local DEBUG_DRAW=false
 	local DRAW_VOXEL_CENTER=false
 	local model={}
@@ -1110,263 +1207,10 @@ function SDFcollider:addModel(fbxloader, _optionalWRLloader)
 	local bmax=decomp:getBoundsMax()
 	local bcenter=bmin*0.5+bmax*0.5
 
-	model.bbox=Geometry()
-	model.bbox:initBox(bmax-bmin)
-	model.bbox_collider=Physics.CollisionSequence.createCollisionDetector_bullet()
-	model.bbox_collider:addObstacle(model.bbox)
-	do
-		local boxloader=model.bbox_collider:getModel(0)
-		local pose=boxloader:pose()
-		pose:setRootTransformation(transf(bcenter))
-		boxloader:setPose(pose)
-		model.bbox_collider:setWorldTransformations(0, boxloader:fkSolver())
-	end
+	self:_installBBoxCollider(model)
 
 	if not model.SDF then
-		local timer=util.Timer()
-		timer:start()
-		if true then
-
-			if true then
-				timer:start()
-				print("creating full-voxel graph...")
-				-- 아래 그래프의 노드 개수는 decomp:numInteriorVoxels()+decomp:numSurfaceVoxels()
-				local fullgraph=decomp:createGraphFromAllOccupantVoxels()  -- faster c++ implementation
-				model.interiorGraph=fullgraph
-				local graph2=fullgraph.graph
-				local nodeIndex2=fullgraph.nodeIndex
-				local nodes2=fullgraph.nodes
-
-
-				local interiorSDF=vectorn()
-				if true then
-					-- 이제 서피스 복셀들로부터 거리 계산.
-					local sourceNodeIndex=graph2:numNodes()
-					graph2:newNode()
-
-					local nvoxel=decomp:numSurfaceVoxels()
-
-					timer:start()
-					local node_dist=interiorSDF
-					--voxelcenter=vector3N(nvoxel)
-					for i=0, nvoxel-1 do
-						--voxelcenter(i):assign(decomp:getWorldPosition(decomp:getSurfaceVoxelIndex(i)) *scale+vector3(-offset_x,0,0))
-						local voxelIndex=decomp:getSurfaceVoxelIndex(i) -- 3D index
-						local nodeIndex=fullgraph.nodeIndex(voxelIndex) -- the corresponding graph node 
-						graph2:addEdge(sourceNodeIndex, nodeIndex,0)
-					end
-
-					graph2:Dijkstra(sourceNodeIndex, node_dist)
-
-					-- delete the temporary source
-					graph2:resize(sourceNodeIndex)
-
-					print('interior SDF calculation:', timer:stop2()*1e-3,'ms')
-				end
-
-				local skinScale=100
-				local offset_x=100
-				local draw_offset=vector3(offset_x, 0,0)
-				if self.options.debugDraw then
-					timer:start()
-					-- visualize a 2D slice (i, j, center_k)
-					local center=decomp:getDimensions()
-					local center_k=math.floor(center.z/2)
-					local maxDist=interiorSDF:maximum()
-					local points=matrixn(0, 6) -- each row contains (R, G, B, x, y, z)
-					for i=0, center.x-1 do
-						for j=0, center.y-1 do
-							local voxelIndex=vector3(i,j,center_k)
-							local voxeltype =decomp:getVoxel(voxelIndex)
-							if voxeltype~=OUTER_VOXEL then
-								-- nodeIndex function uses std::map, so it can be relatively slow compared to getVoxel.
-								local nodeIndex=fullgraph.nodeIndex(voxelIndex)
-								assert(nodeIndex~=-1)
-								local pos=decomp:getWorldPosition(voxelIndex)
-								local dist=interiorSDF(nodeIndex)
-								local R=sop.map(dist, 0,maxDist, 1,0)
-								local G=0
-								local B=sop.map(dist, 0,maxDist, 0,1)
-								local row=vectorn(6)
-								row:setVec3(0, vector3(R,G,B))
-								row:setVec3(3,pos*skinScale+draw_offset)
-								points:pushBack(row)
-							end
-						end
-					end
-					print('visualization:', timer:stop2()*1e-3,'ms')
-					dbg.draw( 'Traj', points, 'centerSDF', 'Point10', 0, 'PointList')
-				end
-
-				local exteriorSDF=vectorn()
-				local extgraph
-				if true then
-					extgraph=decomp:createGraphFromAllVacantVoxels()  -- faster c++ implementation
-					local graph3=extgraph.graph
-					model.exteriorGraph=extgraph
-					model.exteriorGraph_toSurfVoxel=intvectorn()
-					-- 이제 서피스 복셀들로부터 거리 계산.
-					local sourceNodeIndex=graph3:numNodes()
-					graph3:newNode()
-
-					local nvoxel=decomp:numSurfaceVoxels()
-
-					timer:start()
-					local node_dist=exteriorSDF
-					--voxelcenter=vector3N(nvoxel)
-					local isSurfaceVoxel=boolN(sourceNodeIndex)
-					for i=0, nvoxel-1 do
-						--voxelcenter(i):assign(decomp:getWorldPosition(decomp:getSurfaceVoxelIndex(i)) *scale+vector3(-offset_x,0,0))
-						local voxelIndex=decomp:getSurfaceVoxelIndex(i) -- 3D index
-						local nodeIndex=extgraph.nodeIndex(voxelIndex) -- the corresponding graph node 
-						graph3:addEdge(sourceNodeIndex, nodeIndex,0)
-						isSurfaceVoxel:set(nodeIndex, true)
-					end
-					local pred= model.exteriorGraph_toSurfVoxel
-					graph3:Dijkstra(sourceNodeIndex, node_dist, pred)
-
-					print('exterior SDF calculation:', timer:stop2()*1e-3,'ms')
-					timer:start()
-
-					local path={}
-					for i=0, isSurfaceVoxel:size()-1 do
-						if isSurfaceVoxel(i) then
-							assert(pred(i)==sourceNodeIndex)
-						elseif pred(i)==sourceNodeIndex then
-							-- pass
-						else
-							path[1]=i
-							local np=1
-							while pred(path[np])~=sourceNodeIndex do
-								np=np+1
-								path[np]=pred(path[np-1])
-							end
-							local last=pred(path[np-1])
-							for j=1, np-2 do
-								pred:set(path[j], last)
-							end
-						end
-					end
-
-
-					-- delete the temporary source
-					graph3:resize(sourceNodeIndex)
-					print('searching nearest vertices:', timer:stop2()*1e-3,'ms')
-
-				end
-
-
-				if self.options.debugDraw then
-					-- now, draw both inside and outside
-					timer:start()
-					-- visualize a 2D slice (i, j, center_k)
-					local center=decomp:getDimensions()
-					local center_k=math.floor(center.z/2)
-					local maxDist=math.max(exteriorSDF:maximum(),interiorSDF:maximum())
-					local minDist=-1*maxDist
-					--local maxDist=exteriorSDF:maximum()
-					--local minDist=0
-					local points=matrixn(0, 6) -- each row contains (R, G, B, x, y, z)
-					for i=0, center.x-1 do
-						for j=0, center.y-1 do
-							local voxelIndex=vector3(i,j,center_k)
-							local voxeltype =decomp:getVoxel(voxelIndex)
-							local pos=decomp:getWorldPosition(voxelIndex)
-							local dist
-							if voxeltype~=OUTER_VOXEL then
-								-- nodeIndex function uses std::map, so it can be relatively slow compared to getVoxel.
-								local nodeIndex=fullgraph.nodeIndex(voxelIndex)
-								assert(nodeIndex~=-1)
-								dist=-1*interiorSDF(nodeIndex)
-							else
-								local nodeIndex=extgraph.nodeIndex(voxelIndex)
-								assert(nodeIndex~=-1)
-								dist=exteriorSDF(nodeIndex)
-							end
-							local R=sop.map(dist, minDist,maxDist, 1,0)
-							local G=0
-							local B=sop.map(dist, minDist,maxDist, 0,1)
-							local row=vectorn(6)
-							row:setVec3(0, vector3(R,G,B))
-							row:setVec3(3,pos*skinScale+vector3(offset_x*2, 0,0))
-							points:pushBack(row)
-						end
-					end
-					print('visualization2:', timer:stop2()*1e-3,'ms')
-					dbg.draw( 'Traj', points, 'centerSDF2', 'Point10', 0, 'PointList')
-				end
-				model.sdf={interiorSDF, exteriorSDF}
-			end
-		end
-		print('voxelize:', timer:stop2()*1e-3,'ms')
-
-
-		local dim=decomp:getDimensions()
-		model.SDF=floatTensor(dim.x, dim.y, dim.z)
-		model.normal=Tensor(dim.x, dim.y, dim.z,3)
-
-		local function _calculateSDF(model, decomp, voxelIndexI)
-			local voxeltype =decomp:getVoxel(voxelIndexI)
-			local OUTER_VOXEL=2
-			local dist
-			--local dim=getDimensions()
-			--dbg.console()
-			if voxeltype==OUTER_VOXEL then
-				local nodeIndex=model.exteriorGraph.nodeIndex(voxelIndexI)
-				assert(nodeIndex~=-1)
-				dist=model.sdf[2](nodeIndex)
-			else
-				local nodeIndex=model.interiorGraph.nodeIndex(voxelIndexI)
-				assert(nodeIndex~=-1)
-				dist=-1*model.sdf[1](nodeIndex)
-			end
-			--print(dist, decomp:getScale(), decomp:getDimensions():maximum(), decomp:getBoundsMax()-decomp:getBoundsMin())
-			return dist*decomp:getScale()/decomp:getDimensions():maximum()
-		end
-		do
-			local SDF=model.SDF
-			local normal=model.normal
-			for i=0, dim.x-1 do
-				io.write('.')
-				io.flush()
-				for j=0, dim.y-1 do
-					for k=0, dim.z-1 do
-						SDF:set(i,j,k, _calculateSDF(model,decomp, vector3(i,j,k)))
-					end
-				end
-			end
-			local s2=2*decomp:getScale()/decomp:getDimensions():maximum() --voxel 두칸의 world 길이
-
-			for i=1, dim.x-2 do
-				io.write('.')
-				io.flush()
-				for j=1, dim.y-2 do
-					for k=1, dim.z-2 do
-						local G=vector3( 
-						(SDF(i+1,j,k)-SDF(i-1,j,k))/s2,
-						(SDF(i,j+1,k)-SDF(i,j-1,k))/s2,
-						(SDF(i,j,k+1)-SDF(i,j,k-1))/s2)
-						G:normalize()
-						normal:set(i,j,k, 0, G.x)
-						normal:set(i,j,k, 1, G.y)
-						normal:set(i,j,k, 2, G.z)
-					end
-					normal:slice(i,j,0,-1):assign( normal:slice(i,j,1,-1))
-					normal:slice(i,j,dim.z-1,-1):assign( normal:slice(i,j,dim.z-2,-1))
-				end
-				normal:slice(i,0,-1,-1):assign(normal:slice(i,1,-1,-1))
-				normal:slice(i,dim.y-1,-1,-1):assign(normal:slice(i,dim.y-2,-1,-1))
-			end
-			normal:slice(0,-1,-1,-1):assign(normal:slice(1,-1,-1,-1))
-			normal:slice(dim.x-1,-1,-1,-1):assign(normal:slice(dim.x-2,-1,-1,-1))
-		end
-
-		-- free unnecesary memory
-		model.interiorGraph=nil
-		model.sdf=nil
-		collectgarbage()
-		collectgarbage()
-		collectgarbage()
+		self:_calcSDF(model)
 
 		if true then
 			local timer=util.Timer()
@@ -1443,6 +1287,7 @@ function SDFcollider:addModel(fbxloader, _optionalWRLloader)
 				end
 			end
 
+			local dim=decomp:getDimensions()
 			local vertexIndices=floatTensor(dim.x, dim.y, dim.z)
 			vertexIndices:setAllValue(-1)
 
@@ -1520,7 +1365,332 @@ function SDFcollider:addModel(fbxloader, _optionalWRLloader)
 	table.insert(self.models,model)
 
 end
+function SDFcollider:_installBBoxCollider(model)
+	local decomp=model.decomp
+	local bmin=decomp:getBoundsMin()
+	local bmax=decomp:getBoundsMax()
+	local bcenter=bmin*0.5+bmax*0.5
+	model.bbox=Geometry()
+	model.bbox:initBox(bmax-bmin)
+	model.bbox_collider=Physics.CollisionSequence.createCollisionDetector_bullet()
+	model.bbox_collider:addObstacle(model.bbox)
+	do
+		local boxloader=model.bbox_collider:getModel(0)
+		local pose=boxloader:pose()
+		pose:setRootTransformation(transf(bcenter))
+		boxloader:setPose(pose)
+		model.bbox_collider:setWorldTransformations(0, boxloader:fkSolver())
+	end
+end
+function SDFcollider:addVoxels(v)
+	local model={}
+	model.isFBX=true
+	model.isVoxel=true
+	model.fbx=v
+	model.decomp=v.decomp
+	model.fk=BoneForwardKinematics(v.loader)
+	model.fk:assign(v.loader:fkSolver())
+	model.fk_bindpose=model.fk
+	model.collisionLoader=v.loader
+
+	self:_installBBoxCollider(model)
+	local cacheFile=(v.filename or '')..'.sdf'
+	local wcache=nil
+	if v.filename then
+		if os.isFileExist(cacheFile) then
+			local cache=util.BinaryFile()
+			print("loading cache:", cacheFile)
+			cache:openRead(cacheFile)
+
+			local version= cache:unpackInt()
+			if version~=1 then
+				-- 로딩 실패. 
+				os.deleteFiles(cacheFile)
+				wcache=util.BinaryFile()
+			else
+				model.SDF=floatTensor()
+				model.normal=Tensor()
+				model.vertexIndex=floatTensor()
+				cache:unpack(model.SDF)
+				cache:unpack(model.normal)
+			end
+		else
+			wcache=util.BinaryFile()
+		end
+	end
+	if not model.SDF then
+		self:_calcSDF(model)
+	end
+	assert(model.SDF)
+	if wcache then
+		wcache:openWrite(cacheFile)
+		wcache:packInt(1) -- cache format version. should be a negative number
+		wcache:pack(model.SDF)
+		wcache:pack(model.normal)
+		wcache:close()
+	end
+	table.insert(self.models,model)
+	self.detector:addModel(v.loader)
+	self:_calculateBBOX(model,  v.loader)
+
+	self:setWorldTransformations(#self.models-1, model.fk)
+end
+
+function SDFcollider:_calcSDF(model)
+	local decomp=model.decomp
+
+	local dim=decomp:getDimensions()
+	local timer=util.Timer()
+	timer:start()
+	if true then
+
+		if true then
+			timer:start()
+			print("creating full-voxel graph...")
+			-- 아래 그래프의 노드 개수는 decomp:numInteriorVoxels()+decomp:numSurfaceVoxels()
+			local fullgraph=decomp:createGraphFromAllOccupantVoxels()  -- faster c++ implementation
+			model.interiorGraph=fullgraph
+			local graph2=fullgraph.graph
+			local nodeIndex2=fullgraph.nodeIndex
+			local nodes2=fullgraph.nodes
+
+
+			local interiorSDF=vectorn()
+			if true then
+				-- 이제 서피스 복셀들로부터 거리 계산.
+				local sourceNodeIndex=graph2:numNodes()
+				graph2:newNode()
+
+				local nvoxel=decomp:numSurfaceVoxels()
+
+				timer:start()
+				local node_dist=interiorSDF
+				--voxelcenter=vector3N(nvoxel)
+				for i=0, nvoxel-1 do
+					--voxelcenter(i):assign(decomp:getWorldPosition(decomp:getSurfaceVoxelIndex(i)) *scale+vector3(-offset_x,0,0))
+					local voxelIndex=decomp:getSurfaceVoxelIndex(i) -- 3D index
+					local nodeIndex=fullgraph.nodeIndex(voxelIndex) -- the corresponding graph node 
+					graph2:addEdge(sourceNodeIndex, nodeIndex,0)
+				end
+
+				graph2:Dijkstra(sourceNodeIndex, node_dist)
+
+				-- delete the temporary source
+				graph2:resize(sourceNodeIndex)
+
+				print('interior SDF calculation:', timer:stop2()*1e-3,'ms')
+			end
+
+			local skinScale=100
+			local offset_x=100
+			local draw_offset=vector3(offset_x, 0,0)
+			if self.options.debugDraw then
+				timer:start()
+				-- visualize a 2D slice (i, j, center_k)
+				local center=decomp:getDimensions()
+				local center_k=math.floor(center.z/2)
+				local maxDist=interiorSDF:maximum()
+				local points=matrixn(0, 6) -- each row contains (R, G, B, x, y, z)
+				for i=0, center.x-1 do
+					for j=0, center.y-1 do
+						local voxelIndex=vector3(i,j,center_k)
+						local voxeltype =decomp:getVoxel(voxelIndex)
+						if voxeltype~=OUTER_VOXEL then
+							-- nodeIndex function uses std::map, so it can be relatively slow compared to getVoxel.
+							local nodeIndex=fullgraph.nodeIndex(voxelIndex)
+							assert(nodeIndex~=-1)
+							local pos=decomp:getWorldPosition(voxelIndex)
+							local dist=interiorSDF(nodeIndex)
+							local R=sop.map(dist, 0,maxDist, 1,0)
+							local G=0
+							local B=sop.map(dist, 0,maxDist, 0,1)
+							local row=vectorn(6)
+							row:setVec3(0, vector3(R,G,B))
+							row:setVec3(3,pos*skinScale+draw_offset)
+							points:pushBack(row)
+						end
+					end
+				end
+				print('visualization:', timer:stop2()*1e-3,'ms')
+				dbg.draw( 'Traj', points, 'centerSDF', 'Point10', 0, 'PointList')
+			end
+
+			local exteriorSDF=vectorn()
+			local extgraph
+			if true then
+				extgraph=decomp:createGraphFromAllVacantVoxels()  -- faster c++ implementation
+				local graph3=extgraph.graph
+				model.exteriorGraph=extgraph
+				model.exteriorGraph_toSurfVoxel=intvectorn()
+				-- 이제 서피스 복셀들로부터 거리 계산.
+				local sourceNodeIndex=graph3:numNodes()
+				graph3:newNode()
+
+				local nvoxel=decomp:numSurfaceVoxels()
+
+				timer:start()
+				local node_dist=exteriorSDF
+				--voxelcenter=vector3N(nvoxel)
+				local isSurfaceVoxel=boolN(sourceNodeIndex)
+				for i=0, nvoxel-1 do
+					--voxelcenter(i):assign(decomp:getWorldPosition(decomp:getSurfaceVoxelIndex(i)) *scale+vector3(-offset_x,0,0))
+					local voxelIndex=decomp:getSurfaceVoxelIndex(i) -- 3D index
+					local nodeIndex=extgraph.nodeIndex(voxelIndex) -- the corresponding graph node 
+					graph3:addEdge(sourceNodeIndex, nodeIndex,0)
+					isSurfaceVoxel:set(nodeIndex, true)
+				end
+				local pred= model.exteriorGraph_toSurfVoxel
+				graph3:Dijkstra(sourceNodeIndex, node_dist, pred)
+
+				print('exterior SDF calculation:', timer:stop2()*1e-3,'ms')
+				timer:start()
+
+				local path={}
+				for i=0, isSurfaceVoxel:size()-1 do
+					if isSurfaceVoxel(i) then
+						assert(pred(i)==sourceNodeIndex)
+					elseif pred(i)==sourceNodeIndex then
+						-- pass
+					else
+						path[1]=i
+						local np=1
+						while pred(path[np])~=sourceNodeIndex do
+							np=np+1
+							path[np]=pred(path[np-1])
+						end
+						local last=pred(path[np-1])
+						for j=1, np-2 do
+							pred:set(path[j], last)
+						end
+					end
+				end
+
+
+				-- delete the temporary source
+				graph3:resize(sourceNodeIndex)
+				print('searching nearest vertices:', timer:stop2()*1e-3,'ms')
+
+			end
+
+
+			if self.options.debugDraw then
+				-- now, draw both inside and outside
+				timer:start()
+				-- visualize a 2D slice (i, j, center_k)
+				local center=decomp:getDimensions()
+				local center_k=math.floor(center.z/2)
+				local maxDist=math.max(exteriorSDF:maximum(),interiorSDF:maximum())
+				local minDist=-1*maxDist
+				--local maxDist=exteriorSDF:maximum()
+				--local minDist=0
+				local points=matrixn(0, 6) -- each row contains (R, G, B, x, y, z)
+				for i=0, center.x-1 do
+					for j=0, center.y-1 do
+						local voxelIndex=vector3(i,j,center_k)
+						local voxeltype =decomp:getVoxel(voxelIndex)
+						local pos=decomp:getWorldPosition(voxelIndex)
+						local dist
+						if voxeltype~=OUTER_VOXEL then
+							-- nodeIndex function uses std::map, so it can be relatively slow compared to getVoxel.
+							local nodeIndex=fullgraph.nodeIndex(voxelIndex)
+							assert(nodeIndex~=-1)
+							dist=-1*interiorSDF(nodeIndex)
+						else
+							local nodeIndex=extgraph.nodeIndex(voxelIndex)
+							assert(nodeIndex~=-1)
+							dist=exteriorSDF(nodeIndex)
+						end
+						local R=sop.map(dist, minDist,maxDist, 1,0)
+						local G=0
+						local B=sop.map(dist, minDist,maxDist, 0,1)
+						local row=vectorn(6)
+						row:setVec3(0, vector3(R,G,B))
+						row:setVec3(3,pos*skinScale+vector3(offset_x*2, 0,0))
+						points:pushBack(row)
+					end
+				end
+				print('visualization2:', timer:stop2()*1e-3,'ms')
+				dbg.draw( 'Traj', points, 'centerSDF2', 'Point10', 0, 'PointList')
+			end
+			model.sdf={interiorSDF, exteriorSDF}
+		end
+	end
+	print('voxelize:', timer:stop2()*1e-3,'ms')
+
+
+	local dim=decomp:getDimensions()
+	model.SDF=floatTensor(dim.x, dim.y, dim.z)
+	model.normal=Tensor(dim.x, dim.y, dim.z,3)
+
+	local function _calculateSDF(model, decomp, voxelIndexI)
+		local voxeltype =decomp:getVoxel(voxelIndexI)
+		local OUTER_VOXEL=2
+		local dist
+		--local dim=getDimensions()
+		--dbg.console()
+		if voxeltype==OUTER_VOXEL then
+			local nodeIndex=model.exteriorGraph.nodeIndex(voxelIndexI)
+			assert(nodeIndex~=-1)
+			dist=model.sdf[2](nodeIndex)
+		else
+			local nodeIndex=model.interiorGraph.nodeIndex(voxelIndexI)
+			assert(nodeIndex~=-1)
+			dist=-1*model.sdf[1](nodeIndex)
+		end
+		--print(dist, decomp:getScale(), decomp:getDimensions():maximum(), decomp:getBoundsMax()-decomp:getBoundsMin())
+		return dist*decomp:getDistScale()
+	end
+	do
+		local SDF=model.SDF
+		local normal=model.normal
+		for i=0, dim.x-1 do
+			io.write('.')
+			io.flush()
+			for j=0, dim.y-1 do
+				for k=0, dim.z-1 do
+					SDF:set(i,j,k, _calculateSDF(model,decomp, vector3(i,j,k)))
+				end
+			end
+		end
+		local s2=2*decomp:getDistScale() --voxel 두칸의 world 길이
+
+		for i=1, dim.x-2 do
+			io.write('.')
+			io.flush()
+			for j=1, dim.y-2 do
+				for k=1, dim.z-2 do
+					local G=vector3( 
+					(SDF(i+1,j,k)-SDF(i-1,j,k))/s2,
+					(SDF(i,j+1,k)-SDF(i,j-1,k))/s2,
+					(SDF(i,j,k+1)-SDF(i,j,k-1))/s2)
+					G:normalize()
+					normal:set(i,j,k, 0, G.x)
+					normal:set(i,j,k, 1, G.y)
+					normal:set(i,j,k, 2, G.z)
+				end
+				normal:slice(i,j,0,-1):assign( normal:slice(i,j,1,-1))
+				normal:slice(i,j,dim.z-1,-1):assign( normal:slice(i,j,dim.z-2,-1))
+			end
+			normal:slice(i,0,-1,-1):assign(normal:slice(i,1,-1,-1))
+			normal:slice(i,dim.y-1,-1,-1):assign(normal:slice(i,dim.y-2,-1,-1))
+		end
+		normal:slice(0,-1,-1,-1):assign(normal:slice(1,-1,-1,-1))
+		normal:slice(dim.x-1,-1,-1,-1):assign(normal:slice(dim.x-2,-1,-1,-1))
+	end
+
+	-- free unnecesary memory
+	model.interiorGraph=nil
+	model.sdf=nil
+	collectgarbage()
+	collectgarbage()
+	collectgarbage()
+
+end
 function SDFcollider:addObstacle(v)
+	if isinstance(v, Voxels) then
+		self:addVoxels(v)
+		return
+	end
 	local model={}
 	model.isFBX=false
 	table.insert(self.models,model)
@@ -1597,6 +1767,12 @@ function SDFcollider:calculateNearestSurfacePoint(iloader, ibody, in_global_pos)
 				dbg.draw("Line2", bpose_pos*100+vector3(100,0,0), (bpose_pos-new_normal_in_B*newdist)*100+vector3(100,0,0), tostring(iloader)..'__'..tostring(ibody))
 			end
 
+			if model.isVoxel and voxelIndexI then
+				local new_surfacepoint=in_global_pos-new_normal_in_B*newdist
+				return newdist, new_surfacepoint, new_normal_in_B
+			end
+
+
 			--if voxelIndexI and (newdist<0 or dist<0.05) then
 			if voxelIndexI and newdist<0 then
 				dist=newdist
@@ -1608,6 +1784,24 @@ function SDFcollider:calculateNearestSurfacePoint(iloader, ibody, in_global_pos)
 			end
 		end
 	end
+	if model.isVoxel then
+		-- BB가 타이트하지 않으므로 추가작업 필요. 
+		local posOnBBox=in_global_pos-out_normal*dist
+		local voxelIndexI=model.decomp:getVoxelIndexClamped(posOnBBox)
+		local clampPos=model.decomp:getWorldPosition(voxelIndexI)
+		local new_normal=vector3()
+		local newdist, voxelIndexI=self:_calculateSignedDistanceBindPoseInsideBB(model, model.decomp, clampPos, new_normal)
+		assert(voxelIndexI)
+		local new_surfacepoint=clampPos-new_normal*newdist
+		local dist=new_surfacepoint:distance(in_global_pos)
+		new_normal=new_surfacepoint-in_global_pos
+		new_normal:scale(1.0/dist)
+		return dist, new_surfacepoint, new_normal
+
+
+	end
+
+
 	return dist, in_global_pos-out_normal*dist, out_normal
 end
 function SDFcollider:isSignedDistanceSupported() 
@@ -1685,10 +1879,8 @@ function SDFcollider:_calculateSignedDistanceBindPose(model, global_position, ou
 		local out_normal2=vector3()
 		local inside_dist=self:_calculateSignedDistanceBindPoseInsideBB(model, decomp, inside_point, out_normal2)
 		local surfacePoint=inside_point-out_normal2*inside_dist
-		if dbg_draw then
-			dbg.draw('Sphere', inside_point*100,'pp')
-			dbg.draw('Sphere', surfacePoint*100,'pp2')
-		end
+		--dbg.draw('Sphere', inside_point*100,'pp')
+		--dbg.draw('Sphere', surfacePoint*100,'pp2')
 		out_normal:assign(global_position-surfacePoint)
 		out_normal:normalize()
 
@@ -1697,6 +1889,10 @@ function SDFcollider:_calculateSignedDistanceBindPose(model, global_position, ou
 end
 
 if ConvexDecomp then
+
+	function ConvexDecomp:getDistScale()
+		return self:getScale()/self:getDimensions():maximum()
+	end
 	-- save computation results to a file
 	function SDFcollider:pack(model, binaryFile)
 		binaryFile:packInt(-3) -- cache format version. should be a negative number

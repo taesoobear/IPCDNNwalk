@@ -53,12 +53,42 @@ hlms redCircle unlit
     scene_blend alpha_blend
 	diffuse_map RedCircle.png
 }
+hlms icons/add unlit
+{
+	diffuse		1 1 1
+	specular 0 0 0
+	emissive 0.0 0.0 0.00
+	depth_write false // optional, but recommended for alpha blended geometry
+   transparency_mode transparent
+	//depth_check false
+    scene_blend alpha_blend
+	diffuse_map add.png
+}
+hlms icons/forbidden unlit
+{
+	diffuse		1 1 1
+	specular 0 0 0
+	emissive 0.0 0.0 0.00
+	depth_write false // optional, but recommended for alpha blended geometry
+    scene_blend alpha_blend
+	diffuse_map Forbidden.png
+}
+hlms icons/refresh unlit
+{
+	diffuse		1 1 1
+	specular 0 0 0
+	emissive 0.0 0.0 0.00
+	depth_write false // optional, but recommended for alpha blended geometry
+	//depth_check false
+    scene_blend alpha_blend
+	diffuse_map refresh.png
+}
 hlms redCircle_noztest unlit
 {
 	diffuse		1 1 1
 	specular 0 0 0
 	emissive 0.0 0.0 0.00
-	depth_test false
+	depth_check false
 	depth_write false // optional, but recommended for alpha blended geometry
     scene_blend alpha_blend
 	diffuse_map RedCircle.png

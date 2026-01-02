@@ -1220,15 +1220,15 @@ a wrapper class of a lua variable (any type)
 """
 class instance(ArgumentProcessor):
     # lua.instance("lua variable name") can also be used as an lua.F(*) argument.
-    def __init__(self, python_var):
-        if isinstance(python_var, str):
-            self.var_name=python_var
-        elif isinstance(python_var, tuple):
-            self.var_name=list(python_var)
-        elif isinstance(python_var, list):
-            self.var_name=python_var
+    def __init__(self, lua_var):
+        if isinstance(lua_var, str):
+            self.var_name=lua_var
+        elif isinstance(lua_var, tuple):
+            self.var_name=list(lua_var)
+        elif isinstance(lua_var, list):
+            self.var_name=lua_var
         else:
-            self.var_name=python_var.var_name
+            self.var_name=lua_var.var_name
         self.dependent=[]
     def push(self, l):
         _getGlobal(self.var_name)

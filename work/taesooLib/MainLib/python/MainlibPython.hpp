@@ -28,7 +28,7 @@
 #include "../../MainLib/WrapperLua/LUAwrapper.h"
 #include "../../MainLib/WrapperLua/luna_baselib.h"
 #include "../../MainLib/WrapperLua/luna_mainlib.h"
-//#include "../../MainLib/WrapperLua/ThreadedScript.h"
+#include "../../MainLib/WrapperLua/ThreadedScript.h"
 #include "../../PhysicsLib/luna_physics.h"
 #include "../../MainLib/WrapperLua/mainliblua_wrap.h"
 #include "../../BaseLib/motion/Terrain.h"
@@ -110,9 +110,11 @@ void VRMLloader_checkMass(VRMLloader& l);
 #include <numpy/arrayobject.h>
 #include <numpy/ndarrayobject.h>
 
-using namespace pybind11;
-#include <pybind11/operators.h>
+#include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+#include <pybind11/operators.h>
+
+using namespace pybind11;
 
 #if PY_MAJOR_VERSION >= 3
 #define IS_PY3K
@@ -483,6 +485,7 @@ std::string get_Widget_mType(FlLayout::Widget const& w)
 {
 	return w.mType.ptr();
 }
+/*
 #if PY_VERSION_HEX >= 0x03000000
 void *
 #else
@@ -495,12 +498,17 @@ initialize()
   return NULL;
 #endif
 }
+*/
 
 PYBIND11_MODULE(libmainlib, mainlib)
 {
+	if (_import_array() < 0) {
+        throw std::runtime_error("NumPy initialization failed");
+    }
+	mainlib.doc()="taesoolib: libmainlib";
 	void (*createMainWin1)(int, int,int, int, float)=&createMainWin;
 	void (*createMainWin2)(int, int,int, int, float, const char*, const char*, const char*)=&createMainWin;
-	initialize(); // import_array
+	//initialize(); // import_array
 	//boost::python::numpy::array::set_module_and_type("numpy", "ndarray");
 	mainlib.def("showMainWin", showMainWin)
 #ifndef NO_GUI
@@ -515,9 +523,9 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("createMainWin", createMainWin2)
 		.def("releaseMainWin", releaseMainWin)
 		.def("_createInvisibleMainWin", _createInvisibleMainWin)
-		//.def("ThreadScriptPoolWithPhysicsLib", &ThreadScriptPoolWithPhysicsLib)
-		//.def("ThreadedScriptWithPhysicsLib", &ThreadedScriptWithPhysicsLib)
-		.def("startMainLoop", startMainLoop)
+		.def("ThreadScriptPoolWithPhysicsLib", &ThreadScriptPoolWithPhysicsLib)
+		.def("ThreadedScriptWithPhysicsLib", &ThreadedScriptWithPhysicsLib)
+		//.def("startMainLoop", startMainLoop)
 		.def("getPythonWin", getPythonWin, RETURN_REFERENCE)
 		.def("hasPythonWin", hasPythonWin)
 #ifdef NO_GUI
@@ -564,14 +572,13 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("renderOneFrame", (bool (*)(bool check))&RE_::renderOneFrame) // 1446
 		.def("loadPose", (void (*)(Posture& pose, const char* fn))&::loadPose) // 1446
 		.def("savePose", (void (*)(Posture& pose, const char* fn))&::savePose) // 1446
-		.def("getSceneNode", (Ogre ::SceneNode * (*)(PLDPrimSkin* skin))&RE::getSceneNode) // 1446
-		.def("getSceneNode", (Ogre ::SceneNode * (*)(const char* id))&RE::getSceneNode) // 1446
-		.def("createSceneNode", (Ogre ::SceneNode * (*)(const char* node_name))&RE::createSceneNode) // 1446
-		.def("createChildSceneNode", (Ogre ::SceneNode * (*)(Ogre::SceneNode* parent, const char* child_name))&RE::createChildSceneNode) // 1446
+		.def("getSceneNode", (Ogre ::SceneNode * (*)(PLDPrimSkin* skin))&RE::getSceneNode, return_value_policy::reference) // 1446
+		.def("getSceneNode", (Ogre ::SceneNode * (*)(const char* id))&RE::getSceneNode, return_value_policy::reference) // 1446
+		.def("createSceneNode", (Ogre ::SceneNode * (*)(const char* node_name))&RE::createSceneNode, return_value_policy::reference) // 1446
+		.def("createChildSceneNode", (Ogre ::SceneNode * (*)(Ogre::SceneNode* parent, const char* child_name))&RE::createChildSceneNode, return_value_policy::reference) // 1446
 		.def("createSkin", (PLDPrimSkin * (*)(const Motion&))&RE::createSkin) // 1446
 		.def("createSkin", (PLDPrimSkin * (*)(const MotionLoader&))&RE::createSkin) // 1446
 		.def("createVRMLskin", (PLDPrimVRML * (*)(VRMLloader*pTgtSkel, bool bDrawSkeleton))&RE::createVRMLskin, TAKE_OWNERSHIP) // 1446
-		.def("createChildSceneNode", (Ogre ::SceneNode * (*)(Ogre::SceneNode* parent, const char* child_name))&RE::createChildSceneNode, RETURN_REFERENCE) // 1446
 		.def("generateUniqueName", []()->std::string{
 				return std::string(RE::generateUniqueName().ptr());})
 		.def("taesooLibPath", &RE::taesooLibPath)
@@ -1488,7 +1495,7 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("pack", (void (BinaryFile::*)(const Tensor& mat))&BinaryFile::pack) // 1445
 			.def("unpackInt", (int (BinaryFile::*)())&BinaryFile::unpackInt) // 1445
 			.def("unpackFloat", (double (BinaryFile::*)())&BinaryFile::unpackFloat) // 1445
-			.def("unpackStr", (TString (BinaryFile::*)())&BinaryFile::unpackStr) // 1445
+			.def("unpackStr", [](BinaryFile & self)->std::string{ return std::string(self.unpackStr().ptr()); })
 			.def("unpack", (void (BinaryFile::*)(vectorn& vec))&BinaryFile::unpack) // 1445
 			.def("unpack", (void (BinaryFile::*)(vector3& vec))&BinaryFile::unpack) // 1445
 			.def("unpack", (void (BinaryFile::*)(quater& vec))&BinaryFile::unpack) // 1445
@@ -1504,7 +1511,7 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("unpack", (void (BinaryFile::*)(Tensor& mat))&BinaryFile::unpack) // 1445
 			.def("_unpackInt", (int (BinaryFile::*)())&BinaryFile::_unpackInt) // 1445
 			.def("_unpackFloat", (double (BinaryFile::*)())&BinaryFile::_unpackFloat) // 1445
-			.def("_unpackStr", (TString (BinaryFile::*)())&BinaryFile::_unpackStr) // 1445
+			.def("_unpackStr", [](BinaryFile & self)->std::string{ return std::string(self._unpackStr().ptr()); })
 			.def("_unpackVec", (void (BinaryFile::*)(vectorn& vec))&BinaryFile::_unpackVec) // 1445
 			.def("_unpackVec", (void (BinaryFile::*)(intvectorn& vec))&BinaryFile::_unpackVec) // 1445
 			.def("_unpackSPVec", (void (BinaryFile::*)(vectorn& vec))&BinaryFile::_unpackSPVec) // 1445
@@ -2069,6 +2076,27 @@ PYBIND11_MODULE(libmainlib, mainlib)
 				})
 		.def("setDirection", [](Ogre::SceneNode* pNode, vector3 const& t){
 				OGRE_VOID( pNode->setDirection(t.x,t.y,t.z));
+				}) 
+		.def("getPosition", [](Ogre::SceneNode* pNode)->vector3{
+				vector3 t;
+#ifndef NO_OGRE
+				t=ToBase(pNode->getPosition());
+#endif
+				return t;
+				}) 
+		.def("getScale", [](Ogre::SceneNode* pNode)->vector3{
+				vector3 t;
+#ifndef NO_OGRE
+				t=ToBase(pNode->getScale());
+#endif
+				return t;
+				}) 
+		.def("getOrientation", [](Ogre::SceneNode* pNode)->quater{
+				quater t;
+#ifndef NO_OGRE
+				t=ToBase(pNode->getOrientation());
+#endif
+				return t;
 				}) 
 		.def("scale", [](Ogre::SceneNode* pNode, vector3 const& t){
 				OGRE_VOID(pNode->scale(t.x, t.y, t.z));
@@ -3843,7 +3871,6 @@ initSkeletonFromFile) // 1458
 		class_<lunaStack >(mainlib, "lunaStack")
 			;
 	}
-#ifdef USE_THREADED_SCRIPT
 {
 	class_<LuaScript > (mainlib, "LuaScript")                 // 1389
 															  // : number denotes the line number of luna_gen.lua that generated the sentence // 1392
@@ -3954,6 +3981,8 @@ initSkeletonFromFile) // 1458
 		.def("threadedCall", &ThreadedScript::threadedCall)           // 1445
 																	  //when necessary, check c++ header: .def("threadedCall", (void (ThreadedScript::*)(int numIn))&ThreadedScript::threadedCall) // 1446
 		.def("waitUntilFinished", &ThreadedScript::waitUntilFinished) // 1445
+		.def("stop", &ThreadedScript::stop)
+																	  //
 																	  //when necessary, check c++ header: .def("waitUntilFinished", (void (ThreadedScript::*)())&ThreadedScript::waitUntilFinished) // 1446
 		; // end of class impl___pybindgen___ThreadedScript           // 1506
 	class_<ThreadScriptPool > (mainlib, "ThreadScriptPool")   // 1389
@@ -3973,7 +4002,6 @@ initSkeletonFromFile) // 1458
 		.def("env", (LuaScript * (ThreadScriptPool::*)(int i))&ThreadScriptPool::env,return_value_policy::reference ) // 1451
 		; // end of class impl___pybindgen___ThreadScriptPool         // 1506
 	}
-#endif
 	{
 		struct PythonExtendWin_wrapper
 		{

@@ -119,6 +119,7 @@ public:
 	virtual void _packArray(void *buffer, int count, size_t size);
 	virtual void _unpackArray(void *buffer, int count, size_t size);
 
+	//       0           1          2             3           4            5            6              7          8               9         10         11
 	enum { TYPE_INT, TYPE_FLOAT, TYPE_FLOATN, TYPE_INTN, TYPE_BITN, TYPE_FLOATMN, TYPE_INTMN, TYPE_BITMN, TYPE_STRING, TYPE_STRINGN, TYPE_ARRAY , TYPE_EOF, TYPE_SPFLOAT, TYPE_SPFLOATN, TYPE_SPFLOATMN , TYPE_FLOATND, TYPE_SPFLOATND};
 
 	inline FILE*& _getFilePtr() { return m_pFile;}

@@ -277,6 +277,9 @@ int FltkRenderer::renderWindowWidth() const
 		RE::renderer().mWnd->getMetrics(width, height, left, top);
 		return width;
 	}
+#if !defined(_MSC_VER) && !defined (__APPLE__)
+	return RE::renderer().mWnd->getWidth();
+#endif
 
 	return (m_RenderView)?m_RenderView->w():w();
 }
@@ -289,6 +292,9 @@ int FltkRenderer::renderWindowHeight() const
 		RE::renderer().mWnd->getMetrics(width, height, left, top);
 		return height;
 	}
+#if !defined(_MSC_VER) && !defined (__APPLE__)
+	return RE::renderer().mWnd->getHeight();
+#endif
 	return (m_RenderView)?m_RenderView->h():h();
 }
 #endif
@@ -1259,6 +1265,12 @@ static void resizeOgreWin(OgreRenderer* mOgreRenderer, int ww, int hh)
 {
 	//mOgreRenderer->mWnd->resize(ww,hh);
 	mOgreRenderer->mWnd->windowMovedOrResized();
+#if !defined(_MSC_VER) && !defined (__APPLE__)
+	// on linux, window resize fails, so.
+	ww= mOgreRenderer->mWnd->getWidth();
+	hh = mOgreRenderer->mWnd->getHeight();
+	//printf("resizeOgreWin %d %d \n", ww, hh);
+#endif
 
 
 	double aspRatio=(double)ww/(double)hh;

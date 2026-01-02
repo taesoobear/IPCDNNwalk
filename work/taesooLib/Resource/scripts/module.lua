@@ -1425,10 +1425,6 @@ function dbg.drawWireBox(objectlist, tf, nameid, boxSize, skinScale, material, t
 		skinScale=100
 	end
    if RE.motionPanelValid() then
-	   if not dbg._cacheWireBoxMeshes then
-		   dbg._cacheWireBoxMeshes={}
-	   end
-	   local mesh=dbg._cacheWireBoxMeshes[nameid]
 	   function createWireBox(boxSize, skinScale)
 		   local mesh=vector3N(12*2)
 		   local fb=boxSize*skinScale*0.5
@@ -1462,16 +1458,7 @@ function dbg.drawWireBox(objectlist, tf, nameid, boxSize, skinScale, material, t
 
 		   return mesh
 	   end
-	   if not mesh then
-		   mesh=createWireBox(boxSize, skinScale)
-		   dbg._cacheBoxMeshes[nameid]=mesh
-	   end
-	   if not (mesh(0)==boxSize*skinScale*0.5) then
-		   dbg.console()
-		   mesh=createWireBox(boxSize, skinScale)
-	   end
-
-		mesh=mesh:copy()
+	   local mesh=createWireBox(boxSize, skinScale)
 	   mesh:rotate(tf.rotation)
 	   mesh:translate(tf.translation*skinScale)
 	   dbg.drawBillboard( mesh:matView(), nameid,material or 'solidblue', thickness or 1.5 ,"BillboardLineList")
@@ -3192,7 +3179,19 @@ function python.luaCall(varname, funcname, ...)
 	else
 		local func=obj[funcname]
 		assert(func)
-		out={func(obj, ...)}
+		-- using pcall
+		out={pcall(func, obj, ...)}
+		local pcall_ok =out[1]
+		if pcall_ok then
+			return unpack(table.isubset(out,2))
+		else
+			print('pcall error!', out[2])
+			dbg.console()
+			return unpack(table.isubset(out,2))
+		end
+
+		-- using normal call
+		--out={func(obj, ...)}
 	end
 	return unpack(out)
 end
@@ -3691,6 +3690,11 @@ end
 function Mesh:copy()
    local a=Mesh()
    a:assignMesh(self)
+   return a
+end
+function CImage:copy()
+   local a=CImage()
+   a:CopyFrom(self)
    return a
 end
 -- triangle index:int, barycentric-coefficients:vector3
@@ -4308,7 +4312,13 @@ function matrixn:linspace(a, b)
 		self:column(col):linspace(self(0, col), self(n-1, col))
 	end
 end
-defineDerived(matrixn, {matrixnView, MotionDOF, MotionDOFview}, {"extract", "shape", "T", "dotProduct", "isnan", "makeCyclic", "linspace", "calcDerivative_sub", "fromTable2D", "assign33", "isSimilar", "identity", "__tostring", "__div", "derivative", "fromTable", "toTable", "zero", "LeftDiv", "concat", "__concat", "Transpose", "Inverse", "__eq","pushBackUtil","copy", "setValues","__unm","multAdiagB","setSymmetric" ,"sub","slice", "size","sample"})
+function matrixn:at(i)
+	if i<0 then
+		return self:row(self:rows()+i)
+	end
+	return self:row(i)
+end
+defineDerived(matrixn, {matrixnView, MotionDOF, MotionDOFview}, {"at", "extract", "shape", "T", "dotProduct", "isnan", "makeCyclic", "linspace", "calcDerivative_sub", "fromTable2D", "assign33", "isSimilar", "identity", "__tostring", "__div", "derivative", "fromTable", "toTable", "zero", "LeftDiv", "concat", "__concat", "Transpose", "Inverse", "__eq","pushBackUtil","copy", "setValues","__unm","multAdiagB","setSymmetric" ,"sub","slice", "size","sample"})
 defineDerived(intmatrixn, {intmatrixnView}, {"__tostring"})
 function vector3:__eq(b)
    local a=self
@@ -4576,7 +4586,7 @@ end
 function intvectorn:asBoolean()
 	local out=boolN(self:size())
 	for i=0, self:size()-1 do
-		out:set(i, self(i)~=0)
+		out:set(i, self(i)>0.5)
 	end
 	return out
 end
@@ -4720,6 +4730,7 @@ end
 
 intvectorn.slice=vectorn.slice
 floatvec.slice=vectorn.slice
+boolN.slice=vectorn.slice
 
 function vectorn:sample(refTime)
 	local c=vectorn()
@@ -6554,6 +6565,57 @@ end
 function MainLib.VRMLloader:copy()
 	return MainLib.VRMLloader(self)
 end
+
+function MainLib.VRMLloader:copyRemovingCompositeJoints()
+	require('subRoutines/WRLloader')
+	local out=self:toTable()
+	local function replaceNode(bone)
+		if bone.children then
+			for i, v in ipairs(bone.children) do
+				replaceNode(v)
+			end
+		end
+		if bone.jointType=='free' then
+			local name=bone.name
+			bone.name=name..'1' bone.jointType='slide' bone.jointAxis='X'
+			local node2={ jointType='slide', jointAxis='Y', name=name..'2', translation=vector3(0,0,0) }
+			local node3={ jointType='slide', jointAxis='Z', name=name..'3', translation=vector3(0,0,0) }
+			local node4={ jointType='rotate', jointAxis='Y', name=name..'4', translation=vector3(0,0,0) }
+			local node5={ jointType='rotate', jointAxis='Z', name=name..'5', translation=vector3(0,0,0) }
+			local node6={ jointType='rotate', jointAxis='X', name=name, translation=vector3(0,0,0) }
+			node6.geometry=bone.geometry
+			bone.geometry=nil
+			node6.children=bone.children
+			bone.children={node2}
+			node2.children={node3}
+			node3.children={node4}
+			node4.children={node5}
+			node5.children={node6}
+		elseif bone.jointType=='rotate' and bone.jointAxis:len()==2 then
+			local name=bone.name
+			local axis=bone.jointAxis
+			bone.name=name..'1' bone.jointType='rotate' bone.jointAxis=axis:sub(1,1)
+			local node2={ jointType='rotate', jointAxis=axis:sub(2,2), name=name, translation=vector3(0,0,0) }
+			node2.geometry=bone.geometry
+			bone.geometry=nil
+			node2.children=bone.children
+			bone.children={node2}
+		elseif bone.jointType=='rotate' and bone.jointAxis:len()==3 then
+			local name=bone.name
+			local axis=bone.jointAxis
+			bone.name=name..'1' bone.jointType='rotate' bone.jointAxis=axis:sub(1,1)
+			local node2={ jointType='rotate', jointAxis=axis:sub(2,2), name=name..'2', translation=vector3(0,0,0) }
+			local node3={ jointType='rotate', jointAxis=axis:sub(3,3), name=name, translation=vector3(0,0,0) }
+			node3.geometry=bone.geometry
+			bone.geometry=nil
+			node3.children=bone.children
+			bone.children={node2}
+			node2.children={node3}
+		end
+	end
+	replaceNode(out[3].body)
+	return MainLib.WRLloader(out[3])
+end
 function MotionLoader:printPose()
 	print(table.tostring2(self:pose():toTable()))
 end
@@ -6569,6 +6631,7 @@ function MotionLoader:copy()
 	self:exportSkeleton('_temp.skl')
 	return MotionLoader('_temp.skl')
 end
+
 
 -- DOFindex is different from DQindex due to quaternion w.
 function MotionLoader:dofName(dofIndex)
@@ -8493,18 +8556,32 @@ function FlLayout:menuItems(...)
 	self:widget(0):menuItems(tbl)
 end
 function FlLayout:addMenu(w_id,tbl)
-	this:create("Choice", w_id,'', 0)
-	this:widget(0):menuItems(tbl)
+	self:create("Choice", w_id,'', 0)
+	self:widget(0):menuItems(tbl)
 end
 function FlLayout.Widget:menuItems(tbl)
-	local w=self
-	local n=#tbl
-	self:menuSize(n)
-	for i=1, n do
-		assert(type(tbl[i])=='string')
-		self:menuItem(i-1, tbl[i])
+	local recursive=false
+	for i, v in ipairs(tbl) do
+		if type(v)=='table' then
+			recursive=true
+			break
+		end
 	end
-	self:menuValue(0)
+	if recursive then
+		if not self.parent then
+			error("You are using an outdated libcalab-ogre3d binary. Please update it.")
+		end
+		self:parent()('menuAddItem', self:widgetId(), tbl)
+	else
+		local w=self
+		local n=#tbl
+		self:menuSize(n)
+		for i=1, n do
+			assert(type(tbl[i])=='string')
+			self:menuItem(i-1, tbl[i])
+		end
+		self:menuValue(0)
+	end
 end
 
 -- _optional_targetLoader를 지정하면 poseTransfer가 사용된다. 즉 targetLoader와 Motion:getSkeleton()이 이 함수를 실행하는 시점에 같은 자세라고 가정함. 
@@ -9274,7 +9351,6 @@ end
 function RE.createAutoSkin(skel, drawSkeleton)
 	return RE.createSkin(skel, drawSkeleton)
 end
-
 function os.execute_command(command)
     local tmpfile = '/tmp/lua_execute_tmp_file'
     local exit = os.execute(command .. ' > ' .. tmpfile .. ' 2> ' .. tmpfile .. '.err')
@@ -9805,6 +9881,13 @@ if PLDPrimVRML then
 	end
 	PLDPrimSkin.setLengthAndPoseDOF=PLDPrimVRML.setLengthAndPoseDOF
 
+end
+
+-- for both c++ and lua class types
+function isinstance(c, type_metatable)
+	local mt= getmetatable(c)
+	if mt==nil then return false end
+	return mt==type_metatable
 end
 -- multiple line strings are not indented correctly in emacs lua-mode. 
 -- so I defined them separately here.

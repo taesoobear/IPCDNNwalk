@@ -10,20 +10,82 @@ except:
     import work.settings as settings
     settings.relativeMode=True
 
+from pathlib import Path
+import shutil
 settings._loadDefault()
+def libcalab():
+    import sys
+    return edict(m=settings.mlib, RE=sys.modules[__name__], lua=settings.lua, control=settings.control)
 m=settings.mlib
 lua=settings.lua
 assert(m is not None)
 assert(lua is not None)
 doNotGarbageCollect=[] # list of instances which should not be garbage collected. (e.g. loaders)
+_sceneGraphs=[]
+
+def path(path):
+    from pathlib import Path
+    path=os.path.normpath(path)
+    return Path(path)
 
 # import all three in a line.
 # m,lua,control=RE.defaultModules()
+def chooseFile(title, path, mask, write):
+    res= lua.F('Fltk.ChooseFile', title, path, mask, write)
+    if isinstance(res, tuple):
+        return None
+    return res
+
 def defaultModules():
     return settings.mlib, settings.lua, settings.control
-def libcalab():
-    import sys
-    return edict(m=settings.mlib, RE=sys.modules[__name__], lua=settings.lua, control=settings.control)
+def _compressVoxels(scene, optional_filename=None):
+    sceneCompressed=m.boolN(scene.shape[0]*scene.shape[1]*scene.shape[2])
+    sceneCompressed.setAllValue(False)
+    for i in range(scene.shape[0]):
+        for j in range(scene.shape[1]):
+            for k in range(scene.shape[2]):
+                occ=scene[i,j,k]
+                if occ:
+                    sceneCompressed.set(i*scene.shape[1]*scene.shape[2]+j*scene.shape[2]+k, True)
+    info={'shape':scene.shape, 'bits':sceneCompressed}
+    if optional_filename is not None:
+        saveTable(info, optional_filename)
+
+def create_cache_folder(path: str | Path, suffix=".cached", create=True) -> Path:
+    src = Path(path)
+
+    if not src.is_file():
+        raise FileNotFoundError(src)
+
+    parent = src.parent                      # aaa
+    cached_parent = parent.with_name(parent.name + suffix)  # aaa.cached
+    if create:
+        cached_parent.mkdir(parents=True, exist_ok=True)
+    return cached_parent, src.name
+class Voxels(lua.instance):
+    def __init__(self, filename_or_info):
+        lua.require("Kinematics/meshTools")
+        var_name='Voxels'+m.generateUniqueName()
+
+        if isinstance(filename_or_info, np.ndarray):
+            info=_compressVoxels(filename_or_info)
+            self.array=filename_or_info
+            lua.F_lua(var_name,'Voxels', info)
+        elif isinstance(filename_or_info, str):
+            if filename_or_info[-4:]=='.npy':
+                scene= np.load(filename_or_info)
+
+                cache_folder, filename=create_cache_folder(filename_or_info)
+                cache_file=cache_folder.joinpath(filename+'.compressed')
+
+                if not cache_file.is_file():
+                    info=_compressVoxels(scene, str(cache_file))
+                self.array=scene
+                lua.F_lua(var_name,'Voxels', str(cache_file))
+            else:
+                lua.F_lua(var_name,'Voxels', filename_or_info)
+        super().__init__(var_name)
+
 
 def addPanel(signal):
     if isinstance(signal, m.boolN):
@@ -128,6 +190,9 @@ m.transf.ZtoY=transf_ZtoY
 m.quater.YtoZ=quater_YtoZ
 m.vector3.YtoZ=vector3_YtoZ
 m.transf.YtoZ=transf_YtoZ
+def tempFunc(self):
+    return max(self.x, self.y, self.z)
+m.vector3.maximum=tempFunc
 
 
 def tempFunc(self, b):
@@ -213,6 +278,7 @@ def drawBillboard(*args):
         lua.F(('dbg', 'drawBillboard'),*args) 
         return
     lua.F(('dbg', 'drawBillboard'),*args) 
+
 def eraseAllDrawn():
     lua.F(('dbg', 'eraseAllDrawn'))
 def updateBillboards(fElapsedTime):
@@ -233,7 +299,23 @@ def removeEntityByName(name):
         m.removeEntity(n)
 def turnOffSoftShadows():
     lua.F(("RE","turnOffSoftShadows"))
+import time
+
+start_time = time.time()
+
 def renderOneFrame(check):
+    global start_time 
+    ctime=time.time()
+    elapsed =  ctime- start_time
+    start_time=ctime
+    if check:
+        if elapsed>1.0/30:
+            elapsed=1.0/30
+        if _sceneGraphs is not None:
+            for i, v in enumerate(_sceneGraphs):
+                for k, vv in v.objects.items():
+                    if vv.handleFrameMove is not None:
+                        vv.handleFrameMove(vv, elapsed)
     return m.renderOneFrame(check)
 def output(key, *args):
     m._output(key,str(args),1)
@@ -246,7 +328,10 @@ class Skins:
     def __init__(self, loaders, options=None):
         self.skins=[]
         for loader in loaders :
-            self.skins.append(createSkin(loader, options))
+            if loader is None:
+                self.skins.append(None)
+            else:
+                self.skins.append(createSkin(loader, options))
     def __len__(self):
         return len(self.skins)
     def __getitem__(self, i):
@@ -254,23 +339,29 @@ class Skins:
     def setScale(self, x,y=None,z=None):
         if y!=None:
             for skin in self.skins :
-                skin.setScale(x,y,z)
+                if skin is not None:
+                    skin.setScale(x,y,z)
         else:
             for skin in self.skins :
-                skin.setScale(x)
+                if skin is not None:
+                    skin.setScale(x)
     def setTranslation(self, x,y=None,z=None):
         if y!=None:
             for skin in self.skins :
-                skin.setTranslation(x,y,z)
+                if skin is not None:
+                    skin.setTranslation(x,y,z)
         else:
             for skin in self.skins :
-                skin.setTranslation(x)
+                if skin is not None:
+                    skin.setTranslation(x)
     def setMaterial(self, mat):
         for skin in self.skins :
-            skin.setMaterial(mat)
+            if skin is not None:
+                skin.setMaterial(mat)
     def setSamePose(self, sim):
         for i, skin in enumerate(self.skins):
-            skin.setSamePose(sim.pose(i))
+            if skin is not None:
+                skin.setSamePose(sim.pose(i))
 
 
 
@@ -660,6 +751,7 @@ def createSMPLskeleton(bm_path:str, betas=None):
     lua.dostring("""
     SMPL=require("smpl/smpl")
     """)
+    assert(path(bm_path).is_file())
     dd=lua.new('SMPL.init', bm_path)
     if betas is not None:
         dd.get('betas').range(0,len(betas)).ref()[:]=betas # change bodyshape (first 16 components)
@@ -1010,3 +1102,891 @@ def tempFunc(self, name, pose):
 m.PoseTransfer.__call__=tempFunc
 
 del tempFunc
+
+
+
+class SceneGraph:
+    def __init__(self):
+        global _sceneGraphs
+        lua.require('subRoutines/RayBoxCheck')
+        self.objects={}
+        self.objectList=m.ObjectList()
+        self._lastCursorPosOnMove=None
+        _sceneGraphs.append(self)
+    def __del__(self):# this is called when garbage collected
+        global _sceneGraphs
+        if _sceneGraphs is not None:
+            _sceneGraphs.remove(self)
+
+    def createUI(self, this, addHouseBuilder=False, snapToGrid=True):
+        self.layout=this
+
+        this.setWidgetHeight(80)
+        this.create("Multi_Browser","clip board","components",0)
+
+
+
+        this.resetToDefault()
+        this.newLine()
+        this.setWidgetHeight(80)
+
+        this.create("Multiline_Input",'sceneComponent_script')
+
+        this.resetToDefault()
+
+        this.create("Button","Run script","change property")
+        #this.newLine()
+
+        this.create("Check_Button","snap to grid","snap to grid")
+        if snapToGrid:
+            this.widget(0).checkButtonValue(1)
+        else:
+            this.widget(0).checkButtonValue(0)
+
+        this.create("Choice", "edit mode","edit mode",1)
+        this.widget(0).menuSize(12)
+        this.widget(0).menuItem(0,"none",'n')
+        this.widget(0).menuItem(1,"translate",'t')
+        this.widget(0).menuItem(2,"rotate",'r')
+        this.widget(0).menuItem(3,"scale",'s')
+        this.widget(0).menuItem(4,"translate Y")
+        this.widget(0).menuItem(5,"rotate Z")
+        this.widget(0).menuItem(6,"rotate XY")
+        this.widget(0).menuItem(7,"CLICK. remove",'q')
+        this.widget(0).menuItem(8,"CLICK. duplicate",'y')
+        this.widget(0).menuItem(9,"CLICK. rotate 90 about X",'z')
+        this.widget(0).menuItem(10,"CLICK. rotate 90 about Y",'x')
+        this.widget(0).menuItem(11,"CLICK. rotate 90 about Z",'c')
+        self.editModes=[ "none", "translate", "rotate", "scale", "translate Y" ,"rotate Z", "rotate XY"]
+
+        this.widget(0).menuValue(1)
+
+        if addHouseBuilder :
+            this.create("Choice", "change material","material",1)
+            this.widget(0).menuItems( [
+                ["Crowd materials", "Crowd/Blue","cagotruck.material", "Crowd/Red", "Crowd/Green", "Crowd/Red", "Crowd/Dirt", 
+                "Crowd/Dirt01", "Crowd/EgyptRocky", "Crowd/MtlPlat2", "Crowd/RustedMetal", "Crowd/TerrRock", "Crowd/Terrain", 
+                "CrowdEdit/Terrain1"],
+                ["Solid colors", "solidblue", "solidblack", "solidred", "solidlightgreen", "solidgreen", "solidwhite"],
+                ["Colors", "green", "white", "black","blue","red","lightgrey"],
+                ["Icons", "blueCircle", "redCircle", "icons/add", "icons/refresh","LAKEREM"]
+            ])
+            this.create("Choice", "change source","source",1)
+            this.widget(0).menuItems( [
+                ["Simple polygons", "sphere1010.mesh", "arrow.mesh", "cone.mesh", "axes.mesh", "cylinder.mesh"],
+                ["Static objects", "pave.mesh","cagotruck.mesh", "ogrehead.mesh"],
+                ["Ogre default meshes", "ogrehead.mesh", "athene.mesh", "Barrel.mesh", "column.mesh", "cube.mesh", "facial.mesh", "fish.mesh", "geosphere4500.mesh",
+                "geosphere8000.mesh", "knot.mesh", "ninja.mesh", "razor.mesh", "RZR-002.mesh", "sphere.mesh", "WoodPallet.mesh"],
+                ["Dynamic objects",  "muaythai1.mesh"],
+            ])
+
+            this.create("Choice","house","add house")
+            this.widget(0).menuSize(6)
+            this.widget(0).menuItem(0,"type 1",'6')
+            this.widget(0).menuItem(1,"type 2",'7')
+            this.widget(0).menuItem(2,"type 3",'8')
+            this.widget(0).menuItem(3,"type 4",'9')
+            this.widget(0).menuItem(4,"type 5",'0')
+            this.widget(0).menuItem(5,"type 6",'-')
+
+            this.create("Choice","create item")
+            this.widget(0).menuSize(8)
+            this.widget(0).menuItem(0,"choose item")
+            this.widget(0).menuItem(1,"item 1",'6')
+            this.widget(0).menuItem(2,"item 2",'7')
+            this.widget(0).menuItem(3,"item 3",'8')
+            this.widget(0).menuItem(4,"item 4",'9')
+            this.widget(0).menuItem(5,"item 5",'0')
+            this.widget(0).menuItem(6,"item 6",'-')
+            this.widget(0).menuItem(7,"item 7",'=')
+
+            this.create("Button", "build all houses", "build all houses")
+        this.updateLayout()
+    def handleEditingEvent(self, pushed,cur,ev,editMode)    :
+        this=self.layout
+
+        menu=this.findWidget("edit mode")
+
+        if (ev=='PUSH') :
+
+            menu.deactivate()
+            bSnapToGrid=this.findWidget("snap to grid").checkButtonValue()
+            browser=this.findWidget('clip board')
+            for i in range(1,browser.browserSize() +1):
+                if (browser.browserSelected(i)) :
+                    graph=self.getInfo(browser, i)
+                    pushed.selectedItems.append(graph)
+                    graph.push_state=self.copyInfo(graph)
+
+            self.drawIcon(editMode, pushed, pushed.cursorPos)
+            return 1
+        elif (ev=='DRAG') :
+            import math
+            if (editMode[:9]=='translate') :
+                self.drawIcon(editMode, pushed, cur.cursorPos)
+
+
+            bSnapToGrid=this.findWidget("snap to grid").checkButtonValue()
+            browser=this.findWidget('clip board')
+            for i in range(1,browser.browserSize() +1):
+
+                if (browser.browserSelected(i)) :
+                    graph=self.getInfo(browser, i)
+                    if graph.push_state is None:
+                        continue
+
+                    if(editMode=='translate' or editMode=='translate Y') :
+                        delta=cur.cursorPos-pushed.cursorPos
+
+                        if(editMode=='translate Y') :
+                            if(bSnapToGrid) :
+                                delta.x=(math.floor(delta.x/50.0))*50
+                                delta.y=(math.floor(delta.y/50.0))*50
+                                delta.z=(math.floor(delta.z/50.0))*50
+                        else:
+                            if(bSnapToGrid) :
+                                delta.x=(math.floor(delta.x/50.0))*50
+                                delta.y=0
+                                delta.z=(math.floor(delta.z/50.0))*50
+
+
+                        graph._pos.assign(graph.push_state.pos+delta)
+                        graph.setTransform()
+                    elif (editMode[:6]=='rotate' ) :
+
+                        if editMode=='rotate XY':
+                            amt_x=(pushed.x-cur.x)/-100.0
+                            amt_y=(pushed.y-cur.y)/-100.0
+
+                            graph._ori.assign(m.quater(amt_y,m.vector3(1,0,0))*m.quater(amt_x,m.vector3(0,1,0))*graph.push_state.ori)
+                        else:
+                            amt=(pushed.x-cur.x)/-100.0
+
+                            if(bSnapToGrid) :
+                                amt=math.floor(amt/math.radians(15))*math.radians(15)
+
+                            if editMode=='rotate Z':
+                                amt=(pushed.x - cur.x + pushed.y-cur.y)/50.0
+                                graph._ori.assign(m.quater(amt,m.vector3(0,0,1))*graph.push_state.ori)
+                            else:
+                                graph._ori.assign(m.quater(amt,m.vector3(0,1,0))*graph.push_state.ori)
+                        graph.setTransform()
+                    elif (editMode=='scale') :
+                        if(pushed.y-cur.y>0) :
+                            scale=1.0+(pushed.y-cur.y)/100.0
+                        else:
+                            scale=1.0/(1.0+(cur.y-pushed.y)/100.0)
+
+                        graph._scale.assign(graph.push_state.scale*scale)
+                        graph.setTransform()
+
+
+
+        elif (ev=='RELEASE') :
+            browser=this.findWidget('clip board')
+            for i in range(1,browser.browserSize() +1):
+                if (browser.browserSelected(i)) :
+                    graph=self.getInfo(browser, i)
+                    graph.push_state=None
+
+
+            self.objectList.erase("EDIT_MODE")
+            menu.activate()
+            self.updateScript()
+
+            #this.findWidget("edit mode").menuValue(0)
+            this.redraw()
+            return 1
+
+        return 0
+
+
+    def drawIcon(self, editMode, pushed, cursorPos):
+        if editMode[:5]=='CLICK' :
+            return 
+
+
+        pos=m.vector3N()
+        if(editMode[:6]=='rotate') :
+            thickness=250
+            mat= "icons/refresh"
+        else:
+            thickness=200
+            mat= "icons/add"
+
+        if len(pushed.selectedItems)==1:
+            item=pushed.selectedItems[0]
+            thickness*=((item.bbmax-item.bbmin).maximum()+10)/110.0
+            cursorPos=item.position
+
+        pos.pushBack(cursorPos)
+
+        if len(pushed.selectedItems)==0: 
+            return 
+        if editMode=='translate Y' or editMode=='rotate Z':
+            self.objectList.registerObject('EDIT_MODE', 'QuadListV', mat, pos.matView(), thickness)
+        else:
+            self.objectList.registerObject('EDIT_MODE', 'QuadListY', mat, pos.matView(), thickness)
+
+    def _removeBrowserItem(self, item, child,browser, i) :
+        item.__finalize()
+        self.objects[item.nodeId]=None
+        browser.browserRemove(i) 
+
+    def dtor():
+        this=self.layout
+        browser=this.findWidget('clip board')
+        for i in range(1,browser.browserSize() +1):
+            self.objects[browser.browserText(i)]=None
+
+        self.objectList.clear()
+
+        lua.collectgarbage()
+    def _addBrowserItem(self, item, child,browser, i) :
+        info=SceneComponent(item.scType)
+        ci=self.copyInfo(item)
+        for k, v in ci.items() :
+            info[k]=v
+        self.add(info)
+    def foreachSelected(self, fcn, bBreak):
+        this=self.layout
+        browser=this.findWidget('clip board')
+        for i in range(1,browser.browserSize() +1):
+
+            if (browser.browserSelected(i)) :
+                graph=getInfo(browser, i)
+                child=RE.ogreSceneManager().getSceneNode(graph.nodeId)
+                fcn(graph, child, browser, i)
+                if bBreak :
+                    break
+
+                graph.setTransform()
+
+
+    def copyInfo(self, v):
+        return lua.Table( scType=v.scType,
+            nodeId=v.nodeId,
+            options=v.options.copy(),
+            pos=v._pos.copy(),
+            ori=v._ori.copy(),
+            scale=v._scale.copy(),
+            material=v.material,
+            bNormaliseNormals=v.bNormaliseNormals,
+            source=v.source,
+        )
+
+    def getInfo(self, browser, i):
+        id=browser.browserText(i)
+        pInfo=self.objects[id]
+        return pInfo
+
+    def updateScript(self):
+        this=self.layout
+        browser=this.findWidget('clip board')
+        _input=this.findWidget('sceneComponent_script')
+
+        count=0
+        for i in range(1,browser.browserSize() +1):
+            if browser.browserSelected(i) :
+                count+=1
+
+        if count ==1:
+            for i in range(1,browser.browserSize() +1):
+                if browser.browserSelected(i) :
+                    pInfo=self.getInfo(browser, i)
+                    _input.inputValue(pInfo.getScript())
+                    _input.redraw()
+                    return
+        else:
+            _input.inputValue("")
+            this.redraw()
+    def dbgDraw(self, name, pos, color, size=5):
+        color = color or 'blue'
+        #namedDraw('Sphere', pos, name, color, size)
+    def handleRendererEvent(self, ev, button, x, y):
+
+        output("event", ev, x,y, button);
+        this=self.layout
+
+        ray = m.Ray()
+        m.FltkRenderer().screenToWorldRay(x,y,ray)
+
+        if ev =="PUSH" or ev=="MOVE" or ev=="DRAG" or ev=="RELEASE" :
+
+
+
+            PLANE_HEIGHT=1.0;
+            tt=m.Plane (m.vector3(0,1,0), PLANE_HEIGHT);
+            if (ev=='PUSH' or ev=='RELEASE' or ev=='DRAG') :
+
+                editMode=this.findWidget('edit mode').menuText()
+                if (self._lastCursorPosOnMove is not None):
+                    normal=m.vector3(0,1,0)
+                    if editMode[-1:]=='Y':
+                        normal=m.viewpoint().vat-m.viewpoint().vpos
+                        normal.y=0
+                        normal.normalize()
+                    tt=m.Plane (normal, self._lastCursorPosOnMove);
+
+                self.dbgDraw("cursorPos",self._lastCursorPosOnMove,'red', 6)
+                r=ray.intersects(tt)
+                currentcursorPos=ray.getPoint(r(1))
+                self.dbgDraw("cursor",currentcursorPos,'blue')
+
+                if editMode[:5]=='CLICK' :
+                    editMode=editMode[8:]
+                    if ev=='RELEASE' :
+                        if editMode=='remove' :
+                            self.foreachSelected(_remove, True)
+                        elif editMode=='duplicate' :
+                            self.foreachSelected(_addBrowserItem , True)
+                        elif editMode[:9] =='rotate 90' :
+                            if editMode[-1:]=='X' :
+                                q=m.quater(math.radians(90),m.vector3(1,0,0))
+                            elif editMode[-1:]=='Y' :
+                                q=m.quater(math.radians(90),m.vector3(0,1,0))
+                            else:
+                                q=m.quater(math.radians(90),m.vector3(0,0,1))
+
+                            rotate_q=lambda graph, child: _rotate(graph, child, q)
+                            self.foreachSelected(rotate_q)
+                        else:
+                            print('not implmented yet '+editMode)
+
+
+                    return 1;
+
+
+                if ev=='PUSH' :
+                    self._pushed=lua.Table( x=x, y=y, cursorPos=currentcursorPos.copy(), selectedItems=[])
+
+
+                if editMode!='none' :
+
+                    if ev=='PUSH':
+                        menu=this.findWidget('edit mode')
+                        editMode=menu.menuText()
+                        if button==3:
+                            if(editMode=='translate' or editMode=='translate Y'):
+                                this.findWidget('edit mode').menuValue(self.editModes.index('translate Y'))
+                            elif editMode[:6]=='rotate':
+                                this.findWidget('edit mode').menuValue(self.editModes.index('rotate XY'))
+                        elif button==2:
+                            if editMode[:6]=='rotate':
+                                this.findWidget('edit mode').menuValue(self.editModes.index('rotate Z'))
+                        else:
+                            if(editMode=='translate' or editMode=='translate Y'):
+                                this.findWidget('edit mode').menuValue(self.editModes.index('translate'))
+                            elif editMode[:6]=='rotate':
+                                this.findWidget('edit mode').menuValue(self.editModes.index('rotate'))
+                        menu.redraw()
+                        editMode=menu.menuText()
+
+                    return self.handleEditingEvent(self._pushed, lua.Table(x=x, y=y, cursorPos=currentcursorPos.copy()), ev, editMode )
+
+                return 1;
+
+            elif ev=='MOVE' :
+
+                menu=this.findWidget("edit mode")
+                menu.activate()
+
+                pInfo,bret,o=self.FindCollisionEntity(ray)
+
+                self.deselectAll()
+                if bret :
+                    self._lastCursorPosOnMove=ray.getPoint(o)
+                    self.selectfunc(pInfo.nodeId)
+                else:
+                    self._lastCursorPosOnMove=None
+                return 1
+        return 0
+
+    def getNodeTransform(self, pNode):
+        tt=m.matrix4()
+        tt.setTransform(pNode.getPosition(), pNode.getScale(), pNode.getOrientation())
+        return tt
+    def FindCollisionEntity(self, ray):
+        for i,v in self.objects.items():
+            v.showBoundingBox(False)
+
+        min_o=1e9
+        argMin=None
+        for i,pInfo in self.objects.items():
+            childnode=ogreSceneManager().getSceneNode(pInfo.nodeId)
+            MatrixInfo=self.getNodeTransform(childnode)
+            # bbox margin ==5
+            bbmin=pInfo.bbmin*pInfo._scale-m.vector3(5,5,5)
+            bbmax=pInfo.bbmax*pInfo._scale+m.vector3(5,5,5)
+
+            bret, o=lua.F('rayIntersectsBox', ray, bbmin, bbmax, MatrixInfo)
+            #childnode.setPosition(currentcursorPos.x,currentcursorPos.y,currentcursorPos.z)
+            if bret and o<min_o :
+                min_o=o
+                argMin=(pInfo, bret, o)
+
+
+        if argMin :
+            return argMin
+
+        return None, False, 0
+
+
+
+    def onCallback(self, w, userData):
+        this=self.layout
+        if (w.id()=="clip board") :
+            browser=this.findWidget('clip board')
+            for i in range(1,browser.browserSize() +1):
+                if browser.browserSelected(i) :
+                    self.selectfunc(browser.browserText(i))
+                else:
+                    self.deselect(browser.browserText(i))
+
+
+            self.updateScript()
+        elif (w.id()=="operations") :
+            op=this.menuText()
+            if op.left(6)=="rotate":
+                pass
+            else:
+                pass
+
+        elif(w.id()=="create item") :
+            if not (w.menuValue() ==0) :
+
+                i= this.findWidget("house").menuValue()+1
+                j= w.menuValue()
+
+                self.buildHouse(i,j)
+
+        elif (w.id()=="build all houses") :
+            for i in range(1,6 +1):
+                for j in range(1,7 +1):
+                    self.buildHouse(i,j)
+
+
+        elif (w.id()=="change material") :
+            browser=this.findWidget('clip board')
+            for i in range(1,browser.browserSize() +1):
+                if browser.browserSelected(i) :
+                    id=browser.browserText(i)
+                    pInfo=self.objects[id]
+                    pInfo.material=w.menuText()
+                    pInfo.redraw() 
+
+
+            self.updateScript()
+        elif (w.id()=="change source") :
+            browser=this.findWidget('clip board')
+            for i in range(1,browser.browserSize() +1):
+                if browser.browserSelected(i) :
+                    id=browser.browserText(i)
+                    pInfo=self.objects[id]
+                    if (pInfo.scType == SceneComponent.ENTITY) :
+                        pInfo.source=w.menuText()
+                        pInfo.redraw()
+
+
+
+            self.updateScript()
+
+
+
+
+
+        elif (w.id()=="Run script") : # change property button pressed
+
+            browser=this.findWidget('clip board')
+            _input=this.findWidget('sceneComponent_script')
+            for i in range(1,browser.browserSize() +1):
+                if browser.browserSelected(i) :
+                    id=browser.browserText(i)
+                    pInfo=self.objects[id]
+
+                    localSpace={
+                    'pos':pInfo._pos,
+                    'scale':pInfo._scale,
+                    'ori':pInfo._ori,
+                    'material':pInfo.material,
+                    'source':pInfo.source,
+                    'options':pInfo.options,
+                    }
+
+                    f=_input.inputValue()
+                    try:
+                        exec(f, {}, localSpace)
+                    except Exception as e:
+                        print(f"Error: {e}\n{f}")
+
+                    #if res==nil :
+                    if 'material' in localSpace:
+                        pInfo.material=localSpace['material']
+                    if 'source' in localSpace:
+                        pInfo.source=localSpace['source']
+                    #pInfo.options.setValues(4000,4000,40,40)
+                    #end
+
+
+                    pInfo.redraw()
+
+
+
+    def findSceneComponent(self, node_name):
+        if self.objects.get(node_name) is not None:
+            return True
+
+        return False
+
+
+    def findCollidingSceneComponent(self, pgraph):
+        for k, v in self.objects.items():
+            if v.nodeId!=pgraph.nodeId :
+                if pgraph._pos.distance(v._pos)<60 :
+                    return True
+        return False
+
+        
+    def _rotate(self, item, child, q):
+        item.ori.leftMult(q) 
+    def addEntity(self, mesh_name, bbox_size=None, nodeId=None, localPosition=None, localScale=None, localOrientation=None):
+        entity=SceneComponent(SceneComponent.ENTITY, localPosition=localPosition, localScale=localScale, localOrientation=localOrientation)
+        if nodeId is not None:
+            entity.nodeId=nodeId
+        else:
+            entity.nodeId=mesh_name[:-5]+"_000"
+        entity.source=mesh_name
+        if bbox_size is not None:
+            entity.bbmin=m.vector3(-bbox_size/2.0)
+            entity.bbmax=m.vector3(bbox_size/2.0)
+
+
+        self._add(entity)
+        return entity
+
+    def _add(self, pitem):
+        this=self.layout
+        while(self.findSceneComponent(pitem.nodeId)):
+            try:
+                pitem.nodeId=pitem.nodeId[:-3]+'%03d'%(int(pitem.nodeId[-3:])+1)
+            except:
+                pitem.nodeId=pitem.nodeId+'_001'
+
+        import random
+        while(self.findCollidingSceneComponent(pitem)):
+            if random.uniform(0,1)<0.5 :
+                pitem._pos.x+=100
+            else:
+                pitem._pos.z+=100
+
+        assert(pitem.nodeId not in self.objects)
+
+        self.objects[pitem.nodeId]=pitem
+        pitem.redraw()
+        browser=this.findWidget('clip board')
+        browser.browserAdd(pitem.nodeId)
+        browser.redraw()
+
+    def selectfunc(self, id):
+        this=self.layout
+        browser=this.findWidget('clip board')
+        for i in range(1,browser.browserSize() +1):
+            if (id==browser.browserText(i)) :
+                if not (browser.browserSelected(i)) :
+                    browser.browserSelect(i)
+
+
+
+
+        item=self.objects[id]
+        item.showBoundingBox(True)
+        self.updateScript()
+
+
+    def deselect(self, id):
+        this=self.layout
+        browser=this.findWidget('clip board')
+
+        pInfo=self.objects[id]
+
+        for i in range(1,browser.browserSize() +1):
+            if id==browser.browserText(i) :
+                if browser.browserSelected(i) :
+                    browser.browserSelect(i)
+                    break
+
+
+        pInfo.showBoundingBox(False)
+        
+    def deselectAll(self):
+        this=self.layout
+        browser=this.findWidget('clip board')
+        for i in range(1, browser.browserSize() +1):
+            self.deselect(browser.browserText(i))
+
+        browser.browserDeselect()
+        this.redraw();
+
+
+
+
+
+    def buildHouse(self, i,j):
+        entity=SceneComponent(SceneComponent.ENTITY)
+        if i==1 or i==6 :
+            if j>5 :
+                # mesh does not exist.
+                return 
+
+
+        id=f"{i}{j}"
+        entity.source=f"h{id}.mesh"
+        entity.nodeId=f"h{id}_000" 
+        entity._pos.y=50
+
+        if((i==1 and j ==5) or (i==3 and j == 4) or (i==3 and j == 6) or (i==3 and j ==5) or (i==4 and j ==5) or (i==4 and j==2)) :
+            entity._pos.x=50    
+            entity.bbmin.x=-100
+            entity.bbmax.x=100
+
+        # adjust bbox size
+        if (i==5 and j==5):
+            entity.bbmin.x=-100
+            entity.bbmax.x=100
+
+        if (i==3 and j==6) or (i==3 and j==7):
+            entity.bbmin.y=-100
+            entity.bbmax.y=100
+        if (i==3 and j==5):
+            entity.bbmin.y=-100
+            entity.bbmax.y=100
+            entity.bbmin.x=-100
+            entity.bbmax.x=100
+        if (i==5 and j==1):
+            entity.bbmin.z=-100
+            entity.bbmax.z=100
+        if (i==4 and j==7):
+            entity.bbmin.y=-100
+            entity.bbmax.y=100
+            entity.bbmin.z=-100
+            entity.bbmax.z=100
+        if (i==5 and j==2):
+            entity.bbmin.z=-100
+            entity.bbmax.z=100
+        if (i==5 and j==6):
+            entity.bbmin.x=-100
+            entity.bbmax.x=100
+            entity.bbmin.y=-100
+            entity.bbmax.y=100
+            entity.bbmin.z=-100
+            entity.bbmax.z=100
+        if (i==5 and j==7):
+            entity.bbmin.y=-100
+            entity.bbmax.y=100
+        if (i==5 and j==3) or (i==5 and j==4):
+            entity.bbmin.x=-100
+            entity.bbmax.x=100
+            entity.bbmin.z=-100
+            entity.bbmax.z=100
+        entity._pos.y=entity.bbmax.y
+
+
+        self._add(entity)
+        self.selectfunc(entity.nodeId)
+
+class SceneComponent:
+    PLANE=1
+    TERRAIN=2
+    ENTITY=3
+    NONE=4
+    @property
+    def position(self):
+        return self._pos
+
+    @position.setter
+    def position(self, value):
+        self._pos .assign( value)
+        self.setTransform()
+    @property
+    def scale(self):
+        return self._scale
+
+    @scale.setter
+    def scale(self, value):
+        self._scale .assign( value)
+        self.setTransform()
+    @property
+    def orientation(self):
+        return self._ori
+    @orientation.setter
+    def orientation(self, value):
+        self._ori .assign( value)
+        self.setTransform()
+    @property
+    def material(self):
+        return self._material
+    @material.setter
+    def material(self, value):
+        self._material=value
+        self.redraw()
+
+    @property
+    def localOrientation(self):
+        if hasattr(self,'pChildNode'):
+            return self.pChildNode.getOrientation()
+        return m.quater(1,0,0,0)
+    @localOrientation.setter
+    def localOrientation(self, v):
+        if not hasattr(self,'pChildNode'):
+            print("this case has not been implemented yet")
+            assert(False)
+        self.pChildNode.setOrientation(v)
+
+    def __init__(self, t, localPosition=None, localScale=None, localOrientation=None):
+        self.scType=t
+        self._pos=m.vector3(0,50,0)
+        self._scale=m.vector3(1,1,1)
+        self._ori=m.quater(1,0,0,0)
+        self.bNormaliseNormals=True
+        self.options=m.intvectorn()
+        self.bbmin= m.vector3(-50,-50,-50)
+        self.bbmax= m.vector3(50,50,50)
+        self.show_bbox=False
+        self._localPosition=localPosition
+        self._localOrientation=localOrientation
+        self._localScale=localScale
+        self.handleFrameMove=None
+        self.eventFunction=None
+        
+        if localScale is not None and isinstance(localScale, (float, int)):
+            self._localScale=m.vector3(localScale)
+
+
+        if (self.scType==SceneComponent.PLANE) :
+            self.nodeId="plane_000"
+            self._material="Crowd/Board"
+            self.options=lua.ivec([4000,4000,20,20])
+        elif (self.scType==SceneComponent.ENTITY) :
+            self.nodeId='entity_000'
+            self._material=""
+            self.source='h11.mesh'
+
+
+    
+
+    def __del__(self):
+        if m is not None:
+            mgr=ogreSceneManager()
+            child=mgr.getSceneNode(self.nodeId)
+            if child is not None:
+                removeEntity(child)
+    def _redrawBBOX(self):
+        pNode=self.pNode
+        if self.show_bbox:
+            # bbox margin ==5
+            draw('WireBox', self.getTransform(pNode), 'bbox2'+self.nodeId, (self.bbmax-self.bbmin)*self._scale+m.vector3(10,10,10), 1, 'solidwhite')
+        else:
+            erase('WireBox', 'bbox2'+self.nodeId)
+
+    def setTransform(self):
+        pNode=self.pNode
+        pNode.setPosition(self._pos)
+        pNode.setScale(self._scale)
+        pNode.setOrientation(self._ori)
+
+        self._redrawBBOX()
+
+        if self.eventFunction is not None:
+            self.eventFunction(self, 'transform modified')
+    def getScript(self):
+        out=[]
+        out.append('pos.set(%.3f, %.3f, %.3f)\n'%(self._pos.x,self._pos.y,self._pos.z))
+        out.append('scale.set(%.3f, %.3f, %.3f)\n'%(self._scale.x,self._scale.y,self._scale.z))
+        out.append(f'ori.setValue({self._ori.w},{self._ori.x},{self._ori.y},{self._ori.z})\n')
+        if self.scType==SceneComponent.ENTITY :
+            out.append("material=''\n")
+        else:
+            out.append("material='"+self._material+"'\n")
+
+        if self.scType==SceneComponent.ENTITY  :
+            out.append("source= '"+self.source+"'\n")
+        else:
+            out.append("source=''\n")
+
+
+
+        if(self.options.size()==4) :
+            out.append(f"options.setValues({self.options(0)},{self.options(1)},{self.options(2)},{self.options(3)})\n")
+        elif (self.options.size()==6) :
+            out.append(f"options.setValues({self.options(0)},{self.options(1)},{self.options(2)},{self.options(3)},{self.options(4)},{self.options(5)})\n")
+        elif (self.options.size()==7) :
+            out.append(f"options.setValues({self.options(0)},{self.options(1)},{self.options(2)},{self.options(3)},{self.options(4)},{self.options(5)},{self.options(6)})\n")
+
+        return ''.join(out)[:-1]
+    def _getSource(self):
+        if(self.scType==SceneComponent.PLANE) :
+            return self.options
+        return self.source
+
+    def redraw(self):
+        rootnode=ogreRootSceneNode()
+        pNode=None
+        if not hasattr(self, 'lastSource') or self.lastSource!=self._getSource() :
+            removeEntity(self.nodeId)
+            if(self.scType==SceneComponent.PLANE) :
+                if((self.options.size())!=4 and (self.options.size())!=6) :
+                    Msg.MsgBox("error! plane should have 4 or 6 parameters.(width,height,nx,ny,ntx=1,nty=1)")
+                    return
+
+                pNode=createChildSceneNode(rootnode,self.nodeId)
+                if(self.options.size()==4) :
+                    entity=createPlane("_entity_"+self.nodeId,self.options(0),self.options(1),self.options(2),self.options(3),1,1)
+                else:
+                    entity=createPlane("_entity_"+self.nodeId,self.options(0),self.options(1),self.options(2),self.options(3),self.options(4),self.options(5))
+                self.lastSource=self.options
+            else:
+                pNode=createChildSceneNode(rootnode,self.nodeId)
+                entity=ogreSceneManager().createEntity("_entity_"+self.nodeId,self.source)
+                self.lastSource=self.source
+
+            if self._localPosition is not None or self._localOrientation is not None or self._localScale is not None:
+                pCnode=createChildSceneNode(pNode, self.nodeId+'_c0')
+                if self._localPosition is not None: pCnode.setPosition(self._localPosition)
+                if self._localScale is not None: pCnode.setScale(self._localScale)
+                if self._localOrientation is not None: pCnode.setOrientation(self._localOrientation)
+                # these attributes are not for editing
+                self._localPosition=None
+                self._localScale=None
+                self._localOrientation=None
+                pCnode.attachObject(entity)
+                self.pChildNode=pCnode
+            else:
+                pNode.attachObject(entity)    
+            self.entity=entity
+            self.pNode=pNode
+            assert(pNode is not None)
+        else:
+            pNode=m.getSceneNode(self.nodeId)
+            entity=self.entity
+        if pNode is None:
+            print('error!', self.nodeId, pNode)
+            pdb.set_trace()
+            assert(False)
+
+        self.setTransform()
+
+        if len(self._material)>0 :
+            entity.setMaterialName(self._material)
+
+
+
+    def getTransform(self, pNode):
+        tt=m.transf(pNode.getOrientation(), pNode.getPosition())
+        return tt
+
+    def showBoundingBox(self, value):
+        self.show_bbox=value
+        self._redrawBBOX()
+
+
+

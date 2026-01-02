@@ -93,6 +93,7 @@ local function calcDefaultShape(bone)
 	local inertia=1.0;
 
 	inertia=inertia*mass*2.0/5.0*radius*radius;	-- spherical inertia.
+	inertia=math.max(inertia, 1e-6)
 	if com.x~=com.x then
 		com.x=0
 		com.y=0
@@ -110,7 +111,7 @@ local function calcDefaultShape(bone)
 			local dir=offset:copy()
 			dir:normalize()
 			q:axisToAxis(vector3(0,1,0), dir)
-			shape=shape..geometryNode(q, offset*0.5, string.format("geometry Capsule { radius %f height %f }", cylinderRadious, offset:length()))
+			shape=shape..geometryNode(q, offset*0.5, string.format("geometry Capsule { radius %f height %f }", cylinderRadious, math.max(offset:length(), 1e-3)))
 		end
 		shape=shape..string.format("]\n");
 	end

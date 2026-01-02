@@ -1,4 +1,3 @@
-# this file contains a line-by-line python port of RagdollFallLCP_simple_v2.lua (taesooLib/Samples/classification/lua/)
 import os
 import sys
 import pdb # use pdb.set_trace() for debugging
@@ -7,7 +6,7 @@ import math
 import random
 import copy
 
-from libcalab_ogre3d import *
+from libcalab_ogre3d import RE,m,lua,control
 import numpy as np
 from easydict import EasyDict as edict # pip3 install easydict
 

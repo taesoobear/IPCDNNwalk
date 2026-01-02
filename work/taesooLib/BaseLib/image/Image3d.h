@@ -32,6 +32,13 @@ class TImage3D
 	inline int getSize() const { return pixels.size();}
 	inline void setPixel(int x, int y, int z, T value) { getPixels(z)[x+y*_width]=value; }
 	inline T getPixel(int x, int y, int z) const { return getPixels(z)[x+y*_width]; }
+	inline T getPixel_safe(int x, int y, int z) const { 
+		if(x<0 || y<0 || z<0)
+			return (T)0;
+		if(x>=_width || y>=_height || z>=_depth)
+			return (T)0;
+		return getPixels(z)[x+y*_width]; 
+	}
 
 	inline bool findNeighbor6(int x, int y, int z, T value) const
 	{

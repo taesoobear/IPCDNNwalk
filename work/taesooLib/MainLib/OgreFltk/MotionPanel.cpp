@@ -36,7 +36,7 @@ void Register_mainlib(lua_State*L);
 class FltkScrollSelectPanel_impl: public FltkScrollSelectPanel
 {
 	public:
-	FltkScrollSelectPanel_impl(){}
+	FltkScrollSelectPanel_impl(){mImage=NULL;}
 	virtual ~FltkScrollSelectPanel_impl();
 	CImage* mImage;
 	CImagePixel cip;
@@ -333,8 +333,10 @@ FltkMotionWindow::FltkMotionWindow()
 
 FltkMotionWindow::~FltkMotionWindow()
 {
+	delete _panel;
 }
 FltkMotionWindow::FltkMotionWindow(int x, int y, int w)
+	:_panel(NULL)
 {
 
 	m_nCurrFrame=0;
@@ -619,8 +621,10 @@ void FltkMotionWindow::updateFrameNum()
 #define DRAW_TIMELINE
 #ifdef DRAW_TIMELINE
 
-	static FltkScrollSelectPanel_impl mPanel;
+	if(_panel==NULL)
+		_panel=new FltkScrollSelectPanel_impl();
 
+	FltkScrollSelectPanel_impl&mPanel=*_panel;
 	if(mPanel.isCreated())
 		mPanel.release(&RE::motionPanel());
 

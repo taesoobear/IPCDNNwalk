@@ -31,6 +31,10 @@ bool RE::useSeperateOgreWindow()
 {
 	return ::useSeperateOgreWindow();
 }
+int RE::taesooLibVersion()
+{
+	return 1;
+}
 MotionLoader* RE::motionLoader(const char* name)
 {
 	return RE::renderer().m_pMotionManager->GetMotionLoaderPtr((char*)name);
@@ -703,7 +707,11 @@ Ogre::Item* RE::createPlane(const char* id, m_real width, m_real height, int xse
 
 Ogre::SceneNode* RE::getSceneNode(PLDPrimSkin* skin)
 {
+#ifdef NO_OGRE
+	return NULL;
+#else
 	return skin->m_pSceneNode;
+#endif
 }
 
 #ifndef NO_OGRE

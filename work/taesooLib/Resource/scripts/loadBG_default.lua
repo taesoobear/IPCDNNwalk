@@ -20,7 +20,8 @@ if RE.getOgreVersionMinor()<=3 then
 
 	if true then
 		local nrep=3
-		ent= RE.createPlane("MyPlane", 1600*nrep, 1600*nrep, nrep, nrep, 8*nrep, 8*nrep)
+		local rep=2
+		ent= RE.createPlane("MyPlane", 3200*rep*nrep, 3200*rep*nrep, nrep, nrep, 16*rep*nrep, 16*rep*nrep)
 		ent:setMaterialName("checkboard/crowdEditing")
 	elseif false then
 		local nrep=1

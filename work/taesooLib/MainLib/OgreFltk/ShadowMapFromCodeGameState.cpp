@@ -52,6 +52,11 @@ namespace Msg
 	extern OgreTraceManager* otm1;
 	extern OgreTraceManager* otm2;
 }
+#ifdef _MSC_VER
+#ifdef _M_X64
+#define _DISABLE_DEBUGTEXT
+#endif
+#endif
 //#define CREATE_DEFAULT_SCENE
 namespace MiscUtils{
     void setGaussianLogFilterParams( Ogre::HlmsComputeJob *job, Ogre::uint8 kernelRadius,

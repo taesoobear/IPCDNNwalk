@@ -1,7 +1,66 @@
 #include "stdafx.h"
 #include "../../BaseLib/math/mathclass.h"
+#include "../../BaseLib/math/Operator.h"
 #include "KNearestInterpolationFast.h"
 
+statistics::KNearestInterpolationFast ::KNearestInterpolationFast ( int k, float power, float noiseWeight)
+	:statistics::Interpolation() 
+{
+	m_nK=k; m_fK=power;
+	m_fNW=noiseWeight;
+	mKDtree=NULL;
+}
+
+void statistics::KNearestInterpolationFast::initialize(const matrixn& sourceSamples)
+{
+	Interpolation::initialize(sourceSamples);
+
+	pointArray.resize(m_aSamples.rows());
+	for(int i=0; i<pointArray.size(); i++)
+	{
+		pointArray[i]=&m_aSamples(i,0);
+	}
+
+	mKDtree=new ANNkd_tree(&pointArray[0], pointArray.size(), sourceSamples.cols());
+}
+void statistics::KNearestInterpolationFast::calcWeight(const vectorn& source, intvectorn & index, vectorn& weight) 
+{
+	vectorn dist;
+
+	int numSample=m_aSamples.rows();
+	int K=MIN(numSample, m_nK+1);
+	index.resize(K);
+	dist.resize(K);
+	weight.resize(K);
+	mKDtree->annkSearch(&source[0], K, &index[0], &dist[0]); 
+	//printf("%s %s\n", index.output().ptr(), dist.output().ptr());
+	for(int i=0; i<K; i++)
+	{
+		weight[i]=1.f/MAX(pow(dist[i], (m_real)m_fK),FLT_EPSILON)-1.f/MAX(pow(dist[K-1], (m_real)m_fK) ,FLT_EPSILON);	// kovar siggraph 2004
+		// so that weight[K-1]==0
+	}
+	weight/=weight.sum();
+}
+
+
+statistics::WeightedKNearestInterpolationFast ::WeightedKNearestInterpolationFast ( const vectorn& weights, int k, float power, float noiseWeight)
+	:statistics::KNearestInterpolationFast(k, power, noiseWeight)
+{
+	m_weights=weights;
+}
+void statistics::WeightedKNearestInterpolationFast::initialize(const matrixn& sourceSamples)
+{
+	matrixn temp;
+	m::multA_diagB(temp, sourceSamples, m_weights);
+	statistics::KNearestInterpolationFast::initialize(temp);
+}
+void statistics::WeightedKNearestInterpolationFast::calcWeight(const vectorn& source, intvectorn & index, vectorn& weight) 
+{
+	vectorn temp;
+	temp.mult(source, m_weights);
+	statistics::KNearestInterpolationFast::calcWeight(temp, index, weight) ;
+
+}
 KNearestInterpolationFast ::KNearestInterpolationFast ( int k, float power, float noiseWeight)
 	:Function() 
 {

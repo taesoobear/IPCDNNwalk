@@ -30,6 +30,7 @@ FlLayout ::Widget::Widget()
 {
 	mWidget=NULL;
 	mType="None";
+	_parent=NULL;
 	mState.mButtonType=FlLayout::BUTTON;	// default type
 	mState.mSliderType=FlLayout::VALUE_SLIDER; // default type
 	mState.mGuideLines.linspace(0.0, 1.0, 4);
@@ -781,6 +782,7 @@ Fl_Widget* FlLayout::_createWidget(const char* id, Fl_Widget* o)
 
 	mWidgets[mWidgets.size()-2].mId=id;
 	mWidgets[mWidgets.size()-2].mWidget=o;
+	mWidgets[mWidgets.size()-2]._parent=this;
 	mNamedmapWidgets[mWidgets[mWidgets.size()-2].mId]=mWidgets.size()-2;
 	return o;
 }

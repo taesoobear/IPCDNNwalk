@@ -62,7 +62,11 @@ struct KMeanCluster : public Clustering
 	KMeanCluster(int numCluster){m_nNumGroup=numCluster;}
 	~KMeanCluster(){}
 
+	matrixn centers;
 	virtual void cluster(const TArray<vectorn>& aInputVec);
+	const matrixn& getCenters(){ return centers;}
+
+	static intvectorn findGroupIndex(matrixn const& source, matrixn const& centers);
 
 };
 

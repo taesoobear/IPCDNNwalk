@@ -1,5 +1,5 @@
 package.resourcePath="../Resource/motion/"
-package.scriptPath="../Resource/scripts/modules/"
+package.scriptPath="work/taesooLib/Resource/scripts/modules/"
 
 package.path=package.path..";./?.lua" --;"..package.path
 package.path=package.path..";../lua/?.lua"

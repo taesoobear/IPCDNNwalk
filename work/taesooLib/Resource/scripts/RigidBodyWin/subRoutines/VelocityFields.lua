@@ -437,6 +437,40 @@ function CollisionAvoid:_prepareEffectors(start_con, bases, collisionLinkPairs, 
 
 	return maxDepth, lines
 end
+OnlineFilter6D=LUAclass()
+function OnlineFilter6D:__init(loader, pose, filterSize, useMitchellFilter)
+	self.filterSize=filterSize
+	self.loader=loader
+	local pose6D
+	if pose then
+		loader:setPoseDOF(pose)
+		pose6D=loader:getPose6D()
+	end
+
+	self.filter=OnlineFilter(nil,pose6D, filterSize, useMitchellFilter) 
+end
+function OnlineFilter6D:to6D(pose)
+	local loader=self.loader
+	loader:setPoseDOF(pose)
+	return loader:getPose6D()
+end
+function OnlineFilter6D:toEuler(pose6D)
+	local loader=self.loader
+	loader:setPose6D(pose6D)
+	return loader:getPoseDOF()
+end
+function OnlineFilter6D:setCurrPose(pose)
+	self.filter:setCurrPose(self:to6D(pose))
+end
+function OnlineFilter6D:getCenterAndFiltered()
+	local center, filtered=self.filter:getCenterAndFiltered()
+	return center, self:toEuler(filtered)
+end
+
+function OnlineFilter6D:getFiltered()
+	local filtered=self.filter:getFiltered()
+	return self:toEuler(filtered)
+end
 
 OnlineFilter=LUAclass()
 
@@ -543,6 +577,19 @@ function OnlineFilter:getFiltered()
 	end
 end
 
+MaskedOnlineFilter=LUAclass()
+
+function MaskedOnlineFilter:__init(filterSize, mask_for_filtered, loader)
+	self.mask=mask_for_filtered
+	self.filter=OnlineFilter(filterSize, loader)
+end
+function MaskedOnlineFilter:setCurrPose( posedof)
+	self.filter:setCurrPose(posedof)
+end
+function MaskedOnlineFilter:getFiltered()
+	local unfiltered, filtered=self.filter:getCenterAndFiltered()
+	return filtered*self.mask - unfiltered*(self.mask-1.0)
+end
 
 IKChain=LUAclass()
 

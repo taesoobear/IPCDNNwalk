@@ -2,7 +2,7 @@ import os, sys, time, pdb
 import mujoco
 import numpy as np
 
-from  libcalab_ogre3d import *
+from  libcalab_ogre3d import RE,m,lua,control
 
 def pd_servo(rotation_delta, curr_ang_velocity):
     kp = 400.0

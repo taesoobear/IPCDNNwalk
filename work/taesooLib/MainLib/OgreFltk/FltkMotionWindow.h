@@ -3,6 +3,7 @@
 #define FLTK_MOTIONWINDOW_H_
 #include "../../MainLib/OgreFltk/framemoveobject.h"
 class AnimationObject;
+class FltkScrollSelectPanel_impl;
 class FltkMotionWindow : public FrameMoveObject
 {
 	// Construction
@@ -18,7 +19,7 @@ public:
 	};
 
 	FltkMotionWindow(int x, int y, int w);
-	~FltkMotionWindow();
+	virtual ~FltkMotionWindow();
 
 	void connect(EventReceiver& receiver);
 	void disconnect(EventReceiver& receiver);
@@ -43,6 +44,7 @@ public:
 	virtual int FrameMove(float fElapsedTime);
 	// Implementation
 protected:
+	FltkScrollSelectPanel_impl* _panel;
 	int m_nCurrFrame;
 	int m_numFrame;
 	std::vector<AnimationObject*> m_vecSkin;

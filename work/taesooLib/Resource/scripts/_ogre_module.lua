@@ -170,14 +170,17 @@ function dbg.drawTraj(objectlist, matrix, nameid, color, thickness, linetype)
 	else
 		if linetype=='PointList' and RE.getOgreVersionMinor()<=3 then
 			-- pointlist doesnt' work on ogre2.
-
-			if color:sub(1,5)=='Point' then
-				thickness=tonumber(color:sub(6))*0.2
-				color='white'
-			elseif color=='' then
-				thickness=1.5
+			if not RE.taesooLibVersion then
+				if color:sub(1,5)=='Point' then
+					thickness=tonumber(color:sub(6))*0.2
+					color='white'
+				elseif color=='' then
+					thickness=1.5
+				end
+				objectlist:registerObject(nameid, 'QuadListV', color or dbg.linecolor, matrix:sub(0,0,-3,0), thickness or 0)
+			else
+				objectlist:registerObject(nameid, linetype, color or dbg.linecolor, matrix, thickness or 0)
 			end
-			objectlist:registerObject(nameid, 'QuadListV', color or dbg.linecolor, matrix:sub(0,0,-3,0), thickness or 0)
 		else
 			objectlist:registerObject(nameid, linetype, color or dbg.linecolor, matrix, thickness or 0)
 		end

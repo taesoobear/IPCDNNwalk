@@ -6,7 +6,7 @@ import platform
 import pdb # use pdb.set_trace() for debugging
 # basically same as ../work/test_sample_python.py
 
-from libcalab_ogre3d import *
+from libcalab_ogre3d import RE, m, lua, control
 import numpy as np 
 
 

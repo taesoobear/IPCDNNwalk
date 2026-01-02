@@ -4,13 +4,21 @@ require('tl') -- for BaseLib <-> torch interfacing
 -- input: vrmlloaders, filename, option={ groundPlane=true/false , recalculateParam=true/false, useEulerIntegrator=true/false, useMotorActuator=true/false, exportAsVisual=false }
 -- all boolean options are false by default
 function writeMujocoXML(loaders, fn, option)
+	if not option.out_filename  then
+		option.out_filename=fn
+	end
+	util.writeFile(fn, createMujocoXMLstring(loaders, option))
+end
+function createMujocoXMLstring(loaders, option)
 
 	option=option or {}
 	if not option.loaderOptions then
 		option.loaderOptions={}
 	end
 
-	option.out_filename=fn
+	if not option.out_filename then
+		option.out_filename='temp'
+	end
 	
 	local out={}
 	local default_armature='armature="'..(option.default_armature or 1)..'" '
@@ -123,9 +131,16 @@ function writeMujocoXML(loaders, fn, option)
 	if type(loaders)~='table' then
 		loaders={loaders}
 	end
+	if option.removeCompositeJoints then
+		for iloader, loader in ipairs(loaders) do
+			loader=loader:copyRemovingCompositeJoints()
+			loaders[iloader]=loader
+		end
+	end
 	option.usedNames={}
 	local all_muscles={}
 	for iloader, loader in ipairs(loaders) do
+
 		local loaderoption=option
 		if option.loaderOptions[iloader] then
 			loaderoption=table.merge(option, option.loaderOptions[iloader])
@@ -222,7 +237,13 @@ function writeMujocoXML(loaders, fn, option)
 			for i=1,loader:numBone()-1 do
 				local bone=loader:VRMLbone(i)
 				if bone:treeIndex()==1 and bone:HRPjointType(0)==MainLib.VRMLTransform.FREE then
+				elseif bone:HRPjointType(0)==MainLib.VRMLTransform.SLIDE then
+					for i=0, bone:numChannels()-1 do
+						local name=bone:name().."_"..tostring(i)
+						table.insert(out, "\t\t"..[[<motor joint="]]..name..[[" name="]]..name..[["/>]])
+					end
 				else
+
 					for i=0, bone:numChannels()-1 do
 						local name=bone:name().."_"..tostring(i)
 						table.insert(out, "\t\t"..[[<motor ctrllimited="true" ctrlrange="-5 5" gear="50" joint="]]..name..[[" name="]]..name..[["/>]])
@@ -242,7 +263,7 @@ function writeMujocoXML(loaders, fn, option)
 </mujoco>
 ]])
 
-util.writeFile(fn, header..'\n'..table.concat(out_asset,'\n')..'\n'..table.concat(out, '\n'))
+	return header..'\n'..table.concat(out_asset,'\n')..'\n'..table.concat(out, '\n')
 
 end
 function makeTabs(level)
@@ -393,6 +414,11 @@ function writeMujocoBody(out, out_asset, loader, bone, level, option)
 	elseif bone:numChannels()>1 and option.useSphericalJoints then
 		table.insert(out, tabs..[[
 		<joint limited="false" pos="0 0 0" stiffness="0" type="ball"/>]])
+	elseif bone:HRPjointType(0)==MainLib.VRMLTransform.SLIDE then
+		for i=0, bone:numChannels()-1 do
+			table.insert(out, tabs..[[
+			<joint name="]]..bone:name().."_"..tostring(i)..[[" axis="]]..option.vec3str(bone:axis(i))..[[" pos="0 0 0" range="-100 100" type="slide"/>]])
+		end
 	else
 		for i=0, bone:numChannels()-1 do
 			table.insert(out, tabs..[[

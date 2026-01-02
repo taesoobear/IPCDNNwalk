@@ -10,6 +10,50 @@
  *
  *
  */
+
+namespace statistics
+{
+	class Interpolation
+	{
+	public:
+		Interpolation(void);
+		virtual ~Interpolation(void);
+
+		/**
+		* using input query, store all samples into m_aSamples
+		* do additional initialization in the derived class
+		* \param sourceSamples input query.
+		*/
+		virtual void initialize(const matrixn& sourceSamples);
+
+		/// initialize 후에 사용할 수 있는 함수. 
+		int dimension()	const						{ return m_aSamples.cols();}
+		int numSample()	const						{ return m_aSamples.rows();}	
+		vectornView sample(int i) const			{ return m_aSamples.row(i);}
+		const matrixn& allSample() const			{ return m_aSamples;}
+
+		virtual void calcWeight(const vectorn& parameter, intvectorn& index, vectorn& weight)=0;
+
+		/// data들의 min
+		const vectorn& minimum() const					{ return m_vResultMin;}
+		/// data들의 max
+		const vectorn& maximum() const					{ return m_vResultMax;}
+		/// data들의 mean
+		const vectorn& mean() const						{ return m_vMean;}
+		/// date들의 stddev
+		const vectorn& stddev()	const					{ return m_vStddev;}
+	protected:
+		matrixn m_aSamples;
+
+		// 실제 data들의 min, max범위.
+		vectorn m_vResultMin;	
+		vectorn m_vResultMax;
+		vectorn m_vMean;
+		vectorn m_vStddev;
+	};
+}
+
+// deprecated
 class InterpolationNormalize
 {
 public:

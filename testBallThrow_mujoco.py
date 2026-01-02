@@ -1,7 +1,7 @@
 import os, sys, pdb, math, random
 
 
-from libcalab_ogre3d import *
+from libcalab_ogre3d import RE,m,lua,control
 MujocoSim=control.MujocoSim
 
 import numpy as np
