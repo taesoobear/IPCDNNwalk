@@ -59,8 +59,15 @@ function FBXloader:_bakeBindPose()
 		meshInfo.bindpose_global=nil
 	end
 	self:_setBindPose(loader)
+	-- disconnect from the original fbx file.
+	-- self.fbx manages images so...
+	for i, meshInfo in ipairs(self.fbxInfo) do
+		if meshInfo.image then
+			meshInfo.image=meshInfo.image:copy()
+		end
+	end
 
-	self.fbx=nil -- disconnect from the original fbx file.
+	self.fbx=nil 
 end
 
 -- slow so please export using output_loader:exportBinary('aaa.fbx.wrl.dat')
@@ -429,6 +436,7 @@ function FBXloader:scale(scaleFactor)
 end
 
 function FBXloader:scaleSubtree(ibone, scaleFactor)
+	assert(ibone>=1)
 	local pose=self.loader:pose()
 	if ibone==1 then
 		self:scale(scaleFactor)
@@ -444,14 +452,18 @@ function FBXloader:scaleSubtree(ibone, scaleFactor)
 			end
 		end
 		self.loader:fkSolver():init()
+		local nb=l:numBone()
 
 		for isubMesh, subMesh in ipairs(self.fbxInfo) do
 			local skin=subMesh.skin
 			for i=0, skin:numVertex()-1 do
 				local TI=skin:treeIndices(i)
 				for j=0, TI:size()-1 do
+					assert(TI(j)>=1 and TI(j)<nb)
 					if contained(TI(j)) then
-						skin:localPos(i)(j):scale(scaleFactor)
+						local lpos=skin:localPos(i)
+						assert(lpos:size()==TI:size())
+						lpos(j):scale(scaleFactor)
 					end
 				end
 			end
@@ -471,6 +483,7 @@ function FBXloader:scaleBone(ibone, scaleFactor)
 	self.loader:fkSolver():init()
 
 	for isubMesh, subMesh in ipairs(self.fbxInfo) do
+		assert(not subMesh.image or subMesh.image:GetWidth()>0)
 		local skin=subMesh.skin
 		for i=0, skin:numVertex()-1 do
 			local TI=skin:treeIndices(i)
@@ -967,6 +980,11 @@ function FBXloader:__unpackBinary(s, filename)
 	end
 	self.textureLoaded=false -- not loaded into the gpu yet.
 end
+function FBXloader:_checkTexture()
+	for i, meshInfo in ipairs(self.fbxInfo) do
+		assert(not meshInfo.image or meshInfo.image:GetWidth()>100)
+	end
+end
 function FBXloader:_loadAllTextures()
 	self.textureLoaded=true
 	for i, meshInfo in ipairs(self.fbxInfo) do
@@ -976,11 +994,13 @@ function FBXloader:_loadAllTextures()
 				-- latest taesooLib
 				meshInfo.material=self.uid..meshInfo.diffuseTexture
 				if image then
+					assert(image:GetWidth()>0)
 					RE.renderer():createDynamicTexture(self.uid..meshInfo.diffuseTexture,image , meshInfo.diffuseColor, meshInfo.specularColor, meshInfo.shininess or 10)
 				else
 					RE.renderer():createMaterial(self.uid..meshInfo.diffuseTexture, meshInfo.diffuseColor, meshInfo.specularColor, meshInfo.shininess or 10)
 				end
 			elseif image then
+				assert(image:GetWidth()>0)
 				RE.renderer():createDynamicTexture(self.uid..meshInfo.diffuseTexture,image , meshInfo.diffuseColor, meshInfo.specularColor)
 				meshInfo.material=self.uid..meshInfo.diffuseTexture
 				print("Error! cannot load "..meshInfo.diffuseTexture)
@@ -1015,7 +1035,7 @@ function FBXloader:_loadTexture(meshInfo,filename)
 		meshInfo.diffuseTexture=os.processFileName(meshInfo.diffuseTexture)
 
 		local diffuseTexture
-		local image
+		local image=nil
 		if self.fbx.saveTexturesToMemoryBuffer then
 			-- first try to find in-memory images
 			for i=0, self.fbx:numTexture()-1 do
@@ -1023,9 +1043,6 @@ function FBXloader:_loadTexture(meshInfo,filename)
 					image=self.fbx:getTexture(i)
 				end
 			end
-		end
-		if image and image:GetWidth()==0 then
-			image=nil
 		end
 		if not image then
 			local _,filepath=os.processFileName(filename)
@@ -1048,7 +1065,11 @@ function FBXloader:_loadTexture(meshInfo,filename)
 				image:Load(diffuseTexture)
 			end
 		end
+		if image and image:GetWidth()==0 then
+			image=nil
+		end
 		meshInfo.image=image
+		assert(not image or image:GetWidth()>0)
 	end
 end
 function FBXloader.getIndexMap(loader_i, loader)
@@ -1734,6 +1755,7 @@ function FBXloader.Skin:applyAnim(motion)
 	EVR.__init=function(self)
 	end
 	EVR.onFrameChanged=function (self, win, iframe)
+		if not self.skin then return end
 		if iframe<self.motion:numFrames() then
 			self.skin:setPose(self.motion:pose(iframe))
 		end
@@ -1792,7 +1814,12 @@ function FBXloader.Skin:dtor()
 	for i, v in ipairs(self.nodes) do
 		RE.removeEntity(v[1])
 	end
+	self.EVR.skin=nil
+	self.EVR=nil
+	self.timeline=nil
 	self.nodes=nil
+	self.fbx=nil
+	self.fkSolver=nil
 end
 function FBXloader.Skin:setMaterial(name)
 	for i, me in ipairs(self.ME) do
@@ -1880,6 +1907,7 @@ function FBXloader.Skin:setSamePose(fk)
 	end
 	for i, meshInfo in ipairs(fbxloader.fbxInfo) do
 		local ME=self.ME[i]
+		if ME then
 		local node=self.nodes[i]
 		local skin=meshInfo.skin
 		local mesh=meshInfo[1]
@@ -1902,6 +1930,7 @@ function FBXloader.Skin:setSamePose(fk)
 			mesh:getVertices(node[3]) -- backup current mesh pose
 		end
 		node[1]:setPosition(node[2]+rootTrans*self.scale.x)
+		end
 	end
 end
 function FBXloader.Skin:setScale(x,y,z)
