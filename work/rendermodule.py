@@ -28,7 +28,18 @@ def path(path):
     from pathlib import Path
     path=os.path.normpath(path)
     return Path(path)
-
+def gitCommitExists(commit_hash, repo_path="."):
+    try:
+        subprocess.run(
+            ["git", "cat-file", "-e", f"{commit_hash}^{{commit}}"],
+            cwd=repo_path,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=True,
+        )
+        return True
+    except subprocess.CalledProcessError:
+        return False
 # import all three in a line.
 # m,lua,control=RE.defaultModules()
 def defaultModules():
@@ -1211,7 +1222,7 @@ def tempFunc(self, *args):
 m.PythonExtendWin.addText=tempFunc
 
 # posetransfer('convertPose', pose)
-def tempFunc(self, name, pose):
+def tempFunc(self, pose):
     self.setTargetSkeleton(pose)
     return self.target().pose()
 m.PoseTransfer.__call__=tempFunc
