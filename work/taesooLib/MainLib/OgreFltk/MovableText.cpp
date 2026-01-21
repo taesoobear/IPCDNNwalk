@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #ifndef NO_OGRE
+#include "renderer.h"
 /**
 * File: MovableText.cpp
 *
@@ -619,15 +620,16 @@ void MovableText::_updateRenderQueue(RenderQueue* queue, Camera *camera, const C
         if (mUpdateColors)
             this->_updateColors();
 
-		mpCam = camera;
+		if(camera==RE::renderer().getCamera())
+			mpCam = camera;
     }
 }
-
-bool MovableText::frameRenderingQueued(const FrameEvent &evt)
+bool MovableText::frameStarted( const FrameEvent &evt )
+//bool MovableText::frameRenderingQueued(const FrameEvent &evt)
 {
-    if (this->isVisible() && mpCam)
+    if (this->isVisible() && RE::renderer().getCamera())
     {
-        getParentSceneNode()->_setDerivedOrientation(mpCam->getDerivedOrientation());
+        getParentSceneNode()->_setDerivedOrientation(RE::renderer().getCamera()->getDerivedOrientation());
     }
     return true;
 }

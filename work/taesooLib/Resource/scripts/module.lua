@@ -1311,7 +1311,7 @@ function dbg.drawFlatArrow(objectlist, startpos, endpos, nameid,_thick, color)
 	   if not dbg._flatArrow then
 
 			local mesh=Mesh()
-			mesh:loadOBJ(RE.taesooLibPath()..'/Resource/mesh/Arrow5.obj')
+			mesh:loadOBJ('work/taesooLib/Resource/mesh/Arrow5.obj')
 			mesh:resizeNormalBuffer(0)
 
 			mesh:calculateVertexNormal();
@@ -8320,6 +8320,8 @@ end
 function util.BinaryFile:unpackTable()
    return SaveTable.unpickle_(self)
 end
+
+defineDerived(util.BinaryFile, {util.MemoryFile, }, {"_unpackPickle", "_packPickle", "packTable", "unpackTable", })
 
 -- example usage: util.saveTableToLua( { {1,3}, 10, vector3(), }, filename)
 function util.saveTableToLua(tbl, filename, _convert_to_native_table)

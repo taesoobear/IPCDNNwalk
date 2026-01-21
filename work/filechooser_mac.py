@@ -4,7 +4,7 @@
 import Tkinter, tkFileDialog
 import os,sys
 if len(sys.argv)<5:
-	print "Usage: python filechooser.py 'message' '*.jpg' . OPEN"
+	print("Usage: python filechooser.py 'message' '*.jpg' . OPEN")
 	raise SystemExit
 
 root = Tkinter.Tk()
@@ -51,6 +51,6 @@ if mode=='OPEN':
 else:
     file_path = tkFileDialog.asksaveasfile(mode='w', **options)
 if file_path=="":
-    print 'Closed, no files selected'
+    print('Closed, no files selected')
 else:
     print(file_path)

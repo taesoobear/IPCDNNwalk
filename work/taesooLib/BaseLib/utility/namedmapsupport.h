@@ -10,7 +10,7 @@
 
 // 만약 binary_function관련 에러가 나기 시작하면 : std::binar_function ...을 모두 삭제할 것
 // backward compatibility가 걱정되서 남겨놓은 상태.
-struct ltstr: std::binary_function<const std::string&, const std::string&  , bool>
+struct ltstr //: std::binary_function<const std::string&, const std::string&  , bool>
 {
 	bool operator()(const std::string &_X, const std::string &_Y) const
 	{
@@ -18,17 +18,17 @@ struct ltstr: std::binary_function<const std::string&, const std::string&  , boo
 	}
 };
 
-struct ltsz: std::binary_function<char* const &, char* const &, bool>
+struct ltsz//: std::binary_function<char* const &, char* const &, bool>
 {
 	bool operator()(char* const & _X, char* const & _Y) const;
 };
 
-struct ltcsz: std::binary_function<const char* , const char* , bool>
+struct ltcsz//: std::binary_function<const char* , const char* , bool>
 {
 	bool operator()(const char* _X, const char* _Y) const;
 };
 
-struct ltint: std::binary_function<const int&, const int&  , bool>
+struct ltint//: std::binary_function<const int&, const int&  , bool>
 {
 	bool operator()(const int &_X, const int &_Y) const
 	{
@@ -37,7 +37,7 @@ struct ltint: std::binary_function<const int&, const int&  , bool>
 };
 
 class TString;
-struct cmpTString: std::binary_function<TString const &, TString const &, bool>
+struct cmpTString//: std::binary_function<TString const &, TString const &, bool>
 {
 	bool operator()(TString const & _X, TString const & _Y) const;
 };

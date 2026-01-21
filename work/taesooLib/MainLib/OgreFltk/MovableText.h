@@ -109,7 +109,8 @@ namespace Ogre {
 		const   LightList			&getLights(void) const {return mLList;};
 
 		// from FrameListener
-		bool 	                    frameRenderingQueued(const FrameEvent &evt);
+		//bool 	                    frameRenderingQueued(const FrameEvent &evt);
+		bool frameStarted( const FrameEvent &evt );
 	};
 
 	/** Factory object for creating MovableText instances */

@@ -385,6 +385,11 @@ function writeMujocoBody(out, out_asset, loader, bone, level, option)
 			local sizeZ=tonumber(info[3])
 			local h=tonumber(info[4])
 			local fn=info[5]
+			if option.out_filename then
+				local _, out_path=os.processFileName(option.out_filename)
+				fn=os.relativeToAbsolutePath(fn)
+				fn=os.absoluteToRelativePath(fn, os.relativeToAbsolutePath(out_path))
+			end
 			local size=vector3(sizeX, 0, sizeZ)
 			local pos=loader:bone(1):getOffset()+size
 			local quat=quater(math.rad(-90), vector3(0,1,0))*quater(0.7071067812,-0.7071067812,0,0)

@@ -91,7 +91,7 @@ public:
 	VectorR3& operator*= ( double m ) 
 		{ x*=m; y*=m; z*=m; return(*this); }
 	VectorR3& operator/= ( double m ) 
-			{ register double mInv = 1.0/m; 
+			{ double mInv = 1.0/m; 
 			  x*=mInv; y*=mInv; z*=mInv; 
 			  return(*this); }
 	VectorR3 operator- () const { return ( VectorR3(-x, -y, -z) ); }
@@ -111,10 +111,10 @@ public:
 	inline VectorR3& MakeUnit();		// Normalize() with error checking
 	inline VectorR3& ReNormalize();
 	bool IsUnit( ) const
-		{ register double norm = Norm();
+		{ double norm = Norm();
 		  return ( 1.000001>=norm && norm>=0.999999 ); }
 	bool IsUnit( double tolerance ) const
-		{ register double norm = Norm();
+		{ double norm = Norm();
 		  return ( 1.0+tolerance>=norm && norm>=1.0-tolerance ); }
 	bool NearZero(double tolerance) const { return( MaxAbs()<=tolerance );}
 							// tolerance should be non-negative
@@ -223,17 +223,17 @@ inline VectorR3 operator-( const VectorR3& u, const VectorR3& v )
 { 
 	return VectorR3(u.x-v.x, u.y-v.y, u.z-v.z); 
 }
-inline VectorR3 operator*( const VectorR3& u, register double m) 
+inline VectorR3 operator*( const VectorR3& u, double m) 
 { 
 	return VectorR3( u.x*m, u.y*m, u.z*m); 
 }
-inline VectorR3 operator*( register double m, const VectorR3& u) 
+inline VectorR3 operator*( double m, const VectorR3& u) 
 { 
 	return VectorR3( u.x*m, u.y*m, u.z*m); 
 }
 inline VectorR3 operator/( const VectorR3& u, double m) 
 { 
-	register double mInv = 1.0/m;
+	double mInv = 1.0/m;
 	return VectorR3( u.x*mInv, u.y*mInv, u.z*mInv); 
 }
 
@@ -295,14 +295,14 @@ inline VectorR3::VectorR3( const VectorHgR3& uH )
 inline VectorR3& VectorR3::ReNormalize()			// Convert near unit back to unit
 {
 	double nSq = NormSq();
-	register double mFact = 1.0-0.5*(nSq-1.0);	// Multiplicative factor
+	double mFact = 1.0-0.5*(nSq-1.0);	// Multiplicative factor
 	*this *= mFact;
 	return *this;
 }
 
 inline double NormalizeError (const vector3& u)
 {
-	register double discrepancy;
+	double discrepancy;
 	discrepancy = u.x*u.x + u.y*u.y + u.z*u.z - 1.0;
 	if ( discrepancy < 0.0 ) {
 		discrepancy = -discrepancy;

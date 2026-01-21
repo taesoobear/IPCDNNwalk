@@ -81,8 +81,129 @@ MeshToEntity::~MeshToEntity()
 	for(int i=0; i<mData.size(); i++)
 		delete mData[i];
 }
-#ifndef NO_OGRE
+#ifdef NO_OGRE
+int MeshToEntity::getRawData(Mesh const& mesh, int ielt, matrixn& vertices, intvectorn& indices) 
+{
+	MeshToEntity_DATA& data=*mData[ielt];
+	auto& option=mSavedOption;
+
+	int offset=0;
+	offset+=3;
+
+	if(option.useNormal)
+		offset+=3;
+	if(option.useTexCoord)
+		offset+=2;
+	if(option.useColor)
+		offset+=4;
+
+	vertices.setSize(data.numOgreVertex(), offset);
+	for(int i=0; i<data.numOgreVertex(); i++)
+	{
+		double* pFloat=&vertices(i,0);
+		vector3 const& pp=mesh.getVertex(data.ogreVertices[i][Buffer::VERTEX]);
+		*pFloat++ = pp.x;
+		*pFloat++ = pp.y;
+		*pFloat++ = pp.z;
+
+		if(option.useNormal)
+		{
+			vector3 const& pp=mesh.getNormal(data.ogreVertices[i][Buffer::NORMAL]);
+			*pFloat++ = pp.x;
+			*pFloat++ = pp.y;
+			*pFloat++ = pp.z;
+		}
+
+		if(option.useTexCoord)
+		{
+			vector2 const& pp=mesh.getTexCoord(data.ogreVertices[i][Buffer::TEXCOORD]);
+			*pFloat++ = pp(0);
+			*pFloat++ = pp(1);
+		}
+		if(option.useColor)
+		{
+			vector4 const& c=mesh.getColor(data.ogreVertices[i][Buffer::COLOR]);
+			*pFloat++ = c(0);
+			*pFloat++ = c(1);
+			*pFloat++ = c(2);
+			*pFloat++ = c(3);
+		}
+	}
+
+	const Geometry* geom=dynamic_cast<const Geometry*>(&mesh);
+	int startFace=0;
+	int endFace=mesh.numFace();
+	if(geom)
+	{
+		startFace=mesh.faceGroups.start(ielt);
+		endFace=mesh.faceGroups.end(ielt);
+	}
+
+	int numFace=endFace-startFace;
+	unsigned int indexCount = numFace*3;
+	indices.setSize(indexCount);
+	{
+		int* pIndices=&indices(0);
+		for(int i=0; i<numFace; i++)
+		{
+			*pIndices++=data.ogreIndexes[i](0);
+			*pIndices++=data.ogreIndexes[i](1);
+			*pIndices++=data.ogreIndexes[i](2);
+		}
+	}
+	return mData.size();
+}
+void MeshToEntity::getRawData_pos(Mesh const& mesh, int ielt, matrixn& vertices) 
+{
+	MeshToEntity_DATA& data=*mData[ielt];
+	auto& option=mSavedOption;
+
+	int offset=3;
+
+	vertices.setSize(data.numOgreVertex(), offset);
+	for(int i=0; i<data.numOgreVertex(); i++)
+	{
+		double* pFloat=&vertices(i,0);
+		vector3 const& pp=mesh.getVertex(data.ogreVertices[i][Buffer::VERTEX]);
+		*pFloat++ = pp.x;
+		*pFloat++ = pp.y;
+		*pFloat++ = pp.z;
+	}
+}
+void MeshToEntity::getRawData_posAndNormal(Mesh const& mesh, int ielt, matrixn& vertices) 
+{
+	MeshToEntity_DATA& data=*mData[ielt];
+	auto& option=mSavedOption;
+
+	int offset=0;
+	offset+=3;
+
+	if(option.useNormal)
+		offset+=3;
+
+	vertices.setSize(data.numOgreVertex(), offset);
+	for(int i=0; i<data.numOgreVertex(); i++)
+	{
+		double* pFloat=&vertices(i,0);
+		vector3 const& pp=mesh.getVertex(data.ogreVertices[i][Buffer::VERTEX]);
+		*pFloat++ = pp.x;
+		*pFloat++ = pp.y;
+		*pFloat++ = pp.z;
+
+		if(option.useNormal)
+		{
+			vector3 const& pp=mesh.getNormal(data.ogreVertices[i][Buffer::NORMAL]);
+			*pFloat++ = pp.x;
+			*pFloat++ = pp.y;
+			*pFloat++ = pp.z;
+		}
+	}
+}
+
+void MeshToEntity::_constructSubMesh(int ielt, int startFace, int endFace, const Mesh& mesh, const char* meshId, const MeshToEntity::Option & option)
+#else
 void MeshToEntity::_constructSubMesh(int ielt, int startFace, int endFace, const Mesh& mesh, const char* meshId, const MeshToEntity::Option & option, Ogre::Aabb& box)
+#endif
 {
 	MeshToEntity_DATA& data=*mData[ielt];
 
@@ -99,6 +220,7 @@ void MeshToEntity::_constructSubMesh(int ielt, int startFace, int endFace, const
 		}
 	}
 
+#ifndef NO_OGRE
 
 	Ogre::Root *root = RE::renderer().getRoot();
 	Ogre::RenderSystem *renderSystem = root->getRenderSystem();
@@ -252,8 +374,8 @@ void MeshToEntity::_constructSubMesh(int ielt, int startFace, int endFace, const
 		}
 	}
 
-}
 #endif
+}
 // Ogre::Mesh와 OBJloader::Mesh간의 자료교환을 담당하는 클래스.
 MeshToEntity::MeshToEntity(const OBJloader::Mesh& mesh, const char* meshId, bool buildEdgeList, bool dynamicUpdate, bool useNormal, bool useTexCoord)
 	:MeshToEntity(mesh, meshId, OBJloader::MeshToEntity::Option(false, useNormal, useTexCoord, buildEdgeList, dynamicUpdate))
@@ -292,9 +414,8 @@ MeshToEntity::MeshToEntity(const OBJloader::Mesh& mesh, const char* meshId, OBJl
 
 	mSavedOption=option;
 
-#ifdef NO_OGRE
-#else
 
+#ifndef NO_OGRE
 	Ogre::Root *root = RE::renderer().getRoot();
 	Ogre::RenderSystem *renderSystem = root->getRenderSystem();
 	Ogre::VaoManager *vaoManager = renderSystem->getVaoManager();
@@ -307,8 +428,9 @@ MeshToEntity::MeshToEntity(const OBJloader::Mesh& mesh, const char* meshId, OBJl
 	//Create the mesh
 	mMesh= Ogre::MeshManager::getSingleton().createManual(meshId, ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME).get();
 
-	const Geometry* geom=dynamic_cast<const Geometry*>(&mesh);
 	Ogre::Aabb box;
+#endif
+	const Geometry* geom=dynamic_cast<const Geometry*>(&mesh);
 	if(geom)
 	{
 		mData.resize(geom->numElements());
@@ -317,15 +439,24 @@ MeshToEntity::MeshToEntity(const OBJloader::Mesh& mesh, const char* meshId, OBJl
 			mData[ielt]=new OBJloader::MeshToEntity_DATA(mesh.numVertex(), mesh.numFace());
 			int startFace=mesh.faceGroups.start(ielt);
 			int endFace=mesh.faceGroups.end(ielt);
+#ifdef NO_OGRE
+			_constructSubMesh(ielt, startFace, endFace, mesh, meshId, option);
+#else
 			_constructSubMesh(ielt, startFace, endFace, mesh, meshId, option, box);
+#endif
 		}
 	}
 	else
 	{
 		mData.resize(1);
 		mData[0]=new OBJloader::MeshToEntity_DATA(mesh.numVertex(), mesh.numFace());
+#ifdef NO_OGRE
+		_constructSubMesh(0, 0, mesh.numFace(), mesh, meshId, option);
+#else
 		_constructSubMesh(0, 0, mesh.numFace(), mesh, meshId, option, box);
+#endif
 	}
+#ifndef NO_OGRE
 
 	//Set the bounds to get frustum culling and LOD to work correctly.
 	mMesh->_setBounds( box, false );

@@ -40,7 +40,9 @@ namespace OBJloader
 			bool dynamicUpdate;
 			TString meshId;
 		};
-#ifndef NO_OGRE
+#ifdef NO_OGRE
+		void _constructSubMesh(int ielt, int startFace, int endFace, const Mesh& mesh, const char* ogreMeshName, const MeshToEntity::Option & option);
+#else
 		void _constructSubMesh(int ielt, int startFace, int endFace, const Mesh& mesh, const char* ogreMeshName, const MeshToEntity::Option & option, Ogre::Aabb & box);
 #endif
 	public:
@@ -51,6 +53,11 @@ namespace OBJloader
 		MeshToEntity(const Mesh& mesh, std::string const& ogreMeshName, bool buildEdgeList=false, bool dynamicUpdate=false, bool useNormal=true, bool useTexCoord=true, bool useColor=false);
 		MeshToEntity(const Mesh& mesh, const char* ogreMeshName, bool buildEdgeList, bool dynamicUpdate, bool useNormal, bool useTexCoord, bool useColor);
 		~MeshToEntity();
+#ifdef NO_OGRE
+		int getRawData(Mesh const& mesh,int ielt, matrixn& vertices, intvectorn& indices); 
+		void getRawData_pos(Mesh const& mesh,int ielt, matrixn& vertices); 
+		void getRawData_posAndNormal(Mesh const& mesh,int ielt, matrixn& vertices); 
+#endif
 		void updatePositions();
 		void updatePositions(const vector3N& vertices);
 		void updatePositionsAndNormals();

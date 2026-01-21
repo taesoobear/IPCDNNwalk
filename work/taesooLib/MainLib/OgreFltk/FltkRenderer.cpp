@@ -34,7 +34,7 @@ namespace Msg
 		virtual void print(const char* msg)	{ printf("%s",msg);}
 		virtual void flush()				{ fflush(stdout);}
 		virtual void error(const char* msg) { printf("%s\n",msg);ASSERT(0); throw(std::runtime_error(msg));}
-		virtual void msgBox(const char* msg){ fl_message("%s",msg);}
+		virtual void msgBox(const char* msg){ printf("%s\n",msg);fl_message("%s",msg);}
 		// not implemented yet.
 		virtual bool confirm(const char* msg) { return fl_ask("%s", msg);}
 		virtual void output(const char* key, const char* msg) { RE::output(key, "%s",msg);}
@@ -1264,13 +1264,14 @@ void FltkRenderer::changeViewNoAnim(int curView)
 static void resizeOgreWin(OgreRenderer* mOgreRenderer, int ww, int hh)
 {
 	//mOgreRenderer->mWnd->resize(ww,hh);
-	mOgreRenderer->mWnd->windowMovedOrResized();
 #if !defined(_MSC_VER) && !defined (__APPLE__)
-	// on linux, window resize fails, so.
+	// linux
+	mOgreRenderer->mWnd->requestResolution( ww, hh );
 	ww= mOgreRenderer->mWnd->getWidth();
 	hh = mOgreRenderer->mWnd->getHeight();
 	//printf("resizeOgreWin %d %d \n", ww, hh);
 #endif
+	mOgreRenderer->mWnd->windowMovedOrResized();
 
 
 	double aspRatio=(double)ww/(double)hh;

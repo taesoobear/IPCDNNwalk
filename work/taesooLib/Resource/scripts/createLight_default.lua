@@ -155,14 +155,14 @@ elseif RE.getOgreVersionMinor()<=3 then
 	numMainLights=5
 	local lightVar=0.02
 
-	local light1D=1.4
+	local light1D=1.5
 	local light1S=0
 	local lightOD=0.0
 	local lightOS=0.0
 	local lightFD=0.3
 	local lightFS=0
 
-	RE.ogreSceneManager():setAmbientLight(0.4, 0.4, 0.4)
+	RE.ogreSceneManager():setAmbientLight(0.3, 0.3, 0.3)
 	for i=1,numMainLights do
 		local light
 		if i==1 then

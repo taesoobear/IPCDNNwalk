@@ -903,16 +903,21 @@ function FBXloader:__mergeFBXloaders(loaders, options)
 end
 
 function FBXloader:exportBinary(fn)
+	-- save necessary information only.
+	assert(string.sub(fn,-8)=='.fbx.dat')
+	local s= util.BinaryFile()
+	s:openWrite(fn, true) 
+	self:__packBinary(s)
+	s:close()
+end
+
+function FBXloader:__packBinary(s)
 	if self.options and self.options.useTexture and self.fbx.saveTexturesToMemoryBuffer then
 		-- texture 이미지들이 파일로 저장된적이 없으니, 여기서 저장해야 한다.
 		self.fbx:saveTextures()
 		-- todo: fbx.dat에 저장해야하나? fbx.texturecache를 그대로 쓰는게 날까? 일단 이대로 두겠음.
 	end
 	self:_updateBindPoseMesh()
-	-- save necessary information only.
-	assert(string.sub(fn,-8)=='.fbx.dat')
-	local s= util.BinaryFile()
-	s:openWrite(fn, true) 
 	s:packInt(1) -- version
 	s:_pack(self.loader)
 	if self.rigidBody then
@@ -941,7 +946,6 @@ function FBXloader:exportBinary(fn)
 	s:_pack(self.loader:pose())
 	s:pack(self.bindpose_global)
 	self.loader.mMotion:_pack(s,5) -- mot version5
-	s:close()
 end
 function FBXloader:__unpackBinary(s, filename)
 	local version=s:unpackInt() -- version
@@ -1096,7 +1100,15 @@ function FBXloader:__init(filename, options)
 		} 
 	end
 	if type(filename)=='table' then
-		self:__mergeFBXloaders(filename, options)
+		if filename.loader then
+			local s=util.MemoryFile()
+			filename:__packBinary(s)
+			self:__unpackBinary(s, '_temp.fbx.dat')
+			s:close()
+			self:_postprocessOptions('_temp.fbx.dat', options)
+		else
+			self:__mergeFBXloaders(filename, options)
+		end
 		return
 	elseif type(filename)~='string' then
 		-- init empty
@@ -2203,7 +2215,7 @@ function FBXloader.motionLoaderFromTable(bones)
 			end
 		end
 
-		if not bone.jointType then
+		if not bone.jointType or bone.jointType=='free' then
 			loader:insertJoint(b, "RT")
 		elseif bone.jointType=="rotate" then
 			loader:insertJoint(b, "R")

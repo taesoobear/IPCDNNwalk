@@ -1308,7 +1308,7 @@ void FltkScrollPanel::draw()
 #ifdef DRAW_YELLOW_SCROLLLINE
 	fl_color(155,155,0);
 	//fl_line_style(FL_DOT);
-	fl_yxline(axis+m_targetRect.left, m_targetRect.top, m_targetRect.bottom);
+	fl_yxline(axis+m_targetRect.left, m_targetRect.top, m_targetRect.bottom-2);
 #else
 	fl_color(0,0,0);
 	fl_yxline(axis+m_targetRect.left, m_targetRect.top, m_targetRect.bottom);
@@ -1366,8 +1366,13 @@ void FltkScrollPanel::drawPanel( int cur_frame, int y)
 					col=fl_color();
 
 
+#ifdef __APPLE__
+					intvectorn x(2,  0);
+					intvectorn y(2,  0);
+#else
 					intvectorn x(8, 1, 1, 1 , 0, 0 ,-1, -1, -1);
 					intvectorn y(8, 1, 0, -1, 1, -1, 1, 0, -1);
+#endif
 
 					if(mSelectedPanel.length()&& mSelectedPanel==m_aSource[j]->mLabel)
 						fl_color(col);
