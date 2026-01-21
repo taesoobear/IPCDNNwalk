@@ -1826,8 +1826,10 @@ function FBXloader.Skin:dtor()
 	for i, v in ipairs(self.nodes) do
 		RE.removeEntity(v[1])
 	end
-	self.EVR.skin=nil
-	self.EVR=nil
+	if self.EVR then
+		self.EVR.skin=nil
+		self.EVR=nil
+	end
 	self.timeline=nil
 	self.nodes=nil
 	self.fbx=nil

@@ -6,6 +6,7 @@ import numpy as np
 from easydict import EasyDict as edict # pip3 install easydict
 from pathlib import Path
 import subprocess
+import weakref
 try:
     import settings
 except:
@@ -23,6 +24,8 @@ assert(lua is not None)
 doNotGarbageCollect=[] # list of instances which should not be garbage collected. (e.g. loaders)
 _sceneGraphs=[]
 _hasBillboard=False
+_timeline=None
+_timelineObjects=[]
 
 def path(path):
     from pathlib import Path
@@ -319,8 +322,11 @@ def chooseFile(title, path, mask, write):
         return None
     return res
 
+def _remove_dead_ref(wr):
+    global _timelineObjects
+    _timelineObjects.remove(wr)
 def renderOneFrame(check):
-    global start_time , _sceneGraphs, _hasBillboard
+    global start_time , _sceneGraphs, _hasBillboard, _timeline, _timelineObjects
     ctime=time.time()
     elapsed =  ctime- start_time
     start_time=ctime
@@ -334,6 +340,13 @@ def renderOneFrame(check):
                         vv.handleFrameMove(vv, elapsed)
         if _hasBillboard:
             lua.F(('dbg', 'updateBillboards'),elapsed)
+        if _timeline:
+            cframe=motionPanel().motionWin().getCurrFrame()
+            for _v in _timelineObjects:
+                v=_v()
+                if v is not None and v._motion is not None and v._motion.numFrames()>cframe:
+                    v.setPose(v._motion.pose(cframe))
+
     return m.renderOneFrame(check)
 def output(key, *args):
     m._output(key,str(args),1)
@@ -449,12 +462,17 @@ class CollisionDetector(lua.instance):
 
 class Timeline(lua.instance):
     def __init__(self, title, numFrames, frameTime=None):
+        if isinstance(title, int):
+            frameTime=numFrames
+            numFrames=title
+            title=''
+
         lua.require('subRoutines/Timeline')
-        lua.dostring("""
-        if not mEventReceiver then mEventReceiver=EVR() end
-        function EVR:onFrameChanged(win, iframe)
-        end
-        """)
+        #lua.dostring("""
+        #if not mEventReceiver then mEventReceiver=EVR() end
+        #function EVR:onFrameChanged(win, iframe)
+        #end
+        #""")
         self.var_name='mTimeline'+m.generateUniqueName()
         if not frameTime:
             frameTime=1.0/30.0
@@ -833,6 +851,7 @@ class FBXskin(lua.instance):
     def __init__(self, fbx=None, options=None, **kwargs):
         self.var_name='mFBXskin'+m.generateUniqueName()
         self.persistent=False
+        self._motion=None
         if fbx==None:
             self.var_name=options
             self.persistent=True
@@ -862,7 +881,21 @@ class FBXskin(lua.instance):
     def setLengthAndPoseDOF(self, length_scale, pose):
         lua.M0(self.var_name, 'setLengthAndPoseDOF', length_scale, pose)
     def applyAnim(self, motion):
-        lua.M0(self.var_name, 'applyAnim', motion)
+        global _timeline, _timelineObjects
+        self._motion=motion # to prevent garbage collection
+        if self in _timelineObjects:
+            _timelineObjects.remove(self)
+        if _timeline is None:
+            _timeline=Timeline(motion.numFrames(), 1.0/motion.frameRate())
+        else:
+            maxFrame=0
+            for _skin in _timelineObjects:
+                skin=_skin()
+                if skin is not None:
+                    maxFrame=max(maxFrame,skin._motion.numFrames())
+            _timeline.reset(maxFrame, 1.0/motion.frameRate())
+        _timelineObjects.append(weakref.ref(self, _remove_dead_ref))
+
     def setPoseTransfer(self, pt):
         lua.M0(self.var_name, 'setPoseTransfer', pt)
     def setMaterial(self, name):
