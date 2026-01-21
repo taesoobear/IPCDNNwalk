@@ -39,7 +39,7 @@ class MujocoSim:
         self.mj_ray=mujoco.mj_ray
         if isinstance(simLoaders, list):
             if scene_file==None:
-                scene_file='__temp_ragdoll_scene.xml'
+                scene_file='work/__temp_ragdoll_scene.xml'
             if timestep==None:
                 timestep=1.0/300.0
             RE.writeMujocoXML(simLoaders, scene_file, {'groundPlane':False})

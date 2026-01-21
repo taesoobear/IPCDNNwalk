@@ -88,14 +88,13 @@ def new(cacheFile, mLoader, mMotionDOF, discontinuity, filterWindow=0.5, matchWi
         del edges['var_name']
     else:
         edges=lua.toDict(edges)
-        pdb.set_trace()
 
     # simplify the data structure.
     newEdges={}
     for k, v in edges.items():
         edges_k=[None]*len(v)
         for i, vv in enumerate(v):
-            edges_k[i]=vv.tgt 
+            edges_k[i]=vv['tgt']
         newEdges[k]=lua.ivec(edges_k)
     
     RE.saveTable({'nodes':nodes, 'edges':newEdges, 'param':[filterWindow, thr, frameRate, matchWindowSize]}, cacheFile,)

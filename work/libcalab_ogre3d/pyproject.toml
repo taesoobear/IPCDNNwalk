@@ -1,6 +1,9 @@
 [project]
 name = "libcalab_ogre3d"                # PyPI 패키지명 (중복 불가!)
-version = "0.0.7"
+#version = "0.1.2"
+#version = "0.1.3" # fixed null pointer errors related to Ogre::SceneNode
+#version = "0.1.4" # better SceneGraph UI.
+version = "0.1.5" # now creates work folder automatically.
 description = "Library for character animation and rendering based on ogre3d"
 authors = [
   { name = "Taesoo", email = "taesoobear@gmail.com" }

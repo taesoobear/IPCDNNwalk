@@ -4,14 +4,14 @@ import pdb # use pdb.set_trace() for debugging
 #import code # or use code.interact(local=dict(globals(), **locals())) for debugging. see below.
 import numpy as np
 from easydict import EasyDict as edict # pip3 install easydict
+from pathlib import Path
+import subprocess
 try:
     import settings
 except:
     import work.settings as settings
     settings.relativeMode=True
 
-from pathlib import Path
-import shutil
 settings._loadDefault()
 def libcalab():
     import sys
@@ -22,6 +22,7 @@ assert(m is not None)
 assert(lua is not None)
 doNotGarbageCollect=[] # list of instances which should not be garbage collected. (e.g. loaders)
 _sceneGraphs=[]
+_hasBillboard=False
 
 def path(path):
     from pathlib import Path
@@ -30,11 +31,6 @@ def path(path):
 
 # import all three in a line.
 # m,lua,control=RE.defaultModules()
-def chooseFile(title, path, mask, write):
-    res= lua.F('Fltk.ChooseFile', title, path, mask, write)
-    if isinstance(res, tuple):
-        return None
-    return res
 
 def defaultModules():
     return settings.mlib, settings.lua, settings.control
@@ -271,6 +267,8 @@ def drawTraj(objectlist, matrix, nameid=None, color='solidred', thickness=0, lin
 def timedDraw(*args):
     lua.F(('dbg', 'timedDraw'),*args) 
 def drawBillboard(*args):
+    global _hasBillboard
+    _hasBillboard=True
     if isinstance(args[0], m.vector3N):
         args=list(args)
         v=args[0] # to prevent immediate garbage collection 
@@ -282,7 +280,8 @@ def drawBillboard(*args):
 def eraseAllDrawn():
     lua.F(('dbg', 'eraseAllDrawn'))
 def updateBillboards(fElapsedTime):
-    lua.F(('dbg', 'updateBillboards'),fElapsedTime)
+    # no longer necesasry
+    pass
 def createColorBuffer(mesh):
     lua.require("Kinematics/meshTools")
     lua.M0(mesh,'createColorBuffer')
@@ -303,8 +302,14 @@ import time
 
 start_time = time.time()
 
+def chooseFile(title, path, mask, write):
+    res= lua.F('Fltk.ChooseFile', title, path, mask, write)
+    if isinstance(res, tuple):
+        return None
+    return res
+
 def renderOneFrame(check):
-    global start_time 
+    global start_time , _sceneGraphs, _hasBillboard
     ctime=time.time()
     elapsed =  ctime- start_time
     start_time=ctime
@@ -316,6 +321,8 @@ def renderOneFrame(check):
                 for k, vv in v.objects.items():
                     if vv.handleFrameMove is not None:
                         vv.handleFrameMove(vv, elapsed)
+        if _hasBillboard:
+            lua.F(('dbg', 'updateBillboards'),elapsed)
     return m.renderOneFrame(check)
 def output(key, *args):
     m._output(key,str(args),1)
@@ -762,6 +769,8 @@ def createSMPLskeleton(bm_path:str, betas=None):
 
 class Constraints(lua.instance):
     def __init__(self, originalPos, **kwargs):
+        global _hasBillboard
+        _hasBillboard=True
         self.var_name='mCON'+m.generateUniqueName()
         lua.require("RigidBodyWin/subRoutines/Constraints")
         lua.F_lua( self.var_name,'Constraints')
@@ -989,7 +998,104 @@ def createLuaEnvOnly():
 def releaseLuaEnv():
     m.releaseMainWin()
 
+def clone_git_to_cache(
+    repo_url: str,
+    repo_name: str | None = None,
+    cache_dir_name: str = ".cache",
+    pull_if_exists: bool = False,
+) -> Path:
+    """
+    Clone a git repository into a cache directory (platform-independent).
+
+    Args:
+        repo_url: Git repository URL
+        repo_name: Folder name for the repo (defaults to repo URL name)
+        cache_dir_name: Cache directory name under user home
+        pull_if_exists: If True, run 'git pull' when repo already exists
+
+    Returns:
+        Path to the cloned repository
+    """
+
+    # ~/.cache (or custom name)
+    cache_root = Path.home() / cache_dir_name
+    cache_root.mkdir(parents=True, exist_ok=True)
+
+    if repo_name is None:
+        repo_name = Path(repo_url.rstrip("/")).stem
+
+    repo_path = cache_root / repo_name
+
+    if repo_path.exists():
+        if pull_if_exists:
+            print(f"[INFO] Repository exists, pulling: {repo_path}")
+            subprocess.run(
+                ["git", "-C", str(repo_path), "pull"],
+                check=True,
+            )
+        else:
+            print(f"[INFO] Repository already cached: {repo_path}")
+    else:
+        print(f"[INFO] Cloning repository to cache: {repo_path}")
+        subprocess.run(
+            ["git", "clone", repo_url, str(repo_path)],
+            check=True,
+        )
+        if not repo_path.exists():
+            print(" Error: Cloning GitHub/taesoobear/IPCDNNwalk failed. Please try again later, or manually create a symlink from IPCDNNwalk/work to the work folder.")
+            os._exit(0);
+
+    return repo_path
+def run_mklink_as_admin(src, tgt, bat_path=None):
+    src = os.path.abspath(src)
+    tgt = os.path.abspath(tgt)
+
+    if bat_path is None:
+        bat_path = Path.cwd() / "gitscript.bat"
+    else:
+        bat_path = Path(bat_path)
+
+    # 1. gitscript.bat 생성
+    bat_content = f"""@echo off
+echo Creating symbolic link...
+mklink /d "{tgt}" "{src}"
+if %errorlevel% neq 0 (
+    echo Failed to create symlink.
+) else (
+    echo Symlink created successfully.
+)
+set /p res=Press Enter to continue.
+"""
+
+    bat_path.write_text(bat_content, encoding="utf-8")
+
+    # 2. PowerShell로 관리자 권한 실행
+    ps_cmd = [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        f"Start-Process '{bat_path}' -Verb RunAs"
+    ]
+
+    subprocess.run(ps_cmd, check=True)
+
 def createMainWin(argv=None):
+
+    if not os.path.exists('./work'):
+        print("Ogre3D resource folder ('work') not found. Creating it from GitHub taesoobear/IPCDNNwalk/work.")
+        cache_root = Path.home() / '.cache'
+
+        repo_path = clone_git_to_cache(
+            repo_url="https://github.com/taesoobear/IPCDNNwalk.git",
+            pull_if_exists=True,
+        )
+
+        if os.name == "nt":
+            print('Creating symbolic link')
+            run_mklink_as_admin(str(cache_root/'IPCDNNwalk'/'work'), 'work')
+        else:
+            os.symlink(cache_root/'IPCDNNwalk'/'work', 'work')
+
     if not argv:
         argv=[]
     import platform

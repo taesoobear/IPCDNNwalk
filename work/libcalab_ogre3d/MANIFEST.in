@@ -1,9 +1,7 @@
-recursive-include libcalab_ogre3d *.so *.dll *.dylib
+recursive-include libcalab_ogre3d *.so.4.0 *.pyd *.so *.dll *.dylib 
 
 # include resources
 recursive-include libcalab_ogre3d/Resource *
 recursive-include libcalab_ogre3d/work *
 recursive-include libcalab_ogre3d/media3 *
 
-# include CMake-built shared libs (if setuptools misses them)
-recursive-include libcalab_ogre3d *.so *.pyd *.dll *.dylib

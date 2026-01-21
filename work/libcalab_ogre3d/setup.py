@@ -17,7 +17,7 @@ setup(
         Extension("libcalab_ogre3d.libmainlib", sources=[]),  # 소스 없음
     ],
     package_data={
-        "libcalab_ogre3d": ["*.so", "*.dylib", "*.dll", "work/*", "*.pyd","*.py", "Resource/*","media3/*"],  # wheel 안에 포함할 파일
+        "libcalab_ogre3d": ["*.so", "*.so.4.0", "*.dylib", "*.dll", "*.pyd","*.py", "Resource/*","media3/*"],  # wheel 안에 포함할 파일
     },
     distclass=BinaryDistribution, 
     zip_safe=False,

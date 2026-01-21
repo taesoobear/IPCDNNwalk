@@ -1,4 +1,4 @@
-# example code 1 (fbx rendering using timeline). 
+# Example code 1 (fbx rendering using timeline). 
 ```
 import os,sys,pdb,math
 from libcalab_ogre3d import *
@@ -82,7 +82,18 @@ while True:
 ```
 
 
-# other examples
+# Other examples
 ```
 https://github.com/taesoobear/IPCDNNwalk
 ```
+
+# Changelog 
+
+## Version 0.1.5
+- Automatically creates the `work` resource folder.
+
+## Version 0.1.4
+- Improved the SceneGraph UI.
+
+## Version 0.1.3
+- Fixed null pointer errors related to `Ogre::SceneNode`.

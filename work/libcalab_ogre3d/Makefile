@@ -2,12 +2,6 @@ default:
 	echo "use make mac_build_wheelor linux_build_wheel"
 mac_build_wheel:
 	cd ../sample_python/src;make 
-	cp ../sample_python/build_mainLib/build_linux/MainLib/build_shared_Release/libMainLib.dylib libcalab_ogre3d/
-	cp ../sample_python/build_mainLib/build_linux/MainLib/build_shared_Release/build_Release/liblua51.dylib libcalab_ogre3d/
-	cp ../sample_python/build_mainLib/build_linux/BaseLib/build_shared_Release/libBaseLib.dylib libcalab_ogre3d/
-	cp ../sample_python/build_mainLib/build_linux/PhysicsLib/build_shared_Release/libPhysicsLib.dylib libcalab_ogre3d/
-	cp ../sample_python/build_mainLib/build_linux/ClassificationLib/build_shared_Release/libClassificationLib.dylib libcalab_ogre3d/
-	cp ../sample_python/build_mainLib/build_linux/ClassificationLib/build_shared_Release/math/ann_1.1.2/src/libann.dylib libcalab_ogre3d/
 	cp /opt/homebrew/lib/libfreeimage.dylib libcalab_ogre3d/ || echo "no freeimage files"
 	cp /opt/homebrew/lib/ogre-3/*.4.0.dylib libcalab_ogre3d/ || echo "no ogre files"
 	cp /usr/local/lib/libOIS.1.5.0.dylib libcalab_ogre3d/ || echo "no OIS files"
@@ -15,11 +9,31 @@ mac_build_wheel:
 	cp  ../sample_python/work/*.pyd libcalab_ogre3d/ || echo "no pyd files"
 	cp  ../sample_python/work/*.so libcalab_ogre3d/|| echo "no so files"
 	cp  ../sample_python/work/*.dylib libcalab_ogre3d/|| echo "no dylib files"
+	cp ../sample_python/build_mainLib/build_linux/MainLib/build_shared_Release/libMainLib.dylib libcalab_ogre3d/
+	cp ../sample_python/build_mainLib/build_linux/MainLib/build_shared_Release/build_Release/liblua51.dylib libcalab_ogre3d/
+	cp ../sample_python/build_mainLib/build_linux/BaseLib/build_shared_Release/libBaseLib.dylib libcalab_ogre3d/
+	cp ../sample_python/build_mainLib/build_linux/PhysicsLib/build_shared_Release/libPhysicsLib.dylib libcalab_ogre3d/
+	cp ../sample_python/build_mainLib/build_linux/ClassificationLib/build_shared_Release/libClassificationLib.dylib libcalab_ogre3d/
+	cp ../sample_python/build_mainLib/build_linux/ClassificationLib/build_shared_Release/math/ann_1.1.2/src/libann.dylib libcalab_ogre3d/
 	# make libmainlib portable
+	rm -f dist/*
 	python3 fix_mac.py
 	#pip wheel . -w dist
 	python -m build
-	echo "also copy macosx15.whl to macosx13.whl"
+	echo "also rename macosx15.whl to macosx13.whl"
+linux_build_wheel:
+	cd ../sample_python/src;make 
+	cp ../sample_python/build_mainlib/build_linux/BaseLib/build_shared_Release/*.so libcalab_ogre3d/
+	cp ../sample_python/build_mainlib/build_linux/MainLib/build_shared_Release/*.so libcalab_ogre3d/
+	cp ../sample_python/build_mainlib/build_linux/PhysicsLib/build_shared_Release/*.so libcalab_ogre3d/
+	cp ../sample_python/build_mainlib/build_linux/ClassificationLib/build_shared_Release/*.so libcalab_ogre3d/
+	cp ../sample_python/build_mainlib/build_linux/ClassificationLib/build_shared_Release/math/ann_1.1.2/src/*.so libcalab_ogre3d/
+	cp /usr/local/lib/libOgreNext*.so.4.0 libcalab_ogre3d/ || echo "no ogre files"
+	cp /usr/local/lib/OGRE-Next/*.so libcalab_ogre3d/ || echo "no ogre files"
+	cp  ../sample_python/work/*.so libcalab_ogre3d/|| echo "no so files"
+	cd libcalab_ogre3d;patchelf --set-rpath '$$ORIGIN' *.so
+	python -m build
+	rm -f dist/*.tar.gz # remove source distribution.
 install_dependencies:
 	pip install setuptools pybind11 wheel build twine
 run_luna_gen:
@@ -33,12 +47,16 @@ diff:
 diff_script:
 	gitv diffd libcalab_ogre3d ../sample_python/work
 	gitv diffd libcalab_ogre3d/Resource/scripts ../taesooLib/Resource/scripts
-	gitv diffd libcalab_ogre3d/Resource/scripts ../taesooLib/Samples/scripts/lua/
+	gitv diffd libcalab_ogre3d/Resource/scripts ../taesooLib/Samples/scripts/
 	gitv diffd libcalab_ogre3d/Resource/scripts/RigidBodyWin ../taesooLib/Samples/scripts/RigidBodyWin
-fix_linux:
+fix_linux: # doesn't work
 	auditwheel repair dist/*.whl
   
 clean:
+	rm -f libcalab_ogre3d/*.so
+	rm -f libcalab_ogre3d/*.dll
+	rm -f libcalab_ogre3d/*.pyd
+	rm -f libcalab_ogre3d/*.dylib
 	rm -f dist/*.whl
 	rm -f dist/*.tar.gz
 	rm -f wheelhouse/*
