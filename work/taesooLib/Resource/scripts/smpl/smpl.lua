@@ -114,6 +114,8 @@ smpl={
 		"right_thumb1",
 		"right_thumb2",
 		"right_thumb3",
+	},
+	SMPLX_ADDITIONAL_NAMES={
 		"nose",
 		"right_eye",
 		"left_eye",
@@ -608,7 +610,8 @@ function smpl.init(bm_path)
 	-- set shape parameter
 	dd.betas = CT.zeros(dd.shapedirs:cols()) 
 	if dd.kintree_table:cols()==55 then
-		dd.joint_names=smpl.SMPLX_LOCKEDHEAD_JOINT_NAMES 
+		--dd.joint_names=smpl.SMPLX_LOCKEDHEAD_JOINT_NAMES 
+		dd.joint_names=smpl.SMPLX_JOINT_NAMES 
 	elseif dd.kintree_table:cols()==52 then
 		dd.joint_names=smpl.SMPLH_LOCKEDHEAD_JOINT_NAMES 
 	elseif dd.kintree_table:cols()==24 then
