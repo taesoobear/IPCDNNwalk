@@ -31,7 +31,6 @@ def path(path):
 
 # import all three in a line.
 # m,lua,control=RE.defaultModules()
-
 def defaultModules():
     return settings.mlib, settings.lua, settings.control
 def _compressVoxels(scene, optional_filename=None):
@@ -263,7 +262,8 @@ def erase(*args):
     lua.F(('dbg', 'erase'),*args) 
 def drawTraj(objectlist, matrix, nameid=None, color='solidred', thickness=0, linetype="LineList"):
     if not nameid: nameid=RE.generateUniqueName()
-    objectlist.registerObject(nameid, linetype, color, matrix, thickness)
+    #objectlist.registerObject(nameid, linetype, color, matrix, thickness)
+    drawBillboard(matrix, nameid, color, thickness, linetype)
 def timedDraw(*args):
     lua.F(('dbg', 'timedDraw'),*args) 
 def drawBillboard(*args):
@@ -651,6 +651,8 @@ class OsimLoader(lua.instance):
     def _get_actuated(self):
         return lua.G((self.var_name, 'actuated'))
     def drawMuscles(self):
+        global _hasBillboard
+        _hasBillboard=True
         lua.M(self, 'drawMuscles')
 
     actuated = property(
@@ -1001,6 +1003,7 @@ def releaseLuaEnv():
 def clone_git_to_cache(
     repo_url: str,
     repo_name: str | None = None,
+    branch:str | None=None,
     cache_dir_name: str = ".cache",
     pull_if_exists: bool = False,
 ) -> Path:
@@ -1037,12 +1040,19 @@ def clone_git_to_cache(
             print(f"[INFO] Repository already cached: {repo_path}")
     else:
         print(f"[INFO] Cloning repository to cache: {repo_path}")
-        subprocess.run(
-            ["git", "clone", repo_url, str(repo_path)],
-            check=True,
-        )
+        if branch is None:
+            subprocess.run(
+                ["git", "clone", repo_url, str(repo_path)],
+                check=True,
+            )
+        else:
+            subprocess.run(
+                ["git", "clone", repo_url, "-b", branch,  str(repo_path)],
+                check=True,
+            )
+
         if not repo_path.exists():
-            print(" Error: Cloning GitHub/taesoobear/IPCDNNwalk failed. Please try again later, or manually create a symlink from IPCDNNwalk/work to the work folder.")
+            print(" Error: Cloning "+str(repo_url)+" failed. Please try again later, or manually create a symlink from "+repo_url+"/work to the work folder.")
             os._exit(0);
 
     return repo_path
@@ -1084,7 +1094,6 @@ def createMainWin(argv=None):
     if not os.path.exists('./work'):
         print("Ogre3D resource folder ('work') not found. Creating it from GitHub taesoobear/IPCDNNwalk/work.")
         cache_root = Path.home() / '.cache'
-
         repo_path = clone_git_to_cache(
             repo_url="https://github.com/taesoobear/IPCDNNwalk.git",
             pull_if_exists=True,
@@ -1095,7 +1104,7 @@ def createMainWin(argv=None):
             run_mklink_as_admin(str(cache_root/'IPCDNNwalk'/'work'), 'work')
         else:
             os.symlink(cache_root/'IPCDNNwalk'/'work', 'work')
-
+        path("./work/taesooLib/dump/dump").mkdir(parents=True, exist_ok=True)
     if not argv:
         argv=[]
     import platform
