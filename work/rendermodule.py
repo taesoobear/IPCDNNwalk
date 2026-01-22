@@ -1148,7 +1148,7 @@ def createMainWin(argv=None):
             run_mklink_as_admin(str(cache_root/'IPCDNNwalk'/'work'), 'work')
         else:
             os.symlink(cache_root/'IPCDNNwalk'/'work', 'work')
-        path("./work/taesooLib/dump/dump").mkdir(parents=True, exist_ok=True)
+        path(cache_root/"IPCDNNwalk/work/taesooLib/dump/dump").mkdir(parents=True, exist_ok=True)
     if not argv:
         argv=[]
     import platform
