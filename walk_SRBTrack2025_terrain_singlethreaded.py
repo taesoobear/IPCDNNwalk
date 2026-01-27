@@ -381,7 +381,7 @@ if True:
     (50, 50) for pyramid terrain  (also set isStair=True)
     (-50, 50) for hill terrain
     """
-    initial_pos_planar = np.array([50, 50])
+    initial_pos_planar = np.array([-40, 40])
     isStair=True
     obs, info = env.reset(mocap_id=mocap_id_to_show, initial_pos_planar=initial_pos_planar)  # 重置环境状态
     # visuaRE.viewpoint():setFOVy(45.000000)
