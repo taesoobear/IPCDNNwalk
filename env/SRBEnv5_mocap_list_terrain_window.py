@@ -6,8 +6,8 @@ import mujoco
 import numpy as np
 import random
 from scipy.spatial.transform import Rotation as R
-from . import testSRB_mujoco_original_viewer_terrain 
-SRBDataProcess=testSRB_mujoco_original_viewer_terrain .SRBdata 
+from .testSRB_mujoco_original_viewer_terrain  import *
+from .testSRB_mujoco_original_viewer_terrain  import SRBdata as SRBDataProcess
 """
     RL env
 """
@@ -119,7 +119,7 @@ def return_site_to_apply_force_on(model, feet_pos_list_this_step):
 class SRBEnv(Env):
     def __init__(self, mocap_path_list):
         super(SRBEnv, self).__init__()
-        model_path = 'Characters/SRB5_playground.xml'
+        model_path = 'gym_trackSRB/Characters/SRB5_playground.xml'
         self.model_path=model_path
         self.model = mujoco.MjModel.from_xml_path(model_path)
         self.data = mujoco.MjData(self.model)
