@@ -1060,6 +1060,8 @@ function FBXloader:_loadTexture(meshInfo,filename)
 				diffuseTexture='work/taesooLib/media12/mixamo/'..meshInfo.diffuseTexture
 			elseif (meshInfo.diffuseTexture:len()>_:len()) and os.isFileExist(filepath..'/'..(meshInfo.diffuseTexture:sub(_:len()-2))) then
 				diffuseTexture=filepath..'/'..(meshInfo.diffuseTexture:sub(_:len()-2))
+			elseif os.isFileExist('../../taesooLib/media12/mixamo/'..meshInfo.diffuseTexture) then
+				diffuseTexture='../../taesooLib/media12/mixamo/'..meshInfo.diffuseTexture
 			else
 				print('Warning! failed to find '..meshInfo.diffuseTexture)
 			end

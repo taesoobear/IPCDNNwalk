@@ -482,11 +482,13 @@ class Timeline(lua.instance):
             lua.M(self.var_name,'dtor')
             lua.dostring(self.var_name+'=nil')
     def attachCameraToMotion(self, loader, motion):
-        lua.M('mEventReceiver', 'attachCameraToMotion', loader, motion)
+        self.set('currFrame', 0)
+        self.set('cameraInfo', [])
+        lua.F('EVR.attachCameraToMotion',self, loader, motion)
     def detachCamera(self):
-        lua.M('mEventReceiver', 'detachCamera')
+        lua.F('EVR.detachCamera', self)
     def moveCamera(self, iframe):
-        lua.M('mEventReceiver', 'moveCamera', iframe)
+        lua.F('EVR.moveCamera', self, iframe)
     def attachTimer(self, frameRate, numFrames):
         lua.M(self.var_name, 'attachTimer', frameRate, numFrames)
     def reset(self, totalTime, frameTime):

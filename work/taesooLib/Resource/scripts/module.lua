@@ -8397,7 +8397,9 @@ function Viewpoint:lookAt(pose, options)
 		-- vectorn
 		targetPos=pose:toVector3(0)*skinScale
 	end
-	if not options.useY then
+	if options.zeroZ then
+		targetPos.z=0
+	elseif not options.useY then
 		targetPos.y=0
 	end
 
