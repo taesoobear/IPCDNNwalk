@@ -1219,16 +1219,23 @@ a wrapper class of a lua variable (any type)
 """
 class instance(ArgumentProcessor):
     # lua.instance("lua variable name") can also be used as an lua.F(*) argument.
-    def __init__(self, lua_var):
+    def __init__(self, lua_var, autoCollect=False):
         if isinstance(lua_var, str):
-            self.var_name=lua_var
+            if '.' in lua_var:
+                self.var_name=lua_var.split('.')
+            else:
+                self.var_name=lua_var
         elif isinstance(lua_var, tuple):
             self.var_name=list(lua_var)
         elif isinstance(lua_var, list):
             self.var_name=lua_var
         else:
             self.var_name=lua_var.var_name
+        self.autoCollect=autoCollect
         self.dependent=[]
+    def __del__(self):
+        if self is not None and instance_or_memberFunc is not None and self.autoCollect:
+            self.collect()
     def push(self, l):
         _getGlobal(self.var_name)
     def _addToVarName(self, str_name):
@@ -1285,9 +1292,10 @@ class instance(ArgumentProcessor):
     def __repr__(self):
         return 'lua instance ('+str(self.var_name)+'):\n'+F('dbg.tostring', self)
     def collect(self): # manual collection. (automatic collection is possible, but often is dangerous, so I didn't implement it.)
-        dostring(self.var_name+'=nil')
-        for i in self.dependent:
-            dostring(d+'=nil')
+        if isinstance(self.var_name, str):
+            dostring(self.var_name+'=nil')
+            for i in self.dependent:
+                dostring(d+'=nil')
 
 class instance_or_memberFunc(instance):
     def __init__(self, python_var, parent):

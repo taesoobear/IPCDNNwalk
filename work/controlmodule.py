@@ -276,8 +276,8 @@ class MujocoSim:
         self.fkSolvers[iloader].setPoseDOF(posedof)
 
     def initSimulation(self):
-        # only for taesooLib style API.
-        pass
+        # forward kinematics
+        self.mujoco.mj_forward(self.model, self.data);
     def setQ(self, iloader, q):
         # 이거 루트가 free가 아닐때 만 정상적으로 taesooLib처럼 동작함.
         self.setLinkPos(iloader, q)
@@ -312,6 +312,24 @@ class MujocoSim:
             qvel=np.array(dposedof.ref())
 
         self.data.qvel[startv:startv+ndof]=qvel
+    def getWorldVelocity(self, ichara, bone, localpos):
+        flag_local=0
+        vel=np.zeros(6)
+        mujoco=self.mujoco
+        body_id=self.getBodyId(ichara, bone.treeIndex())
+        mujoco.mj_objectVelocity(self.model, self.data,  mujoco.mjtObj.mjOBJ_BODY,body_id, vel,flag_local)
+        angvel=RE.toVector3(vel[0:3])
+        linvel=RE.toVector3(vel[3:6])
+        q=RE.toQuater(self.data.xquat[body_id])
+        return linvel+angvel.cross(q*(localpos-bone.localCOM()))
+
+    def getWorldAngVel(self, ichara, bone):
+        flag_local=0
+        vel=np.zeros(6)
+        mujoco=self.mujoco
+        body_id=self.getBodyId(ichara, bone.treeIndex())
+        mujoco.mj_objectVelocity(self.model, self.data,  mujoco.mjtObj.mjOBJ_BODY,body_id, vel,flag_local)
+        return RE.toVector3(vel[0:3])
 
     # getLinkVel
     def getDPoseDOF(self, iloader):
