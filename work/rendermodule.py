@@ -59,6 +59,7 @@ def _compressVoxels(scene, optional_filename=None):
     info={'shape':scene.shape, 'bits':sceneCompressed}
     if optional_filename is not None:
         saveTable(info, optional_filename)
+    return info
 
 def create_cache_folder(path: str | Path, suffix=".cached", create=True) -> Path:
     src = Path(path)
@@ -552,9 +553,9 @@ class OnlineSingleLimbIK:
         return self.mask*0, self.mask_leglen*0
 class CollisionChecker_pose:
     def __init__(self, checker):
-        self.checker=checker
+        self.checker = weakref.ref(checker)
     def __getitem__(self, iloader):
-        return self.checker._getPose(iloader)
+        return self.checker()._getPose(iloader)
 
 class CollisionChecker(lua.instance):
     def __init__(self, list_of_obj, **kwargs):
@@ -564,7 +565,7 @@ class CollisionChecker(lua.instance):
             list_of_obj=[]
 
         lua.require("RigidBodyWin/subRoutines/CollisionChecker")
-        self.var_name='mChecker'+m.generateUniqueName()
+        super().__init__('mChecker'+m.generateUniqueName()) 
         lua.F_lua(self.var_name, 'CollisionChecker', colType)
         for v in list_of_obj:
             lua.M0(self.var_name, "addObject", v)

@@ -11,6 +11,7 @@ import pdb, re # use pdb.set_trace() for debugging
 #import code # or use code.interact(local=dict(globals(), **locals())) for debugging. see below.
 import numpy as np
 import platform, os
+import weakref
 hasTorch=True
 try:
     import torch
@@ -1295,15 +1296,15 @@ class instance(ArgumentProcessor):
         if isinstance(self.var_name, str):
             dostring(self.var_name+'=nil')
             for i in self.dependent:
-                dostring(d+'=nil')
+                dostring(i+'=nil')
 
 class instance_or_memberFunc(instance):
     def __init__(self, python_var, parent):
         super().__init__(python_var) 
-        self.parent=parent
+        self.parent=weakref.ref(parent)
     def __call__(self, *args):   
         # copies user data
-        return M(self.parent, self.var_name[-1], *args)
+        return M(self.parent(), self.var_name[-1], *args)
 
 # module doesn't have self unlike class instances.
 class instance_of_module(instance):
