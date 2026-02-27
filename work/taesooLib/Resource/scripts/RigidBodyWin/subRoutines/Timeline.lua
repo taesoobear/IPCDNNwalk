@@ -71,7 +71,7 @@ if EventReceiver then
 				end
 			else
 				if dbg.lunaType(mMotionDOF)=='Motion' or mMotionDOF.mot then
-					return self:_attachCameraToMotion(mLoader, mMotionDOF)
+					return EVR._attachCameraToMotion(self, mLoader, mMotionDOF)
 				end
 
 				local s=0
@@ -153,11 +153,11 @@ if EventReceiver then
 	end
 	function EVR:moveCamera(iframe)
 
-		if mEventReceiver.trajectory and iframe< mEventReceiver.trajectory:rows() then
-			local curPos=mEventReceiver.trajectory:row(iframe):toVector3(0)*100
+		if self.trajectory and iframe< self.trajectory:rows() then
+			local curPos=self.trajectory:row(iframe):toVector3(0)*100
 			local curDir=RE.viewpoint().vat-RE.viewpoint().vpos
-			RE.viewpoint().vpos:assign(mEventReceiver.cameraInfo.vat-curDir+curPos)
-			RE.viewpoint().vat:assign(mEventReceiver.cameraInfo.vat+curPos)
+			RE.viewpoint().vpos:assign(self.cameraInfo.vat-curDir+curPos)
+			RE.viewpoint().vat:assign(self.cameraInfo.vat+curPos)
 			RE.viewpoint():update()     
 		end
 	end

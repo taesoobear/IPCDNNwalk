@@ -59,6 +59,7 @@ def _compressVoxels(scene, optional_filename=None):
     info={'shape':scene.shape, 'bits':sceneCompressed}
     if optional_filename is not None:
         saveTable(info, optional_filename)
+    return info
 
 def create_cache_folder(path: str | Path, suffix=".cached", create=True) -> Path:
     src = Path(path)
@@ -93,6 +94,7 @@ class Voxels(lua.instance):
                 lua.F_lua(var_name,'Voxels', str(cache_file))
             else:
                 lua.F_lua(var_name,'Voxels', filename_or_info)
+        self.autoCollect=True
         super().__init__(var_name)
 
 
@@ -477,16 +479,15 @@ class Timeline(lua.instance):
         if not frameTime:
             frameTime=1.0/30.0
         lua.F_lua(self.var_name,'Timeline',title,numFrames,frameTime)
-    def __del__(self):# this is called when garbage collected
-        if lua:
-            lua.M(self.var_name,'dtor')
-            lua.dostring(self.var_name+'=nil')
+        self.autoCollect=True
     def attachCameraToMotion(self, loader, motion):
-        lua.M('mEventReceiver', 'attachCameraToMotion', loader, motion)
+        self.set('currFrame', 0)
+        self.set('cameraInfo', [])
+        lua.F('EVR.attachCameraToMotion',self, loader, motion)
     def detachCamera(self):
-        lua.M('mEventReceiver', 'detachCamera')
+        lua.F('EVR.detachCamera', self)
     def moveCamera(self, iframe):
-        lua.M('mEventReceiver', 'moveCamera', iframe)
+        lua.F('EVR.moveCamera', self, iframe)
     def attachTimer(self, frameRate, numFrames):
         lua.M(self.var_name, 'attachTimer', frameRate, numFrames)
     def reset(self, totalTime, frameTime):
@@ -496,19 +497,13 @@ class OnlineFilter(lua.instance):
         lua.require('subRoutines/VelocityFields')
         self.var_name='mFilter'+m.generateUniqueName()
         lua.F_lua(self.var_name,'OnlineFilter',loader,None,filterSize)
-    def __del__(self):# this is called when garbage collected
-        if lua:
-            lua.M(self.var_name,'dtor')
-            lua.dostring(self.var_name+'=nil')
+        self.autoCollect=True
 class OnlineFilter6D(lua.instance):
     def __init__(self, filterSize, loader=None):
         lua.require('subRoutines/VelocityFields')
         self.var_name='mFilter'+m.generateUniqueName()
         lua.F_lua(self.var_name,'OnlineFilter6D',loader,None,filterSize)
-    def __del__(self):# this is called when garbage collected
-        if lua:
-            lua.M(self.var_name,'dtor')
-            lua.dostring(self.var_name+'=nil')
+        self.autoCollect=True
 class MaskedOnlineFilter:
     def __init__(self, filterSize, mask_for_filtered, loader=None):
         self.mask=mask_for_filtered
@@ -558,9 +553,9 @@ class OnlineSingleLimbIK:
         return self.mask*0, self.mask_leglen*0
 class CollisionChecker_pose:
     def __init__(self, checker):
-        self.checker=checker
+        self.checker = weakref.ref(checker)
     def __getitem__(self, iloader):
-        return self.checker._getPose(iloader)
+        return self.checker()._getPose(iloader)
 
 class CollisionChecker(lua.instance):
     def __init__(self, list_of_obj, **kwargs):
@@ -570,7 +565,7 @@ class CollisionChecker(lua.instance):
             list_of_obj=[]
 
         lua.require("RigidBodyWin/subRoutines/CollisionChecker")
-        self.var_name='mChecker'+m.generateUniqueName()
+        super().__init__('mChecker'+m.generateUniqueName()) 
         lua.F_lua(self.var_name, 'CollisionChecker', colType)
         for v in list_of_obj:
             lua.M0(self.var_name, "addObject", v)
@@ -583,6 +578,7 @@ class CollisionChecker(lua.instance):
 
         self.pose=CollisionChecker_pose(self)
         self.collisionSequence=m.CollisionSequence()
+        self.autoCollect=True
     def checkCollision(self):
         self.collisionDetector.testIntersectionsForDefinedPairs(self.collisionSequence)
         return self.collisionSequence
@@ -637,6 +633,7 @@ class FBXloader(lua.instance):
                 lua.F_lua(self.var_name,'FBXloader', filename, options)
             else:
                 lua.F_lua(self.var_name,'FBXloader', filename, kwargs)
+        self.autoCollect=True
         n=lua.F1_int('table.getn', lua.instance(self._addToVarName('fbxInfo')))
         self.fbxInfo=FBXloader_fbxInfoArray(self,n)
     def _get_loader(self):
@@ -673,6 +670,7 @@ class OsimLoader(lua.instance):
                 lua.F_lua(self.var_name,'OsimLoader', filename, options)
             else:
                 lua.F_lua(self.var_name,'OsimLoader', filename, kwargs)
+        self.autoCollect=True
     def _get_loader(self):
         return lua.G_loader((self.var_name, "loader")) # fbx.loader
     loader=property( fget=_get_loader,)
@@ -748,7 +746,10 @@ def URDFloader(filename, options=None):
         lua.dostring('URDFparser("'+ filename+'","'+ wrlfile+'", { useVisualMesh=true})')
     else:
         lua.F_lua('tempParser','URDFparser', filename, wrlfile, options)
-    return m.VRMLloader(wrlfile)
+    loader= m.VRMLloader(wrlfile)
+    lua.dostring('tempParser=nil')
+    return loader
+
 def flatten(dofs_idx2d):
     out=[]
     for e in dofs_idx2d:
@@ -805,6 +806,7 @@ class Constraints(lua.instance):
         self.var_name='mCON'+m.generateUniqueName()
         lua.require("RigidBodyWin/subRoutines/Constraints")
         lua.F_lua( self.var_name,'Constraints')
+        self.autoCollect=True
         self.conPos=lua.G_vector3N((self.var_name, 'conPos')) # reference to mCON.conPos
         if isinstance(originalPos, list):
             for v in originalPos:
