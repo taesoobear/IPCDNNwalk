@@ -809,6 +809,59 @@ function Voxels:__init(named_params)
 	--g_skin:setScale(100)
 end
 
+function Voxels:getCacheFileName()
+	local cacheFile=(self.filename or '')..'.sdf'
+	return cacheFile
+end
+
+-- input: model (table)
+-- output model.sdf, model.SDF, model.normal, 
+
+function Voxels:calculateSDF(model)
+	local out_model=nil
+	if not model then
+		model={}
+		out_model=model
+	end
+
+	local cacheFile=(self.filename or '')..'.sdf'
+	local wcache=nil
+	if self.filename then
+		if os.isFileExist(cacheFile) then
+			local cache=util.BinaryFile()
+			print("loading cache:", cacheFile)
+			cache:openRead(cacheFile)
+
+			local version= cache:unpackInt()
+			if version~=1 then
+				-- 로딩 실패. 
+				os.deleteFiles(cacheFile)
+				wcache=util.BinaryFile()
+			else
+				model.SDF=floatTensor()
+				model.normal=Tensor()
+				model.vertexIndex=floatTensor()
+				cache:unpack(model.SDF)
+				cache:unpack(model.normal)
+			end
+		else
+			wcache=util.BinaryFile()
+		end
+	end
+	if not model.SDF then
+		self:_calcSDF(model)
+	end
+	assert(model.SDF)
+	if wcache then
+		wcache:openWrite(cacheFile)
+		wcache:packInt(1) -- cache format version. should be a negative number
+		wcache:pack(model.SDF)
+		wcache:pack(model.normal)
+		wcache:close()
+	end
+	return out_model
+end
+
 function Voxels:getWorldPosition(index)
 	return self.decomp:getWorldPosition(index)
 end
@@ -1393,42 +1446,9 @@ function SDFcollider:addVoxels(v)
 	model.fk_bindpose=model.fk
 	model.collisionLoader=v.loader
 
-	self:_installBBoxCollider(model)
-	local cacheFile=(v.filename or '')..'.sdf'
-	local wcache=nil
-	if v.filename then
-		if os.isFileExist(cacheFile) then
-			local cache=util.BinaryFile()
-			print("loading cache:", cacheFile)
-			cache:openRead(cacheFile)
+	v:calculateSDF(model)
 
-			local version= cache:unpackInt()
-			if version~=1 then
-				-- 로딩 실패. 
-				os.deleteFiles(cacheFile)
-				wcache=util.BinaryFile()
-			else
-				model.SDF=floatTensor()
-				model.normal=Tensor()
-				model.vertexIndex=floatTensor()
-				cache:unpack(model.SDF)
-				cache:unpack(model.normal)
-			end
-		else
-			wcache=util.BinaryFile()
-		end
-	end
-	if not model.SDF then
-		self:_calcSDF(model)
-	end
-	assert(model.SDF)
-	if wcache then
-		wcache:openWrite(cacheFile)
-		wcache:packInt(1) -- cache format version. should be a negative number
-		wcache:pack(model.SDF)
-		wcache:pack(model.normal)
-		wcache:close()
-	end
+	self:_installBBoxCollider(model)
 	table.insert(self.models,model)
 	self.detector:addModel(v.loader)
 	self:_calculateBBOX(model,  v.loader)
@@ -1436,8 +1456,8 @@ function SDFcollider:addVoxels(v)
 	self:setWorldTransformations(#self.models-1, model.fk)
 end
 
-function SDFcollider:_calcSDF(model)
-	local decomp=model.decomp
+function Voxels:_calcSDF(model)
+	local decomp=self.decomp
 
 	local dim=decomp:getDimensions()
 	local timer=util.Timer()
@@ -1484,7 +1504,7 @@ function SDFcollider:_calcSDF(model)
 			local skinScale=100
 			local offset_x=100
 			local draw_offset=vector3(offset_x, 0,0)
-			if self.options.debugDraw then
+			if self.options and self.options.debugDraw then
 				timer:start()
 				-- visualize a 2D slice (i, j, center_k)
 				local center=decomp:getDimensions()
@@ -1573,7 +1593,7 @@ function SDFcollider:_calcSDF(model)
 			end
 
 
-			if self.options.debugDraw then
+			if self.options and self.options.debugDraw then
 				-- now, draw both inside and outside
 				timer:start()
 				-- visualize a 2D slice (i, j, center_k)
