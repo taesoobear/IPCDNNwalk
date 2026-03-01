@@ -7,9 +7,11 @@ m=lua.taesooLib()
 # F : function calls. ex) numBone=lua.F('dbg.draw','Sphere', m.vector3(1,1,1), "ball3", "green", 10)
 # M : member fucntion calls. ex) numBone=lua.M('mLoader_in_lua','numBone')
 """
+from __future__ import annotations
 import pdb, re # use pdb.set_trace() for debugging
 #import code # or use code.interact(local=dict(globals(), **locals())) for debugging. see below.
 import numpy as np
+from typing import Any, AnyStr, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union, TypeVar, TYPE_CHECKING 
 import platform, os
 hasTorch=True
 try:
@@ -1149,6 +1151,8 @@ def _popUserdata(l, tn):
         return l.poptransf()
     elif tn=='Tensor':
         return l.popTensor()
+    elif tn=='floatTensor':
+        return l.popfloatTensor()
     elif tn=='matrix3':
         return l.popMatrix3()
     elif tn=='intIntervals':
@@ -1295,15 +1299,15 @@ class instance(ArgumentProcessor):
         if isinstance(self.var_name, str):
             dostring(self.var_name+'=nil')
             for i in self.dependent:
-                dostring(d+'=nil')
+                dostring(i+'=nil')
 
 class instance_or_memberFunc(instance):
     def __init__(self, python_var, parent):
         super().__init__(python_var) 
-        self.parent=parent
+        self.parent_name=parent.var_name
     def __call__(self, *args):   
         # copies user data
-        return M(self.parent, self.var_name[-1], *args)
+        return M(instance(self.parent_name), self.var_name[-1], *args)
 
 # module doesn't have self unlike class instances.
 class instance_of_module(instance):
