@@ -1270,7 +1270,7 @@ function SDFcollider:addModel(fbxloader, _optionalWRLloader)
 	self:_installBBoxCollider(model)
 
 	if not model.SDF then
-		self:_calcSDF(model)
+		Voxels._calcSDF(model, model) -- from model.decomp, generate model.SDF
 
 		if true then
 			local timer=util.Timer()
