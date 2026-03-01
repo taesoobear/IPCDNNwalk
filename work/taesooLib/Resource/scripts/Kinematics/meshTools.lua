@@ -781,7 +781,7 @@ function Voxels:__init(named_params)
 		end
 		self.decomp=VoxelGraphTools(tbl.bits, unpack(tbl.shape))
 		self.filename=named_params.filename
-	elseif named_params.size then
+	elseif named_params.shape then
 		local tbl=named_params
 		self.decomp=VoxelGraphTools(tbl.bits, unpack(tbl.shape))
 	end
@@ -812,6 +812,15 @@ end
 function Voxels:getCacheFileName()
 	local cacheFile=(self.filename or '')..'.sdf'
 	return cacheFile
+end
+
+function Voxels:saveCache(model, cacheFile)
+	local wcache=util.BinaryFile()
+	wcache:openWrite(cacheFile)
+	wcache:packInt(1) -- cache format version. should be a negative number
+	wcache:pack(model.SDF)
+	wcache:pack(model.normal)
+	wcache:close()
 end
 
 -- input: model (table)
@@ -845,7 +854,7 @@ function Voxels:calculateSDF(model)
 				cache:unpack(model.normal)
 			end
 		else
-			wcache=util.BinaryFile()
+			wcache=true
 		end
 	end
 	if not model.SDF then
@@ -853,13 +862,11 @@ function Voxels:calculateSDF(model)
 	end
 	assert(model.SDF)
 	if wcache then
-		wcache:openWrite(cacheFile)
-		wcache:packInt(1) -- cache format version. should be a negative number
-		wcache:pack(model.SDF)
-		wcache:pack(model.normal)
-		wcache:close()
+		self:saveCache(model, cacheFile)
 	end
-	return out_model
+	if out_model then
+		return { SDF=out_model.SDF, normal=out_model.normal}
+	end
 end
 
 function Voxels:getWorldPosition(index)

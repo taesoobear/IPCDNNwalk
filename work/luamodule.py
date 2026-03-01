@@ -1150,6 +1150,8 @@ def _popUserdata(l, tn):
         return l.poptransf()
     elif tn=='Tensor':
         return l.popTensor()
+    elif tn=='floatTensor':
+        return l.popfloatTensor()
     elif tn=='matrix3':
         return l.popMatrix3()
     elif tn=='intIntervals':
