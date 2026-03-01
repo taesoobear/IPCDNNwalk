@@ -1,5 +1,5 @@
 
-import os
+import os,math
 import pdb # use pdb.set_trace() for debugging
 #import code # or use code.interact(local=dict(globals(), **locals())) for debugging. see below.
 import numpy as np
@@ -47,6 +47,32 @@ def gitCommitExists(commit_hash, repo_path="."):
 # m,lua,control=RE.defaultModules()
 def defaultModules():
     return settings.mlib, settings.lua, settings.control
+
+def make_auto_overlap_batches(n, window=400, 
+                              target_stride=200,
+                              min_overlap=100):
+    if n <= window:
+        return [slice(0,n)]
+
+    max_stride = window - min_overlap  # stride ≤ 300
+
+    # 기본 window 개수
+    k = math.ceil((n - window) / target_stride) + 1
+
+    while True:
+        if k == 1:
+            actual_stride = 0
+        else:
+            actual_stride = (n - window) / (k - 1)
+
+        if actual_stride <= max_stride:
+            break
+        k += 1  # 윈도우 개수 증가 → stride 감소
+
+    starts = [round(i * actual_stride) for i in range(k)]
+    batches = [slice(s,s+window) for s in starts]
+
+    return batches
 def _compressVoxels(scene, optional_filename=None):
     sceneCompressed=m.boolN(scene.shape[0]*scene.shape[1]*scene.shape[2])
     sceneCompressed.setAllValue(False)
@@ -59,6 +85,7 @@ def _compressVoxels(scene, optional_filename=None):
     info={'shape':scene.shape, 'bits':sceneCompressed}
     if optional_filename is not None:
         saveTable(info, optional_filename)
+    return info
 
 def create_cache_folder(path: str | Path, suffix=".cached", create=True) -> Path:
     src = Path(path)
@@ -76,6 +103,8 @@ class Voxels(lua.instance):
         lua.require("Kinematics/meshTools")
         var_name='Voxels'+m.generateUniqueName()
 
+        check_sdf_resolution=False
+
         if isinstance(filename_or_info, np.ndarray):
             info=_compressVoxels(filename_or_info)
             self.array=filename_or_info
@@ -91,10 +120,44 @@ class Voxels(lua.instance):
                     info=_compressVoxels(scene, str(cache_file))
                 self.array=scene
                 lua.F_lua(var_name,'Voxels', str(cache_file))
+
+                check_sdf_resolution=True
             else:
                 lua.F_lua(var_name,'Voxels', filename_or_info)
         self.autoCollect=True
         super().__init__(var_name)
+
+        if self.check_sdf_resolution:
+            dim=self.get('dim')
+            if dim.z>400:
+                cacheFile=self.getCacheFileName()
+                if not path(cacheFile).exists():
+                    # a too large scene: sdf computation would probably fail later, so precompute subvolumes and cache the results here.
+                    k=make_auto_overlap_batches(int(dim.z),200)
+                    partial_voxels=[None]*len(k)
+                    partial_results=[None]*len(k)
+                    merged=lua.Table()
+                    merged.normal=m.Tensor(int(dim.x), int(dim.y), int(dim.z),3)
+                    merged.SDF=m.floatTensor(int(dim.x), int(dim.y), int(dim.z))
+                    for i, v in enumerate(k):
+                        partial_voxels[i]=Voxels(self.array[:,:,v])
+                        partial_results[i]=partial_voxels[i].calculateSDF()
+                        merged.normal.array[:,:,v]=partial_results[i].normal.array
+                        merged.SDF.array[:,:,v]=partial_results[i].SDF.array
+
+                    for i in range(len(k)-1):
+                        overlap=slice(k[i+1].start, k[i].stop)
+                        kn=overlap.stop-overlap.start
+                        mask=partial_results[i].SDF.array[:,:,-kn:]<partial_results[i+1].SDF.array[:,:,:kn]
+
+                        merged.SDF.array[:,:,overlap][mask]=partial_results[i].SDF.array[:,:,-kn:][mask]
+                        merged.normal.array[:,:,overlap][mask]=partial_results[i].normal.array[:,:,-kn:][mask]
+
+                    self.saveCache(merged, cacheFile)
+
+
+
+
 
 
 def addPanel(signal):
@@ -552,9 +615,9 @@ class OnlineSingleLimbIK:
         return self.mask*0, self.mask_leglen*0
 class CollisionChecker_pose:
     def __init__(self, checker):
-        self.checker=checker
+        self.checker = weakref.ref(checker)
     def __getitem__(self, iloader):
-        return self.checker._getPose(iloader)
+        return self.checker()._getPose(iloader)
 
 class CollisionChecker(lua.instance):
     def __init__(self, list_of_obj, **kwargs):
@@ -564,7 +627,7 @@ class CollisionChecker(lua.instance):
             list_of_obj=[]
 
         lua.require("RigidBodyWin/subRoutines/CollisionChecker")
-        self.var_name='mChecker'+m.generateUniqueName()
+        super().__init__('mChecker'+m.generateUniqueName()) 
         lua.F_lua(self.var_name, 'CollisionChecker', colType)
         for v in list_of_obj:
             lua.M0(self.var_name, "addObject", v)
