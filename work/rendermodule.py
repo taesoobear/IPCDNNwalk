@@ -185,7 +185,11 @@ def toQuater(anyvec):
         return mat.toQuater()
     elif isinstance(anyvec, np.ndarray) and len(anyvec.shape)==2:
         mat=m.matrix3()
-        mat.ref()[:,:]=anyvec
+        mat.ref()[:,:]=anyvec[:3,:3]
+        return mat.toQuater()
+    elif lua.hasTorch and isinstance(anyvec, lua.torch.Tensor) and len(anyvec.shape)==2:
+        mat=m.matrix3()
+        mat.ref()[:,:]=anyvec.cpu().numpy()[:3, :3]
         return mat.toQuater()
     return m.quater(anyvec[0], anyvec[1], anyvec[2], anyvec[3])
 # (x,y,z,w) format
