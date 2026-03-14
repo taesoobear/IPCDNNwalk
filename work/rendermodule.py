@@ -174,10 +174,18 @@ def createLoader(filename ,_options=None):
     if filename[-3:]=='wrl' :
         return edict({ 'loader':m.VRMLloader(filename)})
 
-def toTransf(anyvec_ori, anyvec_pos=None):
-    if len(anyvec_ori)==7:
-        return m.transf(toQuater(anyvec_ori[3:]), toVector3(anyvec_ori[0:3]))
-    return m.transf(toQuater(anyvec_ori), toVector3(anyvec_pos))
+def toTransf(anyvec, anyvec_pos=None):
+    if len(anyvec)==7:
+        return m.transf(toQuater(anyvec[3:]), toVector3(anyvec[0:3]))
+    elif isinstance(anyvec, np.ndarray) and len(anyvec.shape)==2:
+        mat=m.matrix4()
+        mat.ref()[:,:]=anyvec
+        return m.transf(mat)
+    elif lua.hasTorch and isinstance(anyvec, lua.torch.Tensor) and len(anyvec.shape)==2:
+        mat=m.matrix4()
+        mat.ref()[:,:]=anyvec.cpu().numpy()
+        return m.transf(mat)
+    return m.transf(toQuater(anyvec), toVector3(anyvec_pos))
 def toQuater(anyvec):
     if len(anyvec)==9:
         mat=m.matrix3()
