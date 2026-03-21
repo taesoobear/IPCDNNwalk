@@ -628,7 +628,7 @@ function smpl.createMesh(dd)
 
 	--local vertices=dd.v_template
 
-	mesh:resize(dd.v_template:rows(), dd.f:rows())
+	mesh:resize(dd.v_shaped:rows(), dd.f:rows())
 	smpl.updateShape(dd, mesh)
 	for i=0, mesh:numFace()-1 do
 		mesh:getFace(i):setIndex(dd.f(i,0), dd.f(i,1), dd.f(i,2))
@@ -637,15 +637,30 @@ function smpl.createMesh(dd)
 	return mesh
 end
 
+function smpl.initFromVertexData(v_shaped, f, weights, J_pos, parent_joint_id, joint_names)
+	local dd={}
+	dd.kintree_table=intmatrixn(1, parent_joint_id:size())
+	for i=0, parent_joint_id:size()-1 do
+		dd.kintree_table:set(0, i, parent_joint_id(i))
+	end
+	dd.v_shaped=v_shaped:copy()
+	dd.f=f:copy()
+	dd.joint_names=joint_names
+	dd.J=J_pos:copy()
+	dd.weights=weights:copy()
+	return dd
+end
+
 function smpl.updateShape(dd, mesh)
+	if dd.betas then
+		-- vertices
+		-- (6890,3)=(6890, 3, 16)*(16,1) +(6890,3)
+		dd.v_shaped=dd.shapedirs:dotProduct(dd.betas)+dd.v_template
 
-	-- vertices
-	-- (6890,3)=(6890, 3, 16)*(16,1) +(6890,3)
-	dd.v_shaped=dd.shapedirs:dotProduct(dd.betas)+dd.v_template
-
-	-- joint locations
-	-- (52,3)=(52, 6890)*(6890,3)
-	dd.J=dd.J_regressor*dd.v_shaped
+		-- joint locations
+		-- (52,3)=(52, 6890)*(6890,3)
+		dd.J=dd.J_regressor*dd.v_shaped
+	end
 
 	-- beta fitting!
 	-- assuming the same T-pose, 
@@ -830,13 +845,15 @@ function smpl.createSkeleton(dd)
 		dd.smpl_joint_index_from_tree_index:set(ti, i-1)
 	end
 
-	-- set axes for robust IK
-	--loader:bone(1):setChannels('XYZ', 'YZX') -- trans, rot
-	--for i=2, loader:numBone()-1 do
-	--	loader:bone(i):setChannels('', 'YZX') -- trans, rot
-	--end
-	loader:getBoneByName('left_shoulder'):setChannels('', 'ZXY') -- trans, rot
-	loader:getBoneByName('right_shoulder'):setChannels('', 'ZXY') -- trans, rot
+	if loader:getTreeIndexByName("left_shoulder")~=-1 then
+		-- set axes for robust IK
+		--loader:bone(1):setChannels('XYZ', 'YZX') -- trans, rot
+		--for i=2, loader:numBone()-1 do
+		--	loader:bone(i):setChannels('', 'YZX') -- trans, rot
+		--end
+		loader:getBoneByName('left_shoulder'):setChannels('', 'ZXY') -- trans, rot
+		loader:getBoneByName('right_shoulder'):setChannels('', 'ZXY') -- trans, rot
+	end
 	return loader
 end
 function smpl.createFBXskeleton(dd)

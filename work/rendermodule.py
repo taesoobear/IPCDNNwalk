@@ -300,6 +300,15 @@ def tempFunc(self):
     out.runLengthEncode(self)
     return out
 m.boolN.runLengthEncode=tempFunc
+def tempFunc(self, t=m.transf):
+
+    for i in range(self.numFrames()):
+        pose=self.pose(i)
+        root=m.transf(pose.rotations(0), pose.translations(0))
+        newRoot=t*root
+        pose.rotations(0).assign(newRoot.rotation)
+        pose.translations(0).assign(newRoot.translation)
+m.Motion.transform=tempFunc
 
 
 def changeBoolChartPrecision(n):
@@ -872,6 +881,18 @@ def createSMPLskeleton(bm_path:str, betas=None):
     lua.F_lua(var_name,'SMPL.createFBXskeleton', dd)
     dd.collect()
     return FBXloader(var_name=var_name)
+def createFBXskeletonFromVertexData(*args):
+    uid=m.generateUniqueName()
+    lua.dostring( 'if not FBXloader then FBXloader=require("FBXloader") end')
+    var_name='mFBXloader'+uid
+    lua.dostring("""
+    SMPL=require("smpl/smpl")
+    """)
+    dd=lua.new('SMPL.initFromVertexData', *args)
+    lua.F_lua(var_name,'SMPL.createFBXskeleton', dd)
+    dd.collect()
+    return FBXloader(var_name=var_name)
+
 
 class Constraints(lua.instance):
     def __init__(self, originalPos, **kwargs):
@@ -2225,3 +2246,18 @@ class SceneComponent:
 
 
 
+def tempFunc(motdof, treeIndex, localpos, frameRate=None):
+    mat_out=m.matrixn()
+    mat_out.resize(motdof.numFrames(), 6)
+    skel=motdof.dofInfo.skeleton()
+    bone=skel.getBoneByTreeIndex(treeIndex)
+    for i in range(motdof.numFrames()):
+        pose=motdof.row(i)
+        skel.setPoseDOF(pose)
+        mat_out.row(i).setVec3(0, bone.getFrame().toGlobalPos(localpos))
+    if frameRate is None:
+        frameRate=motdof.dofInfo.frameRate()
+
+    mat_out.slice(0,0,3,6).assign(lua.M(mat_out.slice(0,0,0,3),'calcForwardDerivative_sub', frameRate))
+    return mat_out
+m.MotionDOF.calcJointPosVel=tempFunc
