@@ -331,10 +331,17 @@ vertex_program gsplatting_vp_hlsl hlsl
     entry_point main
     target vs_5_0 vs_4_0
 }
+vertex_program gsplatting_vp_metal metal
+{
+    source gsplat_quad_vp.metal
+    entry_point main_metal
+	enable_include_header true
+}
 vertex_program gsplatting_vp unified
 {
 	delegate gsplatting_vp_glsl
 	delegate gsplatting_vp_hlsl
+	delegate gsplatting_vp_metal
 
 	default_params
 	{
@@ -356,10 +363,17 @@ fragment_program gsplatting_fp_hlsl hlsl
     entry_point main
     target ps_5_0
 }
+fragment_program gsplatting_fp_metal metal
+{
+    source gsplat_quad_fp.metal
+    entry_point main_metal
+	enable_include_header true
+}
 fragment_program gsplatting_fp unified
 {
     delegate gsplatting_fp_glsl
     delegate gsplatting_fp_hlsl
+    delegate gsplatting_fp_metal
 }
 material pointcloud_quad
 {

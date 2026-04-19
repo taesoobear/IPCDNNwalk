@@ -1,4 +1,4 @@
-#include <metal_stdlib>
+//#include <metal_stdlib>
 using namespace metal;
 
 // --------------------
@@ -32,5 +32,5 @@ fragment float4 main_metal(PS_INPUT in [[stage_in]])
 
     float alpha = min(0.99, in.col.a * exp(power));
 
-    return float4(in.col.rgb, alpha);
+    return float4(pow(in.col.rgb, float3(2.2)), alpha);
 }
