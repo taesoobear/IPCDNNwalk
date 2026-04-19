@@ -320,9 +320,21 @@ emissive 0.00000 0.00000 0.00000
 diffuse_map grid_only_64.png
 }
 
-vertex_program gsplatting_vp glsl glsles glslang
+vertex_program gsplatting_vp_glsl glsl glsles glslang
 {
 	source gsplat_quad_vp.glsl
+    enable_include_header true
+}
+vertex_program gsplatting_vp_hlsl hlsl
+{
+    source gsplat_quad_vp.hlsl
+    entry_point main
+    target vs_5_0 vs_4_0
+}
+vertex_program gsplatting_vp unified
+{
+	delegate gsplatting_vp_glsl
+	delegate gsplatting_vp_hlsl
 
 	default_params
 	{
@@ -333,29 +345,40 @@ vertex_program gsplatting_vp glsl glsles glslang
 	}
 }
 
-fragment_program gsplatting_fp glsl glsles glslang
+fragment_program gsplatting_fp_glsl glsl glsles glslang
 {
 	source gsplat_quad_fp.glsl
 }
 
+fragment_program gsplatting_fp_hlsl hlsl
+{
+    source gsplat_quad_fp.hlsl
+    entry_point main
+    target ps_5_0
+}
+fragment_program gsplatting_fp unified
+{
+    delegate gsplatting_fp_glsl
+    delegate gsplatting_fp_hlsl
+}
 material pointcloud_quad
 {
 	receive_shadows off   
-	technique
-	{
-		pass
-		{
-			scene_blend alpha_blend
-			depth_write off
+    technique 
+    {
+        pass
+        {
+            scene_blend alpha_blend
+            depth_write off
 
-			vertex_program_ref gsplatting_vp
-			{
-			}
+            vertex_program_ref gsplatting_vp
+            {
+            }
 
-			fragment_program_ref gsplatting_fp
-			{
-			}
-		}
-	}
+            fragment_program_ref gsplatting_fp
+            {
+            }
+        }
+    }
 }
 

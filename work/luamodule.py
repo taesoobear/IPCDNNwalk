@@ -12,7 +12,7 @@ import pdb, re # use pdb.set_trace() for debugging
 #import code # or use code.interact(local=dict(globals(), **locals())) for debugging. see below.
 import numpy as np
 from typing import Any, AnyStr, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union, TypeVar, TYPE_CHECKING 
-import platform, os
+import platform, os, sys
 hasTorch=True
 try:
     import torch
@@ -137,7 +137,8 @@ def pycallFromLua(a):
     except Exception as e:
         print('Error occurred when calling a Python function from Lua:', a[1:])
         print('python error: ', e)
-        pdb.set_trace()
+        pdb.post_mortem(sys.exc_info()[2])
+        #pdb.set_trace()
 
 
 # call lua from python
