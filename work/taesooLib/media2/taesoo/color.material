@@ -396,3 +396,24 @@ material pointcloud_quad
     }
 }
 
+hlms InvisibleShadowCaster pbs
+{
+		diffuse		0.8 0.8 0.8
+		specular	0.8 0.8 0.8
+		emissive 0.0 0.0 0.00
+		// Still participate in depth (important for shadows)
+	   depth_write on
+		depth_check on	
+		transparency_mode transparent
+		transparency 0.0 // Play with this value
+}
+hlms AlmostInvisibleShadowCaster pbs
+{
+		diffuse		0.8 0.8 0.8
+		specular	0.8 0.8 0.8
+		emissive 0.0 0.0 0.00
+	   depth_write on
+		depth_check on	
+		transparency_mode transparent
+		transparency 0.1 // Play with this value
+}
