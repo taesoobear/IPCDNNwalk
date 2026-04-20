@@ -1,10 +1,11 @@
 
-import os,math
+import os,math,re
 import pdb # use pdb.set_trace() for debugging
 #import code # or use code.interact(local=dict(globals(), **locals())) for debugging. see below.
 import numpy as np
 from easydict import EasyDict as edict # pip3 install easydict
 from pathlib import Path
+from typing import Any, AnyStr, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union, TypeVar, TYPE_CHECKING 
 import subprocess
 import weakref
 try:
@@ -26,6 +27,9 @@ _sceneGraphs=[]
 _hasBillboard=False
 _timeline=None
 _timelineObjects=[]
+_frameMoveObjects=[]
+_cameraEventReceivers=[]
+_lastCamPos=m.vector3(1e5,0,0)
 
 def path(path):
     from pathlib import Path
@@ -98,6 +102,142 @@ def create_cache_folder(path: str | Path, suffix=".cached", create=True) -> Path
     if create:
         cached_parent.mkdir(parents=True, exist_ok=True)
     return cached_parent, src.name
+
+if True:
+    # define splat function
+    def read_splat_ply(filename):
+        f = open(filename, 'rb')
+
+        if f.readline().strip() != b"ply":
+            raise ValueError("Not a ply file")
+
+        f.readline() # endianess
+        num_vertices = int(f.readline().strip().split()[2])
+
+        # expect format as below
+
+        NUM_PROPS=0
+
+        name_to_idx={}
+        while True:
+            line=re.sub(br"\s+", b"", f.readline().strip()) # remove spaces
+
+            name_to_idx[line]=NUM_PROPS
+            if line==b"end_header":
+                break
+            NUM_PROPS+=1
+
+        data = np.frombuffer(f.read(), dtype=np.float32).reshape(num_vertices, NUM_PROPS)
+
+        idx_xyz=name_to_idx[b'propertyfloatx']
+        xyz = data[:, idx_xyz:idx_xyz+3]
+        idx_sh=name_to_idx[b'propertyfloatf_dc_0']
+        sh = data[:, idx_sh:idx_sh+3]
+        idx_opacity=name_to_idx[b'propertyfloatopacity']
+        opacity = data[:, idx_opacity:idx_opacity+1]
+        idx_scale=name_to_idx[b'propertyfloatscale_0']
+        scale = np.exp(data[:, idx_scale:idx_scale+3])
+        idx_rot=name_to_idx[b'propertyfloatrot_0']
+        rot = data[:, idx_rot:idx_rot+4]
+        # normalise quaternion
+        rot = rot / np.linalg.norm(rot, axis=1)[:, None]
+
+        return xyz, sh, opacity, scale, rot
+
+    SH_C0 = 0.28209479177387814
+
+    def sigmoid(x):
+        return 1 / (1 + np.exp(-x))
+
+    def sh0_to_diffuse(sh):
+        return SH_C0 * sh + 0.5
+
+    def compute_cov3d(scale, rot):
+        q = toQuater(rot)
+        mat = m.matrix3(q)
+
+        S = np.diag(scale)
+        M = mat.array @ S
+
+        Cov = M @ M.T
+
+        return np.diag(Cov), np.array([Cov[0, 1], Cov[0, 2], Cov[1, 2]], dtype=np.float32)
+
+
+    def ply_to_entity(mesh_name, input_ply):
+        if isFileExist(input_ply+'.cached.npy'):
+            print('loading '+input_ply+'.cached.npy')
+            data=np.load(input_ply+'.cached.npy', allow_pickle=True).item()
+            xyz=data['xyz']
+            color=data['color']
+            covd=data['covd']
+            covu=data['covu']
+        else:
+            xyz, sh, opacity, scale, rot = read_splat_ply(input_ply)
+
+            sh0 = sh[:, :3]
+            color = np.clip(np.hstack((sh0_to_diffuse(sh0), sigmoid(opacity)))*255, 0, 255).astype(np.uint8)
+
+            N = len(xyz)
+
+            covd = np.empty((N, 3), dtype=np.float32)
+            covu = np.empty((N, 3), dtype=np.float32)
+            mod = (N - 1)//100
+
+            for i, (s, r) in enumerate(zip(scale, rot)):
+                covd[i], covu[i] = compute_cov3d(s, r)
+                if i % mod == 0:
+                    print(f"computing covariances {100*i/len(xyz):.0f}%", end="\r")
+            np.save(input_ply+'.cached', {'xyz':xyz,'color': color, 'covd': covd, 'covu':covu})
+
+
+        positions=xyz.astype(np.float32)
+        entity=m.createPointCloudEntity(mesh_name, positions.flatten(), color.flatten(), covd.flatten(), covu.flatten(), positions.shape[0])
+
+        return positions, entity
+
+class GaussianSplat:
+    def __init__(self, node_name, filename, parentSceneNode=None):
+        global _cameraEventReceivers, _frameMoveObjects
+        _cameraEventReceivers.append(weakref.ref(self))
+        _frameMoveObjects.append(weakref.ref(self))
+        self.updateNecessary=True
+        self.isVisible=True
+        entity_name="_entity_"+node_name
+        if filename[-4:]=='.ply':
+            self.positions, self.mesh=ply_to_entity(node_name+"_converted_mesh", filename)
+            self.entity= ogreSceneManager().createEntity( entity_name,node_name+"_converted_mesh")
+        else:
+            assert(False)
+
+        rootnode=ogreRootSceneNode()
+        if parentSceneNode is not None:
+            rootnode=parentSceneNode
+        self.node=rootnode.createChildSceneNode(node_name)
+        self.node.attachObject(self.entity)
+    def setVisible(self, bvalue):
+        self.isVisible=bvalue
+        self.node.setVisible(bvalue) # causes flickering
+    def __del__(self):
+        global _cameraEventReceivers, _frameMoveObjects
+        if _cameraEventReceivers is not None:
+            # self 삭제.
+            _cameraEventReceivers= [r for r in _cameraEventReceivers if r() is not self]
+        if _frameMoveObjects is not None:
+            _frameMoveObjects= [r for r in _frameMoveObjects if r() is not self]
+
+    def frameMove(self, elapsed):
+        if self.updateNecessary and self.isVisible:
+            self.updateNecessary=False
+            camPos=viewpoint().vpos
+            if True:
+                localCamPos=self.node.getOrientation().inverse()*camPos
+                distances=self.positions@localCamPos.array
+                idx=np.argsort(distances).astype(np.int32)
+                m.updatePointCloudEntity(self.node.getEntity(), idx)
+    def _updateCamera(self):
+        self.updateNecessary=True
+
 class Voxels(lua.instance):
     def __init__(self, filename_or_info):
         lua.require("Kinematics/meshTools")
@@ -310,7 +450,6 @@ def tempFunc(self, t=m.transf):
         pose.translations(0).assign(newRoot.translation)
 m.Motion.transform=tempFunc
 
-
 def changeBoolChartPrecision(n):
     lua.F('Imp.ChangeBoolChartPrecision',n)
 
@@ -360,7 +499,7 @@ def delayedDrawTick():
 def erase(*args):
     lua.F(('dbg', 'erase'),*args) 
 def drawTraj(objectlist, matrix, nameid=None, color='solidred', thickness=0, linetype="LineList"):
-    if not nameid: nameid=RE.generateUniqueName()
+    if not nameid: nameid=m.generateUniqueName()
     #objectlist.registerObject(nameid, linetype, color, matrix, thickness)
     drawBillboard(matrix, nameid, color, thickness, linetype)
 def timedDraw(*args):
@@ -411,13 +550,28 @@ def _remove_dead_ref(wr):
     global _timelineObjects
     _timelineObjects.remove(wr)
 def renderOneFrame(check):
-    global start_time , _sceneGraphs, _hasBillboard, _timeline, _timelineObjects
+    global start_time , _sceneGraphs, _hasBillboard, _timeline, _timelineObjects, _frameMoveObjects, _lastCamPos, _cameraEventReceivers
     ctime=time.time()
     elapsed =  ctime- start_time
     start_time=ctime
     if check:
         if elapsed>1.0/30:
             elapsed=1.0/30
+        
+
+
+        camPos=viewpoint().vpos
+        camDist=(camPos-_lastCamPos).length()
+        if camDist>1:
+            for i, v in enumerate(_cameraEventReceivers):
+                v()._updateCamera()
+            _lastCamPos=m.vector3(camPos.x, camPos.y, camPos.z)
+
+        for vv in _frameMoveObjects:
+            obj=vv()
+            assert(obj is not None)
+            obj.frameMove(elapsed)
+
         if _sceneGraphs is not None:
             for i, v in enumerate(_sceneGraphs):
                 for k, vv in v.objects.items():
@@ -881,6 +1035,7 @@ def createSMPLskeleton(bm_path:str, betas=None):
     lua.F_lua(var_name,'SMPL.createFBXskeleton', dd)
     dd.collect()
     return FBXloader(var_name=var_name)
+
 def createFBXskeletonFromVertexData(*args):
     uid=m.generateUniqueName()
     lua.dostring( 'if not FBXloader then FBXloader=require("FBXloader") end')
@@ -1230,8 +1385,20 @@ set /p res=Press Enter to continue.
 
     subprocess.run(ps_cmd, check=True)
 
-def createMainWin(argv=None):
+def createMainWin(argv: Optional[List[str]] = None) -> Any:
+    """
+    Create the main window and initialize the environment.
 
+    Parameters
+    ----------
+    argv : Optional[List[str]], optional
+        Command line arguments. Defaults to None.
+
+    Returns
+    -------
+    Any
+        The Python window object.
+    """
     if not os.path.exists('./work'):
         print("Ogre3D resource folder ('work') not found. Creating it from GitHub taesoobear/IPCDNNwalk/work.")
         cache_root = Path.home() / '.cache'
@@ -1287,14 +1454,26 @@ def createMainWin(argv=None):
     if dostring:
         m.getPythonWin().dostring(dostring)
     return m.getPythonWin()
-def ogreVersion():
+def ogreVersion() -> int:
+    """
+    Get Ogre version.
+
+    Returns
+    -------
+    int
+        1 if >=1.12, 2 if <=1.3, 0 otherwise.
+    """
     if m.getOgreVersionMinor()>=12 :
         return 1
     elif m.getOgreVersionMinor()<=3 :
         return 2
     return 0
 float_options=None
-def tempFunc(self, title, val, vmin, vmax):
+def tempFunc(self: Any, title: str, val: float, vmin: float, vmax: float) -> None:
+    """
+    Add a float slider to FlLayout.
+    Attached as m.FlLayout.addFloatSlider.
+    """
     global float_options
     if float_options is None:
         float_options=lua.Table()
@@ -1305,25 +1484,45 @@ def tempFunc(self, title, val, vmin, vmax):
     self.widget(0).sliderValue(val)
 
 m.FlLayout.addFloatSlider=tempFunc
-def tempFunc(self, w_id, tbl):
+def tempFunc(self: Any, w_id: Any, tbl: Any) -> None:
+    """
+    Add a menu to FlLayout.
+    Attached as m.FlLayout.addMenu.
+    """
     lua.M(self, 'addMenu', w_id, tbl)
 m.FlLayout.addMenu=tempFunc
-def tempFunc(self, tbl):
+def tempFunc(self: Any, tbl: Any) -> None:
+    """
+    Set menu items for a widget.
+    Attached as m.Widget.menuItems.
+    """
     lua.M(self, 'menuItems', tbl)
 m.Widget.menuItems=tempFunc
 
-def tempFunc():
+def tempFunc() -> None:
+    """
+    Start the main rendering loop.
+    Attached as m.startMainLoop.
+    """
     while True:
         if not renderOneFrame(True): break
 m.startMainLoop=tempFunc
-def tempFunc(self, pose, options=None, **kwargs):
+def tempFunc(self: Any, pose: Any, options: Optional[Any] = None, **kwargs: Any) -> None:
+    """
+    Look at a pose.
+    Attached as m.Viewpoint.lookAt.
+    """
     if options is not None:
         lua.M(self, 'lookAt',pose, options)
     else:
         lua.M(self, 'lookAt',pose, kwargs)
 m.Viewpoint.lookAt=tempFunc
 
-def tempFunc(self, *args):
+def tempFunc(self: Any, *args: Any) -> Any:
+    """
+    Draw a VRML loader object.
+    Attached as m.VRMLloader.draw.
+    """
     name=None
     if len(args)==0:
         name=m.generateUniqueName()
@@ -1335,7 +1534,11 @@ def tempFunc(self, *args):
 
 m.VRMLloader.draw=tempFunc
 
-def tempFunc(self, treeIndex):
+def tempFunc(self: Any, treeIndex: Union[str, int]) -> Tuple[int, int]:
+    """
+    Get DOF index range for a bone.
+    Attached as m.MotionLoader.dofIndex.
+    """
     if isinstance(treeIndex, str):
         treeIndex=self.getTreeIndexByName(treeIndex)
         assert(treeIndex!=-1)
@@ -1611,7 +1814,7 @@ class SceneGraph:
 
             if (browser.browserSelected(i)) :
                 graph=getInfo(browser, i)
-                child=RE.ogreSceneManager().getSceneNode(graph.nodeId)
+                child=ogreSceneManager().getSceneNode(graph.nodeId)
                 fcn(graph, child, browser, i)
                 if bBreak :
                     break
