@@ -8381,6 +8381,7 @@ end
 
 -- by default, this function maintains the current view, and smoothly follows the target pose starting from the next frame.
 -- if the character needs to be at the center, try "RE.viewpoint():lookAt(pose, {offset=vector3(0,100,0)})
+-- if ZUP, use options={zeroZ=true} or {ZUP=true}.  
 function Viewpoint:lookAt(pose, options)
 	if not options then
 		options={}
@@ -8397,8 +8398,10 @@ function Viewpoint:lookAt(pose, options)
 		-- vectorn
 		targetPos=pose:toVector3(0)*skinScale
 	end
-	if options.zeroZ then
-		targetPos.z=0
+	if options.zeroZ or options.ZUP then
+		if options.zeroZ then
+			targetPos.z=0
+		end
 	elseif not options.useY then
 		targetPos.y=0
 	end
@@ -9885,6 +9888,16 @@ if PLDPrimVRML then
 	end
 	PLDPrimSkin.setLengthAndPoseDOF=PLDPrimVRML.setLengthAndPoseDOF
 
+end
+if Tensor then
+	function Tensor:as_float()
+		local out=floatTensor()
+		out:assign(self)
+		return out
+	end
+	function floatTensor:as_float()
+		return self
+	end
 end
 
 -- for both c++ and lua class types

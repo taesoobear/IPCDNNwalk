@@ -57,21 +57,21 @@ set(src_gui
 	)
 	# currently unused
 set(src_unused
+./motion/MotionInterpolation.cpp
+./motion/MotionInterpolation.h
+./motion/ParseGrpFile.cpp
+./motion/ParseGrcFile.h
+./motion/ParseGrpFile.h
+./motion/ParseGrcFile.cpp
 ./motion/PhysicalHuman.cpp
 ./motion/PhysicalHuman.h
 ./motion/Parameter.cpp
 ./motion/Parameter.h
 ./motion/MotionClustering.h
 ./motion/FeatureExtractor.h
-./motion/MotionInterpolation.cpp
-./motion/MotionInterpolation.h
-./motion/ParseGrpFile.cpp
 ./motion/PoseFeatureExtractor.cpp
 ./motion/MotionClustering.cpp
 ./motion/MotionClustering.h
-./motion/ParseGrcFile.h
-./motion/ParseGrpFile.h
-./motion/ParseGrcFile.cpp
 ./motion/FeatureExtractor.cpp
 ./motion/PoseFeatureExtractor.h
 ./motion/TwoPosture.cpp
@@ -108,7 +108,6 @@ set(LUNA_GEN ${ClassificationLib_SOURCE_DIR}/../MainLib/WrapperLua/luna_gen.lua)
 add_custom_command(
 	OUTPUT "${luna_script}/luna_classification.cpp"
 	DEPENDS "${luna_script}/luna_classification.lua" "${LUNA_GEN}" 
-	PRE_BUILD
 	COMMAND lua "${LUNA_GEN}" "${luna_script}/luna_classification.lua"
 )
 list(APPEND src "${luna_script}/luna_classification.cpp")

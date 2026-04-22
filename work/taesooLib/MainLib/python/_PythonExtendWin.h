@@ -4,6 +4,7 @@
 #include "../../PhysicsLib/ScriptBaseWin.h"
 class MotionPanel;
 class FrameSensor;
+class Motion;
 #ifndef USE_PYBIND11
 #define USE_BOOST_PYTHON
 #endif

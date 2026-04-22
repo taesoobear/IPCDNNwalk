@@ -598,7 +598,12 @@ std::string RE::taesooLibPath()
 		if( !IsFileExist("plugins.cfg"))
 			g_located=1;
 		else
-			g_located=2;
+		{
+			if(IsFileExist("taesooLib/Resource/ogreconfig_mac.txt"))
+				RE::setTaesooLibPath("taesooLib/");
+			else
+				g_located=2;
+		}
 	}
 	if(g_located==1)
 		return g_taesooLibPath;

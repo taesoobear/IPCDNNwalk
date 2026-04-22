@@ -19,6 +19,7 @@
 #include <OgreMovableObject.h>
 #include <OgreFontManager.h>
 #include <OgreHlmsDatablock.h>
+#include <OgreRenderOperation.h>
 
 namespace Ogre {
 

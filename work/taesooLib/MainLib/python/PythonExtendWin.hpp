@@ -441,7 +441,7 @@ int PythonExtendWin::work(TString const& workname, lunaStack& L)
 			catch( pybind11::error_already_set &e)
 			{
 				printf("python error: %s\n", e.what());
-				throw e;
+//				throw e; // this causes lua-debugger to be called.
 			}
 		}
 #endif

@@ -100,6 +100,16 @@ namespace OpenHRP {
 namespace RE_ {
 	bool renderOneFrame(bool check);
 }
+
+
+Ogre::Item* createPointCloudEntity_quad( const std::string& meshName,
+    const float* xyz_half,   // half3 packed
+    const uint8_t* color,       // ubyte4
+    const float* covd_half,  // half3
+    const float* covu_half,  // half3
+    size_t n);
+void _updatePointCloudEntity(Ogre::Item* item, const int* pidx, int idx_size);
+
 #include "../../PhysicsLib/convexhull/graham.h"
 void VRMLloader_checkMass(VRMLloader& l);
 #include "Wrapper.hpp"
@@ -151,6 +161,7 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 #undef None
 #endif
 #include <Ogre.h>
+#include <OgreWindow.h>
 
 #define OGRE_VOID(x) x
 #define OGRE_PTR(x) x
@@ -557,6 +568,24 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("createEntity", (Ogre ::SceneNode * (*)(const char* id, const char* filename))&RE::createEntity, RETURN_REFERENCE) // 1446
 		.def("createEntity", (Ogre ::SceneNode * (*)(const char* id, const char* filename, const char* materialName))&RE::createEntity, RETURN_REFERENCE) // 1446
 		.def("createEntity", (Ogre ::SceneNode * (*)(Ogre::SceneNode*, const char* id, const char* filename))&RE::createEntity, RETURN_REFERENCE) // 1446
+		.def("createPointCloudEntity",  [](const std::string& meshName,
+					WRAP_PY::array_t<float, WRAP_PY::array::c_style | WRAP_PY::array::forcecast> xyz,
+					WRAP_PY::array_t<uint8_t, WRAP_PY::array::c_style | WRAP_PY::array::forcecast> color,
+					WRAP_PY::array_t<float, WRAP_PY::array::c_style | WRAP_PY::array::forcecast> covd,
+					WRAP_PY::array_t<float, WRAP_PY::array::c_style | WRAP_PY::array::forcecast> covu, int n)
+				{
+				float* pxyz=static_cast<float*>(xyz.request().ptr);
+				uint8_t* pcolor=static_cast<uint8_t*>(color.request().ptr);
+				float* pcovd=static_cast<float*>(covd.request().ptr);
+				float* pcovu=static_cast<float*>(covu.request().ptr);
+				return createPointCloudEntity_quad(meshName, pxyz, pcolor, pcovd, pcovu, n);
+				}, RETURN_REFERENCE)
+		.def("updatePointCloudEntity",  [](Ogre::Item* item, WRAP_PY::array_t<int, WRAP_PY::array::c_style | WRAP_PY::array::forcecast> arr)
+				{
+				auto buf = arr.request();
+				int* data = static_cast<int*>(buf.ptr);
+				_updatePointCloudEntity(item, data, (int)buf.size);
+				})
 		.def("removeEntity", (void (*)(Ogre::SceneNode*))&RE::removeEntity) // 1446
 		.def("removeEntity", (void (*)(const char*))&RE::removeEntity) // 1446
 		.def("setMaterialName", (void (*)(Ogre::SceneNode* pNode, const char* mat))&RE::setMaterialName) // 1446
@@ -604,7 +633,24 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def_readwrite("x", &vector3::x)
 		.def_readwrite("y", &vector3::y)
 		.def_readwrite("z", &vector3::z)
-		.def_property_readonly("array",[](vector3 const& v){ npy_intp dims[1]; dims[0]=3; npy_intp strides[1]; strides[0]=sizeof(double); double* vv=const_cast<double*>(&v.x); PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 1, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE , NULL); return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+		.def_property("array", 
+				WRAP_PY::cpp_function(
+					[](vector3& v) {
+					npy_intp dims[1] = {3}; npy_intp strides[1] = {sizeof(double)};
+					auto* descr = PyArray_DescrFromType(NPY_DOUBLE); Py_INCREF(descr);
+					PyObject* o = PyArray_NewFromDescr( &PyArray_Type, descr, 1, dims, strides, &v.x, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE, nullptr);
+					return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
+					},
+					WRAP_PY::keep_alive<0, 1>()
+					),
+				[](vector3& v, WRAP_PY::array_t<double> arr) {
+				if (arr.size() != 3)
+				throw std::runtime_error("array must have size 3");
+				auto r = arr.unchecked<1>();
+				v.x = r(0);
+				v.y = r(1);
+				v.z = r(2);
+				})
 		.def("ref",  [](vector3 const& v){ npy_intp dims[1]; dims[0]=3; npy_intp strides[1]; strides[0]=sizeof(double); double* vv=const_cast<double*>(&v.x); PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 1, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE , NULL); return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 		.def("copy", [](vector3 const&v )->vector3 *{ return new vector3(v);}, TAKE_OWNERSHIP )
 		.def("add", (void (vector3::*)(const vector3&, const vector3&) )&vector3::add)
@@ -673,7 +719,23 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def(init<m_real, m_real>())
 			.def_property("x", &vector2_wrap::getX, &vector2_wrap::setX)
 			.def_property("y", &vector2_wrap::getY, &vector2_wrap::setY)
-			.def_property_readonly("array",[](vector2 const& v){ npy_intp dims[1]; dims[0]=2; npy_intp strides[1]; strides[0]=sizeof(double); double* vv=const_cast<double*>(&v.x()); PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 1, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE , NULL); return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def_property("array", 
+					WRAP_PY::cpp_function(
+						[](vector2& v) {
+						npy_intp dims[1] = {2}; npy_intp strides[1] = {sizeof(double)};
+						auto* descr = PyArray_DescrFromType(NPY_DOUBLE); Py_INCREF(descr);
+						PyObject* o = PyArray_NewFromDescr( &PyArray_Type, descr, 1, dims, strides, &v.x(), NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE, nullptr);
+						return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
+						},
+						WRAP_PY::keep_alive<0, 1>()
+						),
+					[](vector2& v, WRAP_PY::array_t<double> arr) {
+					if (arr.size() != 2)
+					throw std::runtime_error("array must have size 2");
+					auto r = arr.unchecked<1>();
+					v.x() = r(0);
+					v.y() = r(1);
+					})
 			.def("ref",  [](vector2 const& v){ npy_intp dims[1]; dims[0]=2; npy_intp strides[1]; strides[0]=sizeof(double); double* vv=const_cast<double*>(&v.x()); PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 1, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE , NULL); return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 			.def("copy", [](vector2 const&v )->vector2 *{ return new vector2(v);}, TAKE_OWNERSHIP )
 			.def("assign", [](vector2& l, WRAP_PY::list ll){
@@ -777,7 +839,25 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def_readwrite("w", &quater::w)
 		.def("__call__", [](quater& v, int i)->double { return v[i];})
 		.def("set", [](quater& v, int i, double vv){ v[i]=vv;})
-		.def_property_readonly("array",  [](quater const& v){ npy_intp dims[1]; dims[0]=4; npy_intp strides[1]; strides[0]=sizeof(double); double* vv=const_cast<double*>(&v.w); PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 1, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE , NULL); return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+		.def_property("array", 
+				WRAP_PY::cpp_function(
+					[](quater& v) {
+					npy_intp dims[1] = {4}; npy_intp strides[1] = {sizeof(double)};
+					auto* descr = PyArray_DescrFromType(NPY_DOUBLE); Py_INCREF(descr);
+					PyObject* o = PyArray_NewFromDescr( &PyArray_Type, descr, 1, dims, strides, &v.w, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE, nullptr);
+					return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
+					},
+					WRAP_PY::keep_alive<0, 1>()
+					),
+				[](quater& v, WRAP_PY::array_t<double> arr) {
+				if (arr.size() != 4)
+				throw std::runtime_error("array must have size 3");
+				auto r = arr.unchecked<1>();
+				v.w = r(0);
+				v.x = r(1);
+				v.y = r(2);
+				v.z = r(3);
+				})
 		.def("ref",  [](quater const& v){ npy_intp dims[1]; dims[0]=4; npy_intp strides[1]; strides[0]=sizeof(double); double* vv=const_cast<double*>(&v.w); PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_DOUBLE), 1, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE , NULL); return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 
 		.def("copy", [](quater const&v )->quater *{ return new quater(v);}, TAKE_OWNERSHIP )
@@ -939,7 +1019,27 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def(self+self)
 			.def(self*vector3())
 			.def(self*self)
-			.def_property_readonly("array",  [](matrix3 const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrix3_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def_property("array", 
+					WRAP_PY::cpp_function(
+						[](matrix3 & v) {
+						npy_intp dims[2] = {3,3}; npy_intp strides[2] = {sizeof(double)*3, sizeof(double)};
+						auto* descr = PyArray_DescrFromType(NPY_DOUBLE); Py_INCREF(descr);
+						PyObject* o = PyArray_NewFromDescr( &PyArray_Type, descr, 2, dims, strides, &v._11, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE, nullptr);
+						return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
+						},
+						WRAP_PY::keep_alive<0, 1>()
+						),
+					[](matrix3& v, WRAP_PY::array_t<double> arr) {
+					if (arr.ndim() != 2 || arr.shape(0) != 3 || arr.shape(1) != 3)
+					throw std::runtime_error("array must have shape (3,3)");
+
+					auto r = arr.unchecked<2>();  // 2차원 접근
+
+					// matrix3 멤버에 할당
+					v._11 = r(0,0); v._12 = r(0,1); v._13 = r(0,2);
+					v._21 = r(1,0); v._22 = r(1,1); v._23 = r(1,2);
+					v._31 = r(2,0); v._32 = r(2,1); v._33 = r(2,2);
+					})
 			.def("ref",  [](matrix3 const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrix3_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 
 			.def("ref1D",  [](matrix3 const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrix3_::ref1D(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
@@ -1012,7 +1112,29 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def(init<>())                                                // 1426
 			.def(init<const quater &,const vector3 &>())                  // 1426
 			.def(init<const transf &>())                                  // 1426
-			.def_property_readonly("array", [](matrix4 const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrix4_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def_property("array", 
+					WRAP_PY::cpp_function(
+						[](matrix4 & v) {
+						npy_intp dims[2] = {4,4}; npy_intp strides[2] = {sizeof(double)*4, sizeof(double)};
+						auto* descr = PyArray_DescrFromType(NPY_DOUBLE); Py_INCREF(descr);
+						PyObject* o = PyArray_NewFromDescr( &PyArray_Type, descr, 2, dims, strides, &v._11, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE, nullptr);
+						return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
+						},
+						WRAP_PY::keep_alive<0, 1>()
+						),
+					[](matrix4& v, WRAP_PY::array_t<double> arr) {
+					if (arr.ndim() != 2 || arr.shape(0) != 4 || arr.shape(1) != 4)
+					throw std::runtime_error("array must have shape (4,4)");
+
+					auto r = arr.unchecked<2>();  // 2차원 접근
+
+					// matrix3 멤버에 할당
+					v._11 = r(0,0); v._12 = r(0,1); v._13 = r(0,2); v._14=r(0,3);
+					v._21 = r(1,0); v._22 = r(1,1); v._23 = r(1,2); v._24=r(1,3);
+					v._31 = r(2,0); v._32 = r(2,1); v._33 = r(2,2); v._34=r(2,3);
+					v._41 = r(3,0); v._42 = r(3,1); v._43 = r(3,2); v._44=r(3,3);
+
+					})
 			.def("ref",  [](matrix4 const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrix4_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 
 			.def("ref1D",  [](matrix4 const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrix4_::ref1D(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
@@ -1080,10 +1202,32 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		class_<matrixn>(mainlib, "matrixn")
 			.def(init<>())
 			.def(init<int,int>())
-			.def("quatViewCol", &quatViewCol)
-			.def("vec3ViewCol", &vec3ViewCol)
+			.def("quatViewCol", &quatViewCol,WRAP_PY::keep_alive<0,1>())
+			.def("vec3ViewCol", &vec3ViewCol,WRAP_PY::keep_alive<0,1>())
 			.def("copy", [](matrixn const&v )->matrixn *{ return new matrixn(v);}, TAKE_OWNERSHIP )
-			.def_property_readonly("array", [](matrixn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrixn_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def_property("array", 
+					WRAP_PY::cpp_function(
+						[](matrixn & v) {
+						npy_intp dims[2];
+						dims[0]= v.rows();
+						dims[1]=v.cols();
+						npy_intp strides[2];
+						strides[0]=sizeof(double)*v._getStride();
+						strides[1]=sizeof(double);
+						auto* descr = PyArray_DescrFromType(NPY_DOUBLE); Py_INCREF(descr);
+						PyObject* o = PyArray_NewFromDescr( &PyArray_Type, descr, 2, dims, strides, &v[0][0], NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE, nullptr);
+						return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
+						},
+						WRAP_PY::keep_alive<0, 1>()
+						),
+					[](matrixn& v, WRAP_PY::array_t<double> arr) {
+					if (arr.ndim() != 2 || arr.shape(0) != v.rows() || arr.shape(1) != v.cols())
+					throw std::runtime_error("array shape doesn't match");
+					auto r = arr.unchecked<2>();  // 2차원 접근
+					for(int i=0; i<v.rows(); i++)
+						for(int j=0; j<v.cols(); j++)
+							v(i,j)=r(i,j);
+					})
 			.def("ref",  [](matrixn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrixn_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 
 			.def("__repr__", [](matrixn const& in)->std::string{ return std::string("matrixn")+in.shortOutput().tostring();})
@@ -1103,7 +1247,7 @@ PYBIND11_MODULE(libmainlib, mainlib)
 					if (scol<0 ) scol=inout.cols()+scol;
 					if (ecol<=0 ) ecol=inout.cols()+ecol;
 					return inout.range(srow, erow, scol, ecol);
-					}, "srow"_a, "erow"_a, "scol"_a=0, "ecol"_a=0)
+					},WRAP_PY::keep_alive<0,1>(), "srow"_a, "erow"_a, "scol"_a=0, "ecol"_a=0)
 			.def(WRAP_PY::pickle(
 						[](const matrixn &p) { // __getstate__
 						auto my_tuple = WRAP_PY::tuple(p.rows()*p.cols()+2);
@@ -1129,7 +1273,7 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("derivative_forward",&matrixn::derivative_forward)
 			.def("MotionDOF_calcDerivative", (matrixn (*)(matrixn const& dof, double frameRate))&MotionDOF_calcDerivative)																																		//
 			.def("assign", (matrixn& (matrixn::*)(const matrixn&))(&matrixn::assign), RETURN_REFERENCE)
-			.def("row", &matrixn::row)
+			.def("row", &matrixn::row,WRAP_PY::keep_alive<0,1>())      // 1445
 			.def(self + self) // add (homogeneous)
 			.def(self - self) // add (homogeneous)
 			.def(self * self) // mul
@@ -1140,7 +1284,7 @@ PYBIND11_MODULE(libmainlib, mainlib)
 				   if (i >= v.rows())
 					   throw index_error();
 					return v.row(i);
-				 })
+				 },WRAP_PY::keep_alive<0,1>())
 			.def("isnan", &matrixn::isnan)
 			.def("extractRows", (void (matrixn::*)(matrixn const& mat, intvectorn const& rows))&matrixn::extractRows) // 1445
 			.def("extractColumns", (void (matrixn::*)(matrixn const& mat, intvectorn const& columns))&matrixn::extractColumns) // 1445
@@ -1150,8 +1294,8 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("set", &matrixn::set)
 			.def("rows", &matrixn::rows)
 			.def("cols", &matrixn::cols)
-			.def("column", &matrixn::column)
-			.def("diag", (vectornView (matrixn::*)())&matrixn::diag)      // 1445
+			.def("column", &matrixn::column,WRAP_PY::keep_alive<0,1>())      // 1445
+			.def("diag", (vectornView (matrixn::*)())&matrixn::diag,WRAP_PY::keep_alive<0,1>())      // 1445
 			.def("transpose", (void (matrixn::*)(matrixn const& o))&matrixn::transpose) // 1445
 			.def("setSize", &matrixn::setSize)
 			.def("resize", &matrixn::resize)
@@ -1175,6 +1319,38 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		class_<matrixnView, matrixn >(mainlib, "matrixnView")
 			.def(init<const matrixn &>())
 			.def(init<const matrixnView &>())
+			;
+		class_<intmatrixn>(mainlib, "intmatrixn")
+			.def(init<>())
+			.def(init<int,int>())
+			.def("copy", [](intmatrixn const&v )->intmatrixn *{ return new intmatrixn(v);}, TAKE_OWNERSHIP )
+			.def_property("array", 
+					WRAP_PY::cpp_function(
+						[](intmatrixn & v) {
+						npy_intp dims[2];
+						dims[0]= v.rows();
+						dims[1]=v.cols();
+						npy_intp strides[2];
+						strides[0]=sizeof(int)*v._getStride();
+						strides[1]=sizeof(int);
+						auto* descr = PyArray_DescrFromType(NPY_INT); Py_INCREF(descr);
+						PyObject* o = PyArray_NewFromDescr( &PyArray_Type, descr, 2, dims, strides, &v[0][0], NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE, nullptr);
+						return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
+						},
+						WRAP_PY::keep_alive<0, 1>()
+						),
+					[](intmatrixn& v, WRAP_PY::array_t<int> arr) {
+					if (arr.ndim() != 2 || arr.shape(0) != v.rows() || arr.shape(1) != v.cols())
+					throw std::runtime_error("array shape doesn't match");
+					auto r = arr.unchecked<2>();  // 2차원 접근
+					for(int i=0; i<v.rows(); i++)
+						for(int j=0; j<v.cols(); j++)
+							v(i,j)=r(i,j);
+					})
+		;
+		class_<intmatrixnView, intmatrixn >(mainlib, "intmatrixnView")
+			.def(init<const intmatrixn &>())
+			.def(init<const intmatrixnView &>())
 			;
 	}
 	{
@@ -1213,7 +1389,32 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("setSize",&hypermatrixn::setSize)
 			.def("setSameSize",&hypermatrixn::setSameSize)
 			.def("page",&wrap_hyper::page)
-			.def_property_readonly("array",  [](hypermatrixn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(wrap_hyper::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def_property("array", 
+					WRAP_PY::cpp_function(
+						[](hypermatrixn & v) {
+						npy_intp dims[3];
+						dims[0]= v.pages();
+						dims[1]= v.rows();
+						dims[2]=v.cols();
+						npy_intp strides[3];
+						strides[0]=sizeof(double)*v.cols()*v.rows();
+						strides[1]=sizeof(double)*v.cols();
+						strides[2]=sizeof(double);
+						auto* descr = PyArray_DescrFromType(NPY_DOUBLE); Py_INCREF(descr);
+						PyObject* o = PyArray_NewFromDescr( &PyArray_Type, descr, 3, dims, strides, &v[0][0][0], NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE, nullptr);
+						return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
+						},
+						WRAP_PY::keep_alive<0, 1>()
+						),
+					[](hypermatrixn& v, WRAP_PY::array_t<double> arr) {
+					if (arr.ndim() != 3 || arr.shape(0)!=v.pages() || arr.shape(1) != v.rows() || arr.shape(2) != v.cols())
+					throw std::runtime_error("array shape doesn't match");
+					auto r = arr.unchecked<3>();  // 2차원 접근
+					for(int i=0; i<v.pages(); i++)
+						for(int j=0; j<v.rows(); j++)
+							for(int k=0; k<v.cols(); k++)
+								v(i,j,k)=r(i,j, k);
+					})
 			.def("ref",  [](hypermatrixn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(wrap_hyper::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 
 			.def("resize", &hypermatrixn::resize)                         // 1445
@@ -1258,10 +1459,71 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def(init<int, int, int, int, int>())
 			.def("slice_1d", &Tensor::slice_1d, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 
-			.def_property_readonly("array", [](Tensor const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(wrap_tensor::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def_property("array", 
+					WRAP_PY::cpp_function(
+						[](Tensor & v) {
+						npy_intp dims[TENSOR_MAX_DIMS];
+						npy_intp strides[TENSOR_MAX_DIMS];
+						int ndims=v.shape().size();
+						for(int i=0; i<ndims; i++)
+						{
+						dims[i]=v.shape(i);
+						strides[i]=sizeof(double)*v.strides()[i];
+						}
+						double* vv=(double*)v.dataPointer();
+						auto* descr = PyArray_DescrFromType(NPY_DOUBLE); Py_INCREF(descr);
+						PyObject* o = PyArray_NewFromDescr( &PyArray_Type, descr, ndims, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE, nullptr);
+						return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
+						},
+						WRAP_PY::keep_alive<0, 1>()
+						),
+					[](Tensor& v, WRAP_PY::array_t<double> arr) {
+					int ndim=v.shape().size();
+					if (arr.ndim() != ndim )
+						throw std::runtime_error("array shape doesn't match");
+					for(int i=0; i<ndim; i++)
+						if (v.shape(i)!=arr.shape(i) )
+							throw std::runtime_error("array shape doesn't match");
+
+					auto buf = arr.request();
+					double* src = static_cast<double*>(buf.ptr);
+					const auto& strides = buf.strides; // bytes
+
+					double* v_data = (double*)v.dataPointer();
+					const auto& v_strides = v.strides();     // element strides
+					const auto& a_strides = buf.strides;     // byte strides
+					double* a_data = static_cast<double*>(buf.ptr);
+
+					// index vector 초기화
+					std::vector<size_t> idx(ndim, 0);
+
+					while (true) {
+						// ---- 주소 계산 ----
+						double* v_ptr = v_data;
+						char*   a_ptr = reinterpret_cast<char*>(a_data);
+
+						for (int d = 0; d < ndim; ++d) {
+							v_ptr += idx[d] * v_strides[d];
+							a_ptr += idx[d] * a_strides[d];
+						}
+
+						*v_ptr = *reinterpret_cast<double*>(a_ptr);
+
+						// ---- n차원 index 증가 (odometer) ----
+						int d = ndim - 1;
+						for (; d >= 0; --d) {
+							idx[d]++;
+							if (idx[d] < v.shape(d))
+								break;
+							idx[d] = 0;
+						}
+						if (d < 0)
+							break;  // 종료
+					}
+					})
 			.def("ref",  [](Tensor const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(wrap_tensor::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 
-			.def("shape", (intvectornView (Tensor::*)() const)&Tensor::shape)                                 // 1445
+			.def("shape", (intvectornView (Tensor::*)() const)&Tensor::shape, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 			.def("pages", &Tensor::pages)                                 // 1445
 			.def("rows", &Tensor::rows)                                   // 1445
 			.def("cols", &Tensor::cols)                                   // 1445
@@ -1272,7 +1534,7 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("set", (void (Tensor::*)(int i, int j, int k, int l, double f))&Tensor::set) // 1446
 			.def("__call__", (double (Tensor::*)(const intvectorn& indices))&Tensor::get_ref) // 1446
 			.def("set", (void (Tensor::*)(const intvectorn& indices, double f))&Tensor::set) // 1446
-			.def("__call__", &Tensor::page)//1446
+			.def("__call__", &Tensor::page,WRAP_PY::keep_alive<0,1>())//1446
 			.def("slice", (TensorView (Tensor::*)(const intvectorn& _indices))&Tensor::slice, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
  // 1446
 			.def("slice", [](Tensor const& in, int i, int j, int k)->TensorView { 
@@ -1294,6 +1556,116 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		;
 		class_<TensorView ,Tensor> (mainlib, "TensorView")               
 			; // end of class impl___pybindgen___TensorView               // 1506
+		struct wrap_floatTensor
+		{
+			// does not copy memory.
+			static PyObject* ref(floatTensor const& v)
+			{
+				npy_intp dims[TENSOR_MAX_DIMS];
+				npy_intp strides[TENSOR_MAX_DIMS];
+				int ndim=v.shape().size();
+				for(int i=0; i<ndim; i++)
+				{
+					dims[i]=v.shape(i);
+					strides[i]=sizeof(float)*v.strides()[i];
+				}
+				float* vv=(float*)v.dataPointer();
+				PyObject* o=PyArray_NewFromDescr(&PyArray_Type, PyArray_DescrFromType (NPY_FLOAT), ndim, dims, strides, vv, 
+						//NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE
+						NPY_ARRAY_CARRAY | NPY_ARRAY_WRITEABLE
+						, NULL);
+				return o;
+			}
+		};
+		class_<floatTensor>(mainlib, "floatTensor")
+			.def(init<>())
+			.def(init<int, int, int>())
+			.def(init<int, int, int, int>())
+			.def(init<int, int, int, int, int>())
+			.def("slice_1d", &floatTensor::slice_1d, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
+			.def_property("array", 
+					WRAP_PY::cpp_function(
+						[](floatTensor & v) {
+						npy_intp dims[TENSOR_MAX_DIMS];
+						npy_intp strides[TENSOR_MAX_DIMS];
+						int ndims=v.shape().size();
+						for(int i=0; i<ndims; i++)
+						{
+						dims[i]=v.shape(i);
+						strides[i]=sizeof(float)*v.strides()[i];
+						}
+						float* vv=(float*)v.dataPointer();
+						auto* descr = PyArray_DescrFromType(NPY_FLOAT); Py_INCREF(descr);
+						PyObject* o = PyArray_NewFromDescr( &PyArray_Type, descr, ndims, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE, nullptr);
+						return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
+						},
+						WRAP_PY::keep_alive<0, 1>()
+						),
+					[](floatTensor& v, WRAP_PY::array_t<float> arr) {
+					int ndim=v.shape().size();
+					if (arr.ndim() != ndim )
+						throw std::runtime_error("array shape doesn't match");
+					for(int i=0; i<ndim; i++)
+						if (v.shape(i)!=arr.shape(i) )
+							throw std::runtime_error("array shape doesn't match");
+
+					auto buf = arr.request();
+					float* src = static_cast<float*>(buf.ptr);
+					const auto& strides = buf.strides; // bytes
+
+					float* v_data = (float*)v.dataPointer();
+					const auto& v_strides = v.strides();     // element strides
+					const auto& a_strides = buf.strides;     // byte strides
+					float* a_data = static_cast<float*>(buf.ptr);
+
+					// index vector 초기화
+					std::vector<size_t> idx(ndim, 0);
+
+					while (true) {
+						// ---- 주소 계산 ----
+						float* v_ptr = v_data;
+						char*   a_ptr = reinterpret_cast<char*>(a_data);
+
+						for (int d = 0; d < ndim; ++d) {
+							v_ptr += idx[d] * v_strides[d];
+							a_ptr += idx[d] * a_strides[d];
+						}
+
+						*v_ptr = *reinterpret_cast<float*>(a_ptr);
+
+						// ---- n차원 index 증가 (odometer) ----
+						int d = ndim - 1;
+						for (; d >= 0; --d) {
+							idx[d]++;
+							if (idx[d] < v.shape(d))
+								break;
+							idx[d] = 0;
+						}
+						if (d < 0)
+							break;  // 종료
+					}
+					})
+			.def("ref",  [](floatTensor const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(wrap_floatTensor::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+
+			.def("shape", (intvectornView (floatTensor::*)() const)&floatTensor::shape, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def("pages", &floatTensor::pages)                                 // 1445
+			.def("rows", &floatTensor::rows)                                   // 1445
+			.def("cols", &floatTensor::cols)                                   // 1445
+			.def("setAllValue", &floatTensor::setAllValue)																		  //
+			.def("__call__", (float (floatTensor::*)(int i, int j, int k))&floatTensor::get) // 1446
+			.def("set", (void (floatTensor::*)(int i, int j, int k, float f))&floatTensor::set) // 1446
+			.def("__call__", (float (floatTensor::*)(int i, int j, int k, int l))&floatTensor::get) // 1446
+			.def("set", (void (floatTensor::*)(int i, int j, int k, int l, float f))&floatTensor::set) // 1446
+			.def("__call__", (float (floatTensor::*)(const intvectorn& indices))&floatTensor::get_ref) // 1446
+			.def("set", (void (floatTensor::*)(const intvectorn& indices, float f))&floatTensor::set) // 1446
+			.def("assign", (void (floatTensor::*)(floatTensor const& other))&floatTensor::assign) // 1446
+			.def("assign", (void (floatTensor::*)(floatTensor const& other))&floatTensor::assign) // 1446
+			.def("assign", (void (floatTensor::*)(floatvec const& other))&floatTensor::assign) // 1446
+			.def("assign", (void (floatTensor::*)(vectorn const& other))&floatTensor::assign) // 1446
+			.def("assign", (void (floatTensor::*)(matrixn const& other))&floatTensor::assign) // 1446
+			.def("assign", (void (floatTensor::*)(hypermatrixn const& other))&floatTensor::assign) // 1446
+		;
 	}
 	// quaterN
 	{
@@ -1303,7 +1675,29 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def(init<int>())                                             // 1426
 			.def("copy", [](quaterN const&v )->quaterN *{ return new quaterN(v);}, TAKE_OWNERSHIP )
 			.def("value", &quaterN::value, RETURN_REFERENCE)
-			.def_property_readonly("array",  [](quaterN const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrixn_::ref(matView(v))); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def_property("array", 
+					WRAP_PY::cpp_function(
+						[](quaterN & v) {
+						npy_intp dims[2];
+						dims[0]= v.rows();
+						dims[1]=4;
+						npy_intp strides[2];
+						strides[0]=sizeof(double)*4;
+						strides[1]=sizeof(double);
+						auto* descr = PyArray_DescrFromType(NPY_DOUBLE); Py_INCREF(descr);
+						PyObject* o = PyArray_NewFromDescr( &PyArray_Type, descr, 2, dims, strides, &v[0].w, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE, nullptr);
+						return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
+						},
+						WRAP_PY::keep_alive<0, 1>()
+						),
+					[](quaterN& v, WRAP_PY::array_t<double> arr) {
+					if (arr.ndim() != 2 || arr.shape(0) != v.rows() || arr.shape(1) != 4)
+					throw std::runtime_error("array shape doesn't match");
+					auto r = arr.unchecked<2>();  // 2차원 접근
+					for(int i=0; i<v.rows(); i++)
+						for(int j=0; j<4; j++)
+							v(i)[j]=r(i,j);
+					})
 			.def("ref",  [](quaterN const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrixn_::ref(matView(v))); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 
 			.def("row", &quaterN::row, RETURN_REFERENCE)
@@ -1359,7 +1753,29 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def(init<matrixn>())
 			.def(init<matrixnView>())
 			.def("copy", [](vector3N const&v )->vector3N *{ return new vector3N(v);}, TAKE_OWNERSHIP )
-			.def_property_readonly("array",  [](vector3N const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrixn_::ref(matView(v))); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def_property("array", 
+					WRAP_PY::cpp_function(
+						[](vector3N & v) {
+						npy_intp dims[2];
+						dims[0]= v.rows();
+						dims[1]=3;
+						npy_intp strides[2];
+						strides[0]=sizeof(double)*3;
+						strides[1]=sizeof(double);
+						auto* descr = PyArray_DescrFromType(NPY_DOUBLE); Py_INCREF(descr);
+						PyObject* o = PyArray_NewFromDescr( &PyArray_Type, descr, 2, dims, strides, &v[0].x, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE, nullptr);
+						return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
+						},
+						WRAP_PY::keep_alive<0, 1>()
+						),
+					[](vector3N& v, WRAP_PY::array_t<double> arr) {
+					if (arr.ndim() != 2 || arr.shape(0) != v.rows() || arr.shape(1) != 3)
+					throw std::runtime_error("array shape doesn't match");
+					auto r = arr.unchecked<2>();  // 2차원 접근
+					for(int i=0; i<v.rows(); i++)
+						for(int j=0; j<3; j++)
+							v(i)[j]=r(i,j);
+					})
 			.def("ref",  [](vector3N const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(matrixn_::ref(matView(v))); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 
 			.def("value", &vector3N::value, RETURN_REFERENCE)
@@ -1493,6 +1909,7 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("pack", (void (BinaryFile::*)(const matrix4& mat))&BinaryFile::pack) // 1445
 			.def("pack", (void (BinaryFile::*)(const hypermatrixn& mat))&BinaryFile::pack) // 1445
 			.def("pack", (void (BinaryFile::*)(const Tensor& mat))&BinaryFile::pack) // 1445
+			.def("pack", (void (BinaryFile::*)(const floatTensor& mat))&BinaryFile::pack) // 1445
 			.def("unpackInt", (int (BinaryFile::*)())&BinaryFile::unpackInt) // 1445
 			.def("unpackFloat", (double (BinaryFile::*)())&BinaryFile::unpackFloat) // 1445
 			.def("unpackStr", [](BinaryFile & self)->std::string{ return std::string(self.unpackStr().ptr()); })
@@ -1509,6 +1926,7 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("unpack", (void (BinaryFile::*)(matrix4& mat))&BinaryFile::unpack) // 1445
 			.def("unpack", (void (BinaryFile::*)(hypermatrixn& mat))&BinaryFile::unpack) // 1445
 			.def("unpack", (void (BinaryFile::*)(Tensor& mat))&BinaryFile::unpack) // 1445
+			.def("unpack", (void (BinaryFile::*)(floatTensor& mat))&BinaryFile::unpack) // 1445
 			.def("_unpackInt", (int (BinaryFile::*)())&BinaryFile::_unpackInt) // 1445
 			.def("_unpackFloat", (double (BinaryFile::*)())&BinaryFile::_unpackFloat) // 1445
 			.def("_unpackStr", [](BinaryFile & self)->std::string{ return std::string(self._unpackStr().ptr()); })
@@ -1699,7 +2117,26 @@ PYBIND11_MODULE(libmainlib, mainlib)
 				 })
 			.def("__call__", getValue1)
 			.def("range", static_cast<intvectornView (intvectorn::*)(int, int, int)>(&intvectorn::range), WRAP_PY::keep_alive<0,1>(), "start"_a, "end"_a,"step"_a=1)
-			.def_property_readonly("array", [](intvectorn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(intvectorn_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def_property("array", 
+					WRAP_PY::cpp_function(
+						[](intvectorn& v) {
+						npy_intp dims[1];
+						dims[0]=v.size();
+						npy_intp strides[1];
+						strides[0]=sizeof(int)*v._getStride();
+						auto* descr = PyArray_DescrFromType(NPY_INT); Py_INCREF(descr);
+						PyObject* o = PyArray_NewFromDescr( &PyArray_Type, descr, 1, dims, strides, &v[0], NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE, nullptr);
+						return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
+						},
+						WRAP_PY::keep_alive<0, 1>()
+						),
+					[](intvectorn& v, WRAP_PY::array_t<int> arr) {
+					if (arr.size() != v.size())
+					throw std::runtime_error("array doesn't match");
+					auto r = arr.unchecked<1>();
+					for (int i=0; i<v.size(); i++)
+						v(i)=r(i);
+					})
 			.def("ref",  [](intvectorn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(intvectorn_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 
 			.def("setAt", [](intvectorn &v, intvectorn const& columnIndex, intvectorn const& value){v.setAt(columnIndex, value);}) // 1445
@@ -1865,7 +2302,26 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("assign", assignq, RETURN_REFERENCE)
 			.def("assign",  [](vectorn & v, transf const& t){ v.setSize(7); v.setTransf(0, t);})
 			.def("zero",  [](vectorn & v){ v.setAllValue(0.0);})
-			.def_property_readonly("array", [](vectorn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(vectorn_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def_property("array", 
+					WRAP_PY::cpp_function(
+						[](vectorn& v) {
+						npy_intp dims[1];
+						dims[0]=v.size();
+						npy_intp strides[1];
+						strides[0]=sizeof(double)*v._getStride();
+						auto* descr = PyArray_DescrFromType(NPY_DOUBLE); Py_INCREF(descr);
+						PyObject* o = PyArray_NewFromDescr( &PyArray_Type, descr, 1, dims, strides, &v[0], NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE, nullptr);
+						return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
+						},
+						WRAP_PY::keep_alive<0, 1>()
+						),
+					[](vectorn& v, WRAP_PY::array_t<double> arr) {
+					if (arr.size() != v.size())
+					throw std::runtime_error("array doesn't match");
+					auto r = arr.unchecked<1>();
+					for (int i=0; i<v.size(); i++)
+						v(i)=r(i);
+					})
 			.def("ref",  [](vectorn const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(vectorn_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 
 			// concat
@@ -1968,8 +2424,8 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("linspace", [](vectorn&v, m_real x1, m_real x2, int nSize){ v.linspace(x1,x2, nSize);})
 			.def("uniform", [](vectorn&v,m_real x1, m_real x2){ v.uniform(x1, x2);})
 			.def("uniform", [](vectorn&v,m_real x1, m_real x2, int nSize){ v.uniform(x1, x2,nSize);})
-			.def("column", (matrixnView (vectorn::*)())&vectorn::column)  // 1445
-			.def("row", (matrixnView (vectorn::*)())&vectorn::row)        // 1445
+			.def("column", (matrixnView (vectorn::*)())&vectorn::column, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def("row", (matrixnView (vectorn::*)())&vectorn::row, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 			.def("fromMatrix", (void (vectorn::*)(matrixn const& in))&vectorn::fromMatrix) // 1445
 			// static member
 			.def("radd", (void (*)(vectorn & a, m_real b))&__pybindgen___vectorn_wrapper::radd)          // 1458
@@ -2135,6 +2591,9 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("setFogNone", (void (*)(Ogre::SceneManager* pmgr))&impl_luna__interface_SceneManager::setFogNone) // 1446
 			.def("createEntity", (Ogre ::Item * (*)(Ogre::SceneManager* pmgr, const char* id, const char* mesh))&impl_luna__interface_SceneManager::createEntity, RETURN_REFERENCE) // 1446
 			.def("getSceneNode", (Ogre ::SceneNode * (*)(Ogre::SceneManager* pmgr, const char* id))&impl_luna__interface_SceneManager::getSceneNode, RETURN_REFERENCE) // 1446
+#ifndef NO_GUI
+			.def("setVisibilityMask", [](Ogre::SceneManager* self, unsigned int mask){ self->setVisibilityMask(mask); })
+#endif
 		/*
 		class SceneNode_Wrapper
 		{
@@ -2281,6 +2740,11 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def(init<const OBJloader ::Mesh &,const std::string,bool,bool>()) // 1426
 			.def(init<const OBJloader ::Mesh &,const std::string,bool,bool,bool,bool>()) // 1426
 			.def(init<const OBJloader ::Mesh &,const std::string,bool,bool,bool,bool,bool>()) // 1426
+#ifdef NO_OGRE
+			.def("getRawData", &OBJloader ::MeshToEntity::getRawData) // 1443
+			.def("getRawData_pos", &OBJloader ::MeshToEntity::getRawData_pos) // 1443
+			.def("getRawData_posAndNormal", &OBJloader ::MeshToEntity::getRawData_posAndNormal) // 1443
+#endif
 			.def("updatePositions", (void (OBJloader ::MeshToEntity::*)())&OBJloader ::MeshToEntity::updatePositions) // 1443
 			.def("updatePositionsAndNormals", (void (OBJloader ::MeshToEntity::*)())&OBJloader ::MeshToEntity::updatePositionsAndNormals) // 1443
 			.def("createEntity", [](OBJloader::MeshToEntity& self, const std::string & entityName)->Ogre::Item* {
@@ -2290,6 +2754,8 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		class_<Ogre::Item, Ogre::MovableObject> (mainlib, "Entity")
 #ifndef NO_GUI
 			.def("setMaterialName", [](Ogre::Item& entity, const std::string name){ entity.setDatablockOrMaterialName(name);})
+			.def("setVisibilityFlags", [](Ogre::Item& entity, unsigned int flag){ entity.setVisibilityFlags(flag);})
+			.def("setDefaultVisibilityFlags", [](Ogre::Item& item){ item.setVisibilityFlags(Ogre::MovableObject::getDefaultVisibilityFlags()); })
 #endif
 			;
 		class_<Viewpoint > (mainlib, "Viewpoint")                       // 1388
@@ -2304,6 +2770,10 @@ PYBIND11_MODULE(libmainlib, mainlib)
 			.def("TurnLeft", (int (Viewpoint::*)(m_real radian))&Viewpoint::TurnLeft) // 1447
 			.def("TurnUp", (int (Viewpoint::*)(m_real radian))&Viewpoint::TurnUp) // 1447
 			.def("TurnDown", (int (Viewpoint::*)(m_real radian))&Viewpoint::TurnDown) // 1447
+			.def("PanUp", (int (Viewpoint::*)(m_real radian))&Viewpoint::PanUp) // 1447
+			.def("PanRight", (int (Viewpoint::*)(m_real radian))&Viewpoint::PanRight) // 1447
+			.def("PanForward", (int (Viewpoint::*)(m_real radian))&Viewpoint::PanForward) // 1447
+			.def("CheckConstraint", &Viewpoint::CheckConstraint) // 1447
 			.def("ZoomIn", (int (Viewpoint::*)(m_real ZoomAmount))&Viewpoint::ZoomIn) // 1447
 			.def("ZoomOut", (int (Viewpoint::*)(m_real ZoomAmount))&Viewpoint::ZoomOut) // 1447
 			.def("getZoom", (m_real (Viewpoint::*)(void))&Viewpoint::getZoom) // 1447
@@ -2461,6 +2931,7 @@ PYBIND11_MODULE(libmainlib, mainlib)
 		.def("origin", (vector3& (Ray::*)())&Ray::origin) // 1451
 		.def("direction", (vector3& (Ray::*)())&Ray::direction) // 1451
 		.def("getPoint", (vector3 (Ray::*)(m_real t))&Ray::getPoint) // 1451
+		.def("set", [](Ray &v, vector3 const& o, vector3 const& d){ v.origin()=o; v.direction()=d;})
 		.def("scale", (void (Ray::*)(double s))&Ray::scale) // 1451
 		.def("translate", (void (Ray::*)(vector3 const& t))&Ray::translate) // 1451
 		.def("pickBarycentric", (int (Ray::*)(const OBJloader::Mesh& mesh, vector3 & baryCoeffs, vector3 & pickPos))&Ray::pickBarycentric) // 1451
@@ -2665,17 +3136,17 @@ initSkeletonFromFile) // 1458
 		.def("align", (void (MotionDOF::*)(MotionDOF const& motA, MotionDOF const& motB))&MotionDOF::align) // 1447
 		.def("alignSimple", (void (MotionDOF::*)(MotionDOF const& motA, MotionDOF const& motB))&MotionDOF::alignSimple) // 1447
 		.def("stitchDeltaRep", (void (MotionDOF::*)(MotionDOF const& motA, MotionDOF const& motB))&MotionDOF::stitchDeltaRep) // 1447
-		.def("__call__", (vectornView (MotionDOF::*)(int i))&MotionDOF::row) // 1447
+		.def("__call__", (vectornView (MotionDOF::*)(int i))&MotionDOF::row, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 		.def("convertToDeltaRep", (vector3 (MotionDOF::*)())&MotionDOF::convertToDeltaRep) // 1447
 		.def("generateID", (void (MotionDOF::*)(vector3 const& start_transf, InterframeDifference& out))&MotionDOF::generateID) // 1447
 		.def("reconstructData", (void (MotionDOF::*)(vector3 const & startTransf))&MotionDOF::reconstructData) // 1447
 		.def("reconstructData", (void (MotionDOF::*)(vector3 const& startTransf, matrixn& out) const)&MotionDOF::reconstructData) // 1447
 		.def("reconstructData", (void (MotionDOF::*)(transf const& startTransf, matrixn& out) const)&MotionDOF::reconstructData) // 1447
 		.def("reconstructOneFrame", (void (MotionDOF::*)(vector3 const& startTransf, vectorn const& deltaPose, vectorn & outpose) const)&MotionDOF::reconstructOneFrame) // 1447
-		.def("dv_x", (vectornView (MotionDOF::*)())&MotionDOF::dv_x)  // 1447
-		.def("dv_z", (vectornView (MotionDOF::*)())&MotionDOF::dv_z)  // 1447
-		.def("dq_y", (vectornView (MotionDOF::*)())&MotionDOF::dq_y)  // 1447
-		.def("offset_y", (vectornView (MotionDOF::*)())&MotionDOF::offset_y) // 1447
+		.def("dv_x", (vectornView (MotionDOF::*)())&MotionDOF::dv_x, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+		.def("dv_z", (vectornView (MotionDOF::*)())&MotionDOF::dv_z, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+		.def("dq_y", (vectornView (MotionDOF::*)())&MotionDOF::dq_y, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+		.def("offset_y", (vectornView (MotionDOF::*)())&MotionDOF::offset_y, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 		.def("length", (int (MotionDOF::*)())&MotionDOF::length)      // 1447
 		.def("transform", (void (MotionDOF::*)(transf const& t))&MotionDOF::transform) // 1447
 		.def("scale", (void (MotionDOF::*)(double t))&MotionDOF::scale) // 1447
@@ -2753,7 +3224,7 @@ initSkeletonFromFile) // 1458
 		.def("loadMotion", (void (MotionDOFcontainer::*)(const char* fn))&MotionDOFcontainer::loadMotion) // 1447
 		.def("resize", (void (MotionDOFcontainer::*)(int nframes))&MotionDOFcontainer::resize) // 1447
 		.def("concat", (void (MotionDOFcontainer::*)(MotionDOF const& mot))&MotionDOFcontainer::concat) // 1447
-		.def("row", (vectornView (MotionDOFcontainer::*)(int i))&MotionDOFcontainer::row) // 1447
+		.def("row", (vectornView (MotionDOFcontainer::*)(int i))&MotionDOFcontainer::row, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 		.def("numFrames", (int (MotionDOFcontainer::*)())&MotionDOFcontainer::numFrames) // 1447
 		.def("isConstraint", (bool (MotionDOFcontainer::*)(int iframe, int con))&MotionDOFcontainer::isConstraint) // 1447
 		.def("setConstraint", (void (MotionDOFcontainer::*)(int iframe, int con))&MotionDOFcontainer::setConstraint) // 1447
@@ -2978,7 +3449,7 @@ initSkeletonFromFile) // 1458
 		.def("squaredLen", (double (Liegroup ::se3::*)())&Liegroup ::se3::squaredLen) // 1445
 		.def("exp", (transf (Liegroup ::se3::*)())&Liegroup ::se3::exp) // 1445
 		.def("log", (void (Liegroup ::se3::*)(transf const& o))&Liegroup ::se3::log) // 1445
-		.def("vec", (vectornView (Liegroup ::se3::*)())&Liegroup ::se3::vec) // 1445
+		.def("vec", (vectornView (Liegroup ::se3::*)())&Liegroup ::se3::vec, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 		; // end of class impl___pybindgen__Liegroup_se3              // 1505
 	class_<Liegroup ::dse3 > (mainlib, "dse3")                      // 1389
 															  // : number denotes the line number of luna_gen.lua that generated the sentence // 1392
@@ -3147,7 +3618,37 @@ initSkeletonFromFile) // 1458
 		class_<CImage > (mainlib, "CImage")                       // 1393
 																  // : number denotes the line number of luna_gen.lua that generated the sentence // 1397
 			.def(init<>())                                                // 1431
-			.def_property_readonly("array", [](CImage const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(CImage_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+			.def_property("array", 
+					WRAP_PY::cpp_function(
+						[](CImage & v) {
+						npy_intp dims[3];
+						dims[0]= v.GetHeight();
+						dims[1]=v.GetWidth();
+						dims[2]=3; // RGB
+						npy_intp strides[3];
+						strides[0]=sizeof(uchar)*v._stride;
+						strides[1]=sizeof(uchar)*3;
+						strides[2]=sizeof(uchar);
+						uchar* vv=v._dataPtr;
+						auto* descr = PyArray_DescrFromType(NPY_UINT8); Py_INCREF(descr);
+						PyObject* o = PyArray_NewFromDescr( &PyArray_Type, descr, 3, dims, strides, vv, NPY_ARRAY_C_CONTIGUOUS | NPY_ARRAY_WRITEABLE, nullptr);
+						return WRAP_PY::reinterpret_steal<WRAP_PY::object>(o);
+						},
+						WRAP_PY::keep_alive<0, 1>()
+						),
+					[](CImage& v, WRAP_PY::array_t<uchar> arr) {
+					if (arr.ndim() != 3 || arr.shape(0) != v.GetHeight() || arr.shape(1) != v.GetWidth())
+					throw std::runtime_error("array shape doesn't match");
+					auto r = arr.unchecked<3>();  // 2차원 접근
+					for(int i=0; i<v.GetHeight(); i++)
+						for(int j=0; j<v.GetWidth(); j++)
+						{
+							auto* pixel=v.GetPixel(j,i);
+							(*pixel).R=r(i,j,0);
+							(*pixel).G=r(i,j,1);
+							(*pixel).B=r(i,j,2);
+						}
+					})
 			.def("ref",  [](CImage const& v){ return WRAP_PY::reinterpret_steal<WRAP_PY::object>(CImage_::ref(v)); }, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 			.def("GetWidth", &CImage::GetWidth)                           // 1450
 																		  //when necessary, check c++ header: .def("GetWidth", (int (CImage::*)())&CImage::GetWidth) // 1451
@@ -4076,6 +4577,12 @@ initSkeletonFromFile) // 1458
 		    lua_pop(l.L,1);
 		    return result;
 		  }
+		  static floatTensor* popfloatTensor(PythonExtendWin& l)
+		  {
+		    floatTensor* result= (floatTensor*)Luna<typename LunaTraits<floatTensor>::base_t>::check(l.L,-1);
+		    lua_pop(l.L,1);
+		    return result;
+		  }
 		  static vectorn* popvectorn(PythonExtendWin& l)
 		  {
 		    vectorn* result= (vectorn*)Luna<typename LunaTraits<vectorn>::base_t>::check(l.L,-1);
@@ -4101,6 +4608,11 @@ initSkeletonFromFile) // 1458
 		  static Tensor* checkTensor(PythonExtendWin& l)
 		  {
 		    Tensor* result= (Tensor*)Luna<typename LunaTraits<Tensor>::base_t>::check(l.L,-1);
+		    return result;
+		  }
+		  static floatTensor* checkfloatTensor(PythonExtendWin& l)
+		  {
+		    floatTensor* result= (floatTensor*)Luna<typename LunaTraits<floatTensor>::base_t>::check(l.L,-1);
 		    return result;
 		  }
 		  static vectorn* checkvectorn(PythonExtendWin& l)
@@ -4192,6 +4704,7 @@ initSkeletonFromFile) // 1458
 			static void push_matrixn(PythonExtendWin& l,matrixn & w) { luna_push<matrixn>(l.L, &w); }
 			static void push_hypermatrixn(PythonExtendWin& l,hypermatrixn & w) { luna_push<hypermatrixn>(l.L, &w); }
 			static void push_Tensor(PythonExtendWin& l,Tensor & w) { luna_push<Tensor>(l.L, &w); }
+			static void push_floatTensor(PythonExtendWin& l,floatTensor & w) { luna_push<floatTensor>(l.L, &w); }
 			static void push_posture(PythonExtendWin& l,Posture & w) { luna_push<Posture>(l.L, &w); }
 		};
 #ifndef NO_GUI
@@ -4266,6 +4779,7 @@ initSkeletonFromFile) // 1458
 			.def("push", &PythonExtendWin_wrapper::push_matrixn)
 			.def("push", &PythonExtendWin_wrapper::push_hypermatrixn)
 			.def("push", &PythonExtendWin_wrapper::push_Tensor)
+			.def("push", &PythonExtendWin_wrapper::push_floatTensor)
 			.def("push", &PythonExtendWin_wrapper::push_posture)
 			.def("push", [](PythonExtendWin& l,OBJloader::Geometry & w) { luna_push<OBJloader::Geometry>(l.L, &w); })
 			.def("push", [](PythonExtendWin& l,OBJloader::Mesh & w) { luna_push<OBJloader::Mesh>(l.L, &w); })
@@ -4317,6 +4831,7 @@ initSkeletonFromFile) // 1458
   			.def("popmatrixn", &PythonExtendWin_wrapper::popmatrixn, RETURN_REFERENCE)
   			.def("pophypermatrixn", &PythonExtendWin_wrapper::pophypermatrixn, RETURN_REFERENCE)
   			.def("popTensor", &PythonExtendWin_wrapper::popTensor, RETURN_REFERENCE)
+  			.def("popfloatTensor", &PythonExtendWin_wrapper::popfloatTensor, RETURN_REFERENCE)
   			.def("popvectorn", &PythonExtendWin_wrapper::popvectorn, RETURN_REFERENCE)
   			.def("popintvectorn", &PythonExtendWin_wrapper::popintvectorn, RETURN_REFERENCE)
   			.def("poploader", [](PythonExtendWin& l)->MotionLoader*{
@@ -4403,6 +4918,7 @@ initSkeletonFromFile) // 1458
   			.def("checkmatrixn", &PythonExtendWin_wrapper::checkmatrixn, RETURN_REFERENCE)
   			.def("checkhypermatrixn", &PythonExtendWin_wrapper::checkhypermatrixn, RETURN_REFERENCE)
   			.def("checkTensor", &PythonExtendWin_wrapper::checkTensor, RETURN_REFERENCE)
+  			.def("checkfloatTensor", &PythonExtendWin_wrapper::checkfloatTensor, RETURN_REFERENCE)
   			.def("checkvectorn", &PythonExtendWin_wrapper::checkvectorn, RETURN_REFERENCE)
   			.def("checkintvectorn", &PythonExtendWin_wrapper::checkintvectorn, RETURN_REFERENCE)
 		    .def("popnumber", &PythonExtendWin_wrapper::popnumber)
@@ -4504,7 +5020,7 @@ class_<interval > (mainlib, "interval")                         // 1389
 	.def("IsUniform", (bool (BSpline::*)())&BSpline::IsUniform)   // 1445
 	.def("IsLoop", (bool (BSpline::*)())&BSpline::IsLoop)         // 1445
 	.def("SetControlPoint", (void (BSpline::*)(int i, const vectorn& rkCtrl))&BSpline::SetControlPoint) // 1445
-	.def("GetControlPoint", (vectornView (BSpline::*)(int i))&BSpline::GetControlPoint) // 1445
+	.def("GetControlPoint", (vectornView (BSpline::*)(int i))&BSpline::GetControlPoint, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 	.def("Knot", (m_real (BSpline::*)(int i))&BSpline::Knot)      // 1445
 	.def("GetPosition", (void (BSpline::*)(m_real fTime, vectorn& kPos))&BSpline::GetPosition) // 1445
 	.def("GetFirstDerivative", (void (BSpline::*)(m_real fTime, vectorn& kDer1))&BSpline::GetFirstDerivative) // 1445
@@ -4867,6 +5383,8 @@ class_<interval > (mainlib, "interval")                         // 1389
 	;
 	class_<OpenHRP ::DynamicsSimulator > (mainlib, "DynamicsSimulator") // 1389
 																  // : number denotes the line number of luna_gen.lua that generated the sentence // 1392
+																  //
+		.def("getBodyDQ",[](OpenHRP ::DynamicsSimulator&s, int ichara, vectorn& dq){ s.getBodyDQ(ichara,dq);})
 		.def("drawLastContactForces", [](OpenHRP ::DynamicsSimulator&s ){ s.drawLastContactForces();}) // 1445
 		.def("drawLastContactForces", [](OpenHRP ::DynamicsSimulator&s ,int ichara){ s.drawLastContactForces(ichara);}) // 1445
 		.def("drawLastContactForces", (void (OpenHRP ::DynamicsSimulator::*)(int ichara, vector3 const& draw_offset))&OpenHRP ::DynamicsSimulator::drawLastContactForces) // 1445
@@ -5014,8 +5532,8 @@ class_<interval > (mainlib, "interval")                         // 1389
 		.def("_calcJacobianAt", (void (Trbdl ::DynamicsSimulator_Trbdl_penalty::*)(int ichar, int ibone, matrixn& jacobian, vector3 const& localpos))&Trbdl ::DynamicsSimulator_Trbdl_penalty::_calcJacobianAt) // 1445
 		.def("_enableDotJocobianComputation", (void (Trbdl ::DynamicsSimulator_Trbdl_penalty::*)(int ichara))&Trbdl ::DynamicsSimulator_Trbdl_penalty::_enableDotJocobianComputation) // 1445
 		.def("_calcDotJacobianAt", (void (Trbdl ::DynamicsSimulator_Trbdl_penalty::*)(int ichar, int ibone, matrixn& jacobian, vector3 const& localpos))&Trbdl ::DynamicsSimulator_Trbdl_penalty::_calcDotJacobianAt) // 1445
-		.def("_Q", (vectornView (Trbdl ::DynamicsSimulator_Trbdl_penalty::*)(int ichara))&Trbdl ::DynamicsSimulator_Trbdl_penalty::_Q) // 1445
-		.def("_QDot", (vectornView (Trbdl ::DynamicsSimulator_Trbdl_penalty::*)(int ichara))&Trbdl ::DynamicsSimulator_Trbdl_penalty::_QDot) // 1445
+		.def("_Q", (vectornView (Trbdl ::DynamicsSimulator_Trbdl_penalty::*)(int ichara))&Trbdl ::DynamicsSimulator_Trbdl_penalty::_Q, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
+		.def("_QDot", (vectornView (Trbdl ::DynamicsSimulator_Trbdl_penalty::*)(int ichara))&Trbdl ::DynamicsSimulator_Trbdl_penalty::_QDot, WRAP_PY::keep_alive<0,1>()) // return value(0) depends on self(1).
 		.def("_bodyW", (vector3 (Trbdl ::DynamicsSimulator_Trbdl_penalty::*)(int ichara, int treeIndex))&Trbdl ::DynamicsSimulator_Trbdl_penalty::_bodyW) // 1445
 		.def("_bodyV", (vector3 (Trbdl ::DynamicsSimulator_Trbdl_penalty::*)(int ichara, int treeIndex))&Trbdl ::DynamicsSimulator_Trbdl_penalty::_bodyV) // 1445
 		.def("_stepKinematic", (void (Trbdl ::DynamicsSimulator_Trbdl_penalty::*)(int ichara, vectorn const& QDDot))&Trbdl ::DynamicsSimulator_Trbdl_penalty::_stepKinematic) // 1445

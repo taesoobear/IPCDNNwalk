@@ -34,6 +34,7 @@
 
 #include "OgreHlmsUnlit.h"
 #include "OgreHlmsPbs.h"
+#include <OgreHlmsLowLevel.h>
 #include "OgreHlmsManager.h"
 
 #include "OgreHlmsPbsDatablock.h"
@@ -161,6 +162,140 @@ extern bool softKill;
 #include <X11/Xlib.h>
 #endif
 
+#include <OgrePass.h>
+#include <OgreTechnique.h>
+#include <OgreMaterial.h>
+#include <OgreMaterialManager.h>
+#include <OgreHighLevelGpuProgram.h>
+#include <OgreHighLevelGpuProgramManager.h>
+#include <OgreRenderSystem.h>
+
+#if 0
+Ogre::MaterialPtr createPointCloudMaterial()
+{
+    auto& gpuMgr = Ogre::HighLevelGpuProgramManager::getSingleton();
+
+#if defined(__APPLE__) 
+    // ── Vertex Shader ──────────────────────────────────────────
+    Ogre::HighLevelGpuProgramPtr vs =
+        gpuMgr.createProgram(
+            "PointCloud_VS",          // 이름
+            Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+            "metal",                   // 언어
+            Ogre::GPT_VERTEX_PROGRAM
+        );
+    vs->setSourceFile("gsplat_vp.metal");
+	  vs->setParameter("entry_point", "main_vp");  // ✅ 진입점 지정 필수
+    vs->load();
+
+    // ── Fragment Shader ────────────────────────────────────────
+    Ogre::HighLevelGpuProgramPtr ps =
+        gpuMgr.createProgram(
+            "PointCloud_PS",
+            Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+            "metal",
+            Ogre::GPT_FRAGMENT_PROGRAM
+        );
+    ps->setSourceFile("gsplat_fp.metal");
+	 ps->setParameter("entry_point", "main_fp");  // ✅ 진입점 지정 필수
+    ps->load();
+#else
+    // ── Vertex Shader ──────────────────────────────────────────
+    Ogre::HighLevelGpuProgramPtr vs =
+        gpuMgr.createProgram(
+            "PointCloud_VS",          // 이름
+            Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+            "glsl",                   // 언어
+            Ogre::GPT_VERTEX_PROGRAM
+        );
+    vs->setSourceFile("gsplat.glsl");
+    vs->load();
+
+    // ── Fragment Shader ────────────────────────────────────────
+    Ogre::HighLevelGpuProgramPtr ps =
+        gpuMgr.createProgram(
+            "PointCloud_PS",
+            Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME,
+            "glsl",
+            Ogre::GPT_FRAGMENT_PROGRAM
+        );
+    ps->setSourceFile("gsplat_fp.glsl");
+    ps->load();
+	vs->setParameter("syntax", "glsl330");  // GLSL 버전 명시
+	ps->setParameter("syntax", "glsl330");  // GLSL 버전 명시
+#endif
+
+    // ── Material 생성 ──────────────────────────────────────────
+    Ogre::MaterialPtr mat = Ogre::MaterialManager::getSingleton().create(
+        "pointcloud",
+        Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME
+    );
+
+    Ogre::Technique* tech = mat->getTechnique(0);
+    Ogre::Pass*      pass = tech->getPass(0);
+
+    // 셰이더 바인딩
+    pass->setVertexProgram("PointCloud_VS");
+    pass->setFragmentProgram("PointCloud_PS");
+
+
+    // ── worldViewProj 유니폼 바인딩 ────────────────────────────
+    Ogre::GpuProgramParametersSharedPtr vsParams =
+        pass->getVertexProgramParameters();
+
+#if defined(__APPLE__) 
+	Ogre::GpuSharedParametersPtr sharedParams =
+		Ogre::GpuProgramManager::getSingleton().createSharedParameters("GSplatParams");
+
+	sharedParams->addConstantDefinition("projMatrix", Ogre::GCT_MATRIX_4X4);
+	sharedParams->addConstantDefinition("viewMatrix", Ogre::GCT_MATRIX_4X4);
+	sharedParams->addConstantDefinition("fovy",       Ogre::GCT_FLOAT1);
+	sharedParams->addConstantDefinition("vpsize",     Ogre::GCT_FLOAT4);
+	vsParams->addSharedParameters("GSplatParams");
+#else
+    // Ogre 자동 상수 사용 (권장)
+	vsParams->setNamedAutoConstant(
+		"projmatrix",
+		Ogre::GpuProgramParameters::ACT_PROJECTION_MATRIX
+	);
+	vsParams->setNamedAutoConstant(
+		"viewmatrix",
+		Ogre::GpuProgramParameters::ACT_VIEW_MATRIX
+	);
+	vsParams->setNamedAutoConstant(      // ← 누락됨
+			"fovy",
+			Ogre::GpuProgramParameters::ACT_FOV
+			);
+	vsParams->setNamedAutoConstant(      // ← 누락됨
+			"vpsize",
+			Ogre::GpuProgramParameters::ACT_VIEWPORT_SIZE
+			);
+#endif
+
+    // ── 포인트 렌더링 설정 ─────────────────────────────────────
+    pass->setPointSpritesEnabled(true);   // gl_PointCoord 활성화
+    pass->setPointSize(5.0f);             // 기본 포인트 크기
+    // 셰이더에서 gl_PointSize를 제어하려면 아래도 필요
+    pass->setPointAttenuation(false);
+
+    // ── 깊이/블렌드 설정 (필요시) ─────────────────────────────
+	Ogre::HlmsMacroblock macroblock;
+	macroblock.mDepthWrite = false;   // 깊이 쓰기
+	macroblock.mDepthCheck = false;   // 깊이 테스트
+
+	Ogre::HlmsBlendblock blendblock;
+	// 블렌딩 필요시:
+	blendblock.mSourceBlendFactor      = Ogre::SBF_SOURCE_ALPHA;
+	blendblock.mDestBlendFactor        = Ogre::SBF_ONE_MINUS_SOURCE_ALPHA;
+	blendblock.mIsTransparent          = true;
+
+	pass->setMacroblock(macroblock);
+	pass->setBlendblock(blendblock);
+
+    mat->load();
+    return mat;
+}
+#endif
 #endif // NO_OGRE
 namespace RE	
 {
@@ -463,7 +598,7 @@ OgreRenderer::OgreRenderer()
 	std::string mTaesooLib_path=RE::taesooLibPath();
 
 #ifndef NO_OGRE
-	((ShadowMapFromCodeGameState*)mCurrentGameState)->_notifyGraphicsSystem(this);
+	((ShadowMapFromCodeGameState*)mCurrentGameStates[0])->_notifyGraphicsSystem(this);
 #endif
 
 #ifdef _MSC_VER // WINDOWS
@@ -547,9 +682,12 @@ void OgreRenderer::_constructor(const char* fallback_configFileName, const char*
 	{
 		mResourceFile=(mTaesooLib_path+"Resource/resources3.cfg").c_str();
 	}
-	else
+	else 
 	{
-		mResourceFile=(mTaesooLib_path+"Resource/resources3_relative.cfg").c_str();
+		if (mTaesooLib_path=="taesooLib/")
+			mResourceFile=(mTaesooLib_path+"Resource/resources3_relative2.cfg").c_str();
+		else
+			mResourceFile=(mTaesooLib_path+"Resource/resources3_relative.cfg").c_str();
 #ifdef _MSC_VER // WINDOWS
 #if defined(_DEBUG)
 		plugins_file=mPluginPath+"plugins3_d_relative.cfg";
@@ -1093,7 +1231,7 @@ void OgreRenderer::initialize(void* handle, int width, int height)
 
 #ifndef NO_OGRE		
 
-		mWorkspace = setupCompositor();
+		mWorkspaces.push_back( setupShadowMapCompositor());
 		BaseSystem::initialize();
 
 
@@ -1136,6 +1274,18 @@ void OgreRenderer::initialize(void* handle, int width, int height)
 #endif
 }
 
+#ifndef NO_OGRE
+int OgreRenderer::addCompositorWorkspace(Ogre::CompositorWorkspace* p)
+{
+	mWorkspaces.push_back(p);
+	return  mWorkspaces.size()-1;
+}
+void OgreRenderer::addGameState(GameState* gameState)
+{
+	gameState->_notifyGraphicsSystem(this);
+	mCurrentGameStates.push_back(gameState);
+}
+#endif
 void OgreRenderer::deinitialize()
 {
 #ifndef NO_OGRE
@@ -1198,7 +1348,10 @@ OgreRenderer::~OgreRenderer()
 #ifndef NO_OGRE
 	//todo2 rtt_texture.setNull();
 	delete mRoot;
-	delete mCurrentGameState;
+
+	
+	for(int i=0; i<mCurrentGameStates.size(); i++)
+		delete mCurrentGameStates[i];
 #endif
 	delete m_pMotionManager;	
 }
@@ -1246,14 +1399,21 @@ void OgreRenderer::Viewport::changeView(Viewpoint const& view)
 
 
 TString getCurrentDirectory();
+
 bool OgreRenderer::frameStarted(const Ogre::FrameEvent& evt)
 {
 #ifndef NO_OGRE
+	if(mWnd->isClosed()) return false; // is this necessary?
+#endif
+	return true;
+}
 
-	if(mWnd->isClosed()) return false;
-	if(mbPause) return true;
+void OgreRenderer::update(float timeSinceLastFrame)
+{
+#ifndef NO_OGRE
+	if(mbPause) return ;
 
-	float fElapsedTime =evt.timeSinceLastFrame*m_fTimeScaling ;
+	float fElapsedTime =timeSinceLastFrame*m_fTimeScaling ;
 #else
 	float fElapsedTime=0.03333; 
 #endif
@@ -1299,15 +1459,11 @@ bool OgreRenderer::frameStarted(const Ogre::FrameEvent& evt)
 		}
 	}
 
-#ifndef NO_OGRE
-	BaseSystem::update( static_cast<float>( 1.0/60.0 ) );
-#endif
 	for (int i=0,n=mViewports.size();i<n; i++)
 		mViewports[i]-> changeView(*mViewports[i]->m_pViewpoint);
 	
 	//viewport().changeView(*viewport().m_pViewpoint);
 	m_fElapsedTime=0;
-	return true;
 }
 
 
@@ -1628,9 +1784,29 @@ void OgreRenderer::renderOneFrame()
 		}
 #endif
 #endif
+		{
+			Ogre::Timer timer;
+			Ogre::uint64 startTime = timer.getMicroseconds();
 
-		mRoot->renderOneFrame();
+			const double Frametime = 1.0 / 60.0;
+			static double timeSinceLast=Frametime;
 
+			// logic update
+			update(timeSinceLast);
+#ifndef NO_OGRE
+			BaseSystem::update( timeSinceLast);
+			BaseSystem::finishFrame( );
+#endif
+
+
+			// 여기 첫줄에서 frame started 호출함.
+			mRoot->renderOneFrame();
+
+            Ogre::uint64 endTime = timer.getMicroseconds();
+            timeSinceLast = double( endTime - startTime ) / 1000000.0;
+            timeSinceLast = std::min( 0.1, timeSinceLast );  // Prevent from going haywire.
+            startTime = endTime;
+		}
 		/*todo2
 		if(mbScreenshot && renderTexture) {
 			TString fn;
@@ -1702,6 +1878,7 @@ void OgreRenderer::renderOneFrame()
 		}
 	}
 #else
+	update(1.0/60.0);
 	frameStarted(Ogre::FrameEvent());
 	frameEnded(Ogre::FrameEvent());
 #endif
@@ -2467,7 +2644,7 @@ void OgreRenderer::setrotate(m_real degree, const char* name)
 
 
 #ifndef NO_OGRE
-Ogre::CompositorWorkspace* OgreRenderer::setupCompositor(void)
+Ogre::CompositorWorkspace* OgreRenderer::setupShadowMapCompositor(void)
 {
 	Ogre::CompositorManager2 *compositorManager = mRoot->getCompositorManager2();
 		const Ogre::String workspaceName( "ShadowMapFromCodeWorkspace" );
@@ -2495,9 +2672,8 @@ Ogre::CompositorWorkspace* OgreRenderer::setupCompositor(void)
 			createEsmShadowNodes();
 		}
 
-		mWorkspace = compositorManager->addWorkspace( getSceneManager(), mWnd->getTexture(),
+		return compositorManager->addWorkspace( getSceneManager(), mWnd->getTexture(),
 				getCamera(), "ShadowMapFromCodeWorkspace", true );
-		return mWorkspace;
 }
 
 
@@ -2679,17 +2855,18 @@ void OgreRenderer::saveHlmsDiskCache(void)
 }
 void OgreRenderer::stopCompositor(void)
 {
-	if( mWorkspace )
+	for(int i=0; i<mWorkspaces.size(); i++)
 	{
 		Ogre::CompositorManager2 *compositorManager = mRoot->getCompositorManager2();
-		compositorManager->removeWorkspace( mWorkspace );
-		mWorkspace = 0;
+		compositorManager->removeWorkspace( mWorkspaces [i]);
+		mWorkspaces [i]= 0;
 	}
+	mWorkspaces.clear();
 }
 void OgreRenderer::restartCompositor(void)
 {
 	stopCompositor();
-	mWorkspace = setupCompositor();
+	mWorkspaces.push_back( setupShadowMapCompositor());
 }
 void OgreRenderer::registerHlms(void)
 {
@@ -2756,6 +2933,15 @@ void OgreRenderer::registerHlms(void)
 		Ogre::Root::getSingleton().getHlmsManager()->registerHlms( hlmsUnlit );
 	}
 
+	if(false)
+	{
+		Ogre::HlmsManager *hlmsManager = Ogre::Root::getSingleton().getHlmsManager();
+		//Ogre::HlmsLowLevel *hlms = OGRE_NEW Ogre::HlmsLowLevel( hlmsManager, "gsplat");
+		Ogre::HlmsLowLevel *hlms = OGRE_NEW Ogre::HlmsLowLevel( );
+		Ogre::Root::getSingleton().getHlmsManager()->registerHlms( hlms );
+
+	}
+
 	printf("\b\b\b132");fflush(stdout);
 	{
 		//Create & Register HlmsPbs
@@ -2800,6 +2986,7 @@ void OgreRenderer::registerHlms(void)
 			hlmsUnlit->setTextureBufferDefaultSize( 512 * 1024 );
 		}
 	}
+	//createPointCloudMaterial();
 }
 void OgreRenderer::initMiscParamsListener( Ogre::NameValuePairList &params )
 {
@@ -2815,14 +3002,14 @@ void OgreRenderer::setupShadowNode(bool useESM)
 	{
 		Ogre::HlmsPbs::ShadowFilter newfilter=  Ogre::HlmsPbs::ExponentialShadowMaps ;
 		hlmsPbs->setShadowSettings( newfilter );
-		((ShadowMapFromCodeGameState*)mCurrentGameState)->setupShadowNode( true );
+		((ShadowMapFromCodeGameState*)mCurrentGameStates[0])->setupShadowNode( true );
 	}
 	else
 	{
 		//Ogre::HlmsPbs::ShadowFilter newfilter=  Ogre::HlmsPbs:: PCF_3x3;
 		Ogre::HlmsPbs::ShadowFilter newfilter=  Ogre::HlmsPbs:: PCF_6x6;
 		hlmsPbs->setShadowSettings( newfilter );
-		((ShadowMapFromCodeGameState*)mCurrentGameState)->setupShadowNode( false );
+		((ShadowMapFromCodeGameState*)mCurrentGameStates[0])->setupShadowNode( false );
 	}
 
 }
@@ -2832,7 +3019,7 @@ void OgreRenderer::_toggleHelpMode()
 {
 #ifndef NO_OGRE
 	// called from MotionPanel.
-	ShadowMapFromCodeGameState* out=(ShadowMapFromCodeGameState*)mCurrentGameState;
+	ShadowMapFromCodeGameState* out=(ShadowMapFromCodeGameState*)mCurrentGameStates[0];
     out->mDisplayHelpMode = (out->mDisplayHelpMode + 1) % out->mNumDisplayHelpModes;
 	printf("%d\n", out->mDisplayHelpMode );
 	_updateDebugCaption();
@@ -2845,7 +3032,7 @@ void OgreRenderer::_toggleHelpMode()
 void OgreRenderer::_updateDebugCaption()
 {
 #ifndef NO_OGRE
-	ShadowMapFromCodeGameState* out=(ShadowMapFromCodeGameState*)mCurrentGameState;
+	ShadowMapFromCodeGameState* out=(ShadowMapFromCodeGameState*)mCurrentGameStates[0];
 	Ogre::String finalText;
 	out->generateDebugText( 0, finalText );
 	out->mDebugText->setCaption( finalText );

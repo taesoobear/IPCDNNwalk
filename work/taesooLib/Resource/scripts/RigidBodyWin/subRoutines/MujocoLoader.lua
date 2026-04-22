@@ -212,6 +212,8 @@ function MujocoParser:__init(filename, wrlfn, options)
 			v=self.convertAxes(v)
 			q:setValue(q.w, v.x, v.y, v.z)
 		end
+	else
+		self.convertAxes=function(v) return v:copy() end
 	end
 	if self.bodies then
 

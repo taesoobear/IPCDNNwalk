@@ -6563,6 +6563,8 @@ memberFunctions={[[
 				[[
 				std::string RE::taesooLibPath()
 				bool hasGUI()
+				Ogre::Item* ::createPointCloudEntity( const std::string& meshName, const vectorn& xyz,   const intvectorn& color, const vectorn& covd,  const vectorn& covu, int n); @;ifndef=NO_GUI;
+				void ::updatePointCloudEntity(Ogre::Item* item, intvectorn const & idx); @;ifndef=NO_GUI;
 				void RE::usleep(int usec);
 				Ogre::SceneManager* RE::ogreSceneManager();
 				void RE_outputRaw(const char* key, const char* output, int i); @ _output
@@ -6925,6 +6927,8 @@ void destroyOverlay_(const char* name);
 void destroyOverlayElement_(const char* name);
 void destroyAllOverlayElements_();
 Ogre::v1::OverlayElement* createTextArea_(const char* name, double width, double height, double top, double left, int fontSize, const char* caption, bool show);
+Ogre::Item* createPointCloudEntity( const std::string& meshName, const vectorn& xyz,   const intvectorn& color, const vectorn& covd,  const vectorn& covu, int n);
+void updatePointCloudEntity(Ogre::Item* item, intvectorn const & idx)  ;
 #endif
 #include "../MainLib/WrapperLua/mainliblua_wrap.h"
 #ifdef _MSC_VER

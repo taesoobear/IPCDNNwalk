@@ -9,6 +9,7 @@
 #include <OgreRenderOperation.h>
 #include <Math/Array/OgreObjectMemoryManager.h>
 #include <vector> 
+#include <OgreSimpleRenderable.h>
 //#include "LineStrip.h"
 
 #define POSITION_BINDING 0 

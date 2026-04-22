@@ -817,9 +817,9 @@ end
 function Voxels:saveCache(model, cacheFile)
 	local wcache=util.BinaryFile()
 	wcache:openWrite(cacheFile)
-	wcache:packInt(1) -- cache format version. should be a negative number
+	wcache:packInt(2) -- cache format version. 
 	wcache:pack(model.SDF)
-	wcache:pack(model.normal)
+	wcache:pack(model.normal:as_float())
 	wcache:close()
 end
 
@@ -842,13 +842,24 @@ function Voxels:calculateSDF(model)
 			cache:openRead(cacheFile)
 
 			local version= cache:unpackInt()
-			if version~=1 then
+			if version<0 then
 				-- 로딩 실패. 
 				os.deleteFiles(cacheFile)
 				wcache=util.BinaryFile()
-			else
+			elseif version==1 then
 				model.SDF=floatTensor()
 				model.normal=Tensor()
+				model.vertexIndex=floatTensor()
+				cache:unpack(model.SDF)
+				cache:unpack(model.normal)
+
+				-- upgrade version
+				cache:close()
+				self:saveCache(model, cacheFile)
+
+			else
+				model.SDF=floatTensor()
+				model.normal=floatTensor()
 				model.vertexIndex=floatTensor()
 				cache:unpack(model.SDF)
 				cache:unpack(model.normal)

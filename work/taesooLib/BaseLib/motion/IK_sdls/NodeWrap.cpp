@@ -1428,6 +1428,14 @@ void IK_sdls::LoaderToTree::_init(MotionLoader& skeleton, std::vector<MotionUtil
 			}
 		}
 	}
+
+	for (int ibone = 1; ibone < _originalLoader->numBone(); ibone++) //이상한 본 체크용. 0 무시. 
+	{
+        Msg::verify(mBoneToNode[ibone] >= 0,
+           	"invalid bone: mBoneToNode[%d] = %d (%s)",
+           	ibone, mBoneToNode[ibone], _originalLoader->bone(ibone).name().ptr());
+		// printf("bone %d: %s -> node %d\n", ibone, _originalLoader->bone(ibone).name().ptr(), mBoneToNode[ibone]);
+    }
 #ifdef _DEBUG
 	mTree.Print();
 	compareTrees(vector3(0,0,0));

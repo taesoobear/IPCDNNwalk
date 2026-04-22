@@ -34,10 +34,12 @@ clean:
 
 	
 install_dependencies_mac:
-	brew install fltk eigen gsl ctags
+	brew install fltk eigen gsl ctags freeimage
+	brew install eigen@3
+	brew link --force eigen@3 
 	pip3 install wxPython
 	if ! test -d ../lua-5.1.5; then cd ..;git clone ssh://students@calab.hanyang.ac.kr:8022/~/lua-5.1.5.git;cd lua-5.1.5; make install_macosx ; fi
-	if ! test -d ../ogre-next3; then cd ..;git clone ssh://students@calab.hanyang.ac.kr:8022/~/ogre-next3.git;cd ogre-next3; make macbuild;fi
+	if ! test -d ../ogre-next3; then cd ..;git clone ssh://students@calab.hanyang.ac.kr:8022/~/ogre-next3.git;cd ogre-next3; make macbuild15;fi
 	make build_dependencies_mac
 	echo "0. if make macbuild fails, retry after rebooting!"
 	
@@ -50,7 +52,7 @@ install_dependencies_ubuntu: # tested on ubuntu 24
 	sudo apt install libfltk1.3-dev libreadline-dev  wxpython-tools libois-dev libeigen3-dev
 	if ! test -d ../lua-5.1.5; then cd ..;git clone ssh://students@calab.hanyang.ac.kr:8022/~/lua-5.1.5.git;cd lua-5.1.5; make install_linux; fi
 	if ! test -d ../ogre-next3; then cd ..;git clone ssh://students@calab.hanyang.ac.kr:8022/~/ogre-next3.git;cd ogre-next3; make linuxbuild; fi
-	make build_dependences_ubuntu
+	make build_dependencies_ubuntu
 
 
 build_dependencies:
