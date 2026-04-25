@@ -1251,6 +1251,14 @@ class instance(ArgumentProcessor):
             return list(var_name)+[str_name]
         else:
             return [var_name, str_name]
+    def getVarName(self, var_name =None):
+        if var_name is None:
+            var_name=self.var_name
+        if isinstance(var_name, str):
+            return var_name
+        else:
+            return '_'.join(var_name)
+
     # member access functions
     def len(self):
         return F('table.getn', self)
