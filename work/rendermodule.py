@@ -712,7 +712,7 @@ class Timeline(lua.instance):
         #function EVR:onFrameChanged(win, iframe)
         #end
         #""")
-        self.var_name='mTimeline'+m.generateUniqueName()
+        super().__init__('mTimeline'+m.generateUniqueName()) 
         if not frameTime:
             frameTime=1.0/30.0
         lua.F_lua(self.var_name,'Timeline',title,numFrames,frameTime)
