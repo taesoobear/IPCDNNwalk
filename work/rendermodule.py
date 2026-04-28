@@ -658,6 +658,10 @@ def tempFunc(self, motdof):
     self.discontinuity.resize(self.numFrames())
     self.discontinuity.set(pn, True)
 m.MotionDOFcontainer.concat=tempFunc
+def tempFunc(self):
+	self.exportSkeleton('_temp.skl')
+	return m.MotionLoader('_temp.skl')
+m.MotionLoader.copy=tempFunc
 
 def tempFunc(self, a, b):
     lua.M(self,'gsub', a, b)
@@ -1556,6 +1560,16 @@ m.PythonExtendWin.addText=tempFunc
 
 # posetransfer('convertPose', pose)
 def tempFunc(self, pose):
+    if isinstance(pose,m.Motion):
+        mot=pose
+        out=m.Motion(self.target())
+        out.resize(mot.numFrames())
+        for i in range(mot.numFrames()):
+            self.setTargetSkeleton(mot.pose(i))
+            out.pose(i).assign(self.target().pose())
+        return out
+
+
     self.setTargetSkeleton(pose)
     return self.target().pose()
 m.PoseTransfer.__call__=tempFunc
