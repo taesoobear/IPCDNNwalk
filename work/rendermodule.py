@@ -1123,6 +1123,9 @@ class FBXskin(lua.instance):
             lua.M0(self.var_name, 'setScale', x)
     def getState(self):
         return self.get('fkSolver')
+    def setPoseTransfer(self, posemap):
+        self._posemap=posemap  
+        lua.M0(self.var_name, 'setPoseTransfer', posemap)
 
     def setPose(self, pose):
         lua.M0(self.var_name, 'setPose', pose)
@@ -1148,14 +1151,13 @@ class FBXskin(lua.instance):
             _timeline.reset(maxFrame, 1.0/motion.frameRate())
         _timelineObjects.append(weakref.ref(self, _remove_dead_ref))
 
-    def setPoseTransfer(self, pt):
-        lua.M0(self.var_name, 'setPoseTransfer', pt)
     def setMaterial(self, name):
         lua.M0(self.var_name,'setMaterial', name)
     def __del__(self): # this is called when garbage collected
         if lua and not self.persistent:
             lua.M(self.var_name,'dtor')
             lua.dostring(self.var_name+'=nil')
+            self._posemap=None
 
 def tempFunc(self, length_scale, pose):
     lua.M0(self, 'setLengthAndPoseDOF', length_scale, pose)
