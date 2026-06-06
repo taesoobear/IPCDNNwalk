@@ -31,6 +31,9 @@ _frameMoveObjects=[]
 _cameraEventReceivers=[]
 _lastCamPos=m.vector3(1e5,0,0)
 
+import pdb
+pdb.Pdb.do_quit = lambda self, arg: os._exit(0)
+
 def path(path):
     from pathlib import Path
     path=os.path.normpath(path)
