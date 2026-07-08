@@ -869,15 +869,16 @@ class FBXloader(lua.instance):
     def __init__(self, filename=None, options=None, **kwargs):
         lua.dostring( 'if not FBXloader then FBXloader=require("FBXloader") end')
         if 'var_name' in kwargs:
-            self.var_name=kwargs['var_name']
+            var_name=kwargs['var_name']
         else:
-            self.var_name='mFBXloader'+m.generateUniqueName()
+            var_name='mFBXloader'+m.generateUniqueName()
         if filename:
             if options:
-                lua.F_lua(self.var_name,'FBXloader', filename, options)
+                lua.F_lua(var_name,'FBXloader', filename, options)
             else:
-                lua.F_lua(self.var_name,'FBXloader', filename, kwargs)
-        self.autoCollect=True
+                lua.F_lua(var_name,'FBXloader', filename, kwargs)
+
+        super().__init__(var_name, autoCollect=True)
         n=lua.F1_int('table.getn', lua.instance(self._addToVarName('fbxInfo')))
         self.fbxInfo=FBXloader_fbxInfoArray(self,n)
     def _get_loader(self):
@@ -1337,10 +1338,15 @@ def clone_git_to_cache(
     if repo_path.exists():
         if pull_if_exists:
             print(f"[INFO] Repository exists, pulling: {repo_path}")
-            subprocess.run(
-                ["git", "-C", str(repo_path), "pull"],
-                check=True,
-            )
+            try:
+                subprocess.run(
+                    ["git", "-C", str(repo_path), "pull"],
+                    check=True,
+                )
+            except Exception as e:
+              print('ignoring error:')
+              print(e)
+              pass
         else:
             print(f"[INFO] Repository already cached: {repo_path}")
     else:
