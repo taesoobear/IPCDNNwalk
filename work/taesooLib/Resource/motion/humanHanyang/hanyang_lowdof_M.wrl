@@ -1,0 +1,387 @@
+DEF SampleRobot Humanoid { 
+ name "hyunwoo"
+ humanoidBody [
+
+  DEF Hips Joint 
+  {
+    jointType "free"
+    jointAxis "Z"
+    translation 0.000000 0.000000 0.000000
+    children [
+      Segment 
+      {
+        centerOfMass 0.000000 0.050000 0.000000
+        mass 5.832450
+        momentsOfInertia [0.019150 0.000000 0.000000 0.000000 0.054679 0.000000 0.000000 0.000000 0.051957]
+        material "shiny"
+        children   Transform { rotation 0.000000 0.000000 0.000000 0.000000 translation 0.000000 0.050000 0.000000  children Shape {geometry Box { size 0.300000 0.130000 0.150000 }}}
+      
+      
+      }
+      DEF LeftHip Joint 
+      {
+        jointType "rotate"
+        jointAxis "YZX"
+        translation 0.082442 -0.023440 -0.001963
+        children [
+          Segment 
+          {
+            centerOfMass 0.022165 -0.175396 0.130938
+            mass 9.870300
+            momentsOfInertia [0.177748 0.000000 0.000000 0.000000 0.037014 0.000000 0.000000 0.000000 0.177748]
+            material "shiny"
+            children   Transform { rotation -0.973200 0.210264 0.093117 0.663441 translation 0.022165 -0.175396 0.130938  children Shape {geometry Box { size 0.150000 0.440000 0.150000 }}}
+          
+          
+          }
+          DEF LeftKnee Joint 
+          {
+            jointType "rotate"
+            jointAxis "A"
+            jointAxis2 0.000000 0.988783 0.013938 -0.148710
+            translation 0.044758 -0.354175 0.264401
+            children [
+              Segment 
+              {
+                centerOfMass -0.018198 -0.171142 -0.137037
+                mass 5.742720
+                momentsOfInertia [0.083461 0.000000 0.000000 0.000000 0.013783 0.000000 0.000000 0.000000 0.083461]
+                material "shiny"
+                children   Transform { rotation 0.975592 0.212941 -0.053632 0.696065 translation -0.018198 -0.171142 -0.137037  children Shape {geometry Box { size 0.120000 0.400000 0.120000 }}}
+              
+              
+              }
+              DEF LeftAnkle Joint 
+              {
+                jointType "rotate"
+                jointAxis "YZX"
+                translation -0.033230 -0.312518 -0.250239
+                children [
+                  Segment 
+                  {
+                    centerOfMass 0.003555 -0.098818 -0.004733
+                    mass 1.319031
+                    momentsOfInertia [0.005386 0.000000 0.000000 0.000000 0.005738 0.000000 0.000000 0.000000 0.001429]
+                    material "shiny"
+                    children   Transform { rotation 0.890143 0.405364 -0.208148 0.504471 translation 0.003555 -0.098818 -0.004733  children Shape {geometry Box { size 0.090000 0.070000 0.210000 }}}
+                  
+                  
+                  }
+                ]
+              } # LeftAnkle
+              
+            ]
+          } # LeftKnee
+          
+        ]
+      } # LeftHip
+      
+      DEF RightHip Joint 
+      {
+        jointType "rotate"
+        jointAxis "YZX"
+        translation -0.082442 -0.023440 0.001963
+        children [
+          Segment 
+          {
+            centerOfMass -0.022165 -0.175396 0.130938
+            mass 9.870300
+            momentsOfInertia [0.177748 0.000000 0.000000 0.000000 0.037014 0.000000 0.000000 0.000000 0.177748]
+            material "shiny"
+            children   Transform { rotation -0.973200 -0.210264 -0.093117 0.663441 translation -0.022165 -0.175396 0.130938  children Shape {geometry Box { size 0.150000 0.440000 0.150000 }}}
+          
+          
+          }
+          DEF RightKnee Joint 
+          {
+            jointType "rotate"
+            jointAxis "A"
+            jointAxis2 0.000000 0.988783 -0.013938 0.148710
+            translation -0.044758 -0.354175 0.264401
+            children [
+              Segment 
+              {
+                centerOfMass 0.018198 -0.171142 -0.137037
+                mass 5.742720
+                momentsOfInertia [0.083461 0.000000 0.000000 0.000000 0.013783 0.000000 0.000000 0.000000 0.083461]
+                material "shiny"
+                children   Transform { rotation 0.975592 -0.212941 0.053632 0.696065 translation 0.018198 -0.171142 -0.137037  children Shape {geometry Box { size 0.120000 0.400000 0.120000 }}}
+              
+              
+              }
+              DEF RightAnkle Joint 
+              {
+                jointType "rotate"
+                jointAxis "YZX"
+                translation 0.033230 -0.312518 -0.250239
+                children [
+                  Segment 
+                  {
+                    centerOfMass -0.003555 -0.098818 -0.004733
+                    mass 1.319031
+                    momentsOfInertia [0.005386 0.000000 0.000000 0.000000 0.005738 0.000000 0.000000 0.000000 0.001429]
+                    material "shiny"
+                    children   Transform { rotation 0.890143 -0.405364 0.208148 0.504471 translation -0.003555 -0.098818 -0.004733  children Shape {geometry Box { size 0.090000 0.070000 0.210000 }}}
+                  
+                  
+                  }
+                ]
+              } # RightAnkle
+              
+            ]
+          } # RightKnee
+          
+        ]
+      } # RightHip
+      
+      DEF Chest Joint 
+      {
+        jointType "rotate"
+        jointAxis "YZX"
+        translation 0.000000 0.100000 0.000000
+        children [
+          Segment 
+          {
+            centerOfMass -0.000000 0.089569 0.008797
+            mass 5.383800
+            momentsOfInertia [0.019023 0.000000 0.000000 0.000000 0.044865 0.000000 0.000000 0.000000 0.054915]
+            material "shiny"
+            children   Transform { rotation 1.000000 -0.000000 0.000000 0.097897 translation -0.000000 0.089569 0.008797  children Shape {geometry Box { size 0.300000 0.180000 0.100000 }}}
+          
+          
+          }
+          DEF Chest1 Joint 
+          {
+            jointType "rotate"
+            jointAxis "YZX"
+            translation -0.000000 0.179138 0.017593
+            children [
+              Segment 
+              {
+                centerOfMass -0.000000 0.057444 0.030418
+                mass 3.888300
+                momentsOfInertia [0.008716 0.000000 0.000000 0.000000 0.032403 0.000000 0.000000 0.000000 0.034638]
+                material "shiny"
+                children   Transform { rotation 1.000000 -0.000000 0.000000 0.486986 translation -0.000000 0.057444 0.030418  children Shape {geometry Box { size 0.300000 0.130000 0.100000 }}}
+              
+              
+              }
+              DEF Chest2 Joint 
+              {
+                jointType "rotate"
+                jointAxis "YZX"
+                translation -0.000000 0.114887 0.060835
+                children [
+                  Segment 
+                  {
+                    centerOfMass -0.000000 0.057653 0.030529
+                    mass 4.486500
+                    momentsOfInertia [0.012151 0.000000 0.000000 0.000000 0.037387 0.000000 0.000000 0.000000 0.042061]
+                    material "shiny"
+                    children   Transform { rotation 1.000000 -0.000000 0.000000 0.486986 translation -0.000000 0.057653 0.030529  children Shape {geometry Box { size 0.300000 0.150000 0.100000 }}}
+                  
+                  
+                  }
+                  DEF LeftCollar Joint 
+                  {
+                    jointType "rotate"
+                    jointAxis "YZX"
+                    translation 0.037180 0.088870 0.081005
+                    children [
+                      Segment 
+                      {
+                        centerOfMass 0.103984 -0.004723 -0.031066
+                        mass 0.997000
+                        momentsOfInertia [0.001662 0.000000 0.000000 0.000000 0.001662 0.000000 0.000000 0.000000 0.001662]
+                        material "shiny"
+                        children   Transform { rotation 0.977873 -0.147882 0.147971 0.548185 translation 0.103984 -0.004723 -0.031066  children Shape {geometry Box { size 0.100000 0.100000 0.100000 }}}
+                      
+                      
+                      }
+                      DEF LeftShoulder Joint 
+                      {
+                        jointType "rotate"
+                        jointAxis "XYZ"
+                        translation 0.153498 -0.000489 -0.025302
+                        children [
+                          Segment 
+                          {
+                            centerOfMass 0.128254 -0.076260 0.015336
+                            mass 2.991000
+                            momentsOfInertia [0.004985 0.000000 0.000000 0.000000 0.024925 0.000000 0.000000 0.000000 0.024925]
+                            material "shiny"
+                            children   Transform { rotation -0.177347 -0.145184 -0.973381 0.554201 translation 0.128254 -0.076260 0.015336  children Shape {geometry Box { size 0.300000 0.100000 0.100000 }}}
+                          
+                          
+                          }
+                          DEF LeftElbow Joint 
+                          {
+                            jointType "rotate"
+                            jointAxis "ZXY"
+                            translation 0.256509 -0.152520 0.030673
+                            children [
+                              Segment 
+                              {
+                                centerOfMass -0.026209 -0.096636 0.097850
+                                mass 2.691900
+                                momentsOfInertia [0.004487 0.000000 0.000000 0.000000 0.018597 0.000000 0.000000 0.000000 0.018597]
+                                material "shiny"
+                                children   Transform { rotation -0.004564 -0.707613 -0.706585 1.759143 translation -0.026209 -0.096636 0.097850  children Shape {geometry Box { size 0.270000 0.100000 0.100000 }}}
+                              
+                              
+                              }
+                              DEF LeftWrist Joint 
+                              {
+                                jointType "rotate"
+                                jointAxis "ZXY"
+                                translation -0.051706 -0.190642 0.193038
+                                children [
+                                  Segment 
+                                  {
+                                    centerOfMass -0.007212 -0.034113 0.035837
+                                    mass 0.997000
+                                    momentsOfInertia [0.001662 0.000000 0.000000 0.000000 0.001662 0.000000 0.000000 0.000000 0.001662]
+                                    material "shiny"
+                                    children   Transform { rotation -0.215636 -0.511906 -0.831537 1.772193 translation -0.007212 -0.034113 0.035837  children Shape {geometry Box { size 0.130000 0.050000 0.100000 }}}
+                                  
+                                  
+                                  }
+                                ]
+                              } # LeftWrist
+                              
+                            ]
+                          } # LeftElbow
+                          
+                        ]
+                      } # LeftShoulder
+                      
+                    ]
+                  } # LeftCollar
+                  
+                  DEF RightCollar Joint 
+                  {
+                    jointType "rotate"
+                    jointAxis "YZX"
+                    translation -0.037180 0.088870 0.081005
+                    children [
+                      Segment 
+                      {
+                        centerOfMass -0.103984 -0.004723 -0.031066
+                        mass 0.997000
+                        momentsOfInertia [0.001662 0.000000 0.000000 0.000000 0.001662 0.000000 0.000000 0.000000 0.001662]
+                        material "shiny"
+                        children   Transform { rotation 0.977873 0.147882 -0.147971 0.548185 translation -0.103984 -0.004723 -0.031066  children Shape {geometry Box { size 0.100000 0.100000 0.100000 }}}
+                      
+                      
+                      }
+                      DEF RightShoulder Joint 
+                      {
+                        jointType "rotate"
+                        jointAxis "XYZ"
+                        translation -0.153499 -0.000493 -0.025304
+                        children [
+                          Segment 
+                          {
+                            centerOfMass -0.128254 -0.076260 0.015336
+                            mass 2.991000
+                            momentsOfInertia [0.004985 0.000000 0.000000 0.000000 0.024925 0.000000 0.000000 0.000000 0.024925]
+                            material "shiny"
+                            children   Transform { rotation -0.177347 0.145184 0.973381 0.554201 translation -0.128254 -0.076260 0.015336  children Shape {geometry Box { size 0.300000 0.100000 0.100000 }}}
+                          
+                          
+                          }
+                          DEF RightElbow Joint 
+                          {
+                            jointType "rotate"
+                            jointAxis "ZXY"
+                            translation -0.256509 -0.152520 0.030673
+                            children [
+                              Segment 
+                              {
+                                centerOfMass 0.026209 -0.096636 0.097850
+                                mass 2.691900
+                                momentsOfInertia [0.004487 0.000000 0.000000 0.000000 0.018597 0.000000 0.000000 0.000000 0.018597]
+                                material "shiny"
+                                children   Transform { rotation -0.004564 0.707613 0.706585 1.759143 translation 0.026209 -0.096636 0.097850  children Shape {geometry Box { size 0.270000 0.100000 0.100000 }}}
+                              
+                              
+                              }
+                              DEF RightWrist Joint 
+                              {
+                                jointType "rotate"
+                                jointAxis "ZXY"
+                                translation 0.051706 -0.190642 0.193038
+                                children [
+                                  Segment 
+                                  {
+                                    centerOfMass 0.007212 -0.034113 0.035837
+                                    mass 0.997000
+                                    momentsOfInertia [0.001662 0.000000 0.000000 0.000000 0.001662 0.000000 0.000000 0.000000 0.001662]
+                                    material "shiny"
+                                    children   Transform { rotation -0.215636 0.511906 0.831537 1.772193 translation 0.007212 -0.034113 0.035837  children Shape {geometry Box { size 0.130000 0.050000 0.100000 }}}
+                                  
+                                  
+                                  }
+                                ]
+                              } # RightWrist
+                              
+                            ]
+                          } # RightElbow
+                          
+                        ]
+                      } # RightShoulder
+                      
+                    ]
+                  } # RightCollar
+                  
+                  DEF Neck Joint 
+                  {
+                    jointType "rotate"
+                    jointAxis "YZX"
+                    translation 0.000450 0.059389 0.032410
+                    children [
+                      Segment 
+                      {
+                        centerOfMass -0.000000 0.093365 0.035820
+                        mass 0.997000
+                        momentsOfInertia [0.001662 0.000000 0.000000 0.000000 0.001662 0.000000 0.000000 0.000000 0.001662]
+                        material "shiny"
+                        children   Transform { rotation 1.000000 -0.000000 0.000000 0.366336 translation -0.000000 0.093365 0.035820  children Shape {geometry Box { size 0.100000 0.100000 0.100000 }}}
+                      
+                      
+                      }
+                      DEF Head Joint 
+                      {
+                        jointType "rotate"
+                        jointAxis "YZX"
+                        translation -0.008517 0.110444 0.042372
+                        children [
+                          Segment 
+                          {
+                            centerOfMass -0.000000 0.086103 0.050855
+                            mass 2.864381
+                            momentsOfInertia [0.010932 0.000000 0.000000 0.000000 0.008068 0.000000 0.000000 0.000000 0.010932]
+                            material "shiny"
+                            children   Transform { rotation 1.000000 -0.000000 0.000000 0.533498 translation -0.000000 0.086103 0.050855  children Shape {geometry Box { size 0.130000 0.170000 0.130000 }}}
+                          
+                          
+                          }
+                        ]
+                      } # Head
+                      
+                    ]
+                  } # Neck
+                  
+                ]
+              } # Chest2
+              
+            ]
+          } # Chest1
+          
+        ]
+      } # Chest
+      
+    ]
+  } # Hips
+   ]
+}
