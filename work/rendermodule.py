@@ -166,8 +166,7 @@ if True:
 
         return np.diag(Cov), np.array([Cov[0, 1], Cov[0, 2], Cov[1, 2]], dtype=np.float32)
 
-
-    def ply_to_entity(mesh_name, input_ply):
+    def read_splat_ply_from_cache(input_ply):
         if isFileExist(input_ply+'.cached.npy'):
             print('loading '+input_ply+'.cached.npy')
             data=np.load(input_ply+'.cached.npy', allow_pickle=True).item()
@@ -192,8 +191,13 @@ if True:
                 if i % mod == 0:
                     print(f"computing covariances {100*i/len(xyz):.0f}%", end="\r")
             np.save(input_ply+'.cached', {'xyz':xyz,'color': color, 'covd': covd, 'covu':covu})
+        return xyz, color, covd, covu
+    def ply_to_cache(new_ply_filename, xyz, color, covd, covu):
+        np.save(new_ply_filename+'.cached', {'xyz':xyz,'color': color, 'covd': covd, 'covu':covu})
 
 
+    def ply_to_entity(mesh_name, input_ply):
+        xyz, color, covd, covu=read_splat_ply_from_cache(input_ply)
         positions=xyz.astype(np.float32)
         entity=m.createPointCloudEntity(mesh_name, positions.flatten(), color.flatten(), covd.flatten(), covu.flatten(), positions.shape[0])
 
@@ -207,9 +211,16 @@ class GaussianSplat:
         self.updateNecessary=True
         self.isVisible=True
         entity_name="_entity_"+node_name
-        if filename[-4:]=='.ply':
-            self.positions, self.mesh=ply_to_entity(node_name+"_converted_mesh", filename)
-            self.entity= ogreSceneManager().createEntity( entity_name,node_name+"_converted_mesh")
+        mesh_name=node_name+"_converted_mesh"
+
+        if isinstance(filename,  tuple):
+            xyz, color, covd, covu=filename
+            self.positions=xyz.astype(np.float32)
+            self.mesh=m.createPointCloudEntity(mesh_name, self.positions.flatten(), color.flatten(), covd.flatten(), covu.flatten(), self.positions.shape[0])
+            self.entity= ogreSceneManager().createEntity( entity_name,mesh_name)
+        elif filename[-4:]=='.ply':
+            self.positions, self.mesh=ply_to_entity(mesh_name, filename)
+            self.entity= ogreSceneManager().createEntity( entity_name,mesh_name)
         else:
             assert(False)
 
