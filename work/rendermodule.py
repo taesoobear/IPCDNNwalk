@@ -252,6 +252,32 @@ class GaussianSplat:
     def _updateCamera(self):
         self.updateNecessary=True
 
+
+# draw point clouds as opaque solid-color spheres (much faster than gsplat, because depth-sorting is unnecessary)
+class SphereSplat:
+    def __init__(self, node_name, xyz, radius, color, parentSceneNode=None):
+        self.isVisible=True
+        entity_name="_entity_"+node_name
+        mesh_name=node_name+"_converted_mesh"
+
+        self.positions=xyz.astype(np.float32)
+        n_points=self.positions.shape[0]
+        self.mesh=m.createPointCloudEntity(mesh_name, self.positions.flatten(), radius, color.flatten(),n_points )
+        self.entity= ogreSceneManager().createEntity( entity_name,mesh_name)
+
+        rootnode=ogreRootSceneNode()
+        if parentSceneNode is not None:
+            rootnode=parentSceneNode
+        self.node=rootnode.createChildSceneNode(node_name)
+        self.node.attachObject(self.entity)
+
+        idx = np.arange(n_points, dtype=np.int32)
+        m.updatePointCloudEntity(self.node.getEntity(), idx)
+
+    def setVisible(self, bvalue):
+        self.isVisible=bvalue
+        self.node.setVisible(bvalue) # causes flickering
+
 class Voxels(lua.instance):
     def __init__(self, filename_or_info):
         lua.require("Kinematics/meshTools")

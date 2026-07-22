@@ -320,6 +320,81 @@ emissive 0.00000 0.00000 0.00000
 diffuse_map grid_only_64.png
 }
 
+vertex_program spheresplat_vp_glsl glsl glsles glslang
+{
+	source spheresplat_vp.glsl
+    enable_include_header true
+}
+vertex_program spheresplat_vp_hlsl hlsl
+{
+    source spheresplat_vp.hlsl
+    entry_point main
+    target vs_5_0 vs_4_0
+}
+vertex_program spheresplat_vp_metal metal
+{
+    source spheresplat_vp.metal
+    entry_point main_metal
+	enable_include_header true
+}
+vertex_program spheresplat_vp unified
+{
+	delegate spheresplat_vp_glsl
+	delegate spheresplat_vp_hlsl
+	delegate spheresplat_vp_metal
+
+	default_params
+	{
+		param_named_auto projmatrix worldviewproj_matrix
+		param_named_auto viewmatrix worldview_matrix
+		param_named_auto vpsize viewport_size
+		param_named_auto fovy fov
+	}
+}
+
+fragment_program spheresplat_fp_glsl glsl glsles glslang
+{
+	source spheresplat_fp.glsl
+}
+
+fragment_program spheresplat_fp_hlsl hlsl
+{
+    source spheresplat_fp.hlsl
+    entry_point main
+    target ps_5_0
+}
+fragment_program spheresplat_fp_metal metal
+{
+    source spheresplat_fp.metal
+    entry_point main_metal
+	enable_include_header true
+}
+fragment_program spheresplat_fp unified
+{
+    delegate spheresplat_fp_glsl
+    delegate spheresplat_fp_hlsl
+    delegate spheresplat_fp_metal
+}
+material spheresplat_quad
+{
+	receive_shadows off   
+    technique 
+    {
+        pass
+        {
+            //scene_blend alpha_blend
+            //depth_write off
+
+            vertex_program_ref spheresplat_vp
+            {
+            }
+
+            fragment_program_ref spheresplat_fp
+            {
+            }
+        }
+    }
+}
 vertex_program gsplatting_vp_glsl glsl glsles glslang
 {
 	source gsplat_quad_vp.glsl
@@ -402,7 +477,7 @@ hlms InvisibleShadowCaster pbs
 		specular	0.8 0.8 0.8
 		emissive 0.0 0.0 0.00
 		// Still participate in depth (important for shadows)
-	   depth_write on
+		depth_write on
 		depth_check on	
 		transparency_mode transparent
 		transparency 0.0 // Play with this value
