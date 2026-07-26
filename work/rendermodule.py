@@ -24,6 +24,7 @@ assert(m is not None)
 assert(lua is not None)
 doNotGarbageCollect=[] # list of instances which should not be garbage collected. (e.g. loaders)
 _sceneGraphs=[]
+_sceneElements={} # named scene objects managed by python (e.g. RE.drawSpheres)
 _hasBillboard=False
 _timeline=None
 _timelineObjects=[]
@@ -239,6 +240,8 @@ class GaussianSplat:
             _cameraEventReceivers= [r for r in _cameraEventReceivers if r() is not self]
         if _frameMoveObjects is not None:
             _frameMoveObjects= [r for r in _frameMoveObjects if r() is not self]
+        if removeEntityByName is not None:
+            removeEntityByName(self.node_name)
 
     def frameMove(self, elapsed):
         if self.updateNecessary and self.isVisible:
@@ -260,6 +263,7 @@ class SphereSplat:
         entity_name="_entity_"+node_name
         mesh_name=node_name+"_converted_mesh"
 
+        self.node_name=node_name
         self.positions=xyz.astype(np.float32)
         n_points=self.positions.shape[0]
         self.mesh=m.createPointCloudEntity(mesh_name, self.positions.flatten(), radius, color.flatten(),n_points )
@@ -277,6 +281,9 @@ class SphereSplat:
     def setVisible(self, bvalue):
         self.isVisible=bvalue
         self.node.setVisible(bvalue) # causes flickering
+    def __del__(self):
+        if removeEntityByName is not None:
+            removeEntityByName(self.node_name)
 
 class Voxels(lua.instance):
     def __init__(self, filename_or_info):
@@ -519,6 +526,17 @@ def namedDraw(*args):
     lua.F(('dbg', 'namedDraw'),*args) 
 def msgBox(msg):
     lua.F(('util','msgBox'),msg)
+def drawSpheres(node_name, positions, radius, colors):
+    global _sceneElements
+
+    rgb=(colors.array*255).astype(np.uint8)
+    rgba = np.concatenate(
+        [rgb, np.full((rgb.shape[0], 1), 255, dtype=np.uint8)],
+        axis=1,
+    )
+    splat=SphereSplat(node_name, positions.array, radius.array, rgba)
+    _sceneElements[node_name]=splat
+
 def draw(*args):
     if isinstance(args[1], m.vector3N):
         args=list(args)
@@ -537,6 +555,12 @@ def delayedSetPoseDOF(skin, delay, theta):
 def delayedDrawTick():
     lua.F(('dbg', 'delayedDrawTick'))
 def erase(*args):
+    global _sceneElements
+    typeid=args[0]
+    nameid=args[1]
+    if _sceneElements is not None:
+        _sceneElements.pop(nameid, None)
+
     lua.F(('dbg', 'erase'),*args) 
 def drawTraj(objectlist, matrix, nameid=None, color='solidred', thickness=0, linetype="LineList"):
     if not nameid: nameid=m.generateUniqueName()
@@ -556,6 +580,8 @@ def drawBillboard(*args):
     lua.F(('dbg', 'drawBillboard'),*args) 
 
 def eraseAllDrawn():
+    global _sceneElements
+    _sceneElements={}
     lua.F(('dbg', 'eraseAllDrawn'))
 def updateBillboards(fElapsedTime):
     # no longer necesasry
