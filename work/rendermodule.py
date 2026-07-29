@@ -35,11 +35,39 @@ _lastCamPos=m.vector3(1e5,0,0)
 import pdb
 pdb.Pdb.do_quit = lambda self, arg: os._exit(0)
 
-def path(path):
+def path(path: str) -> Path:
+    """
+    Convert a string path to a pathlib.Path object, normalizing it.
+
+    Parameters
+    ----------
+    path : str
+        The file system path as a string.
+
+    Returns
+    -------
+    Path
+        The normalized pathlib.Path object.
+    """
     from pathlib import Path
     path=os.path.normpath(path)
     return Path(path)
-def gitCommitExists(commit_hash, repo_path="."):
+def gitCommitExists(commit_hash: str, repo_path: str = ".") -> bool:
+    """
+    Check if a specific git commit hash exists in the repository.
+
+    Parameters
+    ----------
+    commit_hash : str
+        The git commit hash to check.
+    repo_path : str, optional
+        The path to the git repository. Defaults to ".".
+
+    Returns
+    -------
+    bool
+        True if the commit exists, False otherwise.
+    """
     try:
         subprocess.run(
             ["git", "cat-file", "-e", f"{commit_hash}^{{commit}}"],
@@ -81,7 +109,17 @@ def make_auto_overlap_batches(n, window=400,
     batches = [slice(s,s+window) for s in starts]
 
     return batches
-def _compressVoxels(scene, optional_filename=None):
+def _compressVoxels(scene: np.ndarray, optional_filename: Optional[str] = None) -> None:
+    """
+    Compress voxel data and optionally save to a file.
+
+    Parameters
+    ----------
+    scene : np.ndarray
+        A 3D numpy array representing the voxel grid (occupancy).
+    optional_filename : Optional[str], optional
+        Filename to save the compressed voxel data. Defaults to None.
+    """
     sceneCompressed=m.boolN(scene.shape[0]*scene.shape[1]*scene.shape[2])
     sceneCompressed.setAllValue(False)
     for i in range(scene.shape[0]):
@@ -95,7 +133,29 @@ def _compressVoxels(scene, optional_filename=None):
         saveTable(info, optional_filename)
     return info
 
-def create_cache_folder(path: str | Path, suffix=".cached", create=True) -> Path:
+def create_cache_folder(path: str | Path, suffix=".cached", create=True) -> Tuple[Path, str]:
+    """
+    Create a cache folder for a given file.
+
+    Parameters
+    ----------
+    path : str | Path
+        The source file path.
+    suffix : str, optional
+        The suffix for the cache directory. Defaults to ".cached".
+    create : bool, optional
+        Whether to create the directory if it doesn't exist. Defaults to True.
+
+    Returns
+    -------
+    Tuple[Path, str]
+        A tuple containing the path to the cache folder (Path) and the source filename (str).
+
+    Raises
+    ------
+    FileNotFoundError
+        If the source file does not exist.
+    """
     src = Path(path)
 
     if not src.is_file():
@@ -286,7 +346,19 @@ class SphereSplat:
             removeEntityByName(self.node_name)
 
 class Voxels(lua.instance):
-    def __init__(self, filename_or_info):
+    """
+    A class representing Voxel data, interfacing with Lua.
+    """
+    def __init__(self, filename_or_info: str| np.ndarray) -> None:
+        """
+        Initialize the Voxels object.
+
+        Parameters
+        ----------
+        filename_or_info : str| np.ndarray
+            Either a filename (str) pointing to a voxel file (npy or other),
+            or a numpy array (np.ndarray) containing the voxel data.
+        """
         lua.require("Kinematics/meshTools")
         var_name='Voxels'+m.generateUniqueName()
 
@@ -342,38 +414,111 @@ class Voxels(lua.instance):
 
                     self.saveCache(merged, cacheFile)
 
+def addPanel(signal: Any) -> None:
+    """
+    Add a debug panel for a boolean signal.
 
-
-
-
-
-def addPanel(signal):
+    Parameters
+    ----------
+    signal : Any
+        The boolean signal to display. Must be an instance of m.boolN.
+    """
     if isinstance(signal, m.boolN):
         m.motionPanel().scrollPanel().addPanel(signal, m.CPixelRGB8(255,255,0))
-def lookAt(pose, options=None, **kwargs):
+def lookAt(pose: Any, options: Optional[Any] = None, **kwargs: Any) -> None:
+    """
+    Set the camera to look at a specific pose.
+
+    Parameters
+    ----------
+    pose : Any
+        The target pose to look at.
+    options : Optional[Any], optional
+        Options for the camera view. Defaults to None.
+    **kwargs : Any
+        Additional keyword arguments passed as options if `options` is None.
+    """
     if options is not None:
         lua.M(m.viewpoint(), 'lookAt', pose, options)
     else:
         lua.M(m.viewpoint(), 'lookAt', pose, kwargs)
 
-def filename(full_path): return lua.F('os.filename', full_path)
-def createLoader(filename ,_options=None):
+def filename(full_path: str) -> str: 
+    """
+    Extract the filename from a full path string using Lua's os.filename.
+
+    Parameters
+    ----------
+    full_path : str
+        The full file path.
+
+    Returns
+    -------
+    str
+        The extracted filename.
+    """
+    return lua.F('os.filename', full_path)
+def createLoader(filename: str, _options: Optional[Any] = None) -> Optional[edict]:
+    """
+    Create a loader for `wrl` files.
+
+    Parameters
+    ----------
+    filename : str
+        The path to the file to load.
+    _options : Optional[Any], optional
+        Options for loading (currently unused). Defaults to None.
+
+    Returns
+    -------
+    Optional[edict]
+        An EasyDict containing the loader if successful, None otherwise.
+    """
     if filename[-3:]=='wrl' :
         return edict({ 'loader':m.VRMLloader(filename)})
 
-def toTransf(anyvec, anyvec_pos=None):
-    if len(anyvec)==7:
-        return m.transf(toQuater(anyvec[3:]), toVector3(anyvec[0:3]))
-    elif isinstance(anyvec, np.ndarray) and len(anyvec.shape)==2:
+def toTransf(anyvec_ori: List|np.ndarray, anyvec_pos: Optional[Any] = None) -> Any:
+    """
+    Convert input vectors to a transformation (transf) object.
+
+    Parameters
+    ----------
+    anyvec_ori : Union[List[float], np.ndarray, Any]
+        Orientation vector or a combined vector (7 elements: 3 pos + 4 quat).
+    anyvec_pos : Optional[Any], optional
+        Position vector. Required if anyvec_ori only contains orientation. Defaults to None.
+
+    Returns
+    -------
+    Any
+        A transformation object (m.transf).
+    """
+    if len(anyvec_ori)==7:
+        return m.transf(toQuater(anyvec_ori[3:]), toVector3(anyvec_ori[0:3]))
+    elif isinstance(anyvec_ori, np.ndarray) and len(anyvec_ori.shape)==2:
         mat=m.matrix4()
-        mat.ref()[:,:]=anyvec
+        mat.ref()[:,:]=anyvec_ori
         return m.transf(mat)
     elif lua.hasTorch and isinstance(anyvec, lua.torch.Tensor) and len(anyvec.shape)==2:
         mat=m.matrix4()
         mat.ref()[:,:]=anyvec.cpu().numpy()
         return m.transf(mat)
-    return m.transf(toQuater(anyvec), toVector3(anyvec_pos))
-def toQuater(anyvec):
+    return m.transf(toQuater(anyvec_ori), toVector3(anyvec_pos))
+def toQuater(anyvec:List|np.ndarray):
+    """
+    Convert a vector or matrix to a quaternion.
+
+    Parameters
+    ----------
+    anyvec : Union[List[float], np.ndarray, Any]
+        Input vector describing rotation. Can be a 9-element rotation matrix (flat), 
+        a 3x3 rotation matrix (numpy), or a 4-element quaternion (x,y,z,w).
+
+    Returns
+    -------
+    Any
+        A quaternion object (m.quater).
+    """
     if len(anyvec)==9:
         mat=m.matrix3()
         mat.ref1D()[:]=anyvec
@@ -388,24 +533,95 @@ def toQuater(anyvec):
         return mat.toQuater()
     return m.quater(anyvec[0], anyvec[1], anyvec[2], anyvec[3])
 # (x,y,z,w) format
-def V4toQuater(anyvec):
+def V4toQuater(anyvec:List|np.ndarray)->m.quater:
+    """
+    Convert a 4D vector to a quaternion using (x,y,z,w) input order.
+    The internal m.quater expects (w,x,y,z).
+
+    Parameters
+    ----------
+    anyvec : Union[List[float], np.ndarray, Any]
+        A 4-element vector (x, y, z, w).
+
+    Returns
+    -------
+    Any
+        A quaternion object (m.quater).
+    """
     return m.quater(anyvec[3], anyvec[0], anyvec[1], anyvec[2])
-def toVector3(anyvec):
+def toVector3(anyvec: List|np.ndarray) -> Any:
+    """
+    Convert a 3-element vector/list to a vector3 object.
+
+    Parameters
+    ----------
+    anyvec : Union[List[float], np.ndarray, Any]
+        A 3-element vector [x, y, z].
+
+    Returns
+    -------
+    Any
+        A vector3 object (m.vector3).
+    """
     return m.vector3(anyvec[0], anyvec[1], anyvec[2])
 
-def isFileExist(fname):
+def isFileExist(fname: str) -> bool:
+    """
+    Check if a file exists.
+
+    Parameters
+    ----------
+    fname : str
+        The path to the file.
+
+    Returns
+    -------
+    bool
+        True if the file exists, False otherwise.
+    """
     import os.path
     return os.path.isfile(fname)
-def setQuater(anyvec,q ):
+def setQuater(anyvec: List|np.ndarray, q: m.quater) -> None:
+    """
+    Set quaternion components from a source quaternion `q` to a destination array `anyvec`.
+    Copies (w,x,y,z) order.
+
+    Parameters
+    ----------
+    anyvec : Union[List[float], np.ndarray]
+        The destination array (must have at least 4 elements).
+    q : Any
+        The source quaternion object having w, x, y, z attributes.
+    """
     anyvec[0]=q.w
     anyvec[1]=q.x
     anyvec[2]=q.y
     anyvec[3]=q.z
-def setVec3(anyvec,v ):
+def setVec3(anyvec: List|np.ndarray, v: m.vector3) -> None:
+    """
+    Set vector3 components from a source vector `v` to a destination array `anyvec`.
+
+    Parameters
+    ----------
+    anyvec : Union[List[float], np.ndarray]
+        The destination array (must have at least 3 elements).
+    v : Any
+        The source vector object having x, y, z attributes.
+    """
     anyvec[0]=v.x
     anyvec[1]=v.y
     anyvec[2]=v.z
-def setTransf(anyvec, tf):
+def setTransf(anyvec: List| np.ndarray, tf: Any) -> None:
+    """
+    Set transformation components (vec3 + quater) to a destination array.
+
+    Parameters
+    ----------
+    anyvec : Union[List[float], np.ndarray]
+        The destination array. First 3 elements for position, next 4 for rotation.
+    tf : Any
+        The source transformation object having `translation` and `rotation` attributes.
+    """
     setVec3(anyvec, tf.translation)
     setQuater(anyvec[3:], tf.rotation)
 def saveTable(tbl=dict, filename=str):
@@ -1612,7 +1828,7 @@ def tempFunc(self: Any, *args: Any) -> Any:
 
 m.VRMLloader.draw=tempFunc
 
-def tempFunc(self: Any, treeIndex: Union[str, int]) -> Tuple[int, int]:
+def tempFunc(self: Any, treeIndex: str| int) -> Tuple[int, int]:
     """
     Get DOF index range for a bone.
     Attached as m.MotionLoader.dofIndex.

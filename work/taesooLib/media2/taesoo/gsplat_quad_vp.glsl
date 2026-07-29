@@ -7,7 +7,7 @@ uniform mat4 projmatrix; // actually proj*view
 uniform mat4 viewmatrix;
 
 uniform float fovy;
-uniform vec4 vpsize;
+uniform vec4 vpsize;     // xy = viewport width, height
 
 // --------------------
 // Vertex attributes
