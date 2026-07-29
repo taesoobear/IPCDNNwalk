@@ -182,7 +182,33 @@ function dbg.drawTraj(objectlist, matrix, nameid, color, thickness, linetype)
 				objectlist:registerObject(nameid, linetype, color or dbg.linecolor, matrix, thickness or 0)
 			end
 		else
-			objectlist:registerObject(nameid, linetype, color or dbg.linecolor, matrix, thickness or 0)
+			if (linetype=='ColorWidthBillboardLineList' or linetype=='BillboardLineList') and 
+				matrix:rows()>65535*2 then
+				si=0
+				local sceneNodes={}
+				while true do
+					local newname=nameid..tostring(si)
+					if si==0 then
+						newname=nameid
+					end
+					if si+65535*2>=matrix:rows() then
+						table.insert(sceneNodes, objectlist:registerObject(newname, linetype, color or dbg.linecolor, matrix:sub(si, 0,0,0), thickness or 0))
+						break
+					else
+						table.insert(sceneNodes, objectlist:registerObject(newname, linetype, color or dbg.linecolor, matrix:sub(si, si+65535*2,0,0), thickness or 0))
+					end
+					si=si+65535*2
+				end
+				local pnode=sceneNodes[1]
+				for i=2, #sceneNodes do
+					local node=sceneNodes[i]
+					--node:resetToInitialState()
+					--node:getParent():removeChild(node) -- doesn't work correctly
+					--pnode:addChild(node)
+				end
+			else
+				objectlist:registerObject(nameid, linetype, color or dbg.linecolor, matrix, thickness or 0)
+			end
 		end
 	end
 end
