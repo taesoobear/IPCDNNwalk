@@ -4105,8 +4105,18 @@ if Tensor then
 		assert(self:shape():size()==2)
 		return self:slice_1d(CT.ivec(-1,i))
 	end
+	if not Tensor.tostring_cpp then
+		Tensor.tostring_cpp=Tensor.__tostring
+	end
+	function Tensor:__tostring()
+		if self:shape():size()==0 then
+			return "empty Tensor"
+		else
+			return self:tostring_cpp()
+		end
+	end
 
-	defineDerived(Tensor,{TensorView},{ 'toVec','slice','vecView','row', 'col'})
+	defineDerived(Tensor,{TensorView},{ '__tostring', 'toVec','slice','vecView','row', 'col'})
 end
 function matrixn.__concat(a,b) -- concat col
    local c=matrixn()

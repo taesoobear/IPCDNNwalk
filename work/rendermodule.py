@@ -31,7 +31,6 @@ _timelineObjects=[]
 _frameMoveObjects=[]
 _cameraEventReceivers=[]
 _lastCamPos=m.vector3(1e5,0,0)
-
 import pdb
 pdb.Pdb.do_quit = lambda self, arg: os._exit(0)
 
@@ -277,8 +276,7 @@ class GaussianSplat:
         if isinstance(filename,  tuple):
             xyz, color, covd, covu=filename
             self.positions=xyz.astype(np.float32)
-            self.mesh=m.createPointCloudEntity(mesh_name, self.positions.flatten(), color.flatten(), covd.flatten(), covu.flatten(), self.positions.shape[0])
-            self.entity= ogreSceneManager().createEntity( entity_name,mesh_name)
+            self.entity=m.createPointCloudEntity(mesh_name, self.positions.flatten(), color.flatten(), covd.flatten(), covu.flatten(), self.positions.shape[0])
         elif filename[-4:]=='.ply':
             self.positions, self.mesh=ply_to_entity(mesh_name, filename)
             self.entity= ogreSceneManager().createEntity( entity_name,mesh_name)
@@ -326,8 +324,7 @@ class SphereSplat:
         self.node_name=node_name
         self.positions=xyz.astype(np.float32)
         n_points=self.positions.shape[0]
-        self.mesh=m.createPointCloudEntity(mesh_name, self.positions.flatten(), radius, color.flatten(),n_points )
-        self.entity= ogreSceneManager().createEntity( entity_name,mesh_name)
+        self.entity=m.createPointCloudEntity(mesh_name, self.positions.flatten(), radius, color.flatten(),n_points )
 
         rootnode=ogreRootSceneNode()
         if parentSceneNode is not None:
@@ -335,8 +332,8 @@ class SphereSplat:
         self.node=rootnode.createChildSceneNode(node_name)
         self.node.attachObject(self.entity)
 
-        idx = np.arange(n_points, dtype=np.int32)
-        m.updatePointCloudEntity(self.node.getEntity(), idx)
+        #idx = np.arange(n_points, dtype=np.int32)
+        #m.updatePointCloudEntity(self.node.getEntity(), idx)
 
     def setVisible(self, bvalue):
         self.isVisible=bvalue
@@ -742,8 +739,18 @@ def namedDraw(*args):
     lua.F(('dbg', 'namedDraw'),*args) 
 def msgBox(msg):
     lua.F(('util','msgBox'),msg)
-def drawSpheres(node_name, positions, radius, colors):
+def drawSpheres(node_name, positions:m.vector3N|np.ndarray, radius:m.vectorn| np.ndarray, colors:m.vector3N | np.ndarray):
     global _sceneElements
+    if node_name in _sceneElements:
+        del _sceneElements[node_name]
+    if isinstance(positions, np.ndarray):
+        # if numpy array:
+        # colors: r,g,b,a in [0, 255], alpha should be 255
+        splat=SphereSplat(node_name, positions, radius, colors)
+        _sceneElements[node_name]=splat
+        return
+    # if you are using taesooLib :
+    # colors: r,g,b in [0, 1]
 
     rgb=(colors.array*255).astype(np.uint8)
     rgba = np.concatenate(

@@ -66,8 +66,12 @@ if EventReceiver then
 						self.trajectoryOri:row(f):setQuater(0, MotionDOF.rootTransformation(mMotionDOF:row(f)).rotation:rotationY())
 					end
 					print("filtering",s,e)
-					math.filter(self.trajectory:range(s,e,0, 3), 63)
-					math.filter(self.trajectoryOri:range(s,e,0, 4), 63)
+					local kernelSize=63
+					if self.trajectory:rows()<kernelSize then
+						kernelSize=math.floor(self.trajectory:rows()/2)*2-1
+					end
+					math.filter(self.trajectory:range(s,e,0, 3), kernelSize)
+					math.filter(self.trajectoryOri:range(s,e,0, 4), kernelSize)
 				end
 			else
 				if dbg.lunaType(mMotionDOF)=='Motion' or mMotionDOF.mot then
@@ -83,8 +87,12 @@ if EventReceiver then
 					self.trajectoryOri:row(f):setQuater(0, MotionDOF.rootTransformation(mMotionDOF:row(f)).rotation:rotationY())
 				end
 				print("filtering",s,e)
-				math.filter(self.trajectory:range(s,e,0, 3), 63)
-				math.filter(self.trajectoryOri:range(s,e,0, 4), 63)
+				local kernelSize=63
+				if self.trajectory:rows()<kernelSize then
+					kernelSize=math.floor(self.trajectory:rows()/2)*2-1
+				end
+				math.filter(self.trajectory:range(s,e,0, 3), kernelSize)
+				math.filter(self.trajectoryOri:range(s,e,0, 4), kernelSize)
 			end
 
 			local curPos=self.trajectory:row(self.currFrame):toVector3(0)*100
@@ -136,8 +144,12 @@ if EventReceiver then
 					self.trajectoryOri:row(f):setQuater(0, tf.rotation)
 				end
 				print("filtering",s,e)
-				math.filter(self.trajectory:range(s,e,0, 3), 63)
-				math.filter(self.trajectoryOri:range(s,e,0, 4), 63)
+				local kernelSize=63
+				if self.trajectory:rows()<kernelSize then
+					kernelSize=math.floor(self.trajectory:rows()/2)*2-1
+				end
+				math.filter(self.trajectory:range(s,e,0, 3), kernelSize)
+				math.filter(self.trajectoryOri:range(s,e,0, 4), kernelSize)
 			end
 
 			local curPos=self.trajectory:row(self.currFrame):toVector3(0)*100

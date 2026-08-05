@@ -839,6 +839,7 @@ function Voxels:calculateSDF(model)
 		if os.isFileExist(cacheFile) then
 			local cache=util.BinaryFile()
 			print("loading cache:", cacheFile)
+			print("if program crashes, retry after deleting the cache file.")
 			cache:openRead(cacheFile)
 
 			local version= cache:unpackInt()
@@ -858,6 +859,7 @@ function Voxels:calculateSDF(model)
 				self:saveCache(model, cacheFile)
 
 			else
+				assert(version==2)
 				model.SDF=floatTensor()
 				model.normal=floatTensor()
 				model.vertexIndex=floatTensor()
@@ -1064,7 +1066,7 @@ function SDFcollider.unpackCollisionLoader(filename)
 end
 function SDFcollider:unpack(binaryFile, model)
 	local version= self.cache:unpackInt()
-	if version~=-3 then
+	if version~=-4 then
 		-- incompatible with latest cache format.
 		return false
 	else
@@ -1077,7 +1079,7 @@ function SDFcollider:unpack(binaryFile, model)
 
 			model.collisionLoader=loader
 			model.SDF=floatTensor()
-			model.normal=Tensor()
+			model.normal=floatTensor()
 			model.vertexIndex=floatTensor()
 
 			local origL=model.fbx.loader
@@ -1220,6 +1222,8 @@ function SDFcollider:addModel(fbxloader, _optionalWRLloader)
 					self.cache:openRead(_optionalWRLloader.cacheCollisionMesh )
 					if not self:unpack(self.cache, model) then
 						-- 로딩 실패. 
+						print("Warning! Failed to load cache file ", _optionalWRLloader.cacheCollisionMesh )
+						print("Retrying after deleting the cache file")
 						os.deleteFiles(_optionalWRLloader.cacheCollisionMesh )
 						self.wcache=util.BinaryFile()
 						self.cache=nil
@@ -1931,13 +1935,13 @@ if ConvexDecomp then
 	function ConvexDecomp:getDistScale()
 		return self:getScale()/self:getDimensions():maximum()
 	end
-	-- save computation results to a file
+	-- save computation results to a file (e.g. .colcache6)
 	function SDFcollider:pack(model, binaryFile)
-		binaryFile:packInt(-3) -- cache format version. should be a negative number
+		binaryFile:packInt(-4) -- cache format version. should be a negative number
 		binaryFile:_packVRMLloader(model.collisionLoader)
 		binaryFile:pack(model.SDF)
-		binaryFile:pack(model.normal)
-		binaryFile:pack(model.vertexIndex)
+		binaryFile:pack(model.normal:as_float())
+		binaryFile:pack(model.vertexIndex:as_float())
 		local decomp=model.decomp
 		binaryFile:pack(decomp:getBoundsMin())
 		binaryFile:pack(decomp:getBoundsMax())
