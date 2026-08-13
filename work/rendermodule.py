@@ -31,6 +31,7 @@ _timelineObjects=[]
 _frameMoveObjects=[]
 _cameraEventReceivers=[]
 _lastCamPos=m.vector3(1e5,0,0)
+
 import pdb
 pdb.Pdb.do_quit = lambda self, arg: os._exit(0)
 
@@ -978,6 +979,26 @@ def tempFunc(self):
 m.MotionLoader.getPoseMap=tempFunc
 
 def createFBXskin(fbx, drawSkeleton=None, **kwargs):
+    """
+    Create a skinned character from an FBX loader.
+
+    Args:
+        fbx:
+            taesooLib FBX loader containing the character skeleton and skin.
+
+        **kwargs:
+            Optional settings:
+
+            drawSkeleton (bool):
+                If True, draw the character skeleton. Defaults to False.
+
+            adjustable (bool):
+                If True, create an adjustable skeleton whose bone lengths
+                can be modified. Defaults to False.
+
+    Returns:
+        The created FBX skin.
+    """
     if drawSkeleton:
         return FBXskin(fbx, drawSkeleton)
     else:
@@ -1133,12 +1154,15 @@ class FBXloader_fbxInfo:
 
     def _get_material(self):
         return lua.G_str((self.fbxloader.var_name,"fbxInfo",self.key, 'material'))
+    def _get_mesh(self):
+        return lua.G((self.fbxloader.var_name,"fbxInfo",self.key, 1))
 
 
     material = property(
             fget=_get_material,
             fset=_set_material,
             )
+    mesh = property( fget=_get_mesh)
 
 class FBXloader_fbxInfoArray:
     def __init__(self, fbxloader,n):

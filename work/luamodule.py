@@ -1158,9 +1158,11 @@ def _popUserdata(l, tn):
         return l.popMatrix3()
     elif tn=='intIntervals':
         return l.popIntIntervals()
+    elif tn=='Mesh':
+        return l.popMesh()
     elif tn[-20:]=="ScaledBoneKinematics":
         return l.popScaledBoneKinematics()
-    elif tn[-14:]=="BoneForwardKinematics":
+    elif tn[-21:]=="BoneForwardKinematics":
         return l.popBoneForwardKinematics()
     else:
         print('warning! luamodule._popUserdata: this case not implemented yet:', tn)
