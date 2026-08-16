@@ -1386,9 +1386,6 @@ function FBXloader:__init(filename, options)
 		--print(pose)
 		local meshInfo={ mesh, mesh_name, }
 
-		if fbx.getMeshUniqueMap then
-			meshInfo.uniqueMap=fbx:getMeshUniqueMap(i)
-		end
 		if chooseLOD>0 then
 			self.fbxInfo={
 				meshInfo
