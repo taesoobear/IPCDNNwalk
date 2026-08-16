@@ -821,6 +821,7 @@ function FBXloader:__mergeFBXloaders(loaders, options)
 	mloader:fkSolver():inverseKinematics()
 
 
+	self.loader=mloader
 	self:_setBindPose(mloader)
 	local loader=mloader
 
@@ -1030,7 +1031,7 @@ function FBXloader:_setBindPose(mloader)
 	self.bindpose_global=bindpose_global
 
 	--local loader=mloader:toVRMLloader(2.5/options.skinScale)
-	self.loader=mloader
+	--self.loader=mloader --do this outside
 	self.uid=RE.generateUniqueName()
 end
 
@@ -1115,6 +1116,7 @@ function FBXloader:__init(filename, options)
 	elseif type(filename)~='string' then
 		-- init empty
 		local loader=filename
+		self.loader=loader
 		self:_setBindPose(loader)
 		self.fbx={}
 		local meshInfo={ Mesh(), 'merged' , skin= SkinnedMeshFromVertexInfo()}
