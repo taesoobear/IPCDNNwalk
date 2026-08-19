@@ -133,7 +133,7 @@ function FBXloader:setCurPoseAsInitialPose()
 	self.loader:setPose(poseI)
 	self.orig_loader:setPose(curPose)
 
-	local convertFromOriginalPose=MotionUtil.PoseTransfer(self.orig_loader, self.loader, true)
+	local convertFromOriginalPose=MotionUtil.PoseTransfer2(self.orig_loader, self.loader)
 
 	convertFromOriginalPose:setTargetSkeleton(self.bindpose)
 
