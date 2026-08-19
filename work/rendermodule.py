@@ -1146,13 +1146,16 @@ class CollisionChecker(lua.instance):
 
         
 class FBXloader_fbxInfo:
-    def __init__(self, fbxloader, key):
+    """
+    Helper class for FBX loader material info.
+    """
+    def __init__(self, fbxloader: Any, key: Any) -> None:
         self.fbxloader=fbxloader
         self.key=key
-    def _set_material(self,mat):
+    def _set_material(self, mat: str) -> None:
         lua.dostring(self.fbxloader.var_name+'.fbxInfo['+str(self.key)+'].material="'+mat+'"')
 
-    def _get_material(self):
+    def _get_material(self) -> str:
         return lua.G_str((self.fbxloader.var_name,"fbxInfo",self.key, 'material'))
     def _get_mesh(self):
         return lua.G((self.fbxloader.var_name,"fbxInfo",self.key, 1))
@@ -1161,17 +1164,21 @@ class FBXloader_fbxInfo:
     material = property(
             fget=_get_material,
             fset=_set_material,
+            doc="Get or set the material name."
             )
     mesh = property( fget=_get_mesh)
 
 class FBXloader_fbxInfoArray:
-    def __init__(self, fbxloader,n):
+    """
+    Array accessor for FBX info.
+    """
+    def __init__(self, fbxloader: Any, n: int) -> None:
         self.fbxloader=fbxloader
         self.n=n
-    def __getitem__(self, i):
+    def __getitem__(self, i: int) -> FBXloader_fbxInfo:
         assert(i>0) # lua : 1-indexing
         return FBXloader_fbxInfo(self.fbxloader, i) 
-    def __len__(self):
+    def __len__(self) -> int:
         return self.n
 
 
@@ -1894,6 +1901,7 @@ def tempFunc(self, pose):
     self.setTargetSkeleton(pose)
     return self.target().pose()
 m.PoseTransfer.__call__=tempFunc
+m.PoseTransfer2.__call__=tempFunc
 
 del tempFunc
 
