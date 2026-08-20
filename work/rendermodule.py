@@ -497,9 +497,9 @@ def toTransf(anyvec_ori: List|np.ndarray, anyvec_pos: Optional[Any] = None) -> A
         mat=m.matrix4()
         mat.ref()[:,:]=anyvec_ori
         return m.transf(mat)
-    elif lua.hasTorch and isinstance(anyvec, lua.torch.Tensor) and len(anyvec.shape)==2:
+    elif lua.hasTorch and isinstance(anyvec_ori, lua.torch.Tensor) and len(anyvec_ori.shape)==2:
         mat=m.matrix4()
-        mat.ref()[:,:]=anyvec.cpu().numpy()
+        mat.ref()[:,:]=anyvec_ori.cpu().numpy()
         return m.transf(mat)
     return m.transf(toQuater(anyvec_ori), toVector3(anyvec_pos))
 def toQuater(anyvec:List|np.ndarray):
