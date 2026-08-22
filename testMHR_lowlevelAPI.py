@@ -58,7 +58,16 @@ def createLoaderFromMHR(asset_folder, identity_coeffs, face_expr_coeffs, lod=4):
     """
     batch_size=1
     lod_level=lod
-    temp_mhr_model = MHR.from_files(folder=asset_folder, device=torch.device("cpu"), lod=lod_level)
+    print('Loading '+ str(asset_folder) +' using MHR (without libcalab). If this crashes, please ask the MHR (Momentum Human Rig) authors directly.')
+
+    if lod==1:
+        temp_mhr_model = torch.jit.load( str(asset_folder / "mhr_model.pt"), map_location="cpu",)
+        temp_mhr_model.eval()
+    else:
+        temp_mhr_model = MHR.from_files(folder=asset_folder, device=torch.device("cpu"), lod=lod_level)
+        #temp_mhr_model = torch.jit.load( str(asset_folder / "mhr_model.pt"), map_location="cpu",)
+        #temp_mhr_model.eval()
+        print("MHR.from_files finished")
     model_parameters= torch.zeros(batch_size, 204).cpu()
     with torch.no_grad():
         verts, skel_state = temp_mhr_model(identity_coeffs.reshape(batch_size, 45), model_parameters, face_expr_coeffs.reshape(batch_size, 72))
@@ -69,22 +78,26 @@ def createLoaderFromMHR(asset_folder, identity_coeffs, face_expr_coeffs, lod=4):
 
     fbx=RE.FBXloader(str(asset_folder / f'lod{lod_level}.fbx')) # loading  (incorrect but will be fixed below)
 
-    skeleton = temp_mhr_model.character.skeleton
-    for i, joint in enumerate(skeleton.joints):
-        print(i, joint.name, fbx.loader.bone(i).name())
-        assert(i==0 or (joint.name== fbx.loader.bone(i).name()))
+    if lod!=1:
+        skeleton = temp_mhr_model.character.skeleton
+        for i, joint in enumerate(skeleton.joints):
+            print(i, joint.name, fbx.loader.bone(i).name())
+            assert(i==0 or (joint.name== fbx.loader.bone(i).name()))
 
     ibatch=0
 
+    subMesh=fbx.fbxInfo[1]
 
+    mesh=subMesh.mesh
+    if lod==1:
+        character=temp_mhr_model.character_torch
+    else:
+        character=temp_mhr_model.character
 
     if True:
-        # update shape
-        subMesh=fbx.fbxInfo[1]
-        mesh=subMesh.mesh
         # build vertex index map
 
-        faces_b=temp_mhr_model.character.mesh.faces
+        faces_b=character.mesh.faces
         nface=mesh.numFace()
         assert (nface==faces_b.shape[0])
 
@@ -148,8 +161,9 @@ this.addCheckButton('draw overlapped', False)
 this.updateLayout()
 
 # https://github.com/facebookresearch/MHR
+# https://github.com/facebookresearch/MHR/releases/download/v1.0.1/assets.zip
 asset_folder= RE.path("../MHR/assets")
-lod_level=4
+lod_level=1 # 1 uses TorchScript, other levels use MHR
 
 
 # create two random identities
@@ -165,7 +179,7 @@ skin1=RE.createFBXskin(fbx, True)
 skin1.setScale(skinScale, skinScale, skinScale)
 skin1.setTranslation (-100,0,0)
 
-if True:
+if lod_level!=1:
     # create mesh snapshots for comparison
     mhr_model = MHR.from_files(folder=asset_folder, device=torch.device("cpu"), lod=lod_level)
 
