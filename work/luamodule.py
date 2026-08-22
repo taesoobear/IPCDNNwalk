@@ -1160,6 +1160,8 @@ def _popUserdata(l, tn):
         return l.popIntIntervals()
     elif tn=='Mesh':
         return l.popMesh()
+    elif tn=='SkinnedMeshFromVertexInfo':
+        return l.popSkinnedMeshFromVertexInfo()
     elif tn[-20:]=="ScaledBoneKinematics":
         return l.popScaledBoneKinematics()
     elif tn[-21:]=="BoneForwardKinematics":

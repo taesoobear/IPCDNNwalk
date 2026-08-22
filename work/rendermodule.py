@@ -1159,6 +1159,10 @@ class FBXloader_fbxInfo:
         return lua.G_str((self.fbxloader.var_name,"fbxInfo",self.key, 'material'))
     def _get_mesh(self):
         return lua.G((self.fbxloader.var_name,"fbxInfo",self.key, 1))
+    def _get_skin(self):
+        return lua.G((self.fbxloader.var_name,"fbxInfo",self.key, 'skin'))
+    def _get_localNormal(self):
+        return lua.G((self.fbxloader.var_name,"fbxInfo",self.key, 'localNormal'))
 
 
     material = property(
@@ -1167,6 +1171,8 @@ class FBXloader_fbxInfo:
             doc="Get or set the material name."
             )
     mesh = property( fget=_get_mesh)
+    skin = property( fget=_get_skin)
+    localNormal = property( fget=_get_localNormal)
 
 class FBXloader_fbxInfoArray:
     """
