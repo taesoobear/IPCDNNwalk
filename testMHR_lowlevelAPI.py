@@ -58,7 +58,8 @@ def createLoaderFromMHR(asset_folder, identity_coeffs, face_expr_coeffs, lod=4):
     """
     batch_size=1
     lod_level=lod
-    print('Loading '+ str(asset_folder) +' using MHR (without libcalab). If this crashes, please ask the MHR (Momentum Human Rig) authors directly.')
+    print('Loading '+ str(asset_folder) +' using MHR (without libcalab).')
+    print('You can download the assets from https://github.com/facebookresearch/MHR/releases/download/v1.0.1/assets.zip')
 
     if lod==1:
         temp_mhr_model = torch.jit.load( str(asset_folder / "mhr_model.pt"), map_location="cpu",)
