@@ -474,6 +474,8 @@ def createLoader(filename: str, _options: Optional[Any] = None) -> Optional[edic
     """
     if filename[-3:]=='wrl' :
         return edict({ 'loader':m.VRMLloader(filename)})
+    elif filename[-3:]=='bvh' :
+        return edict({ 'loader':m.createMotionLoaderExt_cpp(filename)})
 
 def toTransf(anyvec_ori: List|np.ndarray, anyvec_pos: Optional[Any] = None) -> Any:
     """
@@ -925,7 +927,9 @@ class Skins:
 
 
 
-def createSkin(loader, options=None):
+def createSkin(loader, options=None, **kwargs):
+    if options is None and kwargs is not None:
+        options=kwargs
     if isinstance(loader, m.VRMLloader):
         return m.createVRMLskin(loader, False)
     elif isinstance(loader, edict):

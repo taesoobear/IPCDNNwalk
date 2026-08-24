@@ -1443,7 +1443,13 @@ function FBXloader:__init(filename, options)
 				mesh=mesh2
 			end
 		end
-
+		if true then
+			-- normalize weights
+			local nv=skin:numVertex()
+			for i=0, nv-1 do
+				skin:weights(i):rmult(1.0/skin:weights(i):sum())
+			end
+		end
 		local bindpose_global=quaterN(loader:numBone())
 		for i=1, loader:numBone()-1 do
 			bindpose_global(i):assign(loader:bone(i):getFrame().rotation)
