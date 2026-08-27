@@ -1,6 +1,5 @@
 
 import torch, pdb
-from mhr.mhr import MHR # pip install mhr pymomentum-cpu
 import trimesh
 import libcalab_ogre3d
 from libcalab_ogre3d import RE, m, lua, control
@@ -65,6 +64,7 @@ def createLoaderFromMHR(asset_folder, identity_coeffs, face_expr_coeffs, lod=4):
         temp_mhr_model = torch.jit.load( str(asset_folder / "mhr_model.pt"), map_location="cpu",)
         temp_mhr_model.eval()
     else:
+        from mhr.mhr import MHR # pip install mhr pymomentum-cpu
         temp_mhr_model = MHR.from_files(folder=asset_folder, device=torch.device("cpu"), lod=lod_level)
         #temp_mhr_model = torch.jit.load( str(asset_folder / "mhr_model.pt"), map_location="cpu",)
         #temp_mhr_model.eval()
@@ -181,6 +181,7 @@ skin1.setScale(skinScale, skinScale, skinScale)
 skin1.setTranslation (-100,0,0)
 
 if lod_level!=1:
+    from mhr.mhr import MHR # pip install mhr pymomentum-cpu
     # create mesh snapshots for comparison
     mhr_model = MHR.from_files(folder=asset_folder, device=torch.device("cpu"), lod=lod_level)
 
