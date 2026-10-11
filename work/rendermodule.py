@@ -742,25 +742,47 @@ def namedDraw(*args):
     lua.F(('dbg', 'namedDraw'),*args) 
 def msgBox(msg):
     lua.F(('util','msgBox'),msg)
-def drawSpheres(node_name, positions:m.vector3N|np.ndarray, radius:m.vectorn| np.ndarray, colors:m.vector3N | np.ndarray):
+
+def drawLines(nameid, startpos, endpos, color='green', thickness=1.5):
+    lines=m.matrixn() 
+    if isinstance(startpos, m.vector3N):
+        pdb.set_trace() # not implemented yet
+    elif isinstance(startpos, m.matrixn):
+        pdb.set_trace() # not implemented yet
+    else:
+        lines.resize(startpos.shape[0]*2,3)
+        lines .array[:,:]= np.stack([startpos, endpos], axis=1).reshape(-1, 3)
+
+    drawBillboard( lines, nameid,color , thickness ,"BillboardLineList")
+def drawSpheres(node_name, positions:m.vector3N|np.ndarray, radius:m.vectorn| np.ndarray|float, colors:m.vector3N | np.ndarray | m.vector3 =m.vector3(1,0,0)):
     global _sceneElements
     if node_name in _sceneElements:
         del _sceneElements[node_name]
-    if isinstance(positions, np.ndarray):
-        # if numpy array:
-        # colors: r,g,b,a in [0, 255], alpha should be 255
-        splat=SphereSplat(node_name, positions, radius, colors)
-        _sceneElements[node_name]=splat
-        return
+    if lua.hasTorch and isinstance(positions, lua.torch.Tensor):
+        return drawSpheres(node_name, positions.detach().cpu().numpy(), radius, colors) 
+    elif isinstance(radius, float) or isinstance(radius, int):
+        N=positions.shape[0]
+        radius=np.broadcast_to(np.float32(radius), (N,))
+        return drawSpheres(node_name, positions, radius,colors)
+    elif isinstance(colors, m.vector3):
+        N=positions.shape[0]
+        return drawSpheres(node_name, positions, radius,np.broadcast_to(colors.array, (N,3)) )
+    elif isinstance(colors, m.vector3N):
+        return drawSpheres(node_name, positions, radius,colors.array)
+    elif isinstance(positions, m.vector3N):
+        return drawSpheres(node_name, positions.array, radius,colors)
+    elif isinstance(radius, m.vectorn):
+        return drawSpheres(node_name, positions, radius.array,colors)
+
     # if you are using taesooLib :
     # colors: r,g,b in [0, 1]
 
-    rgb=(colors.array*255).astype(np.uint8)
+    rgb=(colors*255).astype(np.uint8)
     rgba = np.concatenate(
         [rgb, np.full((rgb.shape[0], 1), 255, dtype=np.uint8)],
         axis=1,
     )
-    splat=SphereSplat(node_name, positions.array, radius.array, rgba)
+    splat=SphereSplat(node_name, positions, radius, rgba)
     _sceneElements[node_name]=splat
 
 def draw(*args):
@@ -822,6 +844,8 @@ m.Mesh.createColorBuffer=createColorBuffer # register
 m.Mesh.createTextureBuffer=createTextureBuffer # register
 def motionPanel():
     return m.motionPanel()
+def motionWin():
+    return m.motionPanel().motionWin()
 def removeEntityByName(name):
     n=m.getSceneNode(name)
     if n:
@@ -1040,6 +1064,7 @@ class Timeline(lua.instance):
         self.set('cameraInfo', [])
         lua.F('EVR.attachCameraToMotion',self, loader, motion)
     def detachCamera(self):
+        """Detach the camera."""
         lua.F('EVR.detachCamera', self)
     def moveCamera(self, iframe):
         lua.F('EVR.moveCamera', self, iframe)
@@ -1356,6 +1381,21 @@ m.PLDPrimVRML.setGenesisPose=_setGenesisPose
 
 # you may need lua.addPackagePath('../../sample_SAMP/lua')
 def createSMPLskeleton(bm_path:str, betas=None):
+    """
+    Create an SMPL skeleton.
+
+    Parameters
+    ----------
+    bm_path : str
+        Path to body model.
+    betas : Optional[Any], optional
+        Shape parameters. Defaults to None.
+
+    Returns
+    -------
+    Any
+        Combined FBXloader with SMPL skeleton.
+    """
     uid=m.generateUniqueName()
     lua.dostring( 'if not FBXloader then FBXloader=require("FBXloader") end')
     var_name='mFBXloader'+uid

@@ -1452,7 +1452,6 @@ class Table(dict):
             self[key]=kwargs[key]
         if len(args)>0:
             self.__list=list(args)
-
     def __getattr__(self, key):
         if key in self:
             return self[key]
