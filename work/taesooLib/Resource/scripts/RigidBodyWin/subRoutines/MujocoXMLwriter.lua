@@ -68,7 +68,7 @@ function createMujocoXMLstring(loaders, option)
         <joint ]]..default_armature..[[damping="]]..(option.default_damping or 1)..[[" limited="true"/>
 	]])
 	table.insert(out, [[
-        <geom conaffinity="1" condim="1" contype="1" margin="0.001" rgba="0.8 0.6 .4 1"/>
+        <geom type="mesh" conaffinity="1" condim="1" contype="1" margin="0.001" rgba="0.8 0.6 .4 1"/>
 	]])
 	if option.useMotorActuator then
 		table.insert(out, [[
@@ -237,6 +237,11 @@ function createMujocoXMLstring(loaders, option)
 			for i=1,loader:numBone()-1 do
 				local bone=loader:VRMLbone(i)
 				if bone:treeIndex()==1 and bone:HRPjointType(0)==MainLib.VRMLTransform.FREE then
+				elseif bone:HRPjointType(0)==MainLib.VRMLTransform.BALL then
+					local name=bone:name()
+					table.insert(out, "\t\t"..[[<motor joint="]]..name..[[_ball" name="]]..name..[[_x" gear="1 0 0 0 0 0" />]])
+					table.insert(out, "\t\t"..[[<motor joint="]]..name..[[_ball" name="]]..name..[[_y" gear="0 1 0 0 0 0" />]])
+					table.insert(out, "\t\t"..[[<motor joint="]]..name..[[_ball" name="]]..name..[[_z" gear="0 0 1 0 0 0" />]])
 				elseif bone:HRPjointType(0)==MainLib.VRMLTransform.SLIDE then
 					for i=0, bone:numChannels()-1 do
 						local name=bone:name().."_"..tostring(i)
@@ -342,11 +347,14 @@ function mujoco_packShape(out, out_asset, loader, bone, level, setConstraints, i
 			end
 		end
 	else
-		local COM=bone:localCOM()
-		if COM:length()>0.02 then
-			table.insert(out,tabs.. [[		<geom fromto="0 0 0 ]]..option.vec3str(COM*2)..[[" name="]]..bone:name()..[[" mass="0.01"  size="0.049" type="capsule"/>]])
+		if option.generateCapsules==false then
 		else
-			table.insert(out, tabs..[[		<geom fromto="0 0 0 0 0 0.02" name="]]..bone:name()..[[" mass="0.01" size="0.049" type="capsule"/>]])
+			local COM=bone:localCOM()
+			if COM:length()>0.02 then
+				table.insert(out,tabs.. [[		<geom fromto="0 0 0 ]]..option.vec3str(COM*2)..[[" name="]]..bone:name()..[[" mass="0.01"  size="0.049" type="capsule"/>]])
+			else
+				table.insert(out, tabs..[[		<geom fromto="0 0 0 0 0 0.02" name="]]..bone:name()..[[" mass="0.01" size="0.049" type="capsule"/>]])
+			end
 		end
 	end
 end
@@ -419,6 +427,10 @@ function writeMujocoBody(out, out_asset, loader, bone, level, option)
 	elseif bone:numChannels()>1 and option.useSphericalJoints then
 		table.insert(out, tabs..[[
 		<joint limited="false" pos="0 0 0" stiffness="0" type="ball"/>]])
+	elseif bone:HRPjointType(0)==MainLib.VRMLTransform.BALL then
+		table.insert(out, tabs..[[
+		<joint name="]]..bone:name()..[[_ball" limited="false" pos="0 0 0" stiffness="0" type="ball"/>]])
+
 	elseif bone:HRPjointType(0)==MainLib.VRMLTransform.SLIDE then
 		for i=0, bone:numChannels()-1 do
 			table.insert(out, tabs..[[

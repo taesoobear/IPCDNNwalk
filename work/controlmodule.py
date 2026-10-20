@@ -29,7 +29,7 @@ HRP_JOINT_SLIDE=5			# jointAxis, ""
 # a simple taesooLib style wrapper. assumes Euler joints (except for the free root joint)
 # this class will be moved to controlmodule.py later
 class MujocoSim:
-    def __init__(self, simLoaders, scene_file=None, timestep=None):
+    def __init__(self, simLoaders, scene_file=None, timestep=None, **kwargs):
         """ input: 1. simLoaders (a list of loaders or an mjcf xml file name)
                    2. timestep
             output: scene_file (can be None)
@@ -42,7 +42,9 @@ class MujocoSim:
                 scene_file='work/__temp_ragdoll_scene.xml'
             if timestep==None:
                 timestep=1.0/300.0
-            RE.writeMujocoXML(simLoaders, scene_file, {'groundPlane':False})
+            options = {'groundPlane': False}
+            options.update(kwargs)
+            RE.writeMujocoXML(simLoaders, scene_file, options)
         else:
             assert(scene_file==None)
             scene_file=simLoaders
@@ -100,18 +102,23 @@ class MujocoSim:
             self.model.opt.timestep=timestep
         self.servo_settings=lua.dynamic_list()
 
+    # for both libcalab and mujoco
     def setQpos(self, iloader, qpos):
         self.setLinkPos(iloader, qpos)
     def getQpos(self, iloader):
         startq=self.startq[iloader]
         ndof=self.loaders[iloader].dofInfo.numDOF()
         return self.data.qpos[startq:startq+ndof]
+
+    # for mujoco
     def setQvel(self, iloader, qvel):
         startv=self.startv[iloader]
+        loader=self.loaders[iloader]
         ndof=loader.dofInfo.numActualDOF()
         self.data.qvel[startv:startv+ndof]=qvel
     def getQvel(self, iloader):
         startv=self.startv[iloader]
+        loader=self.loaders[iloader]
         ndof=loader.dofInfo.numActualDOF()
         return self.data.qvel[startv:startv+ndof]
     def setCtrl(self, iloader, ctrl):
@@ -331,7 +338,7 @@ class MujocoSim:
         mujoco.mj_objectVelocity(self.model, self.data,  mujoco.mjtObj.mjOBJ_BODY,body_id, vel,flag_local)
         return RE.toVector3(vel[0:3])
 
-    # getLinkVel
+    # for taesooLib
     def getDPoseDOF(self, iloader):
         startv=self.startv[iloader]
         loader=self.loaders[iloader]

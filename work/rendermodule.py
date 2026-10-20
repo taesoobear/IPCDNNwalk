@@ -1289,7 +1289,7 @@ def writeMujocoXML(self, xmlfile, options=None,**kwargs):
     if options is None and kwargs is None:
         options={'groundPlane':False}
     lua.dostring('if not MujocoLoader then require("RigidBodyWin/subRoutines/MujocoLoader") end')
-    if kwargs is None:
+    if len(kwargs)==0:
         lua.F('writeMujocoXML', self, xmlfile, options)
     else:
         lua.F('writeMujocoXML', self, xmlfile, kwargs)
