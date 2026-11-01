@@ -5,6 +5,7 @@ except:
     import work.luamodule as lua
     import work.rendermodule as RE
 
+from typing import Any, List, Optional, Union, Tuple
 import numpy as np
 m=lua.taesooLib()
 import math,pdb
@@ -29,11 +30,27 @@ HRP_JOINT_SLIDE=5			# jointAxis, ""
 # a simple taesooLib style wrapper. assumes Euler joints (except for the free root joint)
 # this class will be moved to controlmodule.py later
 class MujocoSim:
-    def __init__(self, simLoaders, scene_file=None, timestep=None, **kwargs):
-        """ input: 1. simLoaders (a list of loaders or an mjcf xml file name)
-                   2. timestep
-            output: scene_file (can be None)
-        """ 
+    """
+    A Mujoco simulation wrapper for character control.
+
+    This class handles loading MJCF models or VRML loaders, managing simulation state,
+    and provides utility methods for character control and terrain sensing.
+    """
+    def __init__(self, simLoaders: Union[List[m.VRMLloader], str], scene_file: Optional[str] = None, timestep: Optional[float] = None, **kwargs) -> None:
+        """
+        Initialize the Mujoco simulator.
+
+        Parameters
+        ----------
+        simLoaders : Union[List[m.VRMLloader], str]
+            A list of loaders or an MJCF XML file name.
+
+        scene_file : Optional[str], optional
+            Path to the scene XML file. If None and simLoaders is a list, a temporary file is used.
+
+        timestep : Optional[float], optional
+            Simulation timestep. Defaults to 1/300 if None and simLoaders is a list.
+        """
         import mujoco
         self.mujoco=mujoco
         self.mj_ray=mujoco.mj_ray
@@ -103,17 +120,51 @@ class MujocoSim:
         self.servo_settings=lua.dynamic_list()
 
     # for both libcalab and mujoco
-    def setQpos(self, iloader, qpos):
+    def setQpos(self, iloader: int, qpos: m.vectorn) -> None:
+        """
+        Set the joint positions (qpos) for a specific loader.
+
+        Parameters
+        ----------
+        iloader : int
+            Index of the loader.
+        qpos : m.vectorn
+            The joint positions to set.
+        """
         self.setLinkPos(iloader, qpos)
-    def getQpos(self, iloader):
+
+    def getQpos(self, iloader: int) -> np.ndarray:
+        """
+        Get the joint positions (qpos) for a specific loader.
+
+        Parameters
+        ----------
+        iloader : int
+            Index of the loader.
+
+        Returns
+        -------
+        np.ndarray
+             A view into the original qpos array (not a copy).
+        """
         startq=self.startq[iloader]
         ndof=self.loaders[iloader].dofInfo.numDOF()
         return self.data.qpos[startq:startq+ndof]
 
     # for mujoco
-    def setQvel(self, iloader, qvel):
+    def setQvel(self, iloader: int, qvel: np.ndarray) -> None:
+        """
+        Set the joint velocities (qvel) for a specific loader.
+
+        Parameters
+        ----------
+        iloader : int
+            Index of the loader.
+        qvel : np.ndarray
+            The joint velocities to set.
+        """
         startv=self.startv[iloader]
-        loader=self.loaders[iloader]
+        loader = self.loaders[iloader]
         ndof=loader.dofInfo.numActualDOF()
         self.data.qvel[startv:startv+ndof]=qvel
     def getQvel(self, iloader):

@@ -760,17 +760,17 @@ def drawSpheres(node_name, positions:m.vector3N|np.ndarray, radius:m.vectorn| np
         del _sceneElements[node_name]
     if lua.hasTorch and isinstance(positions, lua.torch.Tensor):
         return drawSpheres(node_name, positions.detach().cpu().numpy(), radius, colors) 
-    elif isinstance(radius, float) or isinstance(radius, int):
-        N=positions.shape[0]
-        radius=np.broadcast_to(np.float32(radius), (N,))
-        return drawSpheres(node_name, positions, radius,colors)
-    elif isinstance(colors, m.vector3):
-        N=positions.shape[0]
-        return drawSpheres(node_name, positions, radius,np.broadcast_to(colors.array, (N,3)) )
     elif isinstance(colors, m.vector3N):
         return drawSpheres(node_name, positions, radius,colors.array)
     elif isinstance(positions, m.vector3N):
         return drawSpheres(node_name, positions.array, radius,colors)
+    elif isinstance(colors, m.vector3):
+        N=positions.shape[0]
+        return drawSpheres(node_name, positions, radius,np.broadcast_to(colors.array, (N,3)) )
+    elif isinstance(radius, float) or isinstance(radius, int):
+        N=positions.shape[0]
+        radius=np.broadcast_to(np.float32(radius), (N,))
+        return drawSpheres(node_name, positions, radius,colors)
     elif isinstance(radius, m.vectorn):
         return drawSpheres(node_name, positions, radius.array,colors)
 
